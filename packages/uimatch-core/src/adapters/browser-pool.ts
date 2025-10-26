@@ -12,13 +12,18 @@ import { chromium } from 'playwright';
 class BrowserPool {
   private browser: Browser | null = null;
   private contexts: Set<BrowserContext> = new Set();
+  private disconnectListenerAttached = false;
 
   /**
    * Get or create a shared browser instance
    */
   async getBrowser(): Promise<Browser> {
     if (!this.browser || !this.browser.isConnected()) {
-      this.browser = await chromium.launch();
+      const headless = process.env.UIMATCH_HEADLESS
+        ? process.env.UIMATCH_HEADLESS !== 'false'
+        : true;
+      this.browser = await chromium.launch({ headless });
+      this.disconnectListenerAttached = false;
     }
     return this.browser;
   }
@@ -35,6 +40,21 @@ class BrowserPool {
     const browser = await this.getBrowser();
     const context = await browser.newContext(options);
     this.contexts.add(context);
+
+    // Auto-cleanup when context closes
+    context.on('close', () => this.contexts.delete(context));
+
+    // Clean up all contexts if browser disconnects (first time only)
+    if (this.browser && !this.disconnectListenerAttached) {
+      const currentBrowser = this.browser;
+      currentBrowser.once('disconnected', () => {
+        this.contexts.clear();
+        this.browser = null;
+        this.disconnectListenerAttached = false;
+      });
+      this.disconnectListenerAttached = true;
+    }
+
     return context;
   }
 

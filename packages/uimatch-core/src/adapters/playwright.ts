@@ -96,7 +96,10 @@ export class PlaywrightAdapter implements BrowserAdapter {
         httpCredentials: opts.basicAuth,
       });
     } else {
-      browser = await chromium.launch();
+      const headless = process.env.UIMATCH_HEADLESS
+        ? process.env.UIMATCH_HEADLESS !== 'false'
+        : true;
+      browser = await chromium.launch({ headless });
       context = await browser.newContext({
         viewport: opts.viewport ?? { width: 1440, height: 900 },
         deviceScaleFactor: opts.dpr ?? 2,
