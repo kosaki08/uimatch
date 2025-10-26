@@ -11,6 +11,7 @@
   "scripts": {
     "postinstall": "bunx playwright install chromium",
     "ci:postinstall": "bunx playwright install --with-deps chromium",
+    "build": "tsc -b",
     "pretest": "bun ./packages/uimatch-core/scripts/generate-fixtures.ts",
     "test": "bun test --recursive",
     "test:compare": "bun ./scripts/test-compare.ts",
@@ -19,7 +20,10 @@
     "type-check": "tsc --noEmit",
     "check": "bun run lint && bun run type-check",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "uimatch:compare": "bun run scripts/uimatch-compare.ts",
+    "uimatch:loop": "bun run scripts/uimatch-loop.ts",
+    "uimatch:settings": "bun run scripts/uimatch-settings.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
