@@ -1,5 +1,5 @@
 /**
- * Type definitions for uimatch-skill
+ * Type definitions for uimatch-plugin
  */
 
 import type { ExpectedSpec, StyleDiff, TokenMap } from 'uimatch-core';

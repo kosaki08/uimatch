@@ -97,7 +97,13 @@ export function buildStyleDiffs(
     if (prop === 'border-radius') return ['radius'];
     if (prop === 'border-width') return ['border'];
     if (prop === 'box-shadow') return ['shadow'];
-    if (prop.startsWith('padding') || prop.startsWith('margin') || prop === 'gap')
+    if (
+      prop.startsWith('padding') ||
+      prop.startsWith('margin') ||
+      prop === 'gap' ||
+      prop === 'column-gap' ||
+      prop === 'row-gap'
+    )
       return ['spacing'];
     return ['typography'];
   };
@@ -334,16 +340,12 @@ export function buildStyleDiffs(
       return { ok: a === e, expected: exp['display'] };
     });
 
-    // flex-direction (normalize start/end → flex-start/flex-end)
+    // flex-direction (strict equality)
     consider('flex-direction', () => {
-      const normalize = (v?: string) => {
-        if (!v) return v;
-        return v.replace(/^(start|end)$/, 'flex-$1');
-      };
-      const a = normalize(props['flex-direction']);
-      const e = exp['flex-direction'] ? normalize(exp['flex-direction']) : undefined;
+      const a = props['flex-direction']?.trim();
+      const e = (exp['flex-direction'] as string | undefined)?.trim();
       if (!e || !a) return { ok: true };
-      return { ok: a === e, expected: exp['flex-direction'] };
+      return { ok: a === e, expected: e };
     });
 
     // flex-wrap, align-content, place-items, place-content (string equality)
@@ -370,11 +372,12 @@ export function buildStyleDiffs(
       });
     });
 
-    // grid-template-columns, grid-template-rows, grid-auto-flow (string equality for now)
+    // grid-template-columns, grid-template-rows, grid-auto-flow (normalize whitespace)
     (['grid-template-columns', 'grid-template-rows', 'grid-auto-flow'] as const).forEach((p) => {
       consider(p, () => {
-        const a = props[p];
-        const e = exp[p];
+        const norm = (v?: string) => v?.trim().replace(/\s+/g, ' ');
+        const a = norm(props[p]);
+        const e = norm(exp[p] as string | undefined);
         if (!e || !a) return { ok: true };
         return { ok: a === e, expected: e };
       });
