@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { compareImages } from './core/compare.ts';
+import { compareImages } from './core/compare';
 
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
 

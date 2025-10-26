@@ -2,6 +2,7 @@
  * UI comparison command
  */
 
+import type { CaptureResult, CompareImageResult } from 'uimatch-core';
 import { captureTarget, compareImages } from 'uimatch-core';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
 import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
@@ -41,12 +42,12 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   };
 
   // 1) Fetch Figma PNG (MCP) - scale must match dpr to avoid size mismatch
-  const figmaPng = await figmaClient.getFramePng({ fileKey, nodeId, scale: dpr });
+  const figmaPng: Buffer = await figmaClient.getFramePng({ fileKey, nodeId, scale: dpr });
   // Variables will be used in Phase 3 for TokenMap matching
   // const variables = await figmaClient.getVariables({ fileKey });
 
   // 2) Capture implementation (Playwright)
-  const cap = await captureTarget({
+  const cap: CaptureResult = await captureTarget({
     url: args.story,
     selector: args.selector,
     viewport: args.viewport,
@@ -60,7 +61,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   });
 
   // 3) Image diff with style comparison
-  const result = compareImages({
+  const result: CompareImageResult = compareImages({
     figmaPngB64: figmaPng.toString('base64'),
     implPngB64: cap.implPng.toString('base64'),
     pixelmatch,
@@ -86,7 +87,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   // 4) Calculate metrics and quality gate
   const colorDeltaEAvg = result.colorDeltaEAvg ?? 0;
   const styleDiffs = result.styleDiffs ?? [];
-  const hasHighSeverity = styleDiffs.some((d) => d.severity === 'high');
+  const hasHighSeverity = styleDiffs.some((d: { severity: string }) => d.severity === 'high');
 
   // Quality gate evaluation
   const tPix = args.thresholds?.pixelDiffRatio ?? cfg.defaultThresholds.pixelDiffRatio;
@@ -151,7 +152,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     `DFS: ${dfs}`,
     `pixelDiffRatio: ${(result.pixelDiffRatio * 100).toFixed(2)}%`,
     `colorDeltaEAvg: ${colorDeltaEAvg.toFixed(2)}`,
-    `styleDiffs: ${styleDiffs.length} (high: ${styleDiffs.filter((d) => d.severity === 'high').length})`,
+    `styleDiffs: ${styleDiffs.length} (high: ${styleDiffs.filter((d: { severity: string }) => d.severity === 'high').length})`,
   ].join(' | ');
 
   return {

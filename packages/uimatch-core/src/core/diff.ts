@@ -241,7 +241,7 @@ export function buildStyleDiffs(
     // border-style
     consider('border-style', () => {
       const a = props['border-style']?.trim();
-      const e = (exp['border-style'])?.trim();
+      const e = exp['border-style']?.trim();
       if (!e || !a) return { ok: true };
       return { ok: a === e, expected: e };
     });
@@ -351,7 +351,7 @@ export function buildStyleDiffs(
     // flex-direction (strict equality)
     consider('flex-direction', () => {
       const a = props['flex-direction']?.trim();
-      const e = (exp['flex-direction'])?.trim();
+      const e = exp['flex-direction']?.trim();
       if (!e || !a) return { ok: true };
       return { ok: a === e, expected: e };
     });

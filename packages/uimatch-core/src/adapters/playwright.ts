@@ -99,29 +99,30 @@ export class PlaywrightAdapter implements BrowserAdapter {
       });
       if (opts.fontPreloads?.length) {
         await frame.evaluate((urls: string[]) => {
+          const doc = globalThis.document;
           for (let i = 0; i < urls.length; i++) {
             const u = urls[i];
             if (!u) continue;
-            const l = globalThis.document.createElement('link');
-            l.rel = 'preload';
-            l.as = 'font';
-            l.crossOrigin = 'anonymous';
-            l.href = u;
-            globalThis.document.head.appendChild(l);
+            const link = doc.createElement('link');
+            link.rel = 'preload';
+            link.as = 'font';
+            link.crossOrigin = 'anonymous';
+            link.href = u;
+            doc.head.appendChild(link);
           }
-          return globalThis.document.fonts?.ready ?? Promise.resolve();
+          return doc.fonts?.ready ?? Promise.resolve();
         }, opts.fontPreloads);
       }
 
       // Additional idle wait to reduce non-deterministic rendering
       const idleWaitMs = opts.idleWaitMs ?? 150;
-      await frame.evaluate((ms) => {
-        return new Promise<void>((res) => {
-          const ric = globalThis.window?.requestIdleCallback;
+      await frame.evaluate((ms: number) => {
+        return new Promise<void>((resolve) => {
+          const ric = globalThis.requestIdleCallback;
           if (ric) {
-            ric(() => setTimeout(res, ms), { timeout: ms + 50 });
+            ric(() => setTimeout(resolve, ms), { timeout: ms + 50 });
           } else {
-            setTimeout(res, ms);
+            setTimeout(resolve, ms);
           }
         });
       }, idleWaitMs);
@@ -147,7 +148,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
         (root, arg) => {
           const { max, props } = arg;
 
-          const toRec = (el: Element) => {
+          const toRec = (el: Element): Record<string, string> => {
             const st = globalThis.getComputedStyle(el);
             const out: Record<string, string> = {};
             for (let i = 0; i < props.length; i++) {
@@ -162,18 +163,17 @@ export class PlaywrightAdapter implements BrowserAdapter {
           const result: Record<string, Record<string, string>> = {};
           result['__self__'] = toRec(base);
 
-          const tests = Array.from(base.querySelectorAll('[data-testid]'));
-          const chosen = (tests.length ? tests : Array.from(base.querySelectorAll('*'))).slice(
-            0,
-            max
-          );
+          const testsNodeList = base.querySelectorAll('[data-testid]');
+          const tests = Array.from(testsNodeList);
+          const allChildren = Array.from(base.querySelectorAll('*'));
+          const chosen = (tests.length > 0 ? tests : allChildren).slice(0, max);
 
           for (let i = 0; i < chosen.length; i++) {
             const el = chosen[i];
             if (!el) continue;
-            const key = (el as HTMLElement).dataset?.testid
-              ? `[data-testid="${(el as HTMLElement).dataset?.testid}"]`
-              : `:nth-child(${i + 1})`;
+            const htmlEl = el as HTMLElement;
+            const testid = htmlEl.dataset?.testid;
+            const key = testid ? `[data-testid="${testid}"]` : `:nth-child(${i + 1})`;
             result[key] = toRec(el);
           }
           return result;
@@ -185,7 +185,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
       return { implPng: Buffer.from(implPng), styles, box };
     } catch (e) {
       await browser.close();
-      throw e;
+      throw e as Error;
     }
   }
 }

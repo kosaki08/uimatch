@@ -128,11 +128,15 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
   const flattenToOpaque = (png: PNG, bg = { r: 255, g: 255, b: 255 }) => {
     const data = png.data;
     for (let i = 0; i < data.length; i += 4) {
-      const a = data[i + 3] / 255;
+      const alpha = data[i + 3];
+      const a = alpha !== undefined ? alpha / 255 : 1;
       if (a < 1) {
-        data[i] = Math.round(data[i] * a + bg.r * (1 - a));
-        data[i + 1] = Math.round(data[i + 1] * a + bg.g * (1 - a));
-        data[i + 2] = Math.round(data[i + 2] * a + bg.b * (1 - a));
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (r !== undefined) data[i] = Math.round(r * a + bg.r * (1 - a));
+        if (g !== undefined) data[i + 1] = Math.round(g * a + bg.g * (1 - a));
+        if (b !== undefined) data[i + 2] = Math.round(b * a + bg.b * (1 - a));
         data[i + 3] = 255;
       }
     }
