@@ -18,6 +18,11 @@ This document contains project-specific rules and conventions that all AI coding
 - Use explicit types for function parameters and return values
 - Prefer `interface` over `type` for object shapes (unless union/intersection is needed)
 - Use `const` assertions where appropriate
+- **DO NOT disable TypeScript/ESLint rules to work around type errors**
+  - Fix the root cause instead of suppressing warnings
+  - If third-party type definitions are incorrect, create proper type declarations
+  - Avoid `eslint-disable` comments, `@ts-ignore`, or `as any` type assertions
+  - If you must use type assertions, use specific types (e.g., `as PNG`) and document why
 
 ### Naming Conventions
 

@@ -6,7 +6,12 @@ export interface CompareInput {
   figmaPngB64: string;
   /** Base64-encoded PNG image from implementation */
   implPngB64: string;
-  /** Optional: Threshold for pixel difference (0-1, default: 0.03) */
+  /**
+   * pixelmatch's internal threshold (0..1).
+   * This is NOT the acceptance threshold for pixelDiffRatio.
+   * Controls the sensitivity of pixel matching (lower = more strict).
+   * default: 0.1
+   */
   threshold?: number;
 }
 

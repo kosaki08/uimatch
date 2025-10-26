@@ -5,7 +5,7 @@ import type { CompareInput, CompareResult } from './types.ts';
 /**
  * Compare two PNG images and return pixel difference metrics and a visual diff
  */
-export async function compare(input: CompareInput): Promise<CompareResult> {
+export function compare(input: CompareInput): CompareResult {
   const { figmaPngB64, implPngB64, threshold = 0.1 } = input;
 
   // Decode base64 to Buffer
@@ -13,8 +13,8 @@ export async function compare(input: CompareInput): Promise<CompareResult> {
   const implBuffer = Buffer.from(implPngB64, 'base64');
 
   // Parse PNG images
-  const figmaPng = PNG.sync.read(figmaBuffer);
-  const implPng = PNG.sync.read(implBuffer);
+  const figmaPng = PNG.sync.read(figmaBuffer) as PNG;
+  const implPng = PNG.sync.read(implBuffer) as PNG;
 
   // Ensure images have the same dimensions
   if (figmaPng.width !== implPng.width || figmaPng.height !== implPng.height) {
