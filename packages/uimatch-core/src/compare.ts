@@ -1,5 +1,7 @@
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
+import { buildStyleDiffs, type DiffOptions } from './diff';
+import type { ExpectedSpec, StyleDiff, TokenMap } from './types';
 
 /**
  * Options for pixelmatch comparison algorithm.
@@ -36,6 +38,28 @@ export interface CompareImageInput {
    * Pixelmatch configuration options.
    */
   pixelmatch?: PixelmatchOptions;
+
+  /**
+   * Captured styles from implementation (optional).
+   * If provided, style differences will be calculated.
+   */
+  styles?: Record<string, Record<string, string>>;
+
+  /**
+   * Expected style specification (optional).
+   * Required if `styles` is provided.
+   */
+  expectedSpec?: ExpectedSpec;
+
+  /**
+   * Token map for design tokens (optional).
+   */
+  tokens?: TokenMap;
+
+  /**
+   * Diff options (thresholds, ignore, weights) (optional).
+   */
+  diffOptions?: DiffOptions;
 }
 
 /**
@@ -61,17 +85,36 @@ export interface CompareImageResult {
    * Total pixel count (width × height).
    */
   totalPixels: number;
+
+  /**
+   * Style differences (if styles were provided).
+   */
+  styleDiffs?: StyleDiff[];
+
+  /**
+   * Average color delta E (if style differences were calculated).
+   */
+  colorDeltaEAvg?: number;
 }
 
 /**
  * Compares two PNG images and returns pixel difference metrics.
+ * Optionally calculates style differences if styles are provided.
  *
- * @param input - Images and comparison options
- * @returns Pixel diff ratio, count, visual diff, and total pixels
+ * @param input - Images, styles, and comparison options
+ * @returns Pixel diff ratio, count, visual diff, total pixels, and style diffs (if applicable)
  * @throws If image dimensions don't match
  */
 export function compareImages(input: CompareImageInput): CompareImageResult {
-  const { figmaPngB64, implPngB64, pixelmatch: opts = {} } = input;
+  const {
+    figmaPngB64,
+    implPngB64,
+    pixelmatch: opts = {},
+    styles,
+    expectedSpec,
+    tokens,
+    diffOptions,
+  } = input;
 
   // Decode base64 to Buffer
   const figmaBuffer = Buffer.from(figmaPngB64, 'base64');
@@ -109,10 +152,37 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
   const diffBuffer = PNG.sync.write(diff);
   const diffPngB64 = diffBuffer.toString('base64');
 
-  return {
+  const result: CompareImageResult = {
     pixelDiffRatio,
     diffPngB64,
     diffPixelCount,
     totalPixels,
   };
+
+  // Calculate style differences if styles are provided
+  if (styles && expectedSpec) {
+    const styleDiffs = buildStyleDiffs(styles, expectedSpec, {
+      ...diffOptions,
+      tokens,
+    });
+
+    result.styleDiffs = styleDiffs;
+
+    // Calculate average color delta E
+    const colorDeltas: number[] = [];
+    for (const diff of styleDiffs) {
+      for (const prop of ['color', 'background-color', 'border-color']) {
+        const propDiff = diff.properties[prop];
+        if (propDiff?.delta && propDiff.unit === 'ΔE') {
+          colorDeltas.push(propDiff.delta);
+        }
+      }
+    }
+
+    if (colorDeltas.length > 0) {
+      result.colorDeltaEAvg = colorDeltas.reduce((sum, d) => sum + d, 0) / colorDeltas.length;
+    }
+  }
+
+  return result;
 }
