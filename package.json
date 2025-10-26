@@ -10,6 +10,7 @@
   },
   "scripts": {
     "postinstall": "bunx playwright install chromium",
+    "ci:postinstall": "bunx playwright install --with-deps chromium",
     "pretest": "bun ./packages/uimatch-core/scripts/generate-fixtures.ts",
     "test": "bun test --recursive",
     "lint": "eslint .",
@@ -28,11 +29,5 @@
     "prettier-plugin-organize-imports": "^4.3.0",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.46.2"
-  },
-  "dependencies": {
-    "pixelmatch": "^6.0.0",
-    "playwright": "^1.56.1",
-    "pngjs": "^7.0.0",
-    "zod": "^4.1.12"
   }
 }

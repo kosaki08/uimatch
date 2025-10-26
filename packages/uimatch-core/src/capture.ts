@@ -146,9 +146,9 @@ export async function captureTarget(opts: CaptureOptions): Promise<CaptureResult
       if (sb) frame = sb;
     }
 
-    // Disable animations and preload fonts
+    // Disable animations, enforce white background, and preload fonts
     await frame.addStyleTag({
-      content: `*{animation:none!important;transition:none!important}`,
+      content: `*{animation:none!important;transition:none!important}body{background:#fff!important}`,
     });
     if (opts.fontPreloads?.length) {
       await frame.evaluate((urls: string[]) => {

@@ -100,7 +100,7 @@ export async function uiMatchCompare(args: {
   const result = compareImages({
     figmaPngB64: figmaPng.toString('base64'),
     implPngB64: cap.implPng.toString('base64'),
-    pixelmatch: { threshold: 0.1, includeAA: true },
+    pixelmatch: { threshold: 0.1, includeAA: false },
   });
 
   // 4) Return (DFS will be introduced in Phase 3, focus on metrics here)

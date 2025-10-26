@@ -13,7 +13,7 @@ export interface PixelmatchOptions {
 
   /**
    * Whether to skip anti-aliasing detection.
-   * @default true
+   * @default false
    */
   includeAA?: boolean;
 }
@@ -99,7 +99,7 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
   // Perform pixel comparison
   const diffPixelCount = pixelmatch(figmaPng.data, implPng.data, diff.data, width, height, {
     threshold: opts.threshold ?? 0.1,
-    includeAA: opts.includeAA ?? true,
+    includeAA: opts.includeAA ?? false,
   });
 
   // Calculate pixel difference ratio
