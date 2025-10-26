@@ -5,13 +5,34 @@ export { compareImages } from './core/compare.ts';
 export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from './core/compare.ts';
 export { buildStyleDiffs } from './core/diff.ts';
 export type { DiffOptions } from './core/diff.ts';
+export {
+  createCaptureError,
+  createComparisonError,
+  createConfigError,
+  err,
+  isErr,
+  isOk,
+  map,
+  mapErr,
+  ok,
+  unwrap,
+  unwrapOr,
+} from './types/index.ts';
 export type {
+  AppError,
+  BaseError,
   BrowserAdapter,
+  CaptureError,
   CaptureOptions,
   CaptureResult,
+  ComparisonError,
+  ConfigError,
   ExpectedSpec,
+  Failure,
   PatchHint,
+  Result,
   StyleDiff,
+  Success,
   TokenMap,
 } from './types/index.ts';
 export { deltaE2000, rgbToLab } from './utils/color.ts';
