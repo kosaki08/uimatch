@@ -93,8 +93,10 @@ Create `.uimatchrc.json` in your project root:
     "pixelmatchThreshold": 0.1,
     "acceptancePixelDiffRatio": 0.03,
     "acceptanceColorDeltaE": 3.0,
-    "includeAA": false,
-    "idleWaitMs": 150
+    "includeAA": false
+  },
+  "capture": {
+    "defaultIdleWaitMs": 150
   }
 }
 ```

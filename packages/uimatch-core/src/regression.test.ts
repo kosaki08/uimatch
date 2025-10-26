@@ -42,7 +42,7 @@ describe('Regression Tests', () => {
   });
 
   describe('box-shadow in colorDeltaEAvg', () => {
-    test('should include box-shadow color in average ΔE calculation', () => {
+    test('should include box-shadow color in average ΔE calculation (buildStyleDiffs)', () => {
       const actual = {
         __self__: {
           'box-shadow': '0px 2px 4px rgba(255, 0, 0, 0.5)', // Red
@@ -64,6 +64,30 @@ describe('Regression Tests', () => {
       expect(boxShadowProp).toBeDefined();
       expect(boxShadowProp?.unit).toBe('ΔE');
       expect(boxShadowProp?.delta).toBeGreaterThan(50); // Red to Blue is high ΔE
+    });
+
+    test('should include box-shadow in compareImages colorDeltaEAvg', () => {
+      // Create identical images to isolate style diff calculation
+      const result = compareImages({
+        figmaPngB64: loadFixtureAsBase64('red-100x100.png'),
+        implPngB64: loadFixtureAsBase64('red-100x100.png'),
+        styles: {
+          __self__: {
+            'box-shadow': '0px 2px 4px rgba(255, 0, 0, 0.5)', // Red shadow
+            color: 'rgb(0, 0, 0)', // Black text (no diff)
+          },
+        },
+        expectedSpec: {
+          __self__: {
+            'box-shadow': '0px 2px 4px rgba(0, 0, 255, 0.5)', // Blue shadow
+            color: 'rgb(0, 0, 0)', // Black text (no diff)
+          },
+        },
+      });
+
+      // colorDeltaEAvg should be calculated from box-shadow color difference
+      expect(result.colorDeltaEAvg).toBeDefined();
+      expect(result.colorDeltaEAvg).toBeGreaterThan(50); // Red to Blue is high ΔE
     });
   });
 
