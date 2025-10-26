@@ -1,20 +1,11 @@
-import { captureTarget, compareImages } from 'uimatch-core';
-import { getFramePng, parseFigmaRef } from '../figma-mcp.ts';
-
 /**
- * Acceptance thresholds for UI comparison.
+ * UI comparison command
  */
-type Thresholds = {
-  /**
-   * Maximum acceptable pixel difference ratio (0 to 1).
-   */
-  pixelDiffRatio?: number;
 
-  /**
-   * Maximum acceptable color Delta E (CIEDE2000).
-   */
-  deltaE?: number;
-};
+import { captureTarget, compareImages } from 'uimatch-core';
+import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
+import { loadFigmaMcpConfig } from '../config/index';
+import type { CompareArgs, CompareResult } from '../types/index';
 
 /**
  * Compares a Figma design with a live implementation.
@@ -31,57 +22,20 @@ type Thresholds = {
  * });
  * ```
  */
-export async function uiMatchCompare(args: {
-  /**
-   * Figma reference (URL or `fileKey:nodeId`).
-   */
-  figma: string;
-
-  /**
-   * Target URL (Storybook or any web page).
-   */
-  story: string;
-
-  /**
-   * CSS selector for the component root.
-   */
-  selector: string;
-
-  /**
-   * Viewport dimensions.
-   */
-  viewport?: { width: number; height: number };
-
-  /**
-   * Device pixel ratio.
-   * @default 1
-   */
-  dpr?: number;
-
-  /**
-   * Acceptance thresholds (Phase 3).
-   */
-  thresholds?: Thresholds;
-
-  /**
-   * Whether to include PNG artifacts in the report.
-   */
-  emitArtifacts?: boolean;
-
-  /**
-   * Font URLs to preload.
-   */
-  fontPreload?: string[];
-}) {
+export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> {
   const { fileKey, nodeId } = parseFigmaRef(args.figma);
+
+  // Load configuration from environment
+  const mcpConfig = loadFigmaMcpConfig();
+  const figmaClient = new FigmaMcpClient(mcpConfig);
 
   // Use dpr=1 as default for MVP to ensure Figma scale and Playwright dpr match
   const dpr = args.dpr ?? 1;
 
   // 1) Fetch Figma PNG (MCP) - scale must match dpr to avoid size mismatch
-  const figmaPng = await getFramePng({ fileKey, nodeId, scale: dpr });
+  const figmaPng = await figmaClient.getFramePng({ fileKey, nodeId, scale: dpr });
   // Variables will be used in Phase 3 for TokenMap matching
-  // const variables = await getVariables({ fileKey });
+  // const variables = await figmaClient.getVariables({ fileKey });
 
   // 2) Capture implementation (Playwright)
   const cap = await captureTarget({
