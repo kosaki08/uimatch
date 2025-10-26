@@ -33,8 +33,51 @@ export interface Thresholds {
 
   /**
    * Maximum acceptable color Delta E (CIEDE2000).
+   * @default 3.0
    */
   deltaE?: number;
+
+  /**
+   * Tolerance ratio for spacing properties (padding, margin).
+   * @default 0.15 (15%)
+   */
+  spacing?: number;
+
+  /**
+   * Tolerance ratio for dimension properties (width, height).
+   * @default 0.05 (5%)
+   */
+  dimension?: number;
+
+  /**
+   * Tolerance ratio for gap properties (gap, column-gap, row-gap).
+   * @default 0.1 (10%)
+   */
+  layoutGap?: number;
+
+  /**
+   * Tolerance ratio for border-radius.
+   * @default 0.12 (12%)
+   */
+  radius?: number;
+
+  /**
+   * Tolerance ratio for border-width.
+   * @default 0.3 (30%)
+   */
+  borderWidth?: number;
+
+  /**
+   * Tolerance ratio for box-shadow blur.
+   * @default 0.15 (15%)
+   */
+  shadowBlur?: number;
+
+  /**
+   * Extra Delta E tolerance for box-shadow color comparison.
+   * @default 1.0
+   */
+  shadowColorExtraDE?: number;
 }
 
 /**

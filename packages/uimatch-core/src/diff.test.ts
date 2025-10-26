@@ -335,4 +335,521 @@ describe('buildStyleDiffs', () => {
     expect(firstDiff.properties['box-shadow']).toBeDefined();
     expect(firstDiff.severity).toBe('medium');
   });
+
+  test('detects box-shadow offset difference', () => {
+    const actual = {
+      __self__: {
+        'box-shadow': '0px 4px 8px rgba(0, 0, 0, 0.3)',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'box-shadow': '0px 6px 8px rgba(0, 0, 0, 0.3)',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    // Main box-shadow property should be present
+    expect(firstDiff.properties['box-shadow']).toBeDefined();
+
+    // Auxiliary offset-y property should be present
+    const offsetY = firstDiff.properties['box-shadow-offset-y'];
+    expect(offsetY).toBeDefined();
+    expect(offsetY?.actual).toBe('4px');
+    expect(offsetY?.expected).toBe('6px');
+    expect(offsetY?.delta).toBe(-2);
+
+    // Auxiliary properties should NOT appear in patchHints
+    const offsetHints = firstDiff.patchHints?.filter((h) =>
+      h.property.startsWith('box-shadow-offset-')
+    );
+    expect(offsetHints).toHaveLength(0);
+
+    // Main box-shadow hint should be present
+    const shadowHint = firstDiff.patchHints?.find((h) => h.property === 'box-shadow');
+    expect(shadowHint).toBeDefined();
+    expect(shadowHint?.suggestedValue).toBe('0px 6px 8px rgba(0, 0, 0, 0.3)');
+
+    expect(firstDiff.severity).toBe('medium');
+  });
+
+  test('handles box-shadow with inset', () => {
+    const actual = {
+      __self__: {
+        'box-shadow': 'inset 0px 2px 4px rgba(0, 0, 0, 0.5)',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'box-shadow': 'inset 0px 4px 8px rgba(0, 0, 0, 0.5)',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    // Should detect offset difference even with inset
+    const offsetY = firstDiff.properties['box-shadow-offset-y'];
+    expect(offsetY).toBeDefined();
+    expect(offsetY?.actual).toBe('2px');
+    expect(offsetY?.expected).toBe('4px');
+    expect(offsetY?.delta).toBe(-2);
+
+    expect(firstDiff.severity).toBe('medium');
+  });
+
+  test('detects width difference', () => {
+    const actual = {
+      __self__: {
+        width: '180px',
+        height: '100px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        width: '200px',
+        height: '100px',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    const widthProp = getProp(firstDiff, 'width');
+    expect(widthProp.actual).toBe('180px');
+    expect(widthProp.expected).toBe('200px');
+    expect(widthProp.delta).toBe(-20);
+    expect(widthProp.unit).toBe('px');
+
+    // Height should match, so no diff expected
+    expect(firstDiff.properties['height']).toBeDefined();
+
+    expect(firstDiff.severity).toBe('medium');
+  });
+
+  test('detects height difference', () => {
+    const actual = {
+      __self__: {
+        width: '200px',
+        height: '80px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        width: '200px',
+        height: '100px',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    const heightProp = getProp(firstDiff, 'height');
+    expect(heightProp.actual).toBe('80px');
+    expect(heightProp.expected).toBe('100px');
+    expect(heightProp.delta).toBe(-20);
+    expect(heightProp.unit).toBe('px');
+
+    expect(firstDiff.severity).toBe('medium');
+  });
+
+  test('normalizes display (inline-flex → flex)', () => {
+    const actual = {
+      __self__: {
+        display: 'inline-flex',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        display: 'flex',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+    expect(firstDiff.properties['display']).toBeDefined();
+    expect(firstDiff.severity).toBe('low'); // Should match after normalization
+  });
+
+  test('normalizes display (inline-grid → grid)', () => {
+    const actual = {
+      __self__: {
+        display: 'inline-grid',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        display: 'grid',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+    expect(firstDiff.properties['display']).toBeDefined();
+    expect(firstDiff.severity).toBe('low'); // Should match after normalization
+  });
+
+  test('detects flex-wrap difference', () => {
+    const actual = {
+      __self__: {
+        'flex-wrap': 'nowrap',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'flex-wrap': 'wrap',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+    const flexWrapProp = getProp(firstDiff, 'flex-wrap');
+    expect(flexWrapProp.actual).toBe('nowrap');
+    expect(flexWrapProp.expected).toBe('wrap');
+    expect(firstDiff.severity).toBe('medium');
+  });
+
+  test('normalizes justify-content (start → flex-start)', () => {
+    const actual = {
+      __self__: {
+        'justify-content': 'start',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'justify-content': 'flex-start',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+    expect(firstDiff.properties['justify-content']).toBeDefined();
+    expect(firstDiff.severity).toBe('low'); // Should match after normalization
+  });
+
+  test('detects column-gap difference with tolerance', () => {
+    const actual = {
+      __self__: {
+        'column-gap': '15.5px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'column-gap': '16px',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    // Within ±10% tolerance (16 * 0.1 = 1.6, delta = 0.5)
+    expect(firstDiff.properties['column-gap']).toBeDefined();
+    expect(firstDiff.severity).toBe('low'); // Within tolerance
+  });
+
+  test('detects row-gap difference outside tolerance', () => {
+    const actual = {
+      __self__: {
+        'row-gap': '10px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'row-gap': '20px',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    const rowGapProp = getProp(firstDiff, 'row-gap');
+    expect(rowGapProp.actual).toBe('10px');
+    expect(rowGapProp.expected).toBe('20px');
+    expect(rowGapProp.delta).toBe(-10);
+    expect(firstDiff.severity).toBe('medium'); // Outside tolerance
+  });
+
+  test('detects grid-template-columns difference', () => {
+    const actual = {
+      __self__: {
+        'grid-template-columns': '1fr 1fr',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'grid-template-columns': '1fr 2fr',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    const gridProp = getProp(firstDiff, 'grid-template-columns');
+    expect(gridProp.actual).toBe('1fr 1fr');
+    expect(gridProp.expected).toBe('1fr 2fr');
+    expect(firstDiff.severity).toBe('medium');
+  });
+
+  test('detects place-items difference', () => {
+    const actual = {
+      __self__: {
+        'place-items': 'center',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'place-items': 'start',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    const placeItemsProp = getProp(firstDiff, 'place-items');
+    expect(placeItemsProp.actual).toBe('center');
+    expect(placeItemsProp.expected).toBe('start');
+    expect(firstDiff.severity).toBe('medium');
+  });
+
+  test('uses custom spacing threshold', () => {
+    const actual = {
+      __self__: {
+        'padding-top': '14px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'padding-top': '16px',
+      },
+    };
+
+    // Default threshold (15%): 16 * 0.15 = 2.4, so delta=2 should pass
+    const diffsDefault = buildStyleDiffs(actual, expected);
+    expect(diffsDefault[0]?.severity).toBe('low');
+
+    // Strict threshold (5%): 16 * 0.05 = 0.8, so delta=2 should fail
+    const diffsStrict = buildStyleDiffs(actual, expected, {
+      thresholds: { spacing: 0.05 },
+    });
+    expect(diffsStrict[0]?.severity).toBe('medium');
+  });
+
+  test('uses custom dimension threshold', () => {
+    const actual = {
+      __self__: {
+        width: '195px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        width: '200px',
+      },
+    };
+
+    // Default threshold (5%): 200 * 0.05 = 10, so delta=5 should pass
+    const diffsDefault = buildStyleDiffs(actual, expected);
+    expect(diffsDefault[0]?.severity).toBe('low');
+
+    // Strict threshold (2%): 200 * 0.02 = 4, so delta=5 should fail
+    const diffsStrict = buildStyleDiffs(actual, expected, {
+      thresholds: { dimension: 0.02 },
+    });
+    expect(diffsStrict[0]?.severity).toBe('medium');
+  });
+
+  test('uses custom layoutGap threshold', () => {
+    const actual = {
+      __self__: {
+        gap: '14px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        gap: '16px',
+      },
+    };
+
+    // Default threshold (10%): 16 * 0.1 = 1.6, so delta=2 should fail
+    const diffsDefault = buildStyleDiffs(actual, expected);
+    expect(diffsDefault[0]?.severity).toBe('medium');
+
+    // Loose threshold (20%): 16 * 0.2 = 3.2, so delta=2 should pass
+    const diffsLoose = buildStyleDiffs(actual, expected, {
+      thresholds: { layoutGap: 0.2 },
+    });
+    expect(diffsLoose[0]?.severity).toBe('low');
+  });
+
+  test('uses custom radius threshold', () => {
+    const actual = {
+      __self__: {
+        'border-radius': '6px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'border-radius': '8px',
+      },
+    };
+
+    // Default threshold (12%): 8 * 0.12 = 0.96, so delta=2 should fail
+    const diffsDefault = buildStyleDiffs(actual, expected);
+    expect(diffsDefault[0]?.severity).toBe('medium');
+
+    // Loose threshold (30%): 8 * 0.3 = 2.4, so delta=2 should pass
+    const diffsLoose = buildStyleDiffs(actual, expected, {
+      thresholds: { radius: 0.3 },
+    });
+    expect(diffsLoose[0]?.severity).toBe('low');
+  });
+
+  test('uses custom borderWidth threshold', () => {
+    const actual = {
+      __self__: {
+        'border-width': '1px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'border-width': '2px',
+      },
+    };
+
+    // Default threshold (30%): 2 * 0.3 = 0.6 (but min 1px), so delta=1 should pass
+    const diffsDefault = buildStyleDiffs(actual, expected);
+    expect(diffsDefault[0]?.severity).toBe('low');
+
+    // Strict threshold (10%): 2 * 0.1 = 0.2 (but min 1px), so delta=1 should pass
+    // (because Math.max(1, 0.2) = 1)
+    const diffsStrict = buildStyleDiffs(actual, expected, {
+      thresholds: { borderWidth: 0.1 },
+    });
+    expect(diffsStrict[0]?.severity).toBe('low');
+  });
+
+  test('uses custom shadowBlur threshold', () => {
+    const actual = {
+      __self__: {
+        'box-shadow': '0px 2px 4px rgba(0, 0, 0, 0.5)',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'box-shadow': '0px 2px 6px rgba(0, 0, 0, 0.5)',
+      },
+    };
+
+    // Default threshold (15%): 6 * 0.15 = 0.9 (but min 1px), so delta=2 should fail
+    const diffsDefault = buildStyleDiffs(actual, expected);
+    expect(diffsDefault[0]?.severity).toBe('medium');
+
+    // Loose threshold (40%): 6 * 0.4 = 2.4, so delta=2 should pass
+    const diffsLoose = buildStyleDiffs(actual, expected, {
+      thresholds: { shadowBlur: 0.4 },
+    });
+    expect(diffsLoose[0]?.severity).toBe('low');
+  });
+
+  test('handles gap: normal as 0px', () => {
+    const actual = {
+      __self__: {
+        gap: 'normal',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        gap: '0px',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    // 'normal' should be treated as 0px, so they should match
+    expect(firstDiff.properties['gap']).toBeDefined();
+    expect(firstDiff.severity).toBe('low');
+  });
+
+  test('detects margin difference', () => {
+    const actual = {
+      __self__: {
+        'margin-top': '8px',
+        'margin-left': '16px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'margin-top': '12px',
+        'margin-left': '16px',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    expect(diffs).toHaveLength(1);
+    const firstDiff = getFirstDiff(diffs);
+
+    const marginTopProp = getProp(firstDiff, 'margin-top');
+    expect(marginTopProp.actual).toBe('8px');
+    expect(marginTopProp.expected).toBe('12px');
+    expect(marginTopProp.delta).toBe(-4);
+
+    // margin-left should match
+    expect(firstDiff.properties['margin-left']).toBeDefined();
+
+    expect(firstDiff.severity).toBe('medium');
+  });
+
+  test('uses custom shadowColorExtraDE threshold', () => {
+    const actual = {
+      __self__: {
+        'box-shadow': '0px 2px 4px rgba(255, 0, 0, 0.5)', // Red
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        'box-shadow': '0px 2px 4px rgba(239, 0, 0, 0.5)', // Slightly different red (ΔE≈3.41)
+      },
+    };
+
+    // Default extra tolerance (1.0): ΔE 3.41 <= 3.0+1.0=4.0 should pass
+    const diffsDefault = buildStyleDiffs(actual, expected, {
+      thresholds: { deltaE: 3.0 },
+    });
+    expect(diffsDefault[0]?.severity).toBe('low');
+
+    // Strict extra tolerance (0.1): ΔE 3.41 > 3.0+0.1=3.1 should fail
+    const diffsStrict = buildStyleDiffs(actual, expected, {
+      thresholds: { deltaE: 3.0, shadowColorExtraDE: 0.1 },
+    });
+    expect(diffsStrict[0]?.severity).toBe('medium');
+  });
 });

@@ -14,7 +14,46 @@ import {
 
 export interface DiffOptions {
   thresholds?: {
+    /**
+     * Maximum acceptable color Delta E (CIEDE2000).
+     * @default 3.0
+     */
     deltaE?: number;
+    /**
+     * Tolerance ratio for spacing properties (padding, margin).
+     * @default 0.15 (15%)
+     */
+    spacing?: number;
+    /**
+     * Tolerance ratio for dimension properties (width, height).
+     * @default 0.05 (5%)
+     */
+    dimension?: number;
+    /**
+     * Tolerance ratio for gap properties (gap, column-gap, row-gap).
+     * @default 0.1 (10%)
+     */
+    layoutGap?: number;
+    /**
+     * Tolerance ratio for border-radius.
+     * @default 0.12 (12%)
+     */
+    radius?: number;
+    /**
+     * Tolerance ratio for border-width.
+     * @default 0.3 (30%)
+     */
+    borderWidth?: number;
+    /**
+     * Tolerance ratio for box-shadow blur.
+     * @default 0.15 (15%)
+     */
+    shadowBlur?: number;
+    /**
+     * Extra Delta E tolerance for box-shadow color comparison.
+     * @default 1.0
+     */
+    shadowColorExtraDE?: number;
   };
   ignore?: string[];
   weights?: Partial<
@@ -37,7 +76,16 @@ export function buildStyleDiffs(
 ): StyleDiff[] {
   const diffs: StyleDiff[] = [];
   const ignore = new Set(opts.ignore ?? []);
+
+  // Extract thresholds with defaults
   const tDeltaE = opts.thresholds?.deltaE ?? 3.0;
+  const tSpacing = opts.thresholds?.spacing ?? 0.15;
+  const tDimension = opts.thresholds?.dimension ?? 0.05;
+  const tLayoutGap = opts.thresholds?.layoutGap ?? 0.1;
+  const tRadius = opts.thresholds?.radius ?? 0.12;
+  const tBorderWidth = opts.thresholds?.borderWidth ?? 0.3;
+  const tShadowBlur = opts.thresholds?.shadowBlur ?? 0.15;
+  const tShadowColorExtra = opts.thresholds?.shadowColorExtraDE ?? 1.0;
 
   const categoriesOf = (
     prop: string
@@ -49,7 +97,8 @@ export function buildStyleDiffs(
     if (prop === 'border-radius') return ['radius'];
     if (prop === 'border-width') return ['border'];
     if (prop === 'box-shadow') return ['shadow'];
-    if (prop.startsWith('padding') || prop === 'gap') return ['spacing'];
+    if (prop.startsWith('padding') || prop.startsWith('margin') || prop === 'gap')
+      return ['spacing'];
     return ['typography'];
   };
 
@@ -99,7 +148,7 @@ export function buildStyleDiffs(
         const a = toPx(props[p]);
         const e = exp[p] ? toPx(exp[p]) : undefined;
         if (e == null || a == null) return { ok: true };
-        const tol = Math.max(1, 0.05 * e);
+        const tol = Math.max(1, tDimension * e);
         return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
       });
     });
@@ -170,7 +219,7 @@ export function buildStyleDiffs(
       const a = toPx(props['border-radius']);
       const e = exp['border-radius'] ? toPx(exp['border-radius']) : undefined;
       if (e == null || a == null) return { ok: true };
-      const tol = Math.max(1, 0.12 * e);
+      const tol = Math.max(1, tRadius * e);
       return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
     });
 
@@ -179,36 +228,58 @@ export function buildStyleDiffs(
       const a = toPx(props['border-width']);
       const e = exp['border-width'] ? toPx(exp['border-width']) : undefined;
       if (e == null || a == null) return { ok: true };
-      const tol = Math.max(1, 0.3 * e);
+      const tol = Math.max(1, tBorderWidth * e);
       return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
     });
 
-    // spacing
-    (['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'gap'] as const).forEach(
-      (p) => {
-        consider(p, () => {
-          const a = toPx(props[p]);
-          const e = exp[p] ? toPx(exp[p]) : undefined;
-          if (e == null || a == null) return { ok: true };
-          const tol = Math.max(1, 0.15 * e);
-          return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
-        });
-      }
-    );
+    // spacing (padding and margin properties)
+    (
+      [
+        'padding-top',
+        'padding-right',
+        'padding-bottom',
+        'padding-left',
+        'margin-top',
+        'margin-right',
+        'margin-bottom',
+        'margin-left',
+      ] as const
+    ).forEach((p) => {
+      consider(p, () => {
+        const a = toPx(props[p]);
+        const e = exp[p] ? toPx(exp[p]) : undefined;
+        if (e == null || a == null) return { ok: true };
+        const tol = Math.max(1, tSpacing * e);
+        return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+      });
+    });
+
+    // gap, column-gap, row-gap (configurable tolerance for AA/subpixel errors)
+    // 'normal' → 0px for flex default
+    const toGapPx = (v?: string) => (v?.trim() === 'normal' ? 0 : toPx(v));
+    (['gap', 'column-gap', 'row-gap'] as const).forEach((p) => {
+      consider(p, () => {
+        const a = toGapPx(props[p]);
+        const e = exp[p] ? toGapPx(exp[p]) : undefined;
+        if (e == null || a == null) return { ok: true };
+        const tol = Math.max(1, tLayoutGap * e);
+        return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+      });
+    });
 
     // shadow (blur, color, and offset)
     consider('box-shadow', () => {
       const a = parseBoxShadow(props['box-shadow']);
       const e = exp['box-shadow'] ? parseBoxShadow(exp['box-shadow']) : undefined;
       if (!a || !e) return { ok: true };
-      const okBlur = Math.abs(a.blur - e.blur) <= Math.max(1, 0.15 * e.blur);
+      const okBlur = Math.abs(a.blur - e.blur) <= Math.max(1, tShadowBlur * e.blur);
       const dE = a.rgb && e.rgb ? deltaE2000(a.rgb, e.rgb) : 0;
-      const okColor = dE <= tDeltaE + 1.0;
+      const okColor = dE <= tDeltaE + tShadowColorExtra;
 
-      // Extract offset (offsetX/offsetY) from shadow value
+      // Extract offset (offsetX/offsetY) from shadow value (supports inset)
       const takeOffset = (v?: string) => {
         if (!v || v === 'none') return { x: undefined, y: undefined };
-        const m = v.trim().match(/^([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)/);
+        const m = v.trim().match(/^(?:inset\s+)?([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)/);
         return {
           x: m?.[1] ? toPx(m[1]) : undefined,
           y: m?.[2] ? toPx(m[2]) : undefined,
@@ -249,6 +320,66 @@ export function buildStyleDiffs(
       };
     });
 
+    // display (normalize inline-flex → flex, inline-grid → grid)
+    consider('display', () => {
+      const normalize = (v?: string) => {
+        if (!v) return v;
+        if (v === 'inline-flex') return 'flex';
+        if (v === 'inline-grid') return 'grid';
+        return v;
+      };
+      const a = normalize(props['display']);
+      const e = exp['display'] ? normalize(exp['display']) : undefined;
+      if (!e || !a) return { ok: true };
+      return { ok: a === e, expected: exp['display'] };
+    });
+
+    // flex-direction (normalize start/end → flex-start/flex-end)
+    consider('flex-direction', () => {
+      const normalize = (v?: string) => {
+        if (!v) return v;
+        return v.replace(/^(start|end)$/, 'flex-$1');
+      };
+      const a = normalize(props['flex-direction']);
+      const e = exp['flex-direction'] ? normalize(exp['flex-direction']) : undefined;
+      if (!e || !a) return { ok: true };
+      return { ok: a === e, expected: exp['flex-direction'] };
+    });
+
+    // flex-wrap, align-content, place-items, place-content (string equality)
+    (['flex-wrap', 'align-content', 'place-items', 'place-content'] as const).forEach((p) => {
+      consider(p, () => {
+        const a = props[p];
+        const e = exp[p];
+        if (!e || !a) return { ok: true };
+        return { ok: a === e, expected: e };
+      });
+    });
+
+    // justify-content, align-items (normalize start/end → flex-start/flex-end)
+    (['justify-content', 'align-items'] as const).forEach((p) => {
+      consider(p, () => {
+        const normalize = (v?: string) => {
+          if (!v) return v;
+          return v.replace(/^(start|end)$/, 'flex-$1');
+        };
+        const a = normalize(props[p]);
+        const e = exp[p] ? normalize(exp[p]) : undefined;
+        if (!e || !a) return { ok: true };
+        return { ok: a === e, expected: exp[p] };
+      });
+    });
+
+    // grid-template-columns, grid-template-rows, grid-auto-flow (string equality for now)
+    (['grid-template-columns', 'grid-template-rows', 'grid-auto-flow'] as const).forEach((p) => {
+      consider(p, () => {
+        const a = props[p];
+        const e = exp[p];
+        if (!e || !a) return { ok: true };
+        return { ok: a === e, expected: e };
+      });
+    });
+
     // Generate patch hints
     const patchHints = generatePatchHints(propDiffs);
 
@@ -284,7 +415,9 @@ function generatePatchHints(
   const hints: PatchHint[] = [];
 
   for (const [prop, diff] of Object.entries(propDiffs)) {
-    if (!diff.expected || !diff.delta) continue;
+    // Exclude auxiliary properties from patch hints
+    if (prop.startsWith('box-shadow-offset-')) continue;
+    if (!diff.expected || diff.delta == null) continue;
 
     // Determine severity based on delta and unit
     let severity: 'low' | 'medium' | 'high' = 'low';

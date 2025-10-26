@@ -7,7 +7,7 @@ import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/ada
 
 /**
  * Default CSS properties to extract from captured elements.
- * Includes typography, colors, layout, borders, spacing, and dimensions.
+ * Includes typography, colors, layout (flex/grid), borders, spacing, and dimensions.
  */
 const DEFAULT_PROPS = [
   'width',
@@ -24,13 +24,26 @@ const DEFAULT_PROPS = [
   'box-shadow',
   'display',
   'flex-direction',
+  'flex-wrap',
   'justify-content',
   'align-items',
+  'align-content',
   'gap',
+  'column-gap',
+  'row-gap',
+  'grid-template-columns',
+  'grid-template-rows',
+  'grid-auto-flow',
+  'place-items',
+  'place-content',
   'padding-top',
   'padding-right',
   'padding-bottom',
   'padding-left',
+  'margin-top',
+  'margin-right',
+  'margin-bottom',
+  'margin-left',
 ] as const;
 
 /**

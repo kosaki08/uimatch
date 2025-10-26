@@ -142,17 +142,17 @@ export function parseBoxShadow(shadow?: string): BoxShadowParsed | undefined {
 
   const trimmed = shadow.trim();
 
-  // Simple regex to extract blur and color from first shadow
-  // Format: <offset-x> <offset-y> <blur-radius> <spread-radius>? <color>
+  // Simple regex to extract blur and color from first shadow (supports inset)
+  // Format: [inset] <offset-x> <offset-y> <blur-radius> <spread-radius>? <color>
   // We only care about blur-radius and color for MVP
   const match = trimmed.match(
-    /^([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)(?:\s+([+-]?\d+(?:\.\d+)?px))?\s+(.+)$/
+    /^(?:inset\s+)?([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)(?:\s+([+-]?\d+(?:\.\d+)?px))?\s+(.+)$/
   );
 
   if (!match) {
     // Try without spread radius
     const matchNoSpread = trimmed.match(
-      /^([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)\s+(.+)$/
+      /^(?:inset\s+)?([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)\s+(.+)$/
     );
     if (!matchNoSpread) return undefined;
 
