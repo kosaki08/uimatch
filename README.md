@@ -24,6 +24,8 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 
 ## Usage
 
+### Claude Code Plugin
+
 ```bash
 # Compare Figma design with implementation
 /uiMatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
@@ -33,6 +35,24 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 
 # Configure settings
 /uiMatch settings
+```
+
+### CLI (Direct)
+
+```bash
+# Build the project first
+bun run build
+
+# Compare command
+bun run uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button"
+
+# Loop command (with browser reuse)
+bun run uimatch:loop -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button" maxIters=5
+
+# Settings management
+bun run uimatch:settings -- get
+bun run uimatch:settings -- set comparison.acceptancePixelDiffRatio=0.03
+bun run uimatch:settings -- reset
 ```
 
 ## Project Structure
