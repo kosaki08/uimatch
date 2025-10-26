@@ -8,4 +8,4 @@ export { buildStyleDiffs } from './diff.ts';
 export type { DiffOptions } from './diff.ts';
 export { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx } from './normalize.ts';
 export type { BoxShadowParsed, RGB } from './normalize.ts';
-export type { ExpectedSpec, PatchHint, StyleDiff, TokenMap } from './types.ts';
+export type { ExpectedSpec, PatchHint, StyleDiff, TokenMap } from './types/index.ts';

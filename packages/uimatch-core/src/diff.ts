@@ -4,7 +4,7 @@
 
 import { deltaE2000 } from './color';
 import { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx, type RGB } from './normalize';
-import type { ExpectedSpec, PatchHint, StyleDiff, TokenMap } from './types';
+import type { ExpectedSpec, PatchHint, StyleDiff, TokenMap } from './types/index';
 
 export interface DiffOptions {
   thresholds?: {
