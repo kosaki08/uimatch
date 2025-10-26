@@ -79,4 +79,30 @@ writeFileSync(join(FIXTURES_DIR, 'red-base.png'), PNG.sync.write(redBase));
 writeFileSync(join(FIXTURES_DIR, 'red-with-diff.png'), PNG.sync.write(redWithDiff));
 console.log('✓ Created slightly different images');
 
+// 4. Dimension mismatch fixtures
+const red100x100 = createColoredPng(100, 100, 255, 0, 0);
+const red200x100 = createColoredPng(200, 100, 255, 0, 0);
+
+writeFileSync(join(FIXTURES_DIR, 'red-100x100-dim.png'), PNG.sync.write(red100x100));
+writeFileSync(join(FIXTURES_DIR, 'red-200x100-dim.png'), PNG.sync.write(red200x100));
+console.log('✓ Created dimension mismatch fixtures');
+
+// 5. Transparent PNG fixtures
+const transparent = new PNG({ width: 100, height: 100 });
+for (let y = 0; y < 100; y++) {
+  for (let x = 0; x < 100; x++) {
+    const idx = (100 * y + x) << 2;
+    transparent.data[idx] = 255; // Red
+    transparent.data[idx + 1] = 255;
+    transparent.data[idx + 2] = 255;
+    transparent.data[idx + 3] = 128; // 50% transparent
+  }
+}
+
+const whiteOpaque = createColoredPng(100, 100, 255, 255, 255);
+
+writeFileSync(join(FIXTURES_DIR, 'transparent-white.png'), PNG.sync.write(transparent));
+writeFileSync(join(FIXTURES_DIR, 'opaque-white.png'), PNG.sync.write(whiteOpaque));
+console.log('✓ Created alpha blending fixtures');
+
 console.log('\nAll fixtures generated successfully!');

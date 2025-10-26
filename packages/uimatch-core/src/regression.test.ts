@@ -3,34 +3,41 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { compareImages } from './core/compare';
 import { buildStyleDiffs } from './core/diff';
 import type { ExpectedSpec } from './types/index';
+
+const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
+
+function loadFixtureAsBase64(filename: string): string {
+  const buffer = readFileSync(join(FIXTURES_DIR, filename));
+  return buffer.toString('base64');
+}
 
 describe('Regression Tests', () => {
   describe('Dimension Mismatch Detection', () => {
     test('should throw clear error for mismatched dimensions', () => {
-      // This is a placeholder - actual implementation requires fixtures
-      // with different dimensions
-      expect(true).toBe(true);
-      // TODO: Add 100x100 vs 200x100 fixture comparison
-      // expect(() => compareImages({
-      //   figmaPngB64: loadFixtureAsBase64('red-100x100.png'),
-      //   implPngB64: loadFixtureAsBase64('red-200x100.png')
-      // })).toThrow('dimension mismatch');
+      expect(() =>
+        compareImages({
+          figmaPngB64: loadFixtureAsBase64('red-100x100-dim.png'),
+          implPngB64: loadFixtureAsBase64('red-200x100-dim.png'),
+        })
+      ).toThrow(/Image dimensions do not match.*100x100.*200x100/);
     });
   });
 
   describe('Alpha Channel Flattening', () => {
     test('should flatten transparent PNGs to white background', () => {
-      // Verify that alpha channel is properly flattened
-      // This ensures transparent pixels don't cause false positives
-      expect(true).toBe(true);
-      // TODO: Add transparent PNG fixture and verify flattening reduces diff
-      // const withAlpha = compareImages({
-      //   figmaPngB64: loadFixtureAsBase64('transparent-bg.png'),
-      //   implPngB64: loadFixtureAsBase64('white-bg.png')
-      // });
-      // expect(withAlpha.pixelDiffRatio).toBeLessThan(0.01);
+      // Comparing transparent white with opaque white should have minimal diff
+      const result = compareImages({
+        figmaPngB64: loadFixtureAsBase64('transparent-white.png'),
+        implPngB64: loadFixtureAsBase64('opaque-white.png'),
+      });
+
+      // After flattening, both should be similar to white background
+      expect(result.pixelDiffRatio).toBeLessThan(0.01);
     });
   });
 

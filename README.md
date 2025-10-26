@@ -9,6 +9,8 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 - **Design tokens**: Token mapping for consistent design system
 - **Figma integration**: Direct Figma MCP integration for frame capture
 - **Quality scoring**: Design Fidelity Score (DFS 0-100)
+- **Browser reuse**: Automatic browser pooling for faster iteration
+- **Iterative workflow**: Quality gates with automatic retry
 
 ## Installation
 
@@ -70,3 +72,38 @@ bun run format
 
 - Bun or Node.js >=22.11.0
 - Playwright (auto-installed via postinstall)
+
+## Configuration
+
+### Environment Variables
+
+- `UIMATCH_HEADLESS` - Control browser headless mode (default: `true`, set to `false` to show browser)
+- `UIMATCH_CHROME_CHANNEL` - Browser channel to use (`chrome`, `msedge`, etc.)
+- `UIMATCH_CHROME_ARGS` - Additional Chrome arguments (space-separated)
+- `BASIC_AUTH_USER` - Basic auth username for target URLs
+- `BASIC_AUTH_PASS` - Basic auth password for target URLs
+
+### Settings File
+
+Create `.uimatchrc.json` in your project root:
+
+```json
+{
+  "comparison": {
+    "pixelmatchThreshold": 0.1,
+    "acceptancePixelDiffRatio": 0.03,
+    "acceptanceColorDeltaE": 3.0,
+    "includeAA": false,
+    "idleWaitMs": 150
+  }
+}
+```
+
+## Browser Reuse
+
+The `/uiMatch loop` command automatically reuses browser instances for improved performance:
+
+- Browser is launched once and shared across iterations
+- Each comparison uses a lightweight browser context
+- Automatic cleanup when loop completes
+- Reduces iteration time from ~2s to ~500ms per comparison

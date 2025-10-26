@@ -13,19 +13,41 @@ class BrowserPool {
   private browser: Browser | null = null;
   private contexts: Set<BrowserContext> = new Set();
   private disconnectListenerAttached = false;
+  private launching: Promise<Browser> | null = null;
 
   /**
-   * Get or create a shared browser instance
+   * Get or create a shared browser instance.
+   * Prevents race conditions by ensuring only one launch at a time.
    */
   async getBrowser(): Promise<Browser> {
-    if (!this.browser || !this.browser.isConnected()) {
-      const headless = process.env.UIMATCH_HEADLESS
-        ? process.env.UIMATCH_HEADLESS !== 'false'
-        : true;
-      this.browser = await chromium.launch({ headless });
-      this.disconnectListenerAttached = false;
+    if (this.browser?.isConnected()) {
+      return this.browser;
     }
-    return this.browser;
+
+    // If already launching, wait for that launch to complete
+    if (this.launching) {
+      return this.launching;
+    }
+
+    // Launch browser with environment-controlled options
+    const launchOpts = {
+      headless: process.env.UIMATCH_HEADLESS !== 'false',
+      channel: process.env.UIMATCH_CHROME_CHANNEL as 'chrome' | 'msedge' | undefined,
+      args: process.env.UIMATCH_CHROME_ARGS?.split(' ') ?? [],
+    };
+
+    this.launching = chromium
+      .launch(launchOpts)
+      .then((b) => {
+        this.browser = b;
+        this.disconnectListenerAttached = false;
+        return b;
+      })
+      .finally(() => {
+        this.launching = null;
+      });
+
+    return this.launching;
   }
 
   /**
