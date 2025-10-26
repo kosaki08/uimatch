@@ -15,6 +15,8 @@
     "test": "bun test --recursive",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "check": "bun run lint && bun run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
