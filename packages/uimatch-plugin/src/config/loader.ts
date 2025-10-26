@@ -40,7 +40,7 @@ export function loadSkillConfig(
 ): SkillConfig {
   return {
     figmaMcp: loadFigmaMcpConfig(env),
-    defaultDpr: 1,
+    defaultDpr: 2,
     defaultThresholds: {
       pixelDiffRatio: 0.01,
       deltaE: 5.0,
