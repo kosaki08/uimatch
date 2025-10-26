@@ -4,7 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_CONFIG, loadConfig, mergeConfig, type AppConfig } from 'uimatch-core';
+import { DEFAULT_CONFIG, mergeConfig, type AppConfig } from 'uimatch-core';
 
 /**
  * Configuration file path
@@ -13,9 +13,22 @@ const CONFIG_FILE = '.uimatchrc.json';
 
 /**
  * Get current configuration
+ *
+ * Reads from .uimatchrc.json if it exists, otherwise returns defaults.
+ * This ensures that settings written via updateSettings() are properly loaded.
  */
 export function getSettings(): AppConfig {
-  return loadConfig();
+  const configPath = path.join(process.cwd(), CONFIG_FILE);
+  if (fs.existsSync(configPath)) {
+    try {
+      const content = fs.readFileSync(configPath, 'utf-8');
+      const parsed = JSON.parse(content) as Partial<AppConfig>;
+      return mergeConfig(parsed); // Apply defaults and validation
+    } catch {
+      console.warn('⚠️  Failed to parse .uimatchrc.json, using defaults');
+    }
+  }
+  return DEFAULT_CONFIG;
 }
 
 /**

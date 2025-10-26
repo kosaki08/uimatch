@@ -7,6 +7,7 @@ import { captureTarget, compareImages } from 'uimatch-core';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
 import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
 import type { CompareArgs, CompareResult } from '../types/index';
+import { getSettings } from './settings';
 
 /**
  * Compares a Figma design with a live implementation.
@@ -26,19 +27,20 @@ import type { CompareArgs, CompareResult } from '../types/index';
 export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> {
   const { fileKey, nodeId } = parseFigmaRef(args.figma);
 
-  // Load configuration from environment
+  // Load configuration from environment and .uimatchrc.json
   const mcpConfig = loadFigmaMcpConfig();
   const figmaClient = new FigmaMcpClient(mcpConfig);
   const cfg = loadSkillConfig();
+  const settings = getSettings(); // Read from .uimatchrc.json if exists
 
   // Use default DPR from config (defaults to 2), clamped to Figma scale limits
   const dprRaw = args.dpr ?? cfg.defaultDpr;
   const dpr = Math.max(0.5, Math.min(dprRaw, 4));
 
-  // Configure pixelmatch with defaults
+  // Configure pixelmatch with settings fallback
   const pixelmatch = {
-    threshold: args.pixelmatch?.threshold ?? 0.1,
-    includeAA: args.pixelmatch?.includeAA ?? false,
+    threshold: args.pixelmatch?.threshold ?? settings.comparison.pixelmatchThreshold,
+    includeAA: args.pixelmatch?.includeAA ?? settings.comparison.includeAA,
   };
 
   // 1) Fetch Figma PNG (MCP) - scale must match dpr to avoid size mismatch
@@ -89,9 +91,9 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const styleDiffs = result.styleDiffs ?? [];
   const hasHighSeverity = styleDiffs.some((d: { severity: string }) => d.severity === 'high');
 
-  // Quality gate evaluation
-  const tPix = args.thresholds?.pixelDiffRatio ?? cfg.defaultThresholds.pixelDiffRatio;
-  const tDe = args.thresholds?.deltaE ?? cfg.defaultThresholds.deltaE;
+  // Quality gate evaluation using settings
+  const tPix = args.thresholds?.pixelDiffRatio ?? settings.comparison.acceptancePixelDiffRatio;
+  const tDe = args.thresholds?.deltaE ?? settings.comparison.acceptanceColorDeltaE;
   const pass = result.pixelDiffRatio <= tPix && colorDeltaEAvg <= tDe && !hasHighSeverity;
 
   const reasons: string[] = [];
