@@ -93,6 +93,17 @@ export function buildStyleDiffs(
       }
     };
 
+    // width / height
+    (['width', 'height'] as const).forEach((p) => {
+      consider(p, () => {
+        const a = toPx(props[p]);
+        const e = exp[p] ? toPx(exp[p]) : undefined;
+        if (e == null || a == null) return { ok: true };
+        const tol = Math.max(1, 0.05 * e);
+        return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+      });
+    });
+
     // font-size
     consider('font-size', () => {
       const a = toPx(props['font-size']);
@@ -185,7 +196,7 @@ export function buildStyleDiffs(
       }
     );
 
-    // shadow (blur and color only)
+    // shadow (blur, color, and offset)
     consider('box-shadow', () => {
       const a = parseBoxShadow(props['box-shadow']);
       const e = exp['box-shadow'] ? parseBoxShadow(exp['box-shadow']) : undefined;
@@ -193,8 +204,45 @@ export function buildStyleDiffs(
       const okBlur = Math.abs(a.blur - e.blur) <= Math.max(1, 0.15 * e.blur);
       const dE = a.rgb && e.rgb ? deltaE2000(a.rgb, e.rgb) : 0;
       const okColor = dE <= tDeltaE + 1.0;
+
+      // Extract offset (offsetX/offsetY) from shadow value
+      const takeOffset = (v?: string) => {
+        if (!v || v === 'none') return { x: undefined, y: undefined };
+        const m = v.trim().match(/^([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)/);
+        return {
+          x: m?.[1] ? toPx(m[1]) : undefined,
+          y: m?.[2] ? toPx(m[2]) : undefined,
+        };
+      };
+      const ao = takeOffset(props['box-shadow']);
+      const eo = takeOffset(exp['box-shadow'] as string);
+      const okOffset =
+        (ao.x == null || eo.x == null || Math.abs(ao.x - eo.x) <= 1) &&
+        (ao.y == null || eo.y == null || Math.abs(ao.y - eo.y) <= 1);
+
+      // If offset differs, add auxiliary information
+      if (!okOffset) {
+        if (ao.x != null || eo.x != null) {
+          propDiffs['box-shadow-offset-x'] = {
+            actual: ao.x != null ? `${ao.x}px` : undefined,
+            expected: eo.x != null ? `${eo.x}px` : undefined,
+            delta: ao.x != null && eo.x != null ? ao.x - eo.x : undefined,
+            unit: 'px',
+          };
+        }
+        if (ao.y != null || eo.y != null) {
+          propDiffs['box-shadow-offset-y'] = {
+            actual: ao.y != null ? `${ao.y}px` : undefined,
+            expected: eo.y != null ? `${eo.y}px` : undefined,
+            delta: ao.y != null && eo.y != null ? ao.y - eo.y : undefined,
+            unit: 'px',
+          };
+        }
+        if (severity !== 'high') severity = 'medium';
+      }
+
       return {
-        ok: okBlur && okColor,
+        ok: okBlur && okColor && okOffset,
         delta: dE,
         unit: 'ΔE',
         expected: exp['box-shadow'],

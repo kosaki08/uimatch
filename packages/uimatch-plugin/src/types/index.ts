@@ -63,7 +63,7 @@ export interface CompareArgs {
 
   /**
    * Device pixel ratio.
-   * @default 1
+   * @default 2
    */
   dpr?: number;
 
@@ -71,6 +71,22 @@ export interface CompareArgs {
    * Acceptance thresholds.
    */
   thresholds?: Thresholds;
+
+  /**
+   * pixelmatch sensitivity configuration (how visual differences are handled).
+   */
+  pixelmatch?: {
+    /**
+     * Matching threshold (0 to 1). Smaller values make the comparison more sensitive.
+     * @default 0.1
+     */
+    threshold?: number;
+    /**
+     * Whether to include anti-aliasing in the comparison.
+     * @default false
+     */
+    includeAA?: boolean;
+  };
 
   /**
    * Whether to include PNG artifacts in the report.
@@ -92,6 +108,18 @@ export interface CompareArgs {
    * Design token mappings (CSS variables to values).
    */
   tokens?: TokenMap;
+
+  /**
+   * CSS properties to exclude from style comparison.
+   */
+  ignore?: string[];
+
+  /**
+   * Category weights for DFS and future evaluation logic.
+   */
+  weights?: Partial<
+    Record<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography', number>
+  >;
 }
 
 /**
@@ -106,6 +134,23 @@ export interface CompareResult {
       dfs: number;
     };
     styleDiffs: StyleDiff[];
+    qualityGate?: {
+      /**
+       * Whether the implementation passes the quality gate.
+       */
+      pass: boolean;
+      /**
+       * Reasons why the implementation failed (if applicable).
+       */
+      reasons: string[];
+      /**
+       * Thresholds used for the quality gate.
+       */
+      thresholds: {
+        pixelDiffRatio: number;
+        deltaE: number;
+      };
+    };
     artifacts?: {
       figmaPngB64: string;
       implPngB64: string;

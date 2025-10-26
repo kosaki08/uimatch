@@ -27,9 +27,9 @@ export const SkillConfigSchema = z.object({
 
   /**
    * Default device pixel ratio
-   * @default 1
+   * @default 2
    */
-  defaultDpr: z.number().positive().default(1),
+  defaultDpr: z.number().positive().default(2),
 
   /**
    * Default acceptance thresholds

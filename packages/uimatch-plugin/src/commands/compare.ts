@@ -4,7 +4,7 @@
 
 import { captureTarget, compareImages } from 'uimatch-core';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
-import { loadFigmaMcpConfig } from '../config/index';
+import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
 import type { CompareArgs, CompareResult } from '../types/index';
 
 /**
@@ -28,9 +28,16 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   // Load configuration from environment
   const mcpConfig = loadFigmaMcpConfig();
   const figmaClient = new FigmaMcpClient(mcpConfig);
+  const cfg = loadSkillConfig();
 
-  // Use dpr=1 as default for MVP to ensure Figma scale and Playwright dpr match
-  const dpr = args.dpr ?? 1;
+  // Use default DPR from config (defaults to 2)
+  const dpr = args.dpr ?? cfg.defaultDpr;
+
+  // Configure pixelmatch with defaults
+  const pixelmatch = {
+    threshold: args.pixelmatch?.threshold ?? 0.1,
+    includeAA: args.pixelmatch?.includeAA ?? false,
+  };
 
   // 1) Fetch Figma PNG (MCP) - scale must match dpr to avoid size mismatch
   const figmaPng = await figmaClient.getFramePng({ fileKey, nodeId, scale: dpr });
@@ -54,21 +61,39 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const result = compareImages({
     figmaPngB64: figmaPng.toString('base64'),
     implPngB64: cap.implPng.toString('base64'),
-    pixelmatch: { threshold: 0.1, includeAA: false },
+    pixelmatch,
     styles: cap.styles,
     expectedSpec: args.expectedSpec,
     tokens: args.tokens,
     diffOptions: {
       thresholds: { deltaE: args.thresholds?.deltaE },
-      ignore: undefined,
-      weights: undefined,
+      ignore: args.ignore,
+      weights: args.weights,
     },
   });
 
-  // 4) Calculate metrics
+  // 4) Calculate metrics and quality gate
   const colorDeltaEAvg = result.colorDeltaEAvg ?? 0;
   const styleDiffs = result.styleDiffs ?? [];
   const hasHighSeverity = styleDiffs.some((d) => d.severity === 'high');
+
+  // Quality gate evaluation
+  const tPix = args.thresholds?.pixelDiffRatio ?? cfg.defaultThresholds.pixelDiffRatio;
+  const tDe = args.thresholds?.deltaE ?? cfg.defaultThresholds.deltaE;
+  const pass = result.pixelDiffRatio <= tPix && colorDeltaEAvg <= tDe && !hasHighSeverity;
+
+  const reasons: string[] = [];
+  if (result.pixelDiffRatio > tPix) {
+    reasons.push(
+      `pixelDiffRatio ${(result.pixelDiffRatio * 100).toFixed(2)}% > ${(tPix * 100).toFixed(2)}%`
+    );
+  }
+  if (colorDeltaEAvg > tDe) {
+    reasons.push(`colorDeltaEAvg ${colorDeltaEAvg.toFixed(2)} > ${tDe.toFixed(2)}`);
+  }
+  if (hasHighSeverity) {
+    reasons.push('high severity style diffs present');
+  }
 
   // Calculate Design Fidelity Score (0-100)
   // Base score of 100, with deductions for differences
@@ -92,6 +117,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   // 5) Generate summary
   const summary = [
+    pass ? 'PASS' : 'FAIL',
     `DFS: ${dfs}`,
     `pixelDiffRatio: ${(result.pixelDiffRatio * 100).toFixed(2)}%`,
     `colorDeltaEAvg: ${colorDeltaEAvg.toFixed(2)}`,
@@ -103,6 +129,11 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     report: {
       metrics: { pixelDiffRatio: result.pixelDiffRatio, colorDeltaEAvg, dfs },
       styleDiffs,
+      qualityGate: {
+        pass,
+        reasons,
+        thresholds: { pixelDiffRatio: tPix, deltaE: tDe },
+      },
       artifacts: args.emitArtifacts
         ? {
             figmaPngB64: figmaPng.toString('base64'),

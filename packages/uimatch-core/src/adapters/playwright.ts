@@ -7,9 +7,11 @@ import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/ada
 
 /**
  * Default CSS properties to extract from captured elements.
- * Includes typography, colors, layout, borders, and spacing.
+ * Includes typography, colors, layout, borders, spacing, and dimensions.
  */
 const DEFAULT_PROPS = [
+  'width',
+  'height',
   'font-size',
   'line-height',
   'font-weight',
