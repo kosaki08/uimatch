@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx } from './normalize';
+import { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx } from './utils/normalize';
 
 describe('toPx', () => {
   test('converts px values', () => {
