@@ -171,6 +171,12 @@ export interface CompareArgs {
   weights?: Partial<
     Record<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography', number>
   >;
+
+  /**
+   * Reuse shared browser instance (recommended in /loop).
+   * @default false
+   */
+  reuseBrowser?: boolean;
 }
 
 /**

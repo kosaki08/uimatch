@@ -55,6 +55,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     viewport: args.viewport,
     dpr,
     fontPreloads: args.fontPreload,
+    reuseBrowser: args.reuseBrowser,
     basicAuth:
       args.basicAuth ??
       (process.env.BASIC_AUTH_USER && process.env.BASIC_AUTH_PASS
