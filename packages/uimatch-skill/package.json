@@ -1,0 +1,10 @@
+{
+  "name": "uimatch-skill",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "uimatch-core": "workspace:*",
+    "zod": "^4.1.12"
+  }
+}
