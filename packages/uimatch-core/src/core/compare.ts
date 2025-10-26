@@ -124,6 +124,22 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
   const figmaPng = PNG.sync.read(figmaBuffer) as PNG;
   const implPng = PNG.sync.read(implBuffer) as PNG;
 
+  // Flatten transparency to white background to avoid alpha-related noise
+  const flattenToOpaque = (png: PNG, bg = { r: 255, g: 255, b: 255 }) => {
+    const data = png.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3] / 255;
+      if (a < 1) {
+        data[i] = Math.round(data[i] * a + bg.r * (1 - a));
+        data[i + 1] = Math.round(data[i + 1] * a + bg.g * (1 - a));
+        data[i + 2] = Math.round(data[i + 2] * a + bg.b * (1 - a));
+        data[i + 3] = 255;
+      }
+    }
+  };
+  flattenToOpaque(figmaPng);
+  flattenToOpaque(implPng);
+
   // Ensure images have the same dimensions
   if (figmaPng.width !== implPng.width || figmaPng.height !== implPng.height) {
     throw new Error(
@@ -168,10 +184,10 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
 
     result.styleDiffs = styleDiffs;
 
-    // Calculate average color delta E
+    // Calculate average color delta E (including box-shadow color)
     const colorDeltas: number[] = [];
     for (const diff of styleDiffs) {
-      for (const prop of ['color', 'background-color', 'border-color']) {
+      for (const prop of ['color', 'background-color', 'border-color', 'box-shadow']) {
         const propDiff = diff.properties[prop];
         if (propDiff?.delta && propDiff.unit === 'ΔE') {
           colorDeltas.push(propDiff.delta);

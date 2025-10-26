@@ -30,8 +30,9 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const figmaClient = new FigmaMcpClient(mcpConfig);
   const cfg = loadSkillConfig();
 
-  // Use default DPR from config (defaults to 2)
-  const dpr = args.dpr ?? cfg.defaultDpr;
+  // Use default DPR from config (defaults to 2), clamped to Figma scale limits
+  const dprRaw = args.dpr ?? cfg.defaultDpr;
+  const dpr = Math.max(0.5, Math.min(dprRaw, 4));
 
   // Configure pixelmatch with defaults
   const pixelmatch = {
@@ -52,9 +53,10 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     dpr,
     fontPreloads: args.fontPreload,
     basicAuth:
-      process.env.BASIC_AUTH_USER && process.env.BASIC_AUTH_PASS
+      args.basicAuth ??
+      (process.env.BASIC_AUTH_USER && process.env.BASIC_AUTH_PASS
         ? { username: process.env.BASIC_AUTH_USER, password: process.env.BASIC_AUTH_PASS }
-        : undefined,
+        : undefined),
   });
 
   // 3) Image diff with style comparison
@@ -104,21 +106,40 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     reasons.push('high severity style diffs present');
   }
 
-  // Calculate Design Fidelity Score (0-100)
-  // Base score of 100, with deductions for differences
+  // Calculate Design Fidelity Score (0-100) with optional weights
+  const weights = {
+    pixel: 1.0,
+    color: args.weights?.color ?? 1.0,
+    spacing: args.weights?.spacing ?? 1.0,
+    radius: args.weights?.radius ?? 1.0,
+    border: args.weights?.border ?? 1.0,
+    shadow: args.weights?.shadow ?? 1.0,
+    typography: args.weights?.typography ?? 1.0,
+  };
+
+  // Base score of 100, with weighted deductions for differences
   let dfs = 100;
 
   // Pixel difference penalty (up to -50 points)
   // 0% diff = 0 penalty, 100% diff = -50 penalty
-  dfs -= result.pixelDiffRatio * 50;
+  dfs -= result.pixelDiffRatio * 50 * weights.pixel;
 
   // Color delta E penalty (up to -30 points)
   // 0 ΔE = 0 penalty, 10+ ΔE = -30 penalty
-  dfs -= Math.min(colorDeltaEAvg / 10, 1) * 30;
+  dfs -= Math.min(colorDeltaEAvg / 10, 1) * 30 * weights.color;
 
   // High severity style diff penalty (-20 points)
+  // Apply maximum weight from all categories for severity penalty
   if (hasHighSeverity) {
-    dfs -= 20;
+    const maxWeight = Math.max(
+      weights.color,
+      weights.spacing,
+      weights.typography,
+      weights.border,
+      weights.shadow,
+      weights.radius
+    );
+    dfs -= 20 * maxWeight;
   }
 
   // Ensure DFS is in range [0, 100]
