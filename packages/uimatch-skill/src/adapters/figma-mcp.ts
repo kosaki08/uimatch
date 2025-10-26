@@ -70,7 +70,7 @@ export class FigmaMcpClient {
         `Figma MCP error: ${res.status} ${res.statusText}${text ? ` - ${text.slice(0, 200)}` : ''}`
       );
     }
-    const json = await res.json();
+    const json: unknown = await res.json();
     return schema.parse(json);
   }
 
