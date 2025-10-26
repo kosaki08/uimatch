@@ -252,13 +252,16 @@ export class PlaywrightAdapter implements BrowserAdapter {
       }
       return { implPng: Buffer.from(implPng), styles, box };
     } catch (e) {
-      if (effectiveReuse) {
-        await browserPool.closeContext(context);
-      } else {
-        await context.close();
-        if (shouldCloseBrowser) {
-          await browser.close();
+      // Safe cleanup: check existence and wrap in try-catch to prevent secondary exceptions
+      try {
+        if (effectiveReuse) {
+          if (context) await browserPool.closeContext(context);
+        } else {
+          if (context) await context.close();
+          if (shouldCloseBrowser && browser) await browser.close();
         }
+      } catch {
+        // Suppress secondary exceptions during cleanup
       }
       throw e as Error;
     }
