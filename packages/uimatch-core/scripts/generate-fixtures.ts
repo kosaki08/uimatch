@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
-import { writeFileSync } from 'fs';
-import { join } from 'path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { PNG } from 'pngjs';
 
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
+mkdirSync(FIXTURES_DIR, { recursive: true });
 
 /**
  * Create a simple colored rectangle PNG
