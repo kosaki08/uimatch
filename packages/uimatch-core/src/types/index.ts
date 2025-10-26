@@ -1,4 +1,19 @@
 export type { BrowserAdapter, CaptureOptions, CaptureResult } from './adapters';
+export { createCaptureError, createComparisonError, createConfigError } from './errors';
+export type { AppError, BaseError, CaptureError, ComparisonError, ConfigError } from './errors';
+export {
+  err,
+  isErr,
+  isOk,
+  map,
+  mapErr,
+  ok,
+  unwrap,
+  unwrapOr,
+  type Failure,
+  type Result,
+  type Success,
+} from './result';
 
 /**
  * Input for the compare function
