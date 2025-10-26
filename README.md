@@ -1,84 +1,72 @@
-# ui-match
+# uiMatch
 
-Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design.
+Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design. Distributed as a Claude Code plugin.
+
+## Features
+
+- **Pixel-perfect comparison**: Visual diff with pixelmatch
+- **Style analysis**: CSS property comparison with color ΔE2000
+- **Design tokens**: Token mapping for consistent design system
+- **Figma integration**: Direct Figma MCP integration for frame capture
+- **Quality scoring**: Design Fidelity Score (DFS 0-100)
+
+## Installation
+
+```bash
+# Add marketplace
+/plugin marketplace add <org>/uimatch
+
+# Install plugin
+/plugin install uimatch
+```
+
+## Usage
+
+```bash
+# Compare Figma design with implementation
+/uiMatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
+
+# Iterative comparison loop
+/uiMatch loop figma=... story=... selector=... maxIters=5
+
+# Configure settings
+/uiMatch settings
+```
 
 ## Project Structure
 
-This is a monorepo managed with Bun workspaces:
-
 ```
 ui-match/
+├── .claude-plugin/        # Plugin definition
+│   ├── plugin.json
+│   ├── commands/          # /uiMatch commands
+│   └── mcp.json           # Figma MCP integration
 ├── packages/
-│   └── uimatch-core/       # Core library for image comparison
-├── docs/
-│   └── specs/              # Project specifications
-└── ...
-```
-
-## Packages
-
-### uimatch-core
-
-Core TypeScript library providing minimal image comparison functionality.
-
-**Features (v0.1):**
-
-- Compare two PNG images (base64 encoded)
-- Calculate pixel difference ratio using pixelmatch
-- Generate visual diff image
-- Fully typed TypeScript API
-
-**Usage:**
-
-```typescript
-import { compare } from 'uimatch-core';
-
-const result = await compare({
-  figmaPngB64: '...', // base64-encoded PNG from Figma
-  implPngB64: '...', // base64-encoded PNG from implementation
-  threshold: 0.1, // optional, default 0.1
-});
-
-console.log(result.pixelDiffRatio); // 0-1, where 0 = identical
-console.log(result.diffPngB64); // base64-encoded diff image
+│   ├── uimatch-core/      # Core comparison library
+│   └── uimatch-plugin/    # Plugin integration
+└── docs/specs/            # Specifications
 ```
 
 ## Development
 
-### Install dependencies
-
 ```bash
+# Install dependencies
 bun install
-```
 
-### Run tests
-
-```bash
-# Run all tests
+# Run tests
 bun test
 
-# Run tests in specific package
-cd packages/uimatch-core && bun test
-```
-
-### Linting and formatting
-
-```bash
-# Check code style
+# Lint and format
 bun run lint
-bun run format:check
-
-# Auto-fix issues
-bun run lint:fix
 bun run format
 ```
 
 ## Documentation
 
-- [v0.1 Specification](docs/specs/v0.1.md) - Full specification for MVP implementation
-- [AGENTS.md](AGENTS.md) - Project rules and conventions for AI assistants
-- [CLAUDE.md](CLAUDE.md) - Claude Code specific instructions
+- [v0.1 Specification](docs/specs/v0.1.md) - MVP implementation spec
+- [AGENTS.md](AGENTS.md) - AI assistant guidelines
 
 ## Requirements
 
-- Bun (recommended) or Node.js >=22.11.0
+- Bun or Node.js >=22.11.0
+- Playwright (auto-installed via postinstall)
