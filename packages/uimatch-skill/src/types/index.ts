@@ -2,6 +2,8 @@
  * Type definitions for uimatch-skill
  */
 
+import type { ExpectedSpec, StyleDiff, TokenMap } from 'uimatch-core';
+
 /**
  * Figma design variable (color, number, or string).
  */
@@ -79,6 +81,17 @@ export interface CompareArgs {
    * Font URLs to preload.
    */
   fontPreload?: string[];
+
+  /**
+   * Expected style specification for comparison.
+   * Maps selectors to expected CSS properties.
+   */
+  expectedSpec?: ExpectedSpec;
+
+  /**
+   * Design token mappings (CSS variables to values).
+   */
+  tokens?: TokenMap;
 }
 
 /**
@@ -92,12 +105,7 @@ export interface CompareResult {
       colorDeltaEAvg: number;
       dfs: number;
     };
-    styleDiffs: Array<{
-      path: string;
-      selector: string;
-      properties: Record<string, { actual: string }>;
-      severity: 'low' | 'medium' | 'high';
-    }>;
+    styleDiffs: StyleDiff[];
     artifacts?: {
       figmaPngB64: string;
       implPngB64: string;

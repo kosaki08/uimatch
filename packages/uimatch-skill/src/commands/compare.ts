@@ -50,30 +50,59 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         : undefined,
   });
 
-  // 3) Image diff (reuse Phase 1 synchronous compare)
+  // 3) Image diff with style comparison
   const result = compareImages({
     figmaPngB64: figmaPng.toString('base64'),
     implPngB64: cap.implPng.toString('base64'),
     pixelmatch: { threshold: 0.1, includeAA: false },
+    styles: cap.styles,
+    expectedSpec: args.expectedSpec,
+    tokens: args.tokens,
+    diffOptions: {
+      thresholds: { deltaE: args.thresholds?.deltaE },
+      ignore: undefined,
+      weights: undefined,
+    },
   });
 
-  // 4) Return (DFS will be introduced in Phase 3, focus on metrics here)
+  // 4) Calculate metrics
+  const colorDeltaEAvg = result.colorDeltaEAvg ?? 0;
+  const styleDiffs = result.styleDiffs ?? [];
+  const hasHighSeverity = styleDiffs.some((d) => d.severity === 'high');
+
+  // Calculate Design Fidelity Score (0-100)
+  // Base score of 100, with deductions for differences
+  let dfs = 100;
+
+  // Pixel difference penalty (up to -50 points)
+  // 0% diff = 0 penalty, 100% diff = -50 penalty
+  dfs -= result.pixelDiffRatio * 50;
+
+  // Color delta E penalty (up to -30 points)
+  // 0 ΔE = 0 penalty, 10+ ΔE = -30 penalty
+  dfs -= Math.min(colorDeltaEAvg / 10, 1) * 30;
+
+  // High severity style diff penalty (-20 points)
+  if (hasHighSeverity) {
+    dfs -= 20;
+  }
+
+  // Ensure DFS is in range [0, 100]
+  dfs = Math.max(0, Math.min(100, Math.round(dfs)));
+
+  // 5) Generate summary
   const summary = [
+    `DFS: ${dfs}`,
     `pixelDiffRatio: ${(result.pixelDiffRatio * 100).toFixed(2)}%`,
-    `diffPixelCount: ${result.diffPixelCount}`,
-    `box: ${Math.round(cap.box.width)}×${Math.round(cap.box.height)} at (${Math.round(cap.box.x)},${Math.round(cap.box.y)})`,
+    `colorDeltaEAvg: ${colorDeltaEAvg.toFixed(2)}`,
+    `styleDiffs: ${styleDiffs.length} (high: ${styleDiffs.filter((d) => d.severity === 'high').length})`,
   ].join(' | ');
 
   return {
     summary,
     report: {
-      metrics: { pixelDiffRatio: result.pixelDiffRatio, colorDeltaEAvg: 0, dfs: 0 },
-      styleDiffs: Object.entries(cap.styles).map(([sel, props]) => ({
-        path: sel === '__self__' ? 'self' : sel,
-        selector: sel,
-        properties: Object.fromEntries(Object.entries(props).map(([k, v]) => [k, { actual: v }])),
-        severity: 'low' as const,
-      })),
+      metrics: { pixelDiffRatio: result.pixelDiffRatio, colorDeltaEAvg, dfs },
+      styleDiffs,
       artifacts: args.emitArtifacts
         ? {
             figmaPngB64: figmaPng.toString('base64'),

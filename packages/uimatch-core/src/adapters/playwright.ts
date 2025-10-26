@@ -65,7 +65,10 @@ export class PlaywrightAdapter implements BrowserAdapter {
       if (opts.url) {
         await page.goto(opts.url, { waitUntil: 'networkidle', timeout: 30_000 });
       } else {
-        await page.setContent(opts.html!, { waitUntil: 'load', timeout: 15_000 });
+        if (!opts.html) {
+          throw new Error('Either url or html must be provided');
+        }
+        await page.setContent(opts.html, { waitUntil: 'load', timeout: 15_000 });
       }
 
       // Detect Storybook iframe (/iframe.html takes precedence)
@@ -82,15 +85,16 @@ export class PlaywrightAdapter implements BrowserAdapter {
       if (opts.fontPreloads?.length) {
         await frame.evaluate((urls: string[]) => {
           for (let i = 0; i < urls.length; i++) {
-            const u = urls[i]!;
-            const l = document.createElement('link');
+            const u = urls[i];
+            if (!u) continue;
+            const l = globalThis.document.createElement('link');
             l.rel = 'preload';
             l.as = 'font';
             l.crossOrigin = 'anonymous';
             l.href = u;
-            document.head.appendChild(l);
+            globalThis.document.head.appendChild(l);
           }
-          return document.fonts?.ready ?? Promise.resolve();
+          return globalThis.document.fonts?.ready ?? Promise.resolve();
         }, opts.fontPreloads);
       }
 
@@ -98,7 +102,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
       const idleWaitMs = opts.idleWaitMs ?? 150;
       await frame.evaluate((ms) => {
         return new Promise<void>((res) => {
-          const ric = window.requestIdleCallback;
+          const ric = globalThis.window?.requestIdleCallback;
           if (ric) {
             ric(() => setTimeout(res, ms), { timeout: ms + 50 });
           } else {
@@ -129,10 +133,11 @@ export class PlaywrightAdapter implements BrowserAdapter {
           const { max, props } = arg;
 
           const toRec = (el: Element) => {
-            const st = getComputedStyle(el);
+            const st = globalThis.getComputedStyle(el);
             const out: Record<string, string> = {};
             for (let i = 0; i < props.length; i++) {
-              const p = props[i]!;
+              const p = props[i];
+              if (!p) continue;
               out[p] = st.getPropertyValue(p) || '';
             }
             return out;
@@ -149,7 +154,8 @@ export class PlaywrightAdapter implements BrowserAdapter {
           );
 
           for (let i = 0; i < chosen.length; i++) {
-            const el = chosen[i]!;
+            const el = chosen[i];
+            if (!el) continue;
             const key = (el as HTMLElement).dataset?.testid
               ? `[data-testid="${(el as HTMLElement).dataset?.testid}"]`
               : `:nth-child(${i + 1})`;
