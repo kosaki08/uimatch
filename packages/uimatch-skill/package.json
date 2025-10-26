@@ -3,15 +3,6 @@
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",
-  "scripts": {
-    "test": "bun test",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
-    "check": "bun run lint && bun run type-check",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
-  },
   "dependencies": {
     "uimatch-core": "workspace:*",
     "zod": "^4.1.12"

@@ -9,16 +9,6 @@
       "types": "./src/index.ts"
     }
   },
-  "scripts": {
-    "pretest": "bun ./scripts/generate-fixtures.ts",
-    "test": "bun test",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
-    "check": "bun run lint && bun run type-check",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
-  },
   "dependencies": {
     "pixelmatch": "^6.0.0",
     "playwright": "^1.49.1",
