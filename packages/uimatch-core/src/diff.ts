@@ -2,9 +2,15 @@
  * Style difference calculation
  */
 
-import { deltaE2000 } from './color';
-import { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx, type RGB } from './normalize';
 import type { ExpectedSpec, PatchHint, StyleDiff, TokenMap } from './types/index';
+import { deltaE2000 } from './utils/color';
+import {
+  normLineHeight,
+  parseBoxShadow,
+  parseCssColorToRgb,
+  toPx,
+  type RGB,
+} from './utils/normalize';
 
 export interface DiffOptions {
   thresholds?: {
