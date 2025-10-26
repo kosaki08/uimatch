@@ -1,4 +1,6 @@
 export { PlaywrightAdapter, captureTarget } from './adapters/index.ts';
+export { DEFAULT_CONFIG, loadConfig, mergeConfig } from './config/index.ts';
+export type { AppConfig, CaptureConfig, ComparisonConfig } from './config/index.ts';
 export { compareImages } from './core/compare.ts';
 export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from './core/compare.ts';
 export { buildStyleDiffs } from './core/diff.ts';
