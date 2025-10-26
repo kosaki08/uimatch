@@ -3,6 +3,9 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=22.11.0"
+  },
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
