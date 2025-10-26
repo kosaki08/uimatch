@@ -19,6 +19,14 @@ This document contains project-specific rules and conventions that all AI coding
 - Prefer `interface` over `type` for object shapes (unless union/intersection is needed)
 - Use `const` assertions where appropriate
 
+### Naming Conventions
+
+- **PascalCase** for types, interfaces, and classes
+- **camelCase** for variables, functions, and methods
+- **UPPER_SNAKE_CASE** for constants
+- Prefer `interface` for object shapes; use `type` for unions/intersections and function signatures
+- Keep repository naming consistent: `uimatch-*` (avoid mixed `ui-match` vs `uimatch`)
+
 ### Formatting
 
 - **Formatter**: Prettier with the following configuration:
@@ -165,6 +173,33 @@ src/
 - Consider caching strategies for expensive operations
 - Use streaming for large data sets when applicable
 
+#### Security & Secrets
+
+- Do **not** print or commit secrets (tokens, credentials, cookies)
+- Configuration must be injected via environment variables and typed schema (e.g., zod)
+- Generated artifacts (screenshots, diffs) are **in-memory by default**. Persist only when explicitly approved
+- Never embed base64 images or secrets in commit messages, code, or PR descriptions
+- Use `.gitignore` to exclude `/fixtures/*.png`, `/dist`, and any temp outputs
+
+#### Observability
+
+- Emit structured logs with `traceId` per comparison invocation
+- Log levels: `debug` (dev only), `info` (milestones: fetched/captured/diffed/scored), `warn` (non-fatal), `error` (with error code)
+- No PII in logs. Mask URLs and query params that may contain tokens
+
+#### Threshold Terminology
+
+- `pixelmatchThreshold` = pixelmatch's internal comparator threshold (0..1), default 0.1
+- `acceptanceThreshold` = acceptance criteria for `pixelDiffRatio` and `colorDeltaEAvg` in our quality gate
+- Never conflate the two in code or docs
+
+#### Patch Hint Rules
+
+- Implement patch hints as rule objects with a stable interface:
+  `evaluate(styleDiff, context) -> PatchHint[]`
+- Rules must be side-effect-free and order-independent
+- New rules must include unit tests and severity mapping notes
+
 ## Testing
 
 - Write tests for all business logic
@@ -173,6 +208,8 @@ src/
 - Test file naming: `*.test.ts` or `*.spec.ts`
 - Mock external dependencies using adapters
 - Use fixtures for consistent test data
+- **No network calls in unit tests**: Mock adapters; unit tests must be deterministic and offline
+- Phase 0 tests must run < 200ms per spec on average; avoid I/O when possible
 
 ## Documentation
 
@@ -180,6 +217,18 @@ src/
 - Keep README.md up to date
 - Document complex algorithms or non-obvious decisions
 - Prefer self-documenting code over comments when possible
+
+## CI & Reproducibility
+
+- Phase 0 tests must run < 200ms per spec on average; avoid I/O when possible
+- In CI, install browsers explicitly (Playwright) and pin versions for reproducibility
+- Cache dependencies and Playwright browsers; generate fixtures in a pretest step
+
+## Versioning & Release
+
+- Use SemVer per package (`uimatch-core`, `uimatch-skill`)
+- Keep a `CHANGELOG.md`. Prefer Changesets or conventional-changelog for automation
+- Public API changes require entry in CHANGELOG and docs update
 
 ## Development Tools
 
@@ -225,8 +274,18 @@ ui-match/
 
 ## Notes for AI Assistants
 
+### General Guidelines
+
 - Always run `bun run format` after making changes
 - Run `bun run lint` before committing
 - Ensure commit messages are in English and follow Conventional Commits
 - Never use `any` type - use `unknown` or proper types instead
 - When in doubt, ask the user for clarification rather than making assumptions
+
+### Safety Rails for AI Assistants
+
+- **Read before write**: Always read existing files before proposing edits
+- **No destructive ops**: Do not remove files/folders or rewrite large sections without explicit instruction
+- **No background processes**: Do not spawn long-running tasks or external services implicitly
+- **No network calls in unit tests**: Mock adapters; unit tests must be deterministic and offline
+- **Do not push to remote** or change branch protection rules without explicit approval
