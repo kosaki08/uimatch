@@ -1,1 +1,1 @@
-export { PlaywrightAdapter, captureTarget } from './playwright.ts';
+export { PlaywrightAdapter, captureTarget } from './playwright';

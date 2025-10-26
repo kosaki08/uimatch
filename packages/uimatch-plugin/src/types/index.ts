@@ -142,6 +142,14 @@ export interface CompareArgs {
   fontPreload?: string[];
 
   /**
+   * Basic authentication credentials for the target URL.
+   */
+  basicAuth?: {
+    username: string;
+    password: string;
+  };
+
+  /**
    * Expected style specification for comparison.
    * Maps selectors to expected CSS properties.
    */

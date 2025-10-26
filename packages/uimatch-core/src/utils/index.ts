@@ -1,4 +1,4 @@
-export { deltaE2000, rgbToLab, type Lab } from './color.ts';
+export { deltaE2000, rgbToLab, type Lab } from './color';
 export {
   normLineHeight,
   parseBoxShadow,
@@ -6,4 +6,4 @@ export {
   toPx,
   type BoxShadowParsed,
   type RGB,
-} from './normalize.ts';
+} from './normalize';

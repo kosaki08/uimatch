@@ -1,10 +1,10 @@
-export { PlaywrightAdapter, captureTarget } from './adapters/index.ts';
-export { DEFAULT_CONFIG, loadConfig, mergeConfig } from './config/index.ts';
-export type { AppConfig, CaptureConfig, ComparisonConfig } from './config/index.ts';
-export { compareImages } from './core/compare.ts';
-export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from './core/compare.ts';
-export { buildStyleDiffs } from './core/diff.ts';
-export type { DiffOptions } from './core/diff.ts';
+export { PlaywrightAdapter, captureTarget } from './adapters/index';
+export { DEFAULT_CONFIG, loadConfig, mergeConfig } from './config/index';
+export type { AppConfig, CaptureConfig, ComparisonConfig } from './config/index';
+export { compareImages } from './core/compare';
+export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from './core/compare';
+export { buildStyleDiffs } from './core/diff';
+export type { DiffOptions } from './core/diff';
 export {
   createCaptureError,
   createComparisonError,
@@ -17,7 +17,7 @@ export {
   ok,
   unwrap,
   unwrapOr,
-} from './types/index.ts';
+} from './types/index';
 export type {
   AppError,
   BaseError,
@@ -34,8 +34,8 @@ export type {
   StyleDiff,
   Success,
   TokenMap,
-} from './types/index.ts';
-export { deltaE2000, rgbToLab } from './utils/color.ts';
-export type { Lab } from './utils/color.ts';
-export { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx } from './utils/normalize.ts';
-export type { BoxShadowParsed, RGB } from './utils/normalize.ts';
+} from './types/index';
+export { deltaE2000, rgbToLab } from './utils/color';
+export type { Lab } from './utils/color';
+export { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx } from './utils/normalize';
+export type { BoxShadowParsed, RGB } from './utils/normalize';

@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { captureTarget } from './adapters/playwright.ts';
-import { compareImages } from './core/compare.ts';
+import { captureTarget } from './adapters/playwright';
+import { compareImages } from './core/compare';
 
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
 const redBase64 = () => readFileSync(join(FIXTURES_DIR, 'red-100x100.png')).toString('base64');
