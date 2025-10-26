@@ -3,12 +3,6 @@
   "workspaces": {
     "": {
       "name": "ui-match",
-      "dependencies": {
-        "pixelmatch": "^6.0.0",
-        "playwright": "^1.56.1",
-        "pngjs": "^7.0.0",
-        "zod": "^4.1.12",
-      },
       "devDependencies": {
         "@eslint/js": "^9.38.0",
         "@playwright/test": "^1.56.1",
