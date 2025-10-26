@@ -66,7 +66,16 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     expectedSpec: args.expectedSpec,
     tokens: args.tokens,
     diffOptions: {
-      thresholds: { deltaE: args.thresholds?.deltaE },
+      thresholds: {
+        deltaE: args.thresholds?.deltaE,
+        spacing: args.thresholds?.spacing,
+        dimension: args.thresholds?.dimension,
+        layoutGap: args.thresholds?.layoutGap,
+        radius: args.thresholds?.radius,
+        borderWidth: args.thresholds?.borderWidth,
+        shadowBlur: args.thresholds?.shadowBlur,
+        shadowColorExtraDE: args.thresholds?.shadowColorExtraDE,
+      },
       ignore: args.ignore,
       weights: args.weights,
     },
