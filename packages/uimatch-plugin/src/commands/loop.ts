@@ -23,7 +23,7 @@ export interface LoopArgs extends CompareArgs {
 
   /**
    * Whether to wait for user input between iterations
-   * @default true
+   * @default false
    */
   interactive?: boolean;
 }
@@ -92,7 +92,7 @@ export interface LoopResult {
 export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
   const maxIters = args.maxIters ?? 5;
   const improvementThreshold = args.improvementThreshold ?? 0.5;
-  const interactive = args.interactive ?? true;
+  const interactive = args.interactive ?? false;
 
   const iterations: LoopResult['report']['iterations'] = [];
   let previousDfs = 0;
@@ -149,14 +149,14 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
       break;
     }
 
-    // Check for improvement stagnation
+    // Check for improvement stagnation or degradation
     if (iter > 1) {
       const improvement = currentDfs - previousDfs;
       console.log(`\nDFS change: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)}`);
 
-      if (improvement < improvementThreshold && improvement >= 0) {
+      if (improvement <= 0 || improvement < improvementThreshold) {
         console.log(
-          `\n⚠️  Improvement stagnated (< ${improvementThreshold} points). Stopping iterations.`
+          `\n⚠️  ${improvement <= 0 ? 'DFS degraded or unchanged' : `Improvement stagnated (< ${improvementThreshold} points)`}. Stopping iterations.`
         );
         break;
       }
