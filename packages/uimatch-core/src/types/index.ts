@@ -1,3 +1,5 @@
+export type { BrowserAdapter, CaptureOptions, CaptureResult } from './adapters';
+
 /**
  * Input for the compare function
  */
