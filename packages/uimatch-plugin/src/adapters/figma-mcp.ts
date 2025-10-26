@@ -25,26 +25,46 @@ export class FigmaMcpClient {
   }
 
   /**
-   * Fetches with exponential backoff retry on rate limits and server errors.
+   * Fetches with timeout, exponential backoff with jitter, and retry on rate limits/server errors.
+   * Timeout can be configured via UIMATCH_HTTP_TIMEOUT_MS (default: 20000ms).
    */
   private async retryFetch(url: string, init: RequestInit, tries = 4): Promise<Response> {
     let lastErr: unknown;
+    const timeoutMs = Number(process.env.UIMATCH_HTTP_TIMEOUT_MS ?? 20000);
+
     for (let i = 0; i < tries; i++) {
+      const ac = new AbortController();
+      const timeoutId = setTimeout(() => ac.abort(), timeoutMs);
+
       try {
-        const r = await fetch(url, init);
+        const r = await fetch(url, { ...init, signal: ac.signal });
+        clearTimeout(timeoutId);
+
         if (r.status === 429 || r.status >= 500) {
-          const backoff = Math.min(1500 * Math.pow(2, i), 6000);
+          // Exponential backoff with ±25% jitter to avoid thundering herd
+          const base = 250 * Math.pow(2, i);
+          const jitter = base * (0.75 + Math.random() * 0.5);
+          const backoff = Math.min(jitter, 6000);
           await new Promise((res) => setTimeout(res, backoff));
           continue;
         }
+
         return r;
       } catch (e) {
+        clearTimeout(timeoutId);
         lastErr = e;
-        const backoff = Math.min(1500 * Math.pow(2, i), 6000);
+
+        // Apply same backoff strategy on network errors/timeouts
+        const base = 250 * Math.pow(2, i);
+        const jitter = base * (0.75 + Math.random() * 0.5);
+        const backoff = Math.min(jitter, 6000);
         await new Promise((res) => setTimeout(res, backoff));
       }
     }
-    throw new Error(`Figma MCP fetch failed: ${(lastErr as Error)?.message ?? 'unknown'}`);
+
+    throw new Error(
+      `Figma MCP fetch failed after ${tries} attempts: ${(lastErr as Error)?.message ?? 'unknown'}`
+    );
   }
 
   /**
@@ -116,29 +136,36 @@ export class FigmaMcpClient {
  * @returns File key and node ID
  */
 export function parseFigmaRef(ref: string): FigmaRef {
-  // Support: "fileKey:nodeId" or Figma URL
+  // Support: "fileKey:nodeId" shorthand format
   if (ref.includes(':') && !ref.startsWith('http')) {
     const [fileKey, nodeId] = ref.split(':');
     if (!fileKey || !nodeId) throw new Error('Invalid figma ref "fileKey:nodeId"');
     return { fileKey, nodeId };
   }
 
-  // Parse Figma URL using URL API for robustness
+  // Parse Figma URL - supports both /file/ and /design/ paths
   try {
     const u = new URL(ref);
-    const path = u.pathname; // /file/{fileKey}/...
-    const fileKey = path.split('/file/')[1]?.split('/')[0];
+
+    // Extract fileKey from pathname (supports /file/ and /design/)
+    const pathMatch = u.pathname.match(/\/(file|design)\/([^/]+)/);
+    const fileKey = pathMatch?.[2];
+
+    // Try multiple node-id parameter variants
     const nodeId =
       u.searchParams.get('node-id') ??
       u.searchParams.get('node_id') ??
-      u.searchParams.get('nodeId');
+      u.searchParams.get('nodeId') ??
+      undefined;
+
     if (!fileKey || !nodeId) {
       throw new Error('fileKey or node-id missing in Figma URL');
     }
+
     return { fileKey, nodeId: decodeURIComponent(nodeId) };
   } catch (e) {
     throw new Error(
-      `Unsupported Figma URL (expect .../file/{fileKey}?node-id=...): ${(e as Error).message}`
+      `Unsupported Figma URL (expect .../file/{fileKey}?node-id=... or .../design/{fileKey}?node-id=...): ${(e as Error).message}`
     );
   }
 }
