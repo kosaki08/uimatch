@@ -60,6 +60,13 @@ export interface CaptureOptions {
    * @default 150
    */
   idleWaitMs?: number;
+
+  /**
+   * Reuse shared Playwright browser via browserPool.
+   * Improves performance for repeated comparisons (e.g., in /loop).
+   * @default false
+   */
+  reuseBrowser?: boolean;
 }
 
 /**

@@ -104,8 +104,8 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
     console.log(`Iteration ${iter}/${maxIters}`);
     console.log('='.repeat(50));
 
-    // Run comparison
-    const result = await uiMatchCompare(args);
+    // Run comparison with browser reuse enabled
+    const result = await uiMatchCompare({ ...args, reuseBrowser: true });
     finalResult = result;
 
     const currentDfs = result.report.metrics.dfs;

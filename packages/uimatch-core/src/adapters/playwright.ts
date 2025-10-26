@@ -2,7 +2,7 @@
  * Playwright adapter for browser automation
  */
 
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type BrowserContext } from 'playwright';
 import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/adapters';
 import { browserPool } from './browser-pool';
 
@@ -83,20 +83,27 @@ export class PlaywrightAdapter implements BrowserAdapter {
     if (!opts.url && !opts.html) throw new Error('captureTarget: url or html is required');
 
     let browser: Browser;
+    let context: BrowserContext;
     let shouldCloseBrowser = true;
 
-    if (this.reuseBrowser) {
+    const effectiveReuse = opts.reuseBrowser ?? this.reuseBrowser;
+    if (effectiveReuse) {
       browser = await browserPool.getBrowser();
       shouldCloseBrowser = false;
+      context = await browserPool.createContext({
+        viewport: opts.viewport ?? { width: 1440, height: 900 },
+        deviceScaleFactor: opts.dpr ?? 2,
+        httpCredentials: opts.basicAuth,
+      });
     } else {
       browser = await chromium.launch();
+      context = await browser.newContext({
+        viewport: opts.viewport ?? { width: 1440, height: 900 },
+        deviceScaleFactor: opts.dpr ?? 2,
+        httpCredentials: opts.basicAuth,
+      });
     }
 
-    const context = await browser.newContext({
-      viewport: opts.viewport ?? { width: 1440, height: 900 },
-      deviceScaleFactor: opts.dpr ?? 2,
-      httpCredentials: opts.basicAuth,
-    });
     const page = await context.newPage();
     try {
       if (opts.url) {
@@ -232,15 +239,23 @@ export class PlaywrightAdapter implements BrowserAdapter {
         { max: opts.maxChildren ?? 24, props: Array.from(DEFAULT_PROPS) as string[] }
       );
 
-      await context.close();
-      if (shouldCloseBrowser) {
-        await browser.close();
+      if (effectiveReuse) {
+        await browserPool.closeContext(context);
+      } else {
+        await context.close();
+        if (shouldCloseBrowser) {
+          await browser.close();
+        }
       }
       return { implPng: Buffer.from(implPng), styles, box };
     } catch (e) {
-      await context.close();
-      if (shouldCloseBrowser) {
-        await browser.close();
+      if (effectiveReuse) {
+        await browserPool.closeContext(context);
+      } else {
+        await context.close();
+        if (shouldCloseBrowser) {
+          await browser.close();
+        }
       }
       throw e as Error;
     }
@@ -253,6 +268,6 @@ export class PlaywrightAdapter implements BrowserAdapter {
  * @returns Screenshot, styles, and bounding box
  */
 export async function captureTarget(opts: CaptureOptions): Promise<CaptureResult> {
-  const adapter = new PlaywrightAdapter();
+  const adapter = new PlaywrightAdapter({ reuseBrowser: opts.reuseBrowser });
   return adapter.captureTarget(opts);
 }
