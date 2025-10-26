@@ -253,10 +253,21 @@ Recommended extensions are configured in `.vscode/extensions.json`:
 
 ### Available Scripts
 
+- `bun install`: Install dependencies and Playwright browsers (via postinstall hook)
 - `bun run lint`: Check code with ESLint
 - `bun run lint:fix`: Auto-fix ESLint issues
 - `bun run format`: Format all files with Prettier
 - `bun run format:check`: Check formatting without writing
+- `bun run test`: Run all tests (includes pretest fixture generation)
+
+### Environment Variables
+
+Required for Skill operation:
+
+- `FIGMA_MCP_URL`: Figma MCP server URL (e.g., `http://localhost:8765`)
+- `FIGMA_MCP_TOKEN`: (Optional) Bearer token for Figma MCP authentication
+- `BASIC_AUTH_USER`: (Optional) Basic auth username for target URLs
+- `BASIC_AUTH_PASS`: (Optional) Basic auth password for target URLs
 
 ## Project Structure
 
@@ -265,10 +276,12 @@ This is a monorepo using Bun workspaces:
 ```
 ui-match/
 ├── packages/           # Workspace packages
-│   └── uimatch-core/  # Core comparison library
-│       ├── src/       # Source code
-│       ├── fixtures/  # Test fixtures
-│       └── scripts/   # Utility scripts
+│   ├── uimatch-core/  # Core comparison library
+│   │   ├── src/       # Source code
+│   │   ├── fixtures/  # Test fixtures
+│   │   └── scripts/   # Utility scripts
+│   └── uimatch-skill/ # Skill wrapper for coding assistants
+│       └── src/       # Skill commands and Figma MCP integration
 ├── docs/              # Documentation and specifications
 ├── .vscode/           # VS Code settings
 ├── AGENTS.md          # This file (project rules for AI assistants)
