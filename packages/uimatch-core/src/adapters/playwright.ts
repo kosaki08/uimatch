@@ -4,6 +4,7 @@
 
 import { chromium, type Browser } from 'playwright';
 import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/adapters';
+import { browserPool } from './browser-pool';
 
 /**
  * Default CSS properties to extract from captured elements.
@@ -49,8 +50,19 @@ const DEFAULT_PROPS = [
 /**
  * Playwright implementation of BrowserAdapter.
  * Uses Chromium to capture screenshots and extract computed styles.
+ *
+ * Supports browser reuse via browser pool for improved performance.
  */
 export class PlaywrightAdapter implements BrowserAdapter {
+  /**
+   * Whether to reuse browser instances
+   * @default false
+   */
+  private reuseBrowser: boolean;
+
+  constructor(options?: { reuseBrowser?: boolean }) {
+    this.reuseBrowser = options?.reuseBrowser ?? false;
+  }
   /**
    * Captures a screenshot and computed styles of a web page element.
    *
@@ -69,7 +81,17 @@ export class PlaywrightAdapter implements BrowserAdapter {
    */
   async captureTarget(opts: CaptureOptions): Promise<CaptureResult> {
     if (!opts.url && !opts.html) throw new Error('captureTarget: url or html is required');
-    const browser: Browser = await chromium.launch();
+
+    let browser: Browser;
+    let shouldCloseBrowser = true;
+
+    if (this.reuseBrowser) {
+      browser = await browserPool.getBrowser();
+      shouldCloseBrowser = false;
+    } else {
+      browser = await chromium.launch();
+    }
+
     const context = await browser.newContext({
       viewport: opts.viewport ?? { width: 1440, height: 900 },
       deviceScaleFactor: opts.dpr ?? 2,
@@ -128,14 +150,43 @@ export class PlaywrightAdapter implements BrowserAdapter {
       }, idleWaitMs);
 
       const locator = frame.locator(opts.selector);
-      await locator.waitFor({ state: 'visible', timeout: 10_000 });
+
+      try {
+        await locator.waitFor({ state: 'visible', timeout: 10_000 });
+      } catch {
+        // Provide actionable error message with suggestions
+        const testIdElements = await frame.locator('[data-testid]').count();
+        const suggestions: string[] = [
+          `Selector "${opts.selector}" not found or not visible.`,
+          '',
+          'Suggestions:',
+        ];
+
+        if (testIdElements > 0) {
+          suggestions.push('- Try using a [data-testid] selector');
+        }
+
+        if (opts.detectStorybookIframe !== false) {
+          suggestions.push('- If not using Storybook, try setting detectStorybookIframe: false');
+        }
+
+        suggestions.push('- Verify the element is rendered and visible');
+        suggestions.push('- Check if the element requires user interaction to appear');
+
+        throw new Error(suggestions.join('\n'));
+      }
+
       await locator.evaluate((el) =>
         (el as HTMLElement).scrollIntoView({ block: 'center', inline: 'center' })
       );
 
       const box = await locator.boundingBox();
       if (!box) {
-        throw new Error(`captureTarget: boundingBox not available for selector=${opts.selector}`);
+        throw new Error(
+          `captureTarget: boundingBox not available for selector="${opts.selector}"\n\n` +
+            'This may happen if the element has zero width/height or is not laid out.\n' +
+            'Verify the element has visible dimensions in the browser.'
+        );
       }
 
       const implPng = await locator.screenshot({ type: 'png' });
@@ -181,10 +232,16 @@ export class PlaywrightAdapter implements BrowserAdapter {
         { max: opts.maxChildren ?? 24, props: Array.from(DEFAULT_PROPS) as string[] }
       );
 
-      await browser.close();
+      await context.close();
+      if (shouldCloseBrowser) {
+        await browser.close();
+      }
       return { implPng: Buffer.from(implPng), styles, box };
     } catch (e) {
-      await browser.close();
+      await context.close();
+      if (shouldCloseBrowser) {
+        await browser.close();
+      }
       throw e as Error;
     }
   }

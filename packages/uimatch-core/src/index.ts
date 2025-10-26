@@ -1,4 +1,4 @@
-export { PlaywrightAdapter, captureTarget } from './adapters/index';
+export { PlaywrightAdapter, browserPool, captureTarget } from './adapters/index';
 export { DEFAULT_CONFIG, loadConfig, mergeConfig } from './config/index';
 export type { AppConfig, CaptureConfig, ComparisonConfig } from './config/index';
 export { compareImages } from './core/compare';
