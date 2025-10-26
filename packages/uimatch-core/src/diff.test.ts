@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { buildStyleDiffs } from './diff';
+import { buildStyleDiffs } from './core/diff';
 import type { ExpectedSpec, StyleDiff, TokenMap } from './types/index';
 
 /**

@@ -1,9 +1,9 @@
 export { captureTarget } from './capture.ts';
 export type { CaptureOptions, CaptureResult } from './capture.ts';
-export { compareImages } from './compare.ts';
-export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from './compare.ts';
-export { buildStyleDiffs } from './diff.ts';
-export type { DiffOptions } from './diff.ts';
+export { compareImages } from './core/compare.ts';
+export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from './core/compare.ts';
+export { buildStyleDiffs } from './core/diff.ts';
+export type { DiffOptions } from './core/diff.ts';
 export type { ExpectedSpec, PatchHint, StyleDiff, TokenMap } from './types/index.ts';
 export { deltaE2000, rgbToLab } from './utils/color.ts';
 export type { Lab } from './utils/color.ts';

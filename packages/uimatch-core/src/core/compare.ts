@@ -1,7 +1,7 @@
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
+import type { ExpectedSpec, StyleDiff, TokenMap } from '../types/index';
 import { buildStyleDiffs, type DiffOptions } from './diff';
-import type { ExpectedSpec, StyleDiff, TokenMap } from './types/index';
 
 /**
  * Options for pixelmatch comparison algorithm.
