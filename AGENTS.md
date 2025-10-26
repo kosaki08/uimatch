@@ -231,7 +231,8 @@ src/
 
 ## Versioning & Release
 
-- Use SemVer per package (`uimatch-core`, `uimatch-skill`)
+- Use SemVer per package (`uimatch-core`, `uimatch-plugin`)
+- Plugin version in `.claude-plugin/plugin.json` and `marketplace.json` must match package version
 - Keep a `CHANGELOG.md`. Prefer Changesets or conventional-changelog for automation
 - Public API changes require entry in CHANGELOG and docs update
 
@@ -262,7 +263,7 @@ Recommended extensions are configured in `.vscode/extensions.json`:
 
 ### Environment Variables
 
-Required for Skill operation:
+Required for plugin operation:
 
 - `FIGMA_MCP_URL`: Figma MCP server URL (e.g., `http://localhost:8765`)
 - `FIGMA_MCP_TOKEN`: (Optional) Bearer token for Figma MCP authentication
@@ -275,19 +276,21 @@ This is a monorepo using Bun workspaces:
 
 ```
 ui-match/
-├── packages/           # Workspace packages
-│   ├── uimatch-core/  # Core comparison library
-│   │   ├── src/       # Source code
-│   │   ├── fixtures/  # Test fixtures
-│   │   └── scripts/   # Utility scripts
-│   └── uimatch-skill/ # Skill wrapper for coding assistants
-│       └── src/       # Skill commands and Figma MCP integration
-├── docs/              # Documentation and specifications
-├── .vscode/           # VS Code settings
-├── AGENTS.md          # This file (project rules for AI assistants)
-├── CLAUDE.md          # Claude-specific instructions
-├── GEMINI.md          # Gemini-specific instructions
-└── README.md          # Project overview
+├── .claude-plugin/        # Claude Code plugin definition
+│   ├── plugin.json        # Plugin metadata
+│   ├── commands/          # Command implementations (compare, loop, settings)
+│   ├── mcp.json           # Figma MCP integration
+│   └── marketplace.json   # Distribution metadata
+├── packages/              # Workspace packages
+│   ├── uimatch-core/      # Core comparison library
+│   │   ├── src/           # Source code
+│   │   ├── fixtures/      # Test fixtures
+│   │   └── scripts/       # Utility scripts
+│   └── uimatch-plugin/    # Plugin integration code
+│       └── src/           # Command handlers and adapters
+├── docs/                  # Documentation and specifications
+├── AGENTS.md              # This file (project rules for AI assistants)
+└── README.md              # Project overview
 ```
 
 ## Notes for AI Assistants
