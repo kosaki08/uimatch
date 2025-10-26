@@ -2,6 +2,7 @@
  * Iterative UI comparison command
  */
 
+import { browserPool } from 'uimatch-core';
 import type { CompareArgs, CompareResult } from '../types/index';
 import { uiMatchCompare } from './compare';
 
@@ -204,6 +205,12 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
     `Final DFS: ${lastDfs}`,
     `Improvement: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)}`,
   ].join(' | ');
+
+  // Clean up browser pool after loop completes
+  if (browserPool.isActive()) {
+    console.log('\n🧹 Cleaning up browser resources...');
+    await browserPool.closeAll();
+  }
 
   if (!finalResult) {
     throw new Error('No iterations completed');

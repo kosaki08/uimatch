@@ -8,6 +8,8 @@ import { DEFAULT_CONFIG, mergeConfig, type AppConfig } from 'uimatch-core';
 
 /**
  * Configuration file path
+ * TODO: Consider searching parent directories for .uimatchrc.json
+ * to support monorepo setups where config may be in workspace root
  */
 const CONFIG_FILE = '.uimatchrc.json';
 
