@@ -29,8 +29,8 @@
         "@types/pixelmatch": "^5.2.6",
       },
     },
-    "packages/uimatch-skill": {
-      "name": "uimatch-skill",
+    "packages/uimatch-plugin": {
+      "name": "uimatch-plugin",
       "version": "0.1.0",
       "dependencies": {
         "uimatch-core": "workspace:*",
@@ -291,7 +291,7 @@
 
     "uimatch-core": ["uimatch-core@workspace:packages/uimatch-core"],
 
-    "uimatch-skill": ["uimatch-skill@workspace:packages/uimatch-skill"],
+    "uimatch-plugin": ["uimatch-plugin@workspace:packages/uimatch-plugin"],
 
     "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
