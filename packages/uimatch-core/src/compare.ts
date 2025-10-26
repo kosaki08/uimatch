@@ -1,12 +1,77 @@
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
-import type { CompareInput, CompareResult } from './types.ts';
 
 /**
- * Compare two PNG images and return pixel difference metrics and a visual diff
+ * Options for pixelmatch comparison algorithm.
  */
-export function compare(input: CompareInput): CompareResult {
-  const { figmaPngB64, implPngB64, threshold = 0.1 } = input;
+export interface PixelmatchOptions {
+  /**
+   * Matching threshold (0 to 1). Smaller = more sensitive.
+   * @default 0.1
+   */
+  threshold?: number;
+
+  /**
+   * Whether to skip anti-aliasing detection.
+   * @default true
+   */
+  includeAA?: boolean;
+}
+
+/**
+ * Input for image comparison.
+ */
+export interface CompareImageInput {
+  /**
+   * Figma design PNG as base64 string.
+   */
+  figmaPngB64: string;
+
+  /**
+   * Implementation screenshot PNG as base64 string.
+   */
+  implPngB64: string;
+
+  /**
+   * Pixelmatch configuration options.
+   */
+  pixelmatch?: PixelmatchOptions;
+}
+
+/**
+ * Result of image comparison.
+ */
+export interface CompareImageResult {
+  /**
+   * Ratio of different pixels (0 to 1).
+   */
+  pixelDiffRatio: number;
+
+  /**
+   * Absolute count of different pixels.
+   */
+  diffPixelCount: number;
+
+  /**
+   * Visual diff image as base64 PNG.
+   */
+  diffPngB64: string;
+
+  /**
+   * Total pixel count (width × height).
+   */
+  totalPixels: number;
+}
+
+/**
+ * Compares two PNG images and returns pixel difference metrics.
+ *
+ * @param input - Images and comparison options
+ * @returns Pixel diff ratio, count, visual diff, and total pixels
+ * @throws If image dimensions don't match
+ */
+export function compareImages(input: CompareImageInput): CompareImageResult {
+  const { figmaPngB64, implPngB64, pixelmatch: opts = {} } = input;
 
   // Decode base64 to Buffer
   const figmaBuffer = Buffer.from(figmaPngB64, 'base64');
@@ -33,8 +98,8 @@ export function compare(input: CompareInput): CompareResult {
 
   // Perform pixel comparison
   const diffPixelCount = pixelmatch(figmaPng.data, implPng.data, diff.data, width, height, {
-    threshold,
-    includeAA: false, // Disable anti-aliasing detection for cleaner diffs
+    threshold: opts.threshold ?? 0.1,
+    includeAA: opts.includeAA ?? true,
   });
 
   // Calculate pixel difference ratio

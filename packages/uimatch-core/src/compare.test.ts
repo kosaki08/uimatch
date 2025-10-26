@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { compare } from './compare.ts';
+import { compareImages } from './compare.ts';
 
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
 
@@ -14,12 +14,12 @@ function loadFixtureAsBase64(filename: string): string {
   return buffer.toString('base64');
 }
 
-describe('compare', () => {
+describe('compareImages', () => {
   test('should return 0 difference for identical images', () => {
     const figmaPngB64 = loadFixtureAsBase64('red-100x100-1.png');
     const implPngB64 = loadFixtureAsBase64('red-100x100-2.png');
 
-    const result = compare({ figmaPngB64, implPngB64 });
+    const result = compareImages({ figmaPngB64, implPngB64 });
 
     expect(result.pixelDiffRatio).toBe(0);
     expect(result.diffPixelCount).toBe(0);
@@ -31,7 +31,7 @@ describe('compare', () => {
     const figmaPngB64 = loadFixtureAsBase64('red-100x100.png');
     const implPngB64 = loadFixtureAsBase64('blue-100x100.png');
 
-    const result = compare({ figmaPngB64, implPngB64 });
+    const result = compareImages({ figmaPngB64, implPngB64 });
 
     expect(result.pixelDiffRatio).toBeGreaterThan(0.9); // Almost all pixels differ
     expect(result.diffPixelCount).toBeGreaterThan(9000);
@@ -43,7 +43,7 @@ describe('compare', () => {
     const figmaPngB64 = loadFixtureAsBase64('red-base.png');
     const implPngB64 = loadFixtureAsBase64('red-with-diff.png');
 
-    const result = compare({ figmaPngB64, implPngB64 });
+    const result = compareImages({ figmaPngB64, implPngB64 });
 
     expect(result.pixelDiffRatio).toBeGreaterThan(0);
     expect(result.pixelDiffRatio).toBeLessThan(0.5); // Only a small portion differs
@@ -62,7 +62,7 @@ describe('compare', () => {
     const figmaPngB64 = loadFixtureAsBase64('red-100x100.png');
     const implPngB64 = loadFixtureAsBase64('blue-100x100.png');
 
-    const result = compare({ figmaPngB64, implPngB64 });
+    const result = compareImages({ figmaPngB64, implPngB64 });
 
     // Verify the diff image can be decoded
     expect(() => Buffer.from(result.diffPngB64, 'base64')).not.toThrow();
