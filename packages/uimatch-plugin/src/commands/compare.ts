@@ -33,9 +33,10 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const cfg = loadSkillConfig();
   const settings = getSettings(); // Read from .uimatchrc.json if exists
 
-  // Use default DPR from config (defaults to 2), clamped to Figma scale limits
+  // Use default DPR from config (defaults to 2), clamped to Figma scale limits (1-4)
+  // Note: Figma API typically requires scale >= 1.0
   const dprRaw = args.dpr ?? cfg.defaultDpr;
-  const dpr = Math.max(0.5, Math.min(dprRaw, 4));
+  const dpr = Math.max(1, Math.min(dprRaw, 4));
 
   // Configure pixelmatch with settings fallback
   const pixelmatch = {

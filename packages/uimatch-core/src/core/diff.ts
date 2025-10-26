@@ -109,7 +109,9 @@ export function buildStyleDiffs(
   };
 
   for (const [sel, props] of Object.entries(actual)) {
-    const exp = expectedSpec[sel] ?? expectedSpec['__self__'] ?? {};
+    // Only compare if selector is explicitly defined in expectedSpec
+    // Fallback to __self__ only for __self__ selector to avoid false positives
+    const exp = expectedSpec[sel] ?? (sel === '__self__' ? (expectedSpec['__self__'] ?? {}) : {});
     const propDiffs: Record<
       string,
       {

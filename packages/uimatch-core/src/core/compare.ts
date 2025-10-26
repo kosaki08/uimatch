@@ -1,6 +1,7 @@
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import type { ExpectedSpec, StyleDiff, TokenMap } from '../types/index';
+import { parseCssColorToRgb } from '../utils/normalize';
 import { buildStyleDiffs, type DiffOptions } from './diff';
 
 /**
@@ -124,8 +125,18 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
   const figmaPng = PNG.sync.read(figmaBuffer) as PNG;
   const implPng = PNG.sync.read(implBuffer) as PNG;
 
-  // Flatten transparency to white background to avoid alpha-related noise
-  const flattenToOpaque = (png: PNG, bg = { r: 255, g: 255, b: 255 }) => {
+  // Determine background color from captured styles, fallback to white
+  const bg = (() => {
+    const bgColor = input.styles?.['__self__']?.['background-color'];
+    if (bgColor) {
+      const rgb = parseCssColorToRgb(bgColor);
+      if (rgb) return { r: rgb.r, g: rgb.g, b: rgb.b };
+    }
+    return { r: 255, g: 255, b: 255 }; // Default to white
+  })();
+
+  // Flatten transparency to background color to avoid alpha-related noise
+  const flattenToOpaque = (png: PNG, bgColor = bg) => {
     const data = png.data;
     for (let i = 0; i < data.length; i += 4) {
       const alpha = data[i + 3];
@@ -134,9 +145,9 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
-        if (r !== undefined) data[i] = Math.round(r * a + bg.r * (1 - a));
-        if (g !== undefined) data[i + 1] = Math.round(g * a + bg.g * (1 - a));
-        if (b !== undefined) data[i + 2] = Math.round(b * a + bg.b * (1 - a));
+        if (r !== undefined) data[i] = Math.round(r * a + bgColor.r * (1 - a));
+        if (g !== undefined) data[i + 1] = Math.round(g * a + bgColor.g * (1 - a));
+        if (b !== undefined) data[i + 2] = Math.round(b * a + bgColor.b * (1 - a));
         data[i + 3] = 255;
       }
     }
