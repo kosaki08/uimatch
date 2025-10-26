@@ -1,0 +1,1 @@
+export { uiMatchCompare } from './compare';
