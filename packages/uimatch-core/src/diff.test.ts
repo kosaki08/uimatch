@@ -4,7 +4,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { buildStyleDiffs } from './diff';
-import type { ExpectedSpec, StyleDiff, TokenMap } from './types';
+import type { ExpectedSpec, StyleDiff, TokenMap } from './types/index';
 
 /**
  * Helper to safely get first diff from array
