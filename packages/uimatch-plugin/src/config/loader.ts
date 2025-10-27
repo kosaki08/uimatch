@@ -8,20 +8,16 @@ import { FigmaMcpConfigSchema, type FigmaMcpConfig, type SkillConfig } from './s
  * Load Figma MCP configuration from environment variables.
  *
  * Environment variables:
- * - FIGMA_MCP_URL: Figma MCP server URL (required)
+ * - FIGMA_MCP_URL: Figma MCP server URL (defaults to localhost:3845 if not set)
  * - FIGMA_MCP_TOKEN: Optional bearer token for authentication
  *
  * @param env - Environment variables object (defaults to process.env)
  * @returns Validated Figma MCP configuration
- * @throws If FIGMA_MCP_URL is missing or invalid
  */
 export function loadFigmaMcpConfig(
   env: Record<string, string | undefined> = process.env
 ): FigmaMcpConfig {
-  const mcpUrl = env.FIGMA_MCP_URL;
-  if (!mcpUrl) {
-    throw new Error('FIGMA_MCP_URL environment variable is required for Figma MCP');
-  }
+  const mcpUrl = env.FIGMA_MCP_URL ?? 'http://127.0.0.1:3845/mcp';
 
   return FigmaMcpConfigSchema.parse({
     mcpUrl,
