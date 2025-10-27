@@ -160,6 +160,16 @@ export class FigmaMcpClient {
    */
   async getCurrentSelectionRef(): Promise<FigmaRef> {
     const tools = await this.listTools().catch(() => [] as string[]);
+
+    if (tools.length === 0) {
+      throw new Error(
+        'Figma MCP: No tools available. Please check:\n' +
+          '  1. Figma Desktop App is running\n' +
+          '  2. MCP server is accessible\n' +
+          `  3. FIGMA_MCP_URL is correct: ${this.config.mcpUrl}`
+      );
+    }
+
     const anyResp = z.unknown();
 
     // 1) get_selection系 → 2) get_design_context系
@@ -195,7 +205,12 @@ export class FigmaMcpClient {
     }
 
     throw new Error(
-      'Figma MCP: could not resolve current selection (fileKey/nodeId). Select a node in Figma.'
+      'Figma MCP: Could not resolve current selection.\n' +
+        'Please ensure:\n' +
+        '  1. A node is selected in Figma Desktop App\n' +
+        '  2. The node is in the current file (not a component from another file)\n' +
+        '  3. The MCP server supports selection API\n' +
+        `Available tools: ${tools.join(', ')}`
     );
   }
 
@@ -223,12 +238,17 @@ export class FigmaMcpClient {
 
 /**
  * Parses a Figma reference into file key and node ID.
- * Supports `fileKey:nodeId` format or full Figma URL.
+ * Supports `'current'`, `fileKey:nodeId` format, or full Figma URL.
  *
  * @param ref - Figma reference string
- * @returns File key and node ID
+ * @returns File key and node ID, or 'current' for current selection
  */
-export function parseFigmaRef(ref: string): FigmaRef {
+export function parseFigmaRef(ref: string): FigmaRef | 'current' {
+  // Special case: 'current' means use current Figma selection
+  if (ref === 'current') {
+    return 'current';
+  }
+
   // Support: "fileKey:nodeId" shorthand format
   if (ref.includes(':') && !ref.startsWith('http')) {
     const [fileKey, nodeId] = ref.split(':');
@@ -258,7 +278,7 @@ export function parseFigmaRef(ref: string): FigmaRef {
     return { fileKey, nodeId: decodeURIComponent(nodeId) };
   } catch (e) {
     throw new Error(
-      `Unsupported Figma URL (expect .../file/{fileKey}?node-id=... or .../design/{fileKey}?node-id=...): ${(e as Error).message}`
+      `Unsupported Figma reference. Use 'current', 'fileKey:nodeId', or full Figma URL: ${(e as Error).message}`
     );
   }
 }
