@@ -85,7 +85,7 @@ export interface Thresholds {
  */
 export interface CompareArgs {
   /**
-   * Figma reference (URL or `fileKey:nodeId`).
+   * Figma reference (URL, `fileKey:nodeId`, or `'current'` for selected node).
    */
   figma: string;
 

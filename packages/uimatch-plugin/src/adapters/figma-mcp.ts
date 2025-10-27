@@ -68,6 +68,24 @@ export class FigmaMcpClient {
   }
 
   /**
+   * List available tool names (for handshake).
+   */
+  private async listTools(): Promise<string[]> {
+    const url = `${this.config.mcpUrl.replace(/\/+$/, '')}/tools/list`;
+    const res = await this.retryFetch(url, {
+      method: 'GET',
+      headers: {
+        ...(this.config.mcpToken ? { authorization: `Bearer ${this.config.mcpToken}` } : {}),
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Figma MCP error: ${res.status} ${res.statusText}`);
+    }
+    const json = (await res.json()) as { tools?: Array<{ name: string }> };
+    return (json.tools ?? []).map((t) => t.name);
+  }
+
+  /**
    * Calls a Figma MCP tool and validates the response.
    */
   private async callTool<T>(
@@ -95,15 +113,90 @@ export class FigmaMcpClient {
   }
 
   /**
+   * Normalize various image responses to Buffer.
+   */
+  private toPngBuffer(out: unknown): Buffer {
+    const obj = out as Record<string, unknown>;
+    const b64 =
+      (obj?.pngB64 as string | undefined) ??
+      (obj?.imageB64 as string | undefined) ??
+      (typeof obj?.dataUrl === 'string' && obj.dataUrl.startsWith('data:image/png;base64,')
+        ? obj.dataUrl.replace(/^data:image\/png;base64,/, '')
+        : undefined);
+    if (!b64) {
+      throw new Error('Figma MCP: screenshot response did not contain base64 PNG');
+    }
+    return Buffer.from(b64, 'base64');
+  }
+
+  /**
    * Fetches a PNG screenshot of a Figma frame via MCP.
+   * Supports multiple tool name variants via handshake.
    *
    * @param params - File key, node ID, and optional scale
    * @returns PNG buffer
    */
   async getFramePng(params: { fileKey: string; nodeId: string; scale?: number }): Promise<Buffer> {
-    const pngResp = z.object({ pngB64: z.string() });
-    const out = await this.callTool('figma.get_frame_png', params, pngResp);
-    return Buffer.from(out.pngB64, 'base64');
+    const tools = await this.listTools().catch(() => [] as string[]);
+
+    // Prefer explicit frame_png if it exists, otherwise fallback to get_screenshot variants
+    if (tools.includes('figma.get_frame_png')) {
+      const pngResp = z.object({ pngB64: z.string() });
+      const out = await this.callTool('figma.get_frame_png', params, pngResp);
+      return Buffer.from(out.pngB64, 'base64');
+    }
+
+    const name = tools.find((t) => /get_?screenshot/i.test(t)) ?? 'figma.get_screenshot';
+    // Many implementations accept fileKey/nodeId/scale. Unsupported implementations may return current selection.
+    const anyResp = z.unknown();
+    const out: unknown = await this.callTool(name, params, anyResp).catch(async () => {
+      return this.callTool(name, {}, anyResp); // No args = current selection
+    });
+    return this.toPngBuffer(out);
+  }
+
+  /**
+   * Resolve current selection -> {fileKey, nodeId} via available tool.
+   */
+  async getCurrentSelectionRef(): Promise<FigmaRef> {
+    const tools = await this.listTools().catch(() => [] as string[]);
+    const anyResp = z.unknown();
+
+    // 1) get_selection系 → 2) get_design_context系
+    const selName = tools.find((t) => /get_?selection/i.test(t));
+    if (selName) {
+      const out: unknown = await this.callTool(selName, {}, anyResp);
+      const obj = out as Record<string, unknown>;
+      const fileKey =
+        (obj?.fileKey as string | undefined) ??
+        ((obj?.selection as Record<string, unknown>)?.fileKey as string | undefined);
+      const nodeId =
+        (obj?.nodeId as string | undefined) ??
+        ((obj?.selection as Record<string, unknown>)?.nodeId as string | undefined) ??
+        ((obj?.selection as Record<string, unknown>)?.id as string | undefined);
+      if (fileKey && nodeId) {
+        return { fileKey, nodeId };
+      }
+    }
+
+    const ctxName = tools.find((t) => /design.*context/i.test(t)) ?? 'figma.get_design_context';
+    const ctx: unknown = await this.callTool(ctxName, {}, anyResp).catch(() => ({}));
+    const ctxObj = ctx as Record<string, unknown>;
+    const fileKey =
+      (ctxObj?.fileKey as string | undefined) ??
+      ((ctxObj?.document as Record<string, unknown>)?.fileKey as string | undefined);
+    const nodeId =
+      (ctxObj?.nodeId as string | undefined) ??
+      ((ctxObj?.node as Record<string, unknown>)?.id as string | undefined) ??
+      ((ctxObj?.selection as Array<Record<string, unknown>>)?.[0]?.id as string | undefined) ??
+      undefined;
+    if (fileKey && nodeId) {
+      return { fileKey, nodeId };
+    }
+
+    throw new Error(
+      'Figma MCP: could not resolve current selection (fileKey/nodeId). Select a node in Figma.'
+    );
   }
 
   /**
