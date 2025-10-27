@@ -25,11 +25,22 @@ import { getSettings } from './settings';
  * ```
  */
 export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> {
-  const { fileKey, nodeId } = parseFigmaRef(args.figma);
-
   // Load configuration from environment and .uimatchrc.json
   const mcpConfig = loadFigmaMcpConfig();
   const figmaClient = new FigmaMcpClient(mcpConfig);
+
+  // Resolve Figma reference: "current" -> getCurrentSelectionRef, otherwise parse
+  let fileKey: string;
+  let nodeId: string;
+  if (args.figma === 'current') {
+    const sel = await figmaClient.getCurrentSelectionRef();
+    fileKey = sel.fileKey;
+    nodeId = sel.nodeId;
+  } else {
+    const parsed = parseFigmaRef(args.figma);
+    fileKey = parsed.fileKey;
+    nodeId = parsed.nodeId;
+  }
   const cfg = loadSkillConfig();
   const settings = getSettings(); // Read from .uimatchrc.json if exists
 
