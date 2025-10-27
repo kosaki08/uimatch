@@ -113,49 +113,81 @@ async function main(): Promise<void> {
   const figma = arg('figma', 'current') as 'current' | string;
 
   // Resolve target to URL
-  const story = isUrl(target) ? target : detectStoryFromFile(target).url;
-
-  // Execute comparison
-  console.log('🎨 Running uiMatch comparison...\n');
-  const result = await uiMatchCompare({
-    figma,
-    story,
-    selector,
-    emitArtifacts: true,
-  });
-
-  // Save artifacts
-  if (result.report.artifacts) {
-    console.log('💾 Saving artifacts...');
-    writeFileSync(
-      '/tmp/uimatch-figma.png',
-      Buffer.from(result.report.artifacts.figmaPngB64, 'base64')
-    );
-    writeFileSync(
-      '/tmp/uimatch-impl.png',
-      Buffer.from(result.report.artifacts.implPngB64, 'base64')
-    );
-    writeFileSync(
-      '/tmp/uimatch-diff.png',
-      Buffer.from(result.report.artifacts.diffPngB64, 'base64')
-    );
-
-    // Generate and save overlay
-    const overlay = generateOverlay(
-      result.report.artifacts.implPngB64,
-      result.report.artifacts.diffPngB64
-    );
-    writeFileSync('/tmp/uimatch-overlay.png', overlay);
-
-    console.log('   • Figma design:   /tmp/uimatch-figma.png');
-    console.log('   • Implementation: /tmp/uimatch-impl.png');
-    console.log('   • Diff (visual):  /tmp/uimatch-diff.png');
-    console.log('   • Overlay (red):  /tmp/uimatch-overlay.png');
-    console.log('');
+  let story: string;
+  if (isUrl(target)) {
+    story = target;
+  } else {
+    try {
+      story = detectStoryFromFile(target).url;
+    } catch (e) {
+      console.error('Error: Could not detect Storybook URL from path.');
+      console.error('Please provide a direct URL instead:');
+      console.error('  bun run uimatch:current -- target=http://localhost:6006/...');
+      process.exit(2);
+    }
   }
 
-  console.log(result.summary);
-  if (!result.report.qualityGate?.pass) {
+  // Display comparison settings
+  console.log('🎨 Running uiMatch comparison...');
+  console.log(`  Figma: ${figma}`);
+  console.log(`  Story: ${story}`);
+  console.log(`  Selector: ${selector}\n`);
+
+  // Execute comparison
+  try {
+    const result = await uiMatchCompare({
+      figma,
+      story,
+      selector,
+      emitArtifacts: true,
+    });
+
+    // Save artifacts
+    if (result.report.artifacts) {
+      console.log('💾 Saving artifacts...');
+      writeFileSync(
+        '/tmp/uimatch-figma.png',
+        Buffer.from(result.report.artifacts.figmaPngB64, 'base64')
+      );
+      writeFileSync(
+        '/tmp/uimatch-impl.png',
+        Buffer.from(result.report.artifacts.implPngB64, 'base64')
+      );
+      writeFileSync(
+        '/tmp/uimatch-diff.png',
+        Buffer.from(result.report.artifacts.diffPngB64, 'base64')
+      );
+
+      // Generate and save overlay
+      const overlay = generateOverlay(
+        result.report.artifacts.implPngB64,
+        result.report.artifacts.diffPngB64
+      );
+      writeFileSync('/tmp/uimatch-overlay.png', overlay);
+
+      console.log('   • Figma design:   /tmp/uimatch-figma.png');
+      console.log('   • Implementation: /tmp/uimatch-impl.png');
+      console.log('   • Diff (visual):  /tmp/uimatch-diff.png');
+      console.log('   • Overlay (red):  /tmp/uimatch-overlay.png');
+      console.log('');
+    }
+
+    console.log(result.summary);
+    if (!result.report.qualityGate?.pass) {
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('\n❌ Comparison failed:');
+    console.error((error as Error)?.message ?? error);
+
+    if ((error as Error)?.message?.includes('current selection')) {
+      console.error('\n💡 Troubleshooting:');
+      console.error('  1. Open Figma Desktop App');
+      console.error('  2. Select the component you want to compare');
+      console.error("  3. Make sure it's not a component from another file");
+      console.error('  4. Run the command again');
+    }
+
     process.exit(1);
   }
 }

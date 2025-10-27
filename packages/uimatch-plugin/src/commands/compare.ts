@@ -29,15 +29,15 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const mcpConfig = loadFigmaMcpConfig();
   const figmaClient = new FigmaMcpClient(mcpConfig);
 
-  // Resolve Figma reference: "current" -> getCurrentSelectionRef, otherwise parse
+  // Parse Figma reference (handles 'current', 'fileKey:nodeId', or URL)
   let fileKey: string;
   let nodeId: string;
-  if (args.figma === 'current') {
+  const parsed = parseFigmaRef(args.figma);
+  if (parsed === 'current') {
     const sel = await figmaClient.getCurrentSelectionRef();
     fileKey = sel.fileKey;
     nodeId = sel.nodeId;
   } else {
-    const parsed = parseFigmaRef(args.figma);
     fileKey = parsed.fileKey;
     nodeId = parsed.nodeId;
   }
