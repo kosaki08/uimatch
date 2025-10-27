@@ -4,6 +4,7 @@
 
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
 import { captureTarget, compareImages } from 'uimatch-core';
+import { FigmaRestClient } from '../adapters/figma-rest';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
 import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
 import type { CompareArgs, CompareResult } from '../types/index';
@@ -25,22 +26,6 @@ import { getSettings } from './settings';
  * ```
  */
 export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> {
-  // Load configuration from environment and .uimatchrc.json
-  const mcpConfig = loadFigmaMcpConfig();
-  const figmaClient = new FigmaMcpClient(mcpConfig);
-
-  // Parse Figma reference (handles 'current', 'fileKey:nodeId', or URL)
-  let fileKey: string;
-  let nodeId: string;
-  const parsed = parseFigmaRef(args.figma);
-  if (parsed === 'current') {
-    const sel = await figmaClient.getCurrentSelectionRef();
-    fileKey = sel.fileKey;
-    nodeId = sel.nodeId;
-  } else {
-    fileKey = parsed.fileKey;
-    nodeId = parsed.nodeId;
-  }
   const cfg = loadSkillConfig();
   const settings = getSettings(); // Read from .uimatchrc.json if exists
 
@@ -55,8 +40,62 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     includeAA: args.pixelmatch?.includeAA ?? settings.comparison.includeAA,
   };
 
-  // 1) Fetch Figma PNG (MCP) - scale must match dpr to avoid size mismatch
-  const figmaPng: Buffer = await figmaClient.getFramePng({ fileKey, nodeId, scale: dpr });
+  // 1) Prepare Figma PNG with fallback priority: env bypass > REST fallback > MCP
+  let figmaPng: Buffer;
+  let fileKey: string;
+  let nodeId: string;
+  let figmaClient: FigmaMcpClient | null = null;
+
+  // Check for bypass mode first to avoid parsing figma reference if not needed
+  const b64raw = process.env.UIMATCH_FIGMA_PNG_B64?.trim();
+
+  // Parse Figma reference only when needed (not in bypass mode)
+  let parsed: ReturnType<typeof parseFigmaRef> | null = null;
+  if (!b64raw) {
+    parsed = parseFigmaRef(args.figma);
+  }
+
+  if (b64raw) {
+    // Environment variable bypass: Accept base64 PNG directly from Claude
+    const b64 = b64raw.replace(/^data:image\/png;base64,/, '').replace(/\s+/g, '');
+    figmaPng = Buffer.from(b64, 'base64');
+    // Try to parse reference for metadata, but don't fail if invalid
+    try {
+      const parsedRef = parseFigmaRef(args.figma);
+      if (parsedRef !== 'current') {
+        fileKey = parsedRef.fileKey;
+        nodeId = parsedRef.nodeId;
+      } else {
+        fileKey = 'env-bypass';
+        nodeId = 'env-bypass';
+      }
+    } catch {
+      // Invalid reference with bypass is OK - use placeholder
+      fileKey = 'env-bypass';
+      nodeId = 'env-bypass';
+    }
+  } else if (process.env.FIGMA_ACCESS_TOKEN && parsed && parsed !== 'current') {
+    // REST fallback: Use Figma REST API (no MCP required)
+    const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
+    const { fileKey: fk, nodeId: nid } = parsed; // URL or shorthand already resolved
+    figmaPng = await rest.getFramePng({ fileKey: fk, nodeId: nid, scale: dpr });
+    fileKey = fk;
+    nodeId = nid;
+  } else {
+    // MCP path: Use existing MCP client (only supports 'current' reliably)
+    if (!parsed) throw new Error('Figma reference must be parsed for MCP mode');
+    const mcpConfig = loadFigmaMcpConfig();
+    figmaClient = new FigmaMcpClient(mcpConfig);
+    if (parsed === 'current') {
+      const sel = await figmaClient.getCurrentSelectionRef();
+      fileKey = sel.fileKey;
+      nodeId = sel.nodeId;
+    } else {
+      fileKey = parsed.fileKey;
+      nodeId = parsed.nodeId;
+    }
+    figmaPng = await figmaClient.getFramePng({ fileKey, nodeId, scale: dpr });
+  }
   // Variables will be used in Phase 3 for TokenMap matching
   // const variables = await figmaClient.getVariables({ fileKey });
 
