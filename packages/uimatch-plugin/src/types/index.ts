@@ -176,8 +176,15 @@ export interface CompareArgs {
    * Category weights for DFS and future evaluation logic.
    */
   weights?: Partial<
-    Record<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography', number>
+    Record<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography' | 'pixel', number>
   >;
+
+  /**
+   * If true and expectedSpec is not provided, derive a minimal expectedSpec
+   * from Figma node JSON (REST) focusing on robust properties.
+   * @default false
+   */
+  bootstrapExpectedFromFigma?: boolean;
 
   /**
    * Reuse shared browser instance (recommended in /loop).
