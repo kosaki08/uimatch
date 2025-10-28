@@ -21,7 +21,7 @@
     "test:compare": "bun ./scripts/test-compare.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc -b tsconfig.build.json",
     "check": "bun run lint && bun run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -11,6 +11,30 @@ import type { CompareArgs, CompareResult } from '../types/index';
 import { getSettings } from './settings';
 
 /**
+ * Read PNG dimensions from IHDR chunk (bytes 16-23).
+ * Lightweight alternative to pngjs for simple size detection.
+ *
+ * @param buffer - PNG image buffer
+ * @returns Width and height, or null if invalid PNG
+ */
+function readPngSize(buffer: Buffer): { width: number; height: number } | null {
+  // PNG signature (8 bytes) + IHDR length (4) + "IHDR" (4) + data (13) + CRC (4) = 24 bytes minimum
+  if (buffer.length < 24) return null;
+
+  // Verify IHDR chunk signature at bytes 12-15
+  const ihdrSignature = buffer.readUInt32BE(12);
+  if (ihdrSignature !== 0x49484452) return null; // "IHDR" in hex
+
+  // Read width and height from IHDR data (bytes 16-23)
+  const width = buffer.readUInt32BE(16);
+  const height = buffer.readUInt32BE(20);
+
+  if (width <= 0 || height <= 0) return null;
+
+  return { width, height };
+}
+
+/**
  * Compares a Figma design with a live implementation.
  *
  * @param args - Comparison parameters
@@ -118,12 +142,25 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   // Variables will be used in Phase 3 for TokenMap matching
   // const variables = await figmaClient.getVariables({ fileKey });
 
+  // Auto-detect viewport from Figma PNG if not explicitly provided
+  let effectiveViewport = args.viewport;
+  if (!effectiveViewport) {
+    const pngSize = readPngSize(figmaPng);
+    if (pngSize && pngSize.width > 0 && pngSize.height > 0) {
+      effectiveViewport = { width: pngSize.width, height: pngSize.height };
+      console.log(
+        `[uimatch] Auto-detected viewport from Figma PNG: ${pngSize.width}x${pngSize.height}`
+      );
+    }
+  }
+
   // 2) Capture implementation (Playwright)
   const cap: CaptureResult = await captureTarget({
     url: args.story,
     selector: args.selector,
-    viewport: args.viewport,
+    viewport: effectiveViewport,
     dpr,
+    detectStorybookIframe: args.detectStorybookIframe,
     fontPreloads: args.fontPreload,
     idleWaitMs: settings.capture.defaultIdleWaitMs,
     reuseBrowser: args.reuseBrowser,
