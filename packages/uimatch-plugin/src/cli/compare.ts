@@ -26,6 +26,7 @@ interface ParsedArgs {
   jsonOnly?: string;
   verbose?: string;
   bootstrap?: string;
+  saveExpected?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -132,6 +133,7 @@ function printUsage(): void {
   );
   console.error('  verbose=<bool>          Show full URLs and paths (default: false)');
   console.error('  bootstrap=<bool>        Derive expectedSpec from Figma node (default: false)');
+  console.error('  saveExpected=<path>     If bootstrapped, save expectedSpec JSON to this path');
   console.error('');
   console.error('Example:');
   console.error(
@@ -178,8 +180,13 @@ export async function runCompare(argv: string[]): Promise<void> {
       if (!Number.isNaN(dprValue)) config.dpr = dprValue;
     }
 
-    const detectIframe = parseBool(args.detectStorybookIframe) ?? parseBool(args.iframe);
-    if (detectIframe !== undefined) config.detectStorybookIframe = detectIframe;
+    const detectIframeFlag = parseBool(args.detectStorybookIframe) ?? parseBool(args.iframe);
+    if (detectIframeFlag !== undefined) {
+      config.detectStorybookIframe = detectIframeFlag;
+    } else {
+      // Auto-default: only enable iframe detection when the URL looks like Storybook.
+      config.detectStorybookIframe = /\/iframe\.html(\?|$)/.test(args.story);
+    }
 
     const sizeMode = parseSizeMode(args.size);
     if (sizeMode) config.sizeMode = sizeMode;
@@ -196,6 +203,7 @@ export async function runCompare(argv: string[]): Promise<void> {
 
     // Toggle expectedSpec bootstrap
     const bootstrap = parseBool(args.bootstrap) ?? false;
+    const saveExpectedPath = args.saveExpected;
     config.bootstrapExpectedFromFigma = bootstrap;
 
     // Log sanitized inputs
@@ -206,6 +214,30 @@ export async function runCompare(argv: string[]): Promise<void> {
     console.log('');
 
     const result = await uiMatchCompare(config);
+
+    // Persist bootstrapped expectedSpec if requested
+    if (bootstrap && saveExpectedPath) {
+      // The compare command doesn't return expectedSpec directly; reconstruct it
+      // from quality report when possible. If unavailable, re-bootstrap here as a fallback.
+      try {
+        const { parseFigmaRef } = await import('../adapters/figma-mcp.js');
+        const { FigmaRestClient } = await import('../adapters/figma-rest.js');
+        const { buildExpectedSpecFromFigma } = await import('../expected/from-figma.js');
+
+        const ref = parseFigmaRef(args.figma);
+        if (ref !== 'current' && process.env.FIGMA_ACCESS_TOKEN) {
+          const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
+          const nodeJson = await rest.getNode({ fileKey: ref.fileKey, nodeId: ref.nodeId });
+          const expected = buildExpectedSpecFromFigma(nodeJson, undefined);
+          await Bun.write(saveExpectedPath, JSON.stringify(expected, null, 2));
+          console.log(`💾 expectedSpec saved → ${relativizePath(saveExpectedPath)}`);
+        } else {
+          console.warn('Cannot save expectedSpec: missing FIGMA_ACCESS_TOKEN or "current" ref.');
+        }
+      } catch (e) {
+        console.warn('Failed to save expectedSpec:', (e as Error)?.message ?? String(e));
+      }
+    }
 
     // Save artifacts if outDir specified
     if (args.outDir && result.report.artifacts) {
