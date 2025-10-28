@@ -111,6 +111,13 @@ export interface CompareArgs {
   dpr?: number;
 
   /**
+   * Whether to detect and use Storybook iframe for capture.
+   * When true, automatically switches to iframe content if Storybook URL is detected.
+   * @default true
+   */
+  detectStorybookIframe?: boolean;
+
+  /**
    * Acceptance thresholds.
    */
   thresholds?: Thresholds;
