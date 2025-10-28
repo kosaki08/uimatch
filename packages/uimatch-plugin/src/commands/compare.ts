@@ -36,6 +36,54 @@ function readPngSize(buffer: Buffer): { width: number; height: number } | null {
 }
 
 /**
+ * Filter style diffs to show only properties with meaningful differences.
+ * Removes properties that:
+ * - Have no expected value (not defined in expectedSpec)
+ * - Have no delta (couldn't be compared or matched exactly)
+ * - Match the expected value (no actual difference)
+ *
+ * @param diffs - Style differences from compareImages
+ * @returns Filtered diffs containing only properties with actual differences
+ */
+function pruneStyleDiffs(
+  diffs: Array<{
+    path: string;
+    selector: string;
+    properties: Record<
+      string,
+      {
+        actual?: string;
+        expected?: string;
+        expectedToken?: string;
+        delta?: number;
+        unit?: string;
+      }
+    >;
+    severity: 'low' | 'medium' | 'high';
+    patchHints?: Array<{
+      property: string;
+      suggestedValue: string;
+      severity: 'low' | 'medium' | 'high';
+    }>;
+  }>
+): typeof diffs {
+  return diffs
+    .map((d) => ({
+      ...d,
+      properties: Object.fromEntries(
+        Object.entries(d.properties).filter(([, value]) => {
+          // Keep property if it has an expected value OR a delta
+          // This shows both:
+          // 1. Properties that could be compared (have delta)
+          // 2. Properties with expected values (even if couldn't calculate delta due to units, tokens, etc.)
+          return value?.expected !== undefined || value?.delta !== undefined;
+        })
+      ),
+    }))
+    .filter((d) => Object.keys(d.properties).length > 0); // Remove selectors with no differences
+}
+
+/**
  * Compares a Figma design with a live implementation.
  *
  * @param args - Comparison parameters
@@ -216,6 +264,12 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     align: args.align,
     padColor: args.padColor,
   });
+
+  // 3.5) Filter style diffs to show only properties with actual differences
+  // This reduces noise by removing properties that couldn't be compared or matched exactly
+  if (result.styleDiffs) {
+    result.styleDiffs = pruneStyleDiffs(result.styleDiffs);
+  }
 
   // 4) Calculate metrics and quality gate
   const colorDeltaEAvg = result.colorDeltaEAvg ?? 0;

@@ -17,6 +17,7 @@ const DEFAULT_PROPS = [
   'line-height',
   'font-weight',
   'font-family',
+  'letter-spacing',
   'color',
   'background-color',
   'border-radius',
@@ -45,6 +46,27 @@ const DEFAULT_PROPS = [
   'margin-right',
   'margin-bottom',
   'margin-left',
+  // Text & formatting
+  'text-align',
+  'text-transform',
+  'text-decoration-line',
+  'white-space',
+  'word-break',
+  // Sizing constraints
+  'min-width',
+  'max-width',
+  'min-height',
+  'max-height',
+  'box-sizing',
+  // Overflow
+  'overflow-x',
+  'overflow-y',
+  // Flex extras
+  'flex-grow',
+  'flex-shrink',
+  'flex-basis',
+  // Visual
+  'opacity',
 ] as const;
 
 /**

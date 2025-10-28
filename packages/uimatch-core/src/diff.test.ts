@@ -460,7 +460,8 @@ describe('buildStyleDiffs', () => {
     expect(heightProp.delta).toBe(-20);
     expect(heightProp.unit).toBe('px');
 
-    expect(firstDiff.severity).toBe('medium');
+    // 20% relative error triggers high severity escalation
+    expect(firstDiff.severity).toBe('high');
   });
 
   test('normalizes display (inline-flex → flex)', () => {
@@ -588,7 +589,8 @@ describe('buildStyleDiffs', () => {
     expect(rowGapProp.actual).toBe('10px');
     expect(rowGapProp.expected).toBe('20px');
     expect(rowGapProp.delta).toBe(-10);
-    expect(firstDiff.severity).toBe('medium'); // Outside tolerance
+    // 50% relative error (>= 30% threshold) triggers high severity escalation
+    expect(firstDiff.severity).toBe('high');
   });
 
   test('detects grid-template-columns difference', () => {

@@ -443,6 +443,88 @@ export function buildStyleDiffs(
       });
     });
 
+    // text-align, text-transform, text-decoration-line, white-space, word-break (string equality)
+    (
+      ['text-align', 'text-transform', 'text-decoration-line', 'white-space', 'word-break'] as const
+    ).forEach((p) => {
+      consider(p, () => {
+        const a = props[p]?.trim();
+        const e = exp[p]?.trim();
+        if (!e || !a) return { ok: true };
+        return { ok: a === e, expected: e };
+      });
+    });
+
+    // sizing constraints (min-width, max-width, min-height, max-height)
+    (['min-width', 'max-width', 'min-height', 'max-height'] as const).forEach((p) => {
+      consider(p, () => {
+        const a = toPx(props[p]);
+        const e = exp[p] ? toPx(exp[p]) : undefined;
+        if (e == null || a == null) return { ok: true };
+        // same tolerance as dimension (5%) with min 1px
+        const tol = Math.max(1, tDimension * e);
+        return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+      });
+    });
+
+    // box-sizing (string equality)
+    consider('box-sizing', () => {
+      const a = props['box-sizing']?.trim();
+      const e = exp['box-sizing']?.trim();
+      if (!e || !a) return { ok: true };
+      return { ok: a === e, expected: e };
+    });
+
+    // overflow-x, overflow-y (string equality)
+    (['overflow-x', 'overflow-y'] as const).forEach((p) => {
+      consider(p, () => {
+        const a = props[p]?.trim();
+        const e = exp[p]?.trim();
+        if (!e || !a) return { ok: true };
+        return { ok: a === e, expected: e };
+      });
+    });
+
+    // flex-grow, flex-shrink (numeric tolerance)
+    (['flex-grow', 'flex-shrink'] as const).forEach((p) => {
+      consider(p, () => {
+        const toNum = (v?: string) => (v && !isNaN(Number(v)) ? Number(v) : undefined);
+        const a = toNum(props[p]);
+        const e = exp[p] ? toNum(exp[p]) : undefined;
+        if (e == null || a == null) return { ok: true };
+        const tol = 0.1; // small numeric tolerance
+        return {
+          ok: Math.abs(a - e) <= tol,
+          delta: +(a - e).toFixed(2),
+          unit: '',
+          expected: String(e),
+        };
+      });
+    });
+
+    // flex-basis (dimension with px conversion)
+    consider('flex-basis', () => {
+      const a = toPx(props['flex-basis']);
+      const e = exp['flex-basis'] ? toPx(exp['flex-basis']) : undefined;
+      if (e == null || a == null) return { ok: true };
+      const tol = Math.max(1, tDimension * e);
+      return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+    });
+
+    // opacity (numeric with small tolerance)
+    consider('opacity', () => {
+      const a = Number(props['opacity']);
+      const e = exp['opacity'] ? Number(exp['opacity']) : undefined;
+      if (isNaN(a) || e == null || isNaN(e)) return { ok: true };
+      const tol = 0.05;
+      return {
+        ok: Math.abs(a - e) <= tol,
+        delta: +(a - e).toFixed(2),
+        unit: '',
+        expected: String(e),
+      };
+    });
+
     // Generate patch hints
     const patchHints = generatePatchHints(propDiffs);
 
