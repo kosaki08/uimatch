@@ -5,6 +5,33 @@ import { parseCssColorToRgb } from '../utils/normalize';
 import { buildStyleDiffs, type DiffOptions } from './diff';
 
 /**
+ * Size mode for handling dimension mismatches.
+ * - `strict`: Require exact dimensions (throw on mismatch)
+ * - `pad`: Add letterboxing to smaller image (recommended for development)
+ * - `crop`: Compare only common region
+ * - `scale`: Scale to match dimensions (may degrade quality)
+ */
+export type SizeMode = 'strict' | 'pad' | 'crop' | 'scale';
+
+/**
+ * Alignment for padding when using `pad` size mode.
+ * - `center`: Center the smaller image (default)
+ * - `top-left`: Align to top-left corner
+ * - `top`: Center horizontally, align to top
+ * - `left`: Align to left, center vertically
+ */
+export type ImageAlignment = 'center' | 'top-left' | 'top' | 'left';
+
+/**
+ * Color specification for letterbox padding.
+ */
+export interface PadColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+/**
  * Options for pixelmatch comparison algorithm.
  */
 export interface PixelmatchOptions {
@@ -22,9 +49,32 @@ export interface PixelmatchOptions {
 }
 
 /**
+ * Size handling options for dimension mismatches.
+ */
+export interface SizeHandlingOptions {
+  /**
+   * How to handle dimension mismatches.
+   * @default 'strict'
+   */
+  sizeMode?: SizeMode;
+
+  /**
+   * Alignment when using `pad` size mode.
+   * @default 'center'
+   */
+  align?: ImageAlignment;
+
+  /**
+   * Background color for padding. 'auto' uses detected background color.
+   * @default 'auto'
+   */
+  padColor?: 'auto' | PadColor;
+}
+
+/**
  * Input for image comparison.
  */
-export interface CompareImageInput {
+export interface CompareImageInput extends SizeHandlingOptions {
   /**
    * Figma design PNG as base64 string.
    */
@@ -64,13 +114,57 @@ export interface CompareImageInput {
 }
 
 /**
+ * Dimension metadata for size handling.
+ */
+export interface DimensionInfo {
+  /**
+   * Original Figma design dimensions.
+   */
+  figma: { width: number; height: number };
+
+  /**
+   * Original implementation dimensions.
+   */
+  impl: { width: number; height: number };
+
+  /**
+   * Dimensions used for comparison (after size handling).
+   */
+  compared: { width: number; height: number };
+
+  /**
+   * Size mode applied.
+   */
+  sizeMode: SizeMode;
+
+  /**
+   * Whether dimensions were adjusted.
+   */
+  adjusted: boolean;
+}
+
+/**
  * Result of image comparison.
  */
 export interface CompareImageResult {
   /**
-   * Ratio of different pixels (0 to 1).
+   * Global pixel difference ratio (0 to 1).
+   * This is calculated using the entire canvas including padding/background.
    */
   pixelDiffRatio: number;
+
+  /**
+   * Content-only pixel difference ratio (diff pixels / content area).
+   * This normalizes against actual content area instead of entire canvas,
+   * giving a more intuitive measure that matches visual perception.
+   */
+  pixelDiffRatioContent?: number;
+
+  /**
+   * Content coverage ratio (content area / total canvas).
+   * Shows what percentage of the canvas is actual content vs. padding/background.
+   */
+  contentCoverage?: number;
 
   /**
    * Absolute count of different pixels.
@@ -88,6 +182,16 @@ export interface CompareImageResult {
   totalPixels: number;
 
   /**
+   * Total content pixels (union of figma and impl content areas).
+   */
+  contentPixels?: number;
+
+  /**
+   * Dimension information (original and compared sizes).
+   */
+  dimensions: DimensionInfo;
+
+  /**
    * Style differences (if styles were provided).
    */
   styleDiffs?: StyleDiff[];
@@ -99,12 +203,219 @@ export interface CompareImageResult {
 }
 
 /**
+ * Calculate offset for image alignment.
+ * @param size - Size of the image to position
+ * @param containerSize - Size of the container
+ * @param alignment - Alignment mode
+ * @returns x and y offsets
+ */
+function calculateOffset(
+  size: { width: number; height: number },
+  containerSize: { width: number; height: number },
+  alignment: ImageAlignment
+): { x: number; y: number } {
+  switch (alignment) {
+    case 'center':
+      return {
+        x: Math.floor((containerSize.width - size.width) / 2),
+        y: Math.floor((containerSize.height - size.height) / 2),
+      };
+    case 'top-left':
+      return { x: 0, y: 0 };
+    case 'top':
+      return {
+        x: Math.floor((containerSize.width - size.width) / 2),
+        y: 0,
+      };
+    case 'left':
+      return {
+        x: 0,
+        y: Math.floor((containerSize.height - size.height) / 2),
+      };
+  }
+}
+
+/**
+ * Calculate content area metrics for padded images.
+ * @param figmaOriginal - Original Figma dimensions
+ * @param implOriginal - Original implementation dimensions
+ * @param canvasSize - Padded canvas dimensions
+ * @param alignment - Alignment mode used for padding
+ * @returns Content pixels (union area) and content coverage ratio
+ */
+function calculateContentMetrics(
+  figmaOriginal: { width: number; height: number },
+  implOriginal: { width: number; height: number },
+  canvasSize: { width: number; height: number },
+  alignment: ImageAlignment
+): { contentPixels: number; contentCoverage: number } {
+  // Calculate where each original image is positioned on the padded canvas
+  const figmaOffset = calculateOffset(figmaOriginal, canvasSize, alignment);
+  const implOffset = calculateOffset(implOriginal, canvasSize, alignment);
+
+  // Define rectangles for each content area
+  const figmaRect = {
+    x1: figmaOffset.x,
+    y1: figmaOffset.y,
+    x2: figmaOffset.x + figmaOriginal.width,
+    y2: figmaOffset.y + figmaOriginal.height,
+  };
+
+  const implRect = {
+    x1: implOffset.x,
+    y1: implOffset.y,
+    x2: implOffset.x + implOriginal.width,
+    y2: implOffset.y + implOriginal.height,
+  };
+
+  // Calculate union of the two rectangles
+  const unionRect = {
+    x1: Math.min(figmaRect.x1, implRect.x1),
+    y1: Math.min(figmaRect.y1, implRect.y1),
+    x2: Math.max(figmaRect.x2, implRect.x2),
+    y2: Math.max(figmaRect.y2, implRect.y2),
+  };
+
+  // Calculate union area
+  const contentPixels = (unionRect.x2 - unionRect.x1) * (unionRect.y2 - unionRect.y1);
+
+  // Calculate coverage ratio
+  const totalPixels = canvasSize.width * canvasSize.height;
+  const contentCoverage = totalPixels > 0 ? contentPixels / totalPixels : 0;
+
+  return { contentPixels, contentCoverage };
+}
+
+/**
+ * Pad a PNG image with background color to match target dimensions.
+ * @param png - Source PNG to pad
+ * @param targetWidth - Target width
+ * @param targetHeight - Target height
+ * @param bgColor - Background color for padding
+ * @param alignment - How to align the source image
+ * @returns New padded PNG
+ */
+function padImage(
+  png: PNG,
+  targetWidth: number,
+  targetHeight: number,
+  bgColor: PadColor,
+  alignment: ImageAlignment
+): PNG {
+  const padded = new PNG({ width: targetWidth, height: targetHeight });
+
+  // Fill with background color
+  for (let y = 0; y < targetHeight; y++) {
+    for (let x = 0; x < targetWidth; x++) {
+      const idx = (targetWidth * y + x) * 4;
+      padded.data[idx] = bgColor.r;
+      padded.data[idx + 1] = bgColor.g;
+      padded.data[idx + 2] = bgColor.b;
+      padded.data[idx + 3] = 255; // Fully opaque
+    }
+  }
+
+  // Calculate offset based on alignment
+  const offset = calculateOffset({ width: png.width, height: png.height }, padded, alignment);
+
+  // Copy source image at the calculated offset
+  for (let y = 0; y < png.height; y++) {
+    for (let x = 0; x < png.width; x++) {
+      const srcIdx = (png.width * y + x) * 4;
+      const dstIdx = (targetWidth * (y + offset.y) + (x + offset.x)) * 4;
+      const r = png.data[srcIdx];
+      const g = png.data[srcIdx + 1];
+      const b = png.data[srcIdx + 2];
+      const a = png.data[srcIdx + 3];
+      if (r !== undefined) padded.data[dstIdx] = r;
+      if (g !== undefined) padded.data[dstIdx + 1] = g;
+      if (b !== undefined) padded.data[dstIdx + 2] = b;
+      if (a !== undefined) padded.data[dstIdx + 3] = a;
+    }
+  }
+
+  return padded;
+}
+
+/**
+ * Crop a PNG image to common region dimensions.
+ * @param png - Source PNG to crop
+ * @param targetWidth - Target width
+ * @param targetHeight - Target height
+ * @param alignment - Crop alignment
+ * @returns New cropped PNG
+ */
+function cropImage(
+  png: PNG,
+  targetWidth: number,
+  targetHeight: number,
+  alignment: ImageAlignment
+): PNG {
+  const cropped = new PNG({ width: targetWidth, height: targetHeight });
+
+  // Calculate crop offset
+  const offset = calculateOffset({ width: targetWidth, height: targetHeight }, png, alignment);
+
+  // Copy pixels from source to cropped image
+  for (let y = 0; y < targetHeight; y++) {
+    for (let x = 0; x < targetWidth; x++) {
+      const srcIdx = (png.width * (y + offset.y) + (x + offset.x)) * 4;
+      const dstIdx = (targetWidth * y + x) * 4;
+      const r = png.data[srcIdx];
+      const g = png.data[srcIdx + 1];
+      const b = png.data[srcIdx + 2];
+      const a = png.data[srcIdx + 3];
+      if (r !== undefined) cropped.data[dstIdx] = r;
+      if (g !== undefined) cropped.data[dstIdx + 1] = g;
+      if (b !== undefined) cropped.data[dstIdx + 2] = b;
+      if (a !== undefined) cropped.data[dstIdx + 3] = a;
+    }
+  }
+
+  return cropped;
+}
+
+/**
+ * Simple nearest-neighbor scaling (basic implementation).
+ * For production, consider using a library like sharp for higher quality.
+ * @param png - Source PNG to scale
+ * @param targetWidth - Target width
+ * @param targetHeight - Target height
+ * @returns New scaled PNG
+ */
+function scaleImage(png: PNG, targetWidth: number, targetHeight: number): PNG {
+  const scaled = new PNG({ width: targetWidth, height: targetHeight });
+  const xRatio = png.width / targetWidth;
+  const yRatio = png.height / targetHeight;
+
+  for (let y = 0; y < targetHeight; y++) {
+    for (let x = 0; x < targetWidth; x++) {
+      const srcX = Math.floor(x * xRatio);
+      const srcY = Math.floor(y * yRatio);
+      const srcIdx = (png.width * srcY + srcX) * 4;
+      const dstIdx = (targetWidth * y + x) * 4;
+
+      const r = png.data[srcIdx];
+      const g = png.data[srcIdx + 1];
+      const b = png.data[srcIdx + 2];
+      const a = png.data[srcIdx + 3];
+      if (r !== undefined) scaled.data[dstIdx] = r;
+      if (g !== undefined) scaled.data[dstIdx + 1] = g;
+      if (b !== undefined) scaled.data[dstIdx + 2] = b;
+      if (a !== undefined) scaled.data[dstIdx + 3] = a;
+    }
+  }
+
+  return scaled;
+}
+
+/**
  * Compares two PNG images and returns pixel difference metrics.
  * Optionally calculates style differences if styles are provided.
  *
  * @param input - Images, styles, and comparison options
  * @returns Pixel diff ratio, count, visual diff, total pixels, and style diffs (if applicable)
- * @throws If image dimensions don't match
+ * @throws If image dimensions don't match and sizeMode is 'strict'
  */
 export function compareImages(input: CompareImageInput): CompareImageResult {
   const {
@@ -115,6 +426,9 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     expectedSpec,
     tokens,
     diffOptions,
+    sizeMode = 'strict',
+    align = 'center',
+    padColor = 'auto',
   } = input;
 
   // Decode base64 to Buffer
@@ -122,11 +436,16 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
   const implBuffer = Buffer.from(implPngB64, 'base64');
 
   // Parse PNG images
-  const figmaPng = PNG.sync.read(figmaBuffer) as PNG;
-  const implPng = PNG.sync.read(implBuffer) as PNG;
+  let figmaPng = PNG.sync.read(figmaBuffer) as PNG;
+  let implPng = PNG.sync.read(implBuffer) as PNG;
+
+  // Store original dimensions
+  const originalFigmaDim = { width: figmaPng.width, height: figmaPng.height };
+  const originalImplDim = { width: implPng.width, height: implPng.height };
 
   // Determine background color from captured styles, fallback to white
   const bg = (() => {
+    if (padColor !== 'auto') return padColor;
     const bgColor = input.styles?.['__self__']?.['background-color'];
     if (bgColor) {
       const rgb = parseCssColorToRgb(bgColor);
@@ -155,13 +474,49 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
   flattenToOpaque(figmaPng);
   flattenToOpaque(implPng);
 
-  // Ensure images have the same dimensions
-  if (figmaPng.width !== implPng.width || figmaPng.height !== implPng.height) {
-    throw new Error(
-      `Image dimensions do not match: ` +
-        `Figma (${figmaPng.width}x${figmaPng.height}) vs ` +
-        `Implementation (${implPng.width}x${implPng.height})`
-    );
+  // Handle dimension mismatches based on sizeMode
+  let adjusted = false;
+  const dimensionsDiffer = figmaPng.width !== implPng.width || figmaPng.height !== implPng.height;
+
+  if (dimensionsDiffer) {
+    if (sizeMode === 'strict') {
+      throw new Error(
+        `Image dimensions do not match: ` +
+          `Figma (${figmaPng.width}x${figmaPng.height}) vs ` +
+          `Implementation (${implPng.width}x${implPng.height})`
+      );
+    }
+
+    adjusted = true;
+
+    if (sizeMode === 'pad') {
+      // Pad to larger dimensions
+      const maxWidth = Math.max(figmaPng.width, implPng.width);
+      const maxHeight = Math.max(figmaPng.height, implPng.height);
+
+      if (figmaPng.width < maxWidth || figmaPng.height < maxHeight) {
+        figmaPng = padImage(figmaPng, maxWidth, maxHeight, bg, align);
+      }
+      if (implPng.width < maxWidth || implPng.height < maxHeight) {
+        implPng = padImage(implPng, maxWidth, maxHeight, bg, align);
+      }
+    } else if (sizeMode === 'crop') {
+      // Crop to smaller dimensions (common region)
+      const minWidth = Math.min(figmaPng.width, implPng.width);
+      const minHeight = Math.min(figmaPng.height, implPng.height);
+
+      if (figmaPng.width > minWidth || figmaPng.height > minHeight) {
+        figmaPng = cropImage(figmaPng, minWidth, minHeight, align);
+      }
+      if (implPng.width > minWidth || implPng.height > minHeight) {
+        implPng = cropImage(implPng, minWidth, minHeight, align);
+      }
+    } else if (sizeMode === 'scale') {
+      // Scale implementation to match Figma dimensions
+      if (implPng.width !== figmaPng.width || implPng.height !== figmaPng.height) {
+        implPng = scaleImage(implPng, figmaPng.width, figmaPng.height);
+      }
+    }
   }
 
   const { width, height } = figmaPng;
@@ -188,7 +543,32 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     diffPngB64,
     diffPixelCount,
     totalPixels,
+    dimensions: {
+      figma: originalFigmaDim,
+      impl: originalImplDim,
+      compared: { width, height },
+      sizeMode,
+      adjusted,
+    },
   };
+
+  // Calculate content-only metrics when padding was applied
+  if (sizeMode === 'pad' && adjusted) {
+    const contentMetrics = calculateContentMetrics(
+      originalFigmaDim,
+      originalImplDim,
+      { width, height },
+      align
+    );
+
+    result.contentPixels = contentMetrics.contentPixels;
+    result.contentCoverage = contentMetrics.contentCoverage;
+
+    // Calculate content-only pixel diff ratio
+    if (contentMetrics.contentPixels > 0) {
+      result.pixelDiffRatioContent = diffPixelCount / contentMetrics.contentPixels;
+    }
+  }
 
   // Calculate style differences if styles are provided
   if (styles && expectedSpec) {

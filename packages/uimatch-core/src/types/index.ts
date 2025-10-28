@@ -36,14 +36,27 @@ export interface CompareInput {
  * Output from the compare function
  */
 export interface CompareResult {
-  /** Pixel difference ratio (0-1, where 0 = identical, 1 = completely different) */
+  /** Global pixel difference ratio (0-1, where 0 = identical, 1 = completely different) */
   pixelDiffRatio: number;
+  /**
+   * Content-only pixel difference ratio (diff pixels / content area).
+   * This normalizes against actual content area instead of entire canvas,
+   * giving a more intuitive measure that matches visual perception.
+   */
+  pixelDiffRatioContent?: number;
+  /**
+   * Content coverage ratio (content area / total canvas).
+   * Shows what percentage of the canvas is actual content vs. padding/background.
+   */
+  contentCoverage?: number;
   /** Base64-encoded PNG showing visual diff */
   diffPngB64: string;
   /** Number of pixels that differ */
   diffPixelCount: number;
   /** Total number of pixels compared */
   totalPixels: number;
+  /** Total content pixels (union of figma and impl content areas) */
+  contentPixels?: number;
   /** Style differences detected */
   styleDiffs?: StyleDiff[];
   /** Average color delta E (perceptual color difference) */

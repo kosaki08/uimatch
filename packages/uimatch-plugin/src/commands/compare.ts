@@ -193,6 +193,10 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       ignore: args.ignore,
       weights: args.weights,
     },
+    // Size handling options
+    sizeMode: args.sizeMode,
+    align: args.align,
+    padColor: args.padColor,
   });
 
   // 4) Calculate metrics and quality gate
@@ -203,12 +207,17 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   // Quality gate evaluation using settings
   const tPix = args.thresholds?.pixelDiffRatio ?? settings.comparison.acceptancePixelDiffRatio;
   const tDe = args.thresholds?.deltaE ?? settings.comparison.acceptanceColorDeltaE;
-  const pass = result.pixelDiffRatio <= tPix && colorDeltaEAvg <= tDe && !hasHighSeverity;
+
+  // Use content-only ratio when available (pad mode with adjusted dimensions)
+  // This gives a more intuitive metric that matches visual perception
+  const effectivePixelDiffRatio = result.pixelDiffRatioContent ?? result.pixelDiffRatio;
+  const pass = effectivePixelDiffRatio <= tPix && colorDeltaEAvg <= tDe && !hasHighSeverity;
 
   const reasons: string[] = [];
-  if (result.pixelDiffRatio > tPix) {
+  if (effectivePixelDiffRatio > tPix) {
+    const metricName = result.pixelDiffRatioContent ? 'pixelDiffRatioContent' : 'pixelDiffRatio';
     reasons.push(
-      `pixelDiffRatio ${(result.pixelDiffRatio * 100).toFixed(2)}% > ${(tPix * 100).toFixed(2)}%`
+      `${metricName} ${(effectivePixelDiffRatio * 100).toFixed(2)}% > ${(tPix * 100).toFixed(2)}%`
     );
   }
   if (colorDeltaEAvg > tDe) {
@@ -234,7 +243,8 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   // Pixel difference penalty (up to -50 points)
   // 0% diff = 0 penalty, 100% diff = -50 penalty
-  dfs -= result.pixelDiffRatio * 50 * weights.pixel;
+  // Use effective ratio (content-only when available) for more accurate scoring
+  dfs -= effectivePixelDiffRatio * 50 * weights.pixel;
 
   // Color delta E penalty (up to -30 points)
   // 0 ΔE = 0 penalty, 10+ ΔE = -30 penalty
@@ -258,18 +268,37 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   dfs = Math.max(0, Math.min(100, Math.round(dfs)));
 
   // 5) Generate summary
-  const summary = [
+  const summaryParts = [
     pass ? 'PASS' : 'FAIL',
     `DFS: ${dfs}`,
     `pixelDiffRatio: ${(result.pixelDiffRatio * 100).toFixed(2)}%`,
-    `colorDeltaEAvg: ${colorDeltaEAvg.toFixed(2)}`,
-    `styleDiffs: ${styleDiffs.length} (high: ${styleDiffs.filter((d: { severity: string }) => d.severity === 'high').length})`,
-  ].join(' | ');
+  ];
+
+  // Show content-only ratio if available (more intuitive metric)
+  if (result.pixelDiffRatioContent !== undefined) {
+    summaryParts.push(`pixelDiffRatioContent: ${(result.pixelDiffRatioContent * 100).toFixed(2)}%`);
+    summaryParts.push(`contentCoverage: ${((result.contentCoverage ?? 0) * 100).toFixed(1)}%`);
+  }
+
+  summaryParts.push(`colorDeltaEAvg: ${colorDeltaEAvg.toFixed(2)}`);
+  summaryParts.push(
+    `styleDiffs: ${styleDiffs.length} (high: ${styleDiffs.filter((d: { severity: string }) => d.severity === 'high').length})`
+  );
+
+  const summary = summaryParts.join(' | ');
 
   return {
     summary,
     report: {
-      metrics: { pixelDiffRatio: result.pixelDiffRatio, colorDeltaEAvg, dfs },
+      metrics: {
+        pixelDiffRatio: result.pixelDiffRatio,
+        pixelDiffRatioContent: result.pixelDiffRatioContent ?? undefined,
+        contentCoverage: result.contentCoverage ?? undefined,
+        contentPixels: result.contentPixels ?? undefined,
+        colorDeltaEAvg,
+        dfs,
+      },
+      dimensions: result.dimensions,
       styleDiffs,
       qualityGate: {
         pass,
