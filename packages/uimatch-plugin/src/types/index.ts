@@ -184,6 +184,28 @@ export interface CompareArgs {
    * @default false
    */
   reuseBrowser?: boolean;
+
+  /**
+   * Size handling mode for dimension mismatches.
+   * - `strict`: Throw error on mismatch (default)
+   * - `pad`: Add letterboxing to smaller image
+   * - `crop`: Compare common region only
+   * - `scale`: Scale to match dimensions
+   * @default 'strict'
+   */
+  sizeMode?: 'strict' | 'pad' | 'crop' | 'scale';
+
+  /**
+   * Alignment for pad/crop modes.
+   * @default 'center'
+   */
+  align?: 'center' | 'top-left' | 'top' | 'left';
+
+  /**
+   * Background color for padding ('auto' or RGB).
+   * @default 'auto'
+   */
+  padColor?: 'auto' | { r: number; g: number; b: number };
 }
 
 /**
@@ -194,8 +216,18 @@ export interface CompareResult {
   report: {
     metrics: {
       pixelDiffRatio: number;
+      pixelDiffRatioContent?: number;
+      contentCoverage?: number;
+      contentPixels?: number;
       colorDeltaEAvg: number;
       dfs: number;
+    };
+    dimensions?: {
+      figma: { width: number; height: number };
+      impl: { width: number; height: number };
+      compared: { width: number; height: number };
+      sizeMode: 'strict' | 'pad' | 'crop' | 'scale';
+      adjusted: boolean;
     };
     styleDiffs: StyleDiff[];
     qualityGate?: {

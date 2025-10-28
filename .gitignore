@@ -35,3 +35,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Serena MCP server metadata
 .serena
+
+# uiMatch artifacts
+.uimatch-out/
+*.uimatch.log

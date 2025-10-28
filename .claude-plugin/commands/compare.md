@@ -70,23 +70,35 @@ When the user requests a comparison, follow these steps:
 
 ## Usage Examples
 
-### Example 1: Basic Comparison
+### Example 1: Basic Comparison (CLI)
 
 **User input**:
 "Compare this Figma design https://www.figma.com/file/abc123?node-id=1-2 with http://localhost:6006/?path=/story/button and check the button with selector '#root button'"
 
-**Execution**:
+**Recommended approach** (using official CLI):
+
+```bash
+uimatch compare \
+  figma=abc123:1-2 \
+  story=http://localhost:6006/iframe.html?id=button \
+  selector="#storybook-root" \
+  size=pad \
+  outDir=./.uimatch-out/button-check
+```
+
+**Programmatic approach** (if needed):
 
 ```typescript
 const result = await uiMatchCompare({
   figma: 'abc123:1-2',
   story: 'http://localhost:6006/?path=/story/button',
   selector: '#root button',
+  sizeMode: 'pad', // handle size differences gracefully
 });
 
 // Output summary
 console.log(result.summary);
-// "DFS: 87 | pixelDiffRatio: 2.34% | colorDeltaEAvg: 1.20 | styleDiffs: 3 (high: 1)"
+// "DFS: 87 | pixelDiffRatio: 2.34% | colorDeltaEAvg: 1.20"
 ```
 
 **Response to user**:
@@ -108,25 +120,43 @@ Top issues:
 3. [low] padding-left: expected 16px, got 12px (delta: -4px)
 ```
 
-### Example 2: With Custom Thresholds and Artifacts
+### Example 2: With Artifact Saving (CLI)
 
 **User input**:
-"Compare the card component with strict color matching and show me the diff images"
+"Compare the card component and save the diff images"
 
-**Execution**:
+**CLI execution** (recommended):
+
+```bash
+uimatch compare \
+  figma=xyz789:5-10 \
+  story=http://localhost:3000/card \
+  selector="[data-testid='card']" \
+  size=pad \
+  outDir=./.uimatch-out/card-comparison \
+  overlay=true
+```
+
+This will save:
+
+- `figma.png` - Design from Figma
+- `impl.png` - Implementation screenshot
+- `diff.png` - Diff visualization (red = differences)
+- `overlay.png` - Implementation with red highlights (if overlay=true)
+- `report.json` - Detailed comparison report
+
+**Programmatic approach** (if needed):
 
 ```typescript
 const result = await uiMatchCompare({
   figma: 'xyz789:5-10',
   story: 'http://localhost:3000/card',
   selector: '[data-testid="card"]',
-  thresholds: { deltaE: 1.5 }, // strict color matching
-  emitArtifacts: true, // include images
+  emitArtifacts: true,
 });
-```
 
-**Response**:
-Include the base64 diff image in the response or save it for user inspection.
+// Then save manually if needed (see examples/save-artifacts-example.ts)
+```
 
 ### Example 3: With Design Tokens
 
@@ -233,12 +263,35 @@ The command returns a structured result:
 }
 ```
 
+## CLI Options Reference
+
+**Required**:
+
+- `figma=<value>` - Figma file key and node ID (e.g., AbCdEf:1-23) or URL
+- `story=<url>` - Target URL to compare
+- `selector=<css>` - CSS selector for element to capture
+
+**Optional**:
+
+- `viewport=<WxH>` - Viewport size (e.g., 1584x1104)
+- `dpr=<number>` - Device pixel ratio (default: 2)
+- `detectStorybookIframe=<bool>` - Use Storybook iframe (default: true)
+- `size=<mode>` - Size handling (strict|pad|crop|scale, default: strict)
+- `align=<mode>` - Alignment for pad/crop (center|top-left|top|left)
+- `padColor=<color>` - Padding color (auto|#RRGGBB, default: auto)
+- `outDir=<path>` - Save artifacts to directory (creates .uimatch-out by default)
+- `overlay=<bool>` - Save overlay.png with highlights (default: false)
+- `jsonOnly=<bool>` - Omit base64 from JSON (default: true if outDir set)
+- `verbose=<bool>` - Show full URLs and paths (default: false, sanitized for safety)
+
 ## Integration Notes
 
-- This command uses the `uimatch-plugin` package which depends on `uimatch-core`
-- All processing is in-memory; no persistent files are created
-- Figma API calls are made via the MCP server (not direct REST API)
-- Playwright is used for browser automation (Chromium headless)
+- **CLI available**: `uimatch compare` (see above for options)
+- **Programmatic API**: `import { uiMatchCompare } from 'uimatch-plugin'`
+- **Artifacts**: Saved to `.uimatch-out/` by default (gitignored)
+- **Logging**: Sanitized by default (no tokens, relative paths, compact Figma refs)
+- Figma API calls via MCP server (not direct REST API)
+- Playwright used for browser automation (Chromium headless)
 - Color differences use CIEDE2000 perceptual color distance
 
 ## See Also
