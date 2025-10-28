@@ -1,0 +1,4 @@
+{
+  "files": [],
+  "references": [{ "path": "./packages/uimatch-core" }, { "path": "./packages/uimatch-plugin" }]
+}

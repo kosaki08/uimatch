@@ -4,6 +4,9 @@
  * Usage: bun run uimatch:compare -- figma=<FILE:NODE|URL> story=<URL> selector=<CSS> [emitArtifacts]
  */
 
+// Load environment variables from .env file
+import 'dotenv/config';
+
 import { uiMatchCompare } from 'uimatch-plugin';
 
 function parseArgs(argv: string[]): Record<string, string | boolean> {

@@ -55,6 +55,14 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     parsed = parseFigmaRef(args.figma);
   }
 
+  // Debug: Display effective mode and parsed reference
+  console.log(
+    '[uimatch] mode:',
+    b64raw ? 'BYPASS' : process.env.FIGMA_ACCESS_TOKEN ? 'REST' : 'MCP',
+    '| figma arg:',
+    args.figma
+  );
+
   if (b64raw) {
     // Environment variable bypass: Accept base64 PNG directly from Claude
     const b64 = b64raw.replace(/^data:image\/png;base64,/, '').replace(/\s+/g, '');
@@ -82,6 +90,17 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     fileKey = fk;
     nodeId = nid;
   } else {
+    // Early validation: If no PAT and trying to use URL/fileKey:nodeId format,
+    // provide clear guidance before attempting MCP
+    if (!process.env.FIGMA_ACCESS_TOKEN && parsed && parsed !== 'current') {
+      throw new Error(
+        'FIGMA_ACCESS_TOKEN is not set. ' +
+          'To compare using URL or fileKey:nodeId format, you must set FIGMA_ACCESS_TOKEN. ' +
+          'Alternatively, use figma=current to compare the currently selected node in Figma Desktop ' +
+          '(requires MCP server).'
+      );
+    }
+
     // MCP path: Use existing MCP client (only supports 'current' reliably)
     if (!parsed) throw new Error('Figma reference must be parsed for MCP mode');
     const mcpConfig = loadFigmaMcpConfig();

@@ -8,7 +8,9 @@
     "rootDir": "./src",
     "lib": ["esnext", "dom"],
     "noEmit": false,
-    "allowImportingTsExtensions": false
+    "emitDeclarationOnly": false,
+    "allowImportingTsExtensions": false,
+    "moduleResolution": "bundler"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
