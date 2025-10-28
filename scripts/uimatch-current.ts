@@ -4,6 +4,10 @@
  * Usage:
  *   bun run uimatch:current -- target=<file|dir|stories|url> [selector="#storybook-root nav"] [figma=current]
  */
+
+// Load environment variables from .env file
+import 'dotenv/config';
+
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { PNG } from 'pngjs';

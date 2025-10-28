@@ -4,6 +4,9 @@
  * Usage: bun run uimatch:loop -- figma=<FILE:NODE|URL> story=<URL> selector=<CSS> [maxIters=5]
  */
 
+// Load environment variables from .env file
+import 'dotenv/config';
+
 import { uiMatchLoop } from 'uimatch-plugin';
 
 function parseArgs(argv: string[]): Record<string, string | boolean | number> {

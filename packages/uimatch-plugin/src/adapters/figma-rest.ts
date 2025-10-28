@@ -42,8 +42,24 @@ export class FigmaRestClient {
       `https://api.figma.com/v1/images/${params.fileKey}?${q.toString()}`
     );
 
-    const url = meta.images?.[params.nodeId];
-    if (!url) throw new Error('Figma REST did not return image URL');
+    // Figma API may return image keys with either hyphens or colons
+    // Try all variants to ensure we find the image URL
+    const variants = new Set([
+      params.nodeId,
+      params.nodeId.replace(/:/g, '-'),
+      params.nodeId.replace(/-/g, ':'),
+    ]);
+
+    let url: string | undefined;
+    for (const k of variants) {
+      url ||= meta.images?.[k];
+    }
+    if (!url) {
+      throw new Error(
+        `Figma REST did not return image URL for node ${params.nodeId}. ` +
+          `Available keys: ${Object.keys(meta.images || {}).join(', ')}`
+      );
+    }
 
     // Image URL may take a moment to generate; retry with exponential backoff
     let lastErr: unknown;
