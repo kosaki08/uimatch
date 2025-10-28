@@ -2,20 +2,23 @@
  * Sanitization utilities for safe logging and artifact output
  */
 
+import { parseFigmaRef } from '../adapters/figma-mcp.js';
+
 /**
- * Sanitize Figma URL/reference for safe logging
- * Converts full URL to compact fileKey:nodeId format
+ * Make Figma refs safe/compact for logs by reusing exact parsing logic:
+ * - URL → fileKey:nodeId
+ * - "fileKey:nodeId" → as is
+ * - "current" → "current"
  * @param input - Figma URL or reference string
- * @returns Sanitized reference (e.g., "abc123:1-2")
+ * @returns Sanitized reference (e.g., "abc123:1-2" or "current")
  */
 export function sanitizeFigmaRef(input: string): string {
   try {
-    const url = new URL(input);
-    const key = url.pathname.split('/').filter(Boolean).at(-1) ?? 'unknown';
-    const nodeId = url.searchParams.get('node-id')?.replace(/-/g, ':') ?? 'current';
-    return `${key}:${nodeId}`;
+    const ref = parseFigmaRef(input);
+    if (ref === 'current') return 'current';
+    return `${ref.fileKey}:${ref.nodeId}`;
   } catch {
-    // Not a URL, return truncated if too long
+    // Parse failed, return truncated if too long
     return input.length > 64 ? input.slice(0, 64) + '…' : input;
   }
 }

@@ -852,4 +852,67 @@ describe('buildStyleDiffs', () => {
     });
     expect(diffsStrict[0]?.severity).toBe('medium');
   });
+
+  test('escalates to high severity on large dimension mismatch', () => {
+    const actual = { __self__: { width: '100px' } };
+    const expected = { __self__: { width: '200px' } };
+    // Relative error: 100/200 = 50% >= 20% threshold
+    const diffs = buildStyleDiffs(actual, expected);
+    expect(diffs[0]?.severity).toBe('high');
+  });
+
+  test('escalates to high severity on large gap mismatch', () => {
+    const actual = { __self__: { gap: '10px' } };
+    const expected = { __self__: { gap: '50px' } };
+    // Relative error: 40/50 = 80% >= 30% threshold
+    const diffs = buildStyleDiffs(actual, expected);
+    expect(diffs[0]?.severity).toBe('high');
+  });
+
+  test('escalates to high severity on large spacing mismatch', () => {
+    const actual = { __self__: { 'padding-top': '0px' } };
+    const expected = { __self__: { 'padding-top': '100px' } };
+    // Relative error: 100/100 = 100% >= 35% threshold
+    const diffs = buildStyleDiffs(actual, expected);
+    expect(diffs[0]?.severity).toBe('high');
+  });
+
+  test('compares letter-spacing with tolerance', () => {
+    const actual = { __self__: { 'letter-spacing': '0.4px' } };
+    const expected = { __self__: { 'letter-spacing': '0.5px' } };
+    // Tolerance: max(0.5px, 20% of 0.5px) = max(0.5, 0.1) = 0.5px
+    // Delta: 0.1px <= 0.5px → passes
+    const diffs = buildStyleDiffs(actual, expected);
+    const letterSpacingProp = diffs[0]?.properties['letter-spacing'];
+    expect(letterSpacingProp?.delta).toBeCloseTo(-0.1, 2);
+    expect(diffs[0]?.severity).toBe('low');
+  });
+
+  test('handles letter-spacing normal as 0px', () => {
+    const actual = { __self__: { 'letter-spacing': 'normal' } };
+    const expected = { __self__: { 'letter-spacing': '0px' } };
+    const diffs = buildStyleDiffs(actual, expected);
+    expect(diffs[0]?.properties['letter-spacing']).toBeDefined();
+    expect(diffs[0]?.severity).toBe('low'); // Should match
+  });
+
+  test('compares font-family by first family', () => {
+    const actual = { __self__: { 'font-family': '"Roboto", sans-serif' } };
+    const expected = { __self__: { 'font-family': 'Roboto, Arial' } };
+    // First family normalized: both are "roboto" (case-insensitive)
+    const diffs = buildStyleDiffs(actual, expected);
+    expect(diffs[0]?.properties['font-family']).toBeDefined();
+    expect(diffs[0]?.severity).toBe('low'); // Should match
+  });
+
+  test('detects font-family mismatch', () => {
+    const actual = { __self__: { 'font-family': 'Arial, sans-serif' } };
+    const expected = { __self__: { 'font-family': 'Roboto, sans-serif' } };
+    // First families differ: arial vs roboto
+    const diffs = buildStyleDiffs(actual, expected);
+    const fontFamilyProp = diffs[0]?.properties['font-family'];
+    expect(fontFamilyProp?.actual).toBe('Arial, sans-serif');
+    expect(fontFamilyProp?.expected).toBe('Roboto, sans-serif');
+    expect(diffs[0]?.severity).toBe('medium');
+  });
 });
