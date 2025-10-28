@@ -26,6 +26,7 @@ interface ParsedArgs {
   jsonOnly?: string;
   verbose?: string;
   bootstrap?: string;
+  expected?: string;
   saveExpected?: string;
 }
 
@@ -133,6 +134,7 @@ function printUsage(): void {
   );
   console.error('  verbose=<bool>          Show full URLs and paths (default: false)');
   console.error('  bootstrap=<bool>        Derive expectedSpec from Figma node (default: false)');
+  console.error('  expected=<path>         Load expectedSpec JSON and use it for style diffs');
   console.error('  saveExpected=<path>     If bootstrapped, save expectedSpec JSON to this path');
   console.error('');
   console.error('Example:');
@@ -165,6 +167,7 @@ export async function runCompare(argv: string[]): Promise<void> {
       align?: 'center' | 'top-left' | 'top' | 'left';
       padColor?: { r: number; g: number; b: number } | 'auto';
       bootstrapExpectedFromFigma?: boolean;
+      expectedSpec?: Record<string, Record<string, string>>;
     } = {
       figma: args.figma,
       story: args.story,
@@ -205,6 +208,18 @@ export async function runCompare(argv: string[]): Promise<void> {
     const bootstrap = parseBool(args.bootstrap) ?? false;
     const saveExpectedPath = args.saveExpected;
     config.bootstrapExpectedFromFigma = bootstrap;
+
+    // Load expectedSpec from file if provided.
+    if (args.expected) {
+      try {
+        const text = await Bun.file(args.expected).text();
+        const parsed: unknown = JSON.parse(text);
+        config.expectedSpec = parsed as Record<string, Record<string, string>>;
+        if (verbose) console.log(`[uimatch] loaded expectedSpec from ${args.expected}`);
+      } catch (e) {
+        console.warn(`Failed to read expectedSpec from ${args.expected}:`, (e as Error)?.message ?? e);
+      }
+    }
 
     // Log sanitized inputs
     console.log('[uimatch]', 'mode:', config.sizeMode ?? 'strict');
