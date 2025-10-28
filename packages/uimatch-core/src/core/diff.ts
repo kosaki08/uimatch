@@ -90,7 +90,12 @@ export function buildStyleDiffs(
   const categoriesOf = (
     prop: string
   ): Array<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography'> => {
-    if (/^font-/.test(prop) || prop === 'line-height' || prop === 'font-weight')
+    if (
+      /^font-/.test(prop) ||
+      prop === 'line-height' ||
+      prop === 'font-weight' ||
+      prop === 'letter-spacing'
+    )
       return ['typography'];
     if (prop === 'color' || prop === 'background-color' || prop === 'border-color')
       return ['color'];
@@ -150,14 +155,19 @@ export function buildStyleDiffs(
       }
     };
 
-    // width / height
+    // width / height (escalate to high severity on large relative errors)
     (['width', 'height'] as const).forEach((p) => {
       consider(p, () => {
         const a = toPx(props[p]);
         const e = exp[p] ? toPx(exp[p]) : undefined;
         if (e == null || a == null) return { ok: true };
         const tol = Math.max(1, tDimension * e);
-        return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+        const ok = Math.abs(a - e) <= tol;
+        if (!ok) {
+          const rel = Math.abs(a - e) / Math.max(1, e);
+          if (rel >= 0.2) severity = 'high'; // large relative error → escalate
+        }
+        return { ok, delta: a - e, unit: 'px', expected: `${e}px` };
       });
     });
 
@@ -189,6 +199,34 @@ export function buildStyleDiffs(
       if (e == null || a == null) return { ok: true };
       const d = Math.abs(a - e);
       return { ok: d < 200, delta: a - e, expected: String(e) };
+    });
+
+    // font-family (compare first family normalized)
+    consider('font-family', () => {
+      const norm = (v?: string) =>
+        v
+          ?.split(',')
+          .map((s) =>
+            s
+              .trim()
+              .replace(/^['"]|['"]$/g, '')
+              .toLowerCase()
+          )
+          .filter(Boolean)[0];
+      const a = norm(props['font-family']);
+      const e = norm(exp['font-family']);
+      if (!a || !e) return { ok: true };
+      return { ok: a === e, expected: exp['font-family'] };
+    });
+
+    // letter-spacing (px; "normal" => 0)
+    consider('letter-spacing', () => {
+      const parse = (v?: string) => (v?.trim() === 'normal' ? 0 : toPx(v));
+      const a = parse(props['letter-spacing']);
+      const e = exp['letter-spacing'] ? parse(exp['letter-spacing']) : undefined;
+      if (e == null || a == null) return { ok: true };
+      const tol = Math.max(0.5, 0.2 * Math.abs(e)); // min 0.5px or 20%
+      return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
     });
 
     // colors (color, background-color, border-color)
@@ -249,6 +287,7 @@ export function buildStyleDiffs(
     });
 
     // spacing (padding and margin properties)
+    // escalate to high severity on huge spacing mismatches
     (
       [
         'padding-top',
@@ -266,12 +305,18 @@ export function buildStyleDiffs(
         const e = exp[p] ? toPx(exp[p]) : undefined;
         if (e == null || a == null) return { ok: true };
         const tol = Math.max(1, tSpacing * e);
-        return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+        const ok = Math.abs(a - e) <= tol;
+        if (!ok) {
+          const rel = Math.abs(a - e) / Math.max(1, e);
+          if (rel >= 0.35) severity = 'high'; // huge spacing mismatch
+        }
+        return { ok, delta: a - e, unit: 'px', expected: `${e}px` };
       });
     });
 
     // gap, column-gap, row-gap (configurable tolerance for AA/subpixel errors)
     // 'normal' → 0px for flex default
+    // escalate to high severity on large relative errors
     const toGapPx = (v?: string) => (v?.trim() === 'normal' ? 0 : toPx(v));
     (['gap', 'column-gap', 'row-gap'] as const).forEach((p) => {
       consider(p, () => {
@@ -279,7 +324,12 @@ export function buildStyleDiffs(
         const e = exp[p] ? toGapPx(exp[p]) : undefined;
         if (e == null || a == null) return { ok: true };
         const tol = Math.max(1, tLayoutGap * e);
-        return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+        const ok = Math.abs(a - e) <= tol;
+        if (!ok) {
+          const rel = Math.abs(a - e) / Math.max(1, e);
+          if (rel >= 0.3) severity = 'high'; // large layout gap mismatch
+        }
+        return { ok, delta: a - e, unit: 'px', expected: `${e}px` };
       });
     });
 

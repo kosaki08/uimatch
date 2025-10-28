@@ -73,4 +73,33 @@ export class FigmaRestClient {
     }
     throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
   }
+
+  /**
+   * Fetch a Figma node JSON (document) for a given fileKey and nodeId.
+   * Only a subset of fields will be used downstream.
+   * @param params.fileKey - Figma file key
+   * @param params.nodeId - Node ID within the file
+   * @returns Node document object
+   */
+  async getNode(params: { fileKey: string; nodeId: string }): Promise<Record<string, unknown>> {
+    const tryIds = new Set([
+      params.nodeId,
+      params.nodeId.replace(/:/g, '-'),
+      params.nodeId.replace(/-/g, ':'),
+    ]);
+    let json: unknown;
+    for (const id of tryIds) {
+      const q = new URLSearchParams({ ids: id });
+      const url = `https://api.figma.com/v1/files/${params.fileKey}/nodes?${q.toString()}`;
+      try {
+        json = await this.fetchJson<unknown>(url);
+        const doc = (json as { nodes?: Record<string, { document?: unknown }> })?.nodes?.[id]
+          ?.document;
+        if (doc) return doc as Record<string, unknown>;
+      } catch {
+        // try next variant
+      }
+    }
+    throw new Error(`Figma REST did not return node document for ${params.nodeId}`);
+  }
 }

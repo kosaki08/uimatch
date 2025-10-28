@@ -7,6 +7,7 @@ import { captureTarget, compareImages } from 'uimatch-core';
 import { FigmaRestClient } from '../adapters/figma-rest';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
 import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
+import { buildExpectedSpecFromFigma } from '../expected/from-figma';
 import type { CompareArgs, CompareResult } from '../types/index';
 import { getSettings } from './settings';
 
@@ -171,13 +172,30 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         : undefined),
   });
 
+  // 2.5) Bootstrap expectedSpec from Figma node if requested and none provided
+  let expectedSpec = args.expectedSpec;
+  if (!expectedSpec && (args.bootstrapExpectedFromFigma ?? false)) {
+    if (process.env.FIGMA_ACCESS_TOKEN) {
+      try {
+        const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
+        const nodeJson = await rest.getNode({ fileKey, nodeId });
+        expectedSpec = buildExpectedSpecFromFigma(nodeJson, args.tokens);
+        console.log('[uimatch] expectedSpec bootstrapped from Figma node (robust subset).');
+      } catch (e) {
+        console.warn('[uimatch] bootstrap failed:', (e as Error)?.message ?? String(e));
+      }
+    } else {
+      console.warn('[uimatch] FIGMA_ACCESS_TOKEN is not set; skip expectedSpec bootstrap.');
+    }
+  }
+
   // 3) Image diff with style comparison
   const result: CompareImageResult = compareImages({
     figmaPngB64: figmaPng.toString('base64'),
     implPngB64: cap.implPng.toString('base64'),
     pixelmatch,
     styles: cap.styles,
-    expectedSpec: args.expectedSpec,
+    expectedSpec, // may be undefined → style diffs disabled
     tokens: args.tokens,
     diffOptions: {
       thresholds: {
@@ -229,7 +247,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   // Calculate Design Fidelity Score (0-100) with optional weights
   const weights = {
-    pixel: 1.0,
+    pixel: args.weights?.pixel ?? 1.0,
     color: args.weights?.color ?? 1.0,
     spacing: args.weights?.spacing ?? 1.0,
     radius: args.weights?.radius ?? 1.0,

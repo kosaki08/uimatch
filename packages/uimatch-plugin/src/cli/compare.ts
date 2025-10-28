@@ -25,6 +25,7 @@ interface ParsedArgs {
   overlay?: string;
   jsonOnly?: string;
   verbose?: string;
+  bootstrap?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -130,6 +131,7 @@ function printUsage(): void {
     '  jsonOnly=<bool>         Omit base64 artifacts from JSON (default: true if outDir set)'
   );
   console.error('  verbose=<bool>          Show full URLs and paths (default: false)');
+  console.error('  bootstrap=<bool>        Derive expectedSpec from Figma node (default: false)');
   console.error('');
   console.error('Example:');
   console.error(
@@ -160,6 +162,7 @@ export async function runCompare(argv: string[]): Promise<void> {
       sizeMode?: 'strict' | 'pad' | 'crop' | 'scale';
       align?: 'center' | 'top-left' | 'top' | 'left';
       padColor?: { r: number; g: number; b: number } | 'auto';
+      bootstrapExpectedFromFigma?: boolean;
     } = {
       figma: args.figma,
       story: args.story,
@@ -190,6 +193,10 @@ export async function runCompare(argv: string[]): Promise<void> {
     } else if (args.padColor === 'auto') {
       config.padColor = 'auto';
     }
+
+    // Toggle expectedSpec bootstrap
+    const bootstrap = parseBool(args.bootstrap) ?? false;
+    config.bootstrapExpectedFromFigma = bootstrap;
 
     // Log sanitized inputs
     console.log('[uimatch]', 'mode:', config.sizeMode ?? 'strict');
