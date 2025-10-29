@@ -213,6 +213,16 @@ export interface CompareArgs {
    * @default 'auto'
    */
   padColor?: 'auto' | { r: number; g: number; b: number };
+
+  /**
+   * Content basis mode for calculating pixelDiffRatioContent denominator.
+   * - `union`: Union of both content areas (default, can reach coverage=1.0 easily)
+   * - `intersection`: Intersection only (excludes padding-induced expansion)
+   * - `figma`: Figma's original content area
+   * - `impl`: Implementation's original content area
+   * @default 'union'
+   */
+  contentBasis?: 'union' | 'intersection' | 'figma' | 'impl';
 }
 
 /**

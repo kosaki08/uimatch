@@ -23,6 +23,15 @@ export type SizeMode = 'strict' | 'pad' | 'crop' | 'scale';
 export type ImageAlignment = 'center' | 'top-left' | 'top' | 'left';
 
 /**
+ * Content basis mode for calculating pixel difference ratio denominator.
+ * - `union`: Union of both content areas (current default, can reach coverage=1.0 easily)
+ * - `intersection`: Intersection of both content areas (excludes padding-induced expansion)
+ * - `figma`: Use Figma's original content area only
+ * - `impl`: Use implementation's original content area only
+ */
+export type ContentBasis = 'union' | 'intersection' | 'figma' | 'impl';
+
+/**
  * Color specification for letterbox padding.
  */
 export interface PadColor {
@@ -69,6 +78,16 @@ export interface SizeHandlingOptions {
    * @default 'auto'
    */
   padColor?: 'auto' | PadColor;
+
+  /**
+   * Content basis for calculating pixelDiffRatioContent denominator.
+   * - `union`: Union of both content areas (default for backward compatibility)
+   * - `intersection`: Intersection only (excludes padding-induced expansion)
+   * - `figma`: Figma's original content area
+   * - `impl`: Implementation's original content area
+   * @default 'union'
+   */
+  contentBasis?: ContentBasis;
 }
 
 /**
@@ -236,19 +255,59 @@ function calculateOffset(
 }
 
 /**
+ * Count diff pixels within a specific content area from an existing diff image.
+ * @param diffPng - Diff PNG image (result of pixelmatch)
+ * @param contentRect - Rectangle defining content area {x1, y1, x2, y2}
+ * @param canvasWidth - Canvas width
+ * @returns Number of diff pixels within the content area
+ */
+function countDiffPixelsInRect(
+  diffPng: PNG,
+  contentRect: { x1: number; y1: number; x2: number; y2: number },
+  canvasWidth: number
+): number {
+  let diffCount = 0;
+
+  // Iterate through the content rectangle and count diff pixels
+  for (let y = contentRect.y1; y < contentRect.y2; y++) {
+    for (let x = contentRect.x1; x < contentRect.x2; x++) {
+      const idx = (canvasWidth * y + x) * 4;
+
+      // pixelmatch marks diff pixels with red color (255, 0, 0)
+      // Check if this pixel is marked as different
+      const r = diffPng.data[idx];
+      const g = diffPng.data[idx + 1];
+      const b = diffPng.data[idx + 2];
+
+      if (r === 255 && g === 0 && b === 0) {
+        diffCount++;
+      }
+    }
+  }
+
+  return diffCount;
+}
+
+/**
  * Calculate content area metrics for padded images.
  * @param figmaOriginal - Original Figma dimensions
  * @param implOriginal - Original implementation dimensions
  * @param canvasSize - Padded canvas dimensions
  * @param alignment - Alignment mode used for padding
- * @returns Content pixels (union area) and content coverage ratio
+ * @param basis - Content basis mode for calculating content pixels
+ * @returns Content pixels (based on chosen basis), content coverage ratio, and content rectangle
  */
 function calculateContentMetrics(
   figmaOriginal: { width: number; height: number },
   implOriginal: { width: number; height: number },
   canvasSize: { width: number; height: number },
-  alignment: ImageAlignment
-): { contentPixels: number; contentCoverage: number } {
+  alignment: ImageAlignment,
+  basis: ContentBasis = 'union'
+): {
+  contentPixels: number;
+  contentCoverage: number;
+  contentRect: { x1: number; y1: number; x2: number; y2: number };
+} {
   // Calculate where each original image is positioned on the padded canvas
   const figmaOffset = calculateOffset(figmaOriginal, canvasSize, alignment);
   const implOffset = calculateOffset(implOriginal, canvasSize, alignment);
@@ -268,22 +327,54 @@ function calculateContentMetrics(
     y2: implOffset.y + implOriginal.height,
   };
 
-  // Calculate union of the two rectangles
-  const unionRect = {
-    x1: Math.min(figmaRect.x1, implRect.x1),
-    y1: Math.min(figmaRect.y1, implRect.y1),
-    x2: Math.max(figmaRect.x2, implRect.x2),
-    y2: Math.max(figmaRect.y2, implRect.y2),
-  };
+  let contentPixels: number;
+  let contentRect: { x1: number; y1: number; x2: number; y2: number };
 
-  // Calculate union area
-  const contentPixels = (unionRect.x2 - unionRect.x1) * (unionRect.y2 - unionRect.y1);
+  switch (basis) {
+    case 'union': {
+      // Union of both content areas (original behavior)
+      contentRect = {
+        x1: Math.min(figmaRect.x1, implRect.x1),
+        y1: Math.min(figmaRect.y1, implRect.y1),
+        x2: Math.max(figmaRect.x2, implRect.x2),
+        y2: Math.max(figmaRect.y2, implRect.y2),
+      };
+      contentPixels = (contentRect.x2 - contentRect.x1) * (contentRect.y2 - contentRect.y1);
+      break;
+    }
+    case 'intersection': {
+      // Intersection of both content areas (excludes padding-induced expansion)
+      contentRect = {
+        x1: Math.max(figmaRect.x1, implRect.x1),
+        y1: Math.max(figmaRect.y1, implRect.y1),
+        x2: Math.min(figmaRect.x2, implRect.x2),
+        y2: Math.min(figmaRect.y2, implRect.y2),
+      };
+      // If no intersection, return 0
+      const width = Math.max(0, contentRect.x2 - contentRect.x1);
+      const height = Math.max(0, contentRect.y2 - contentRect.y1);
+      contentPixels = width * height;
+      break;
+    }
+    case 'figma': {
+      // Use Figma's original content area only
+      contentRect = figmaRect;
+      contentPixels = figmaOriginal.width * figmaOriginal.height;
+      break;
+    }
+    case 'impl': {
+      // Use implementation's original content area only
+      contentRect = implRect;
+      contentPixels = implOriginal.width * implOriginal.height;
+      break;
+    }
+  }
 
   // Calculate coverage ratio
   const totalPixels = canvasSize.width * canvasSize.height;
   const contentCoverage = totalPixels > 0 ? contentPixels / totalPixels : 0;
 
-  return { contentPixels, contentCoverage };
+  return { contentPixels, contentCoverage, contentRect };
 }
 
 /**
@@ -429,6 +520,7 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     sizeMode = 'strict',
     align = 'center',
     padColor = 'auto',
+    contentBasis = 'union',
   } = input;
 
   // Decode base64 to Buffer
@@ -558,15 +650,21 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
       originalFigmaDim,
       originalImplDim,
       { width, height },
-      align
+      align,
+      contentBasis
     );
 
     result.contentPixels = contentMetrics.contentPixels;
     result.contentCoverage = contentMetrics.contentCoverage;
 
-    // Calculate content-only pixel diff ratio
+    // Calculate content-only pixel diff ratio by counting diff pixels within content rect
     if (contentMetrics.contentPixels > 0) {
-      result.pixelDiffRatioContent = diffPixelCount / contentMetrics.contentPixels;
+      const diffPixelCountInContent = countDiffPixelsInRect(
+        diff,
+        contentMetrics.contentRect,
+        width
+      );
+      result.pixelDiffRatioContent = diffPixelCountInContent / contentMetrics.contentPixels;
     }
   }
 
