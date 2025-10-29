@@ -20,6 +20,7 @@ interface ParsedArgs {
   size?: string;
   align?: string;
   padColor?: string;
+  contentBasis?: string;
   emitArtifacts?: boolean;
   outDir?: string;
   overlay?: string;
@@ -88,6 +89,19 @@ function parseAlignment(value?: string): 'center' | 'top-left' | 'top' | 'left' 
 }
 
 /**
+ * Parse content basis string
+ */
+function parseContentBasis(
+  value?: string
+): 'union' | 'intersection' | 'figma' | 'impl' | undefined {
+  if (!value) return undefined;
+  if (['union', 'intersection', 'figma', 'impl'].includes(value)) {
+    return value as 'union' | 'intersection' | 'figma' | 'impl';
+  }
+  return undefined;
+}
+
+/**
  * Parse hex color string (#RRGGBB) to RGB
  */
 function parseHexColor(value?: string): { r: number; g: number; b: number } | undefined {
@@ -124,6 +138,9 @@ function printUsage(): void {
   );
   console.error('  padColor=<color>        Padding color (auto|#RRGGBB, default: auto)');
   console.error(
+    '  contentBasis=<mode>     Content area basis (union|intersection|figma|impl, default: union)'
+  );
+  console.error(
     '  outDir=<path>           Save artifacts to directory (default: .uimatch-out/...)'
   );
   console.error(
@@ -139,7 +156,7 @@ function printUsage(): void {
   console.error('');
   console.error('Example:');
   console.error(
-    '  uimatch compare figma=AbCdEf:1-23 story=http://localhost:6006/iframe.html?id=button--default selector="#storybook-root" size=pad outDir=./out'
+    '  uimatch compare figma=AbCdEf:1-23 story=http://localhost:6006/iframe.html?id=button--default selector="#storybook-root" size=pad contentBasis=figma outDir=./out'
   );
 }
 
@@ -166,6 +183,7 @@ export async function runCompare(argv: string[]): Promise<void> {
       sizeMode?: 'strict' | 'pad' | 'crop' | 'scale';
       align?: 'center' | 'top-left' | 'top' | 'left';
       padColor?: { r: number; g: number; b: number } | 'auto';
+      contentBasis?: 'union' | 'intersection' | 'figma' | 'impl';
       bootstrapExpectedFromFigma?: boolean;
       expectedSpec?: Record<string, Record<string, string>>;
     } = {
@@ -204,6 +222,9 @@ export async function runCompare(argv: string[]): Promise<void> {
       config.padColor = 'auto';
     }
 
+    const contentBasis = parseContentBasis(args.contentBasis);
+    if (contentBasis) config.contentBasis = contentBasis;
+
     // Toggle expectedSpec bootstrap
     const bootstrap = parseBool(args.bootstrap) ?? false;
     const saveExpectedPath = args.saveExpected;
@@ -217,7 +238,10 @@ export async function runCompare(argv: string[]): Promise<void> {
         config.expectedSpec = parsed as Record<string, Record<string, string>>;
         if (verbose) console.log(`[uimatch] loaded expectedSpec from ${args.expected}`);
       } catch (e) {
-        console.warn(`Failed to read expectedSpec from ${args.expected}:`, (e as Error)?.message ?? e);
+        console.warn(
+          `Failed to read expectedSpec from ${args.expected}:`,
+          (e as Error)?.message ?? e
+        );
       }
     }
 
