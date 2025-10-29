@@ -132,7 +132,9 @@ export class PlaywrightAdapter implements BrowserAdapter {
     const page = await context.newPage();
     try {
       if (opts.url) {
-        await page.goto(opts.url, { waitUntil: 'networkidle', timeout: 30_000 });
+        const timeout = Number(process.env.UIMATCH_HTTP_TIMEOUT_MS) || 30_000;
+        const waitUntil = (process.env.UIMATCH_WAIT_UNTIL as 'load' | 'networkidle' | 'domcontentloaded') || 'load';
+        await page.goto(opts.url, { waitUntil, timeout });
       } else {
         if (!opts.html) {
           throw new Error('Either url or html must be provided');
