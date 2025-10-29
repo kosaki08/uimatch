@@ -82,6 +82,48 @@ export const ComparisonConfigSchema = z.object({
    * @default 5.0
    */
   acceptanceColorDeltaE: z.number().positive().default(5.0),
+
+  /**
+   * Tolerance ratio for spacing properties (padding, margin)
+   * @default 0.15 (15%)
+   */
+  toleranceSpacing: z.number().nonnegative().default(0.15),
+
+  /**
+   * Tolerance ratio for dimension properties (width, height)
+   * @default 0.05 (5%)
+   */
+  toleranceDimension: z.number().nonnegative().default(0.05),
+
+  /**
+   * Tolerance ratio for gap properties (gap, column-gap, row-gap)
+   * @default 0.1 (10%)
+   */
+  toleranceLayoutGap: z.number().nonnegative().default(0.1),
+
+  /**
+   * Tolerance ratio for border-radius
+   * @default 0.12 (12%)
+   */
+  toleranceRadius: z.number().nonnegative().default(0.12),
+
+  /**
+   * Tolerance ratio for border-width
+   * @default 0.3 (30%)
+   */
+  toleranceBorderWidth: z.number().nonnegative().default(0.3),
+
+  /**
+   * Tolerance ratio for box-shadow blur
+   * @default 0.15 (15%)
+   */
+  toleranceShadowBlur: z.number().nonnegative().default(0.15),
+
+  /**
+   * Extra Delta E tolerance for box-shadow color comparison
+   * @default 1.0
+   */
+  toleranceShadowColorExtraDE: z.number().nonnegative().default(1.0),
 });
 
 /**

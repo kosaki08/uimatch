@@ -24,5 +24,12 @@ export const DEFAULT_CONFIG: AppConfig = {
     colorDeltaEThreshold: 3.0,
     acceptancePixelDiffRatio: 0.01,
     acceptanceColorDeltaE: 5.0,
+    toleranceSpacing: 0.15,
+    toleranceDimension: 0.05,
+    toleranceLayoutGap: 0.1,
+    toleranceRadius: 0.12,
+    toleranceBorderWidth: 0.3,
+    toleranceShadowBlur: 0.15,
+    toleranceShadowColorExtraDE: 1.0,
   },
 };
