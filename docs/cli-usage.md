@@ -12,7 +12,7 @@ Compare Figma design with implementation using UIMatch Core.
 ### Basic Usage
 
 ```bash
-bun run packages/uimatch-plugin/src/cli/compare.ts \
+bun run uimatch:compare -- \
   figma=<FILE:NODE> \
   story=<URL> \
   selector=<CSS_SELECTOR> \
@@ -37,6 +37,7 @@ bun run packages/uimatch-plugin/src/cli/compare.ts \
 ### Environment Variables
 
 Required in `.env`:
+
 ```bash
 FIGMA_ACCESS_TOKEN=figd_xxx  # Figma Personal Access Token
 ```
@@ -44,7 +45,7 @@ FIGMA_ACCESS_TOKEN=figd_xxx  # Figma Personal Access Token
 ### Example
 
 ```bash
-bun run packages/uimatch-plugin/src/cli/compare.ts \
+bun run uimatch:compare -- \
   figma="eUyFpkxbluuyFVn0mAmJSB:13-1023" \
   story="http://localhost:3000" \
   selector="main > div > div:nth-child(2)" \
@@ -57,6 +58,7 @@ bun run packages/uimatch-plugin/src/cli/compare.ts \
 ### Output
 
 Generates artifacts in `outDir`:
+
 - `figma.png` - Figma design screenshot
 - `impl.png` - Implementation screenshot
 - `diff.png` - Visual diff with red highlights
@@ -115,6 +117,7 @@ bun run packages/uimatch-plugin/src/cli/suite.ts \
 ### Output
 
 Generates directory per item with:
+
 - `figma.png`, `impl.png`, `diff.png` - Visual artifacts
 - `report.json` - Detailed metrics
 - `suite-report.json` - Overall summary (in outDir root)

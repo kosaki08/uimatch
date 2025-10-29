@@ -7,9 +7,10 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { uiMatchCompare } from '../commands/compare.js';
+import type { CompareArgs } from '../types/index.js';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '../utils/sanitize.js';
 
-interface ParsedArgs {
+export interface ParsedArgs {
   figma?: string;
   story?: string;
   selector?: string;
@@ -141,16 +142,16 @@ function printUsage(): void {
     '  contentBasis=<mode>     Content area basis (union|intersection|figma|impl, default: union)'
   );
   console.error(
-    '  outDir=<path>           Save artifacts to directory (default: .uimatch-out/...)'
+    '  outDir=<path>           Save artifacts to directory (auto-enables emitArtifacts)'
   );
   console.error(
     '  overlay=<bool>          Save overlay.png (impl + red highlights, default: false)'
   );
   console.error(
-    '  jsonOnly=<bool>         Omit base64 artifacts from JSON (default: true if outDir set)'
+    '  jsonOnly=<bool>         Omit base64 artifacts from JSON (default: true when outDir set)'
   );
   console.error('  verbose=<bool>          Show full URLs and paths (default: false)');
-  console.error('  bootstrap=<bool>        Derive expectedSpec from Figma node (default: false)');
+  console.error('  bootstrap=<bool>        Derive expectedSpec from Figma node (default: true)');
   console.error('  expected=<path>         Load expectedSpec JSON and use it for style diffs');
   console.error('  saveExpected=<path>     If bootstrapped, save expectedSpec JSON to this path');
   console.error('');
@@ -158,6 +159,75 @@ function printUsage(): void {
   console.error(
     '  uimatch compare figma=AbCdEf:1-23 story=http://localhost:6006/iframe.html?id=button--default selector="#storybook-root" size=pad contentBasis=figma outDir=./out'
   );
+}
+
+/**
+ * Build CompareArgs configuration from parsed CLI arguments.
+ * This function encapsulates the configuration building logic for testability.
+ *
+ * Key behaviors:
+ * - outDir auto-enables emitArtifacts
+ * - detectStorybookIframe auto-defaults based on URL pattern
+ * - All optional parameters are conditionally added
+ */
+export function buildCompareConfig(args: ParsedArgs): CompareArgs {
+  // Validate required parameters
+  if (!args.figma) {
+    throw new Error('Missing required parameter: figma');
+  }
+  if (!args.story) {
+    throw new Error('Missing required parameter: story');
+  }
+  if (!args.selector) {
+    throw new Error('Missing required parameter: selector');
+  }
+
+  const config: CompareArgs = {
+    figma: args.figma,
+    story: args.story,
+    selector: args.selector,
+    // Auto-enable emitArtifacts when outDir is specified
+    emitArtifacts: Boolean(args.emitArtifacts || args.outDir),
+  };
+
+  const viewport = parseViewport(args.viewport);
+  if (viewport) config.viewport = viewport;
+
+  if (args.dpr) {
+    const dprValue = parseFloat(args.dpr);
+    if (!Number.isNaN(dprValue)) config.dpr = dprValue;
+  }
+
+  const detectIframeFlag = parseBool(args.detectStorybookIframe) ?? parseBool(args.iframe);
+  if (detectIframeFlag !== undefined) {
+    config.detectStorybookIframe = detectIframeFlag;
+  } else {
+    // Auto-default: only enable iframe detection when the URL looks like Storybook.
+    config.detectStorybookIframe = /\/iframe\.html(\?|$)/.test(args.story);
+  }
+
+  const sizeMode = parseSizeMode(args.size);
+  if (sizeMode) config.sizeMode = sizeMode;
+
+  const align = parseAlignment(args.align);
+  if (align) config.align = align;
+
+  const padColor = parseHexColor(args.padColor);
+  if (padColor) {
+    config.padColor = padColor;
+  } else if (args.padColor === 'auto') {
+    config.padColor = 'auto';
+  }
+
+  const contentBasis = parseContentBasis(args.contentBasis);
+  if (contentBasis) config.contentBasis = contentBasis;
+
+  // Default to true for accurate DFS with style comparison
+  // Without expectedSpec: styleDiffs=[], no style penalty (-20pts), DFS may be misleadingly high
+  const bootstrap = parseBool(args.bootstrap) ?? true;
+  config.bootstrapExpectedFromFigma = bootstrap;
+
+  return config;
 }
 
 export async function runCompare(argv: string[]): Promise<void> {
@@ -171,64 +241,9 @@ export async function runCompare(argv: string[]): Promise<void> {
   const verbose = parseBool(args.verbose) ?? false;
 
   try {
-    // Build configuration
-    const config: {
-      figma: string;
-      story: string;
-      selector: string;
-      emitArtifacts: boolean;
-      viewport?: { width: number; height: number };
-      dpr?: number;
-      detectStorybookIframe?: boolean;
-      sizeMode?: 'strict' | 'pad' | 'crop' | 'scale';
-      align?: 'center' | 'top-left' | 'top' | 'left';
-      padColor?: { r: number; g: number; b: number } | 'auto';
-      contentBasis?: 'union' | 'intersection' | 'figma' | 'impl';
-      bootstrapExpectedFromFigma?: boolean;
-      expectedSpec?: Record<string, Record<string, string>>;
-    } = {
-      figma: args.figma,
-      story: args.story,
-      selector: args.selector,
-      emitArtifacts: Boolean(args.emitArtifacts || args.outDir),
-    };
-
-    const viewport = parseViewport(args.viewport);
-    if (viewport) config.viewport = viewport;
-
-    if (args.dpr) {
-      const dprValue = parseFloat(args.dpr);
-      if (!Number.isNaN(dprValue)) config.dpr = dprValue;
-    }
-
-    const detectIframeFlag = parseBool(args.detectStorybookIframe) ?? parseBool(args.iframe);
-    if (detectIframeFlag !== undefined) {
-      config.detectStorybookIframe = detectIframeFlag;
-    } else {
-      // Auto-default: only enable iframe detection when the URL looks like Storybook.
-      config.detectStorybookIframe = /\/iframe\.html(\?|$)/.test(args.story);
-    }
-
-    const sizeMode = parseSizeMode(args.size);
-    if (sizeMode) config.sizeMode = sizeMode;
-
-    const align = parseAlignment(args.align);
-    if (align) config.align = align;
-
-    const padColor = parseHexColor(args.padColor);
-    if (padColor) {
-      config.padColor = padColor;
-    } else if (args.padColor === 'auto') {
-      config.padColor = 'auto';
-    }
-
-    const contentBasis = parseContentBasis(args.contentBasis);
-    if (contentBasis) config.contentBasis = contentBasis;
-
-    // Toggle expectedSpec bootstrap
-    const bootstrap = parseBool(args.bootstrap) ?? false;
+    // Build configuration using extracted function
+    const config = buildCompareConfig(args);
     const saveExpectedPath = args.saveExpected;
-    config.bootstrapExpectedFromFigma = bootstrap;
 
     // Load expectedSpec from file if provided.
     if (args.expected) {
@@ -255,7 +270,7 @@ export async function runCompare(argv: string[]): Promise<void> {
     const result = await uiMatchCompare(config);
 
     // Persist bootstrapped expectedSpec if requested
-    if (bootstrap && saveExpectedPath) {
+    if (config.bootstrapExpectedFromFigma && saveExpectedPath) {
       // The compare command doesn't return expectedSpec directly; reconstruct it
       // from quality report when possible. If unavailable, re-bootstrap here as a fallback.
       try {
@@ -279,37 +294,46 @@ export async function runCompare(argv: string[]): Promise<void> {
     }
 
     // Save artifacts if outDir specified
-    if (args.outDir && result.report.artifacts) {
-      const outDir = join(process.cwd(), args.outDir);
-      await mkdir(outDir, { recursive: true });
+    if (args.outDir) {
+      if (!result.report.artifacts) {
+        // This should never happen if emitArtifacts auto-enable worked correctly
+        console.warn('⚠️  Warning: outDir specified but artifacts missing in report');
+        console.warn('   Possible causes:');
+        console.warn('   - emitArtifacts was not auto-enabled (check config builder)');
+        console.warn('   - Compare function did not generate artifacts despite emitArtifacts=true');
+        console.warn('   Skipping artifact save to disk.');
+      } else {
+        const outDir = join(process.cwd(), args.outDir);
+        await mkdir(outDir, { recursive: true });
 
-      const { figmaPngB64, implPngB64, diffPngB64 } = result.report.artifacts;
+        const { figmaPngB64, implPngB64, diffPngB64 } = result.report.artifacts;
 
-      await Bun.write(join(outDir, 'figma.png'), Buffer.from(figmaPngB64, 'base64'));
-      await Bun.write(join(outDir, 'impl.png'), Buffer.from(implPngB64, 'base64'));
-      await Bun.write(join(outDir, 'diff.png'), Buffer.from(diffPngB64, 'base64'));
+        await Bun.write(join(outDir, 'figma.png'), Buffer.from(figmaPngB64, 'base64'));
+        await Bun.write(join(outDir, 'impl.png'), Buffer.from(implPngB64, 'base64'));
+        await Bun.write(join(outDir, 'diff.png'), Buffer.from(diffPngB64, 'base64'));
 
-      // Save overlay if requested
-      const saveOverlay = parseBool(args.overlay) ?? false;
-      if (saveOverlay) {
-        // Generate overlay: impl + red highlights from diff
-        // This is a simplified version - full implementation would composite properly
-        await Bun.write(join(outDir, 'overlay.png'), Buffer.from(diffPngB64, 'base64'));
+        // Save overlay if requested
+        const saveOverlay = parseBool(args.overlay) ?? false;
+        if (saveOverlay) {
+          // Generate overlay: impl + red highlights from diff
+          // This is a simplified version - full implementation would composite properly
+          await Bun.write(join(outDir, 'overlay.png'), Buffer.from(diffPngB64, 'base64'));
+        }
+
+        // Save report (without base64 by default)
+        const jsonOnly = parseBool(args.jsonOnly) ?? true;
+        const reportToSave = jsonOnly ? { ...result.report, artifacts: undefined } : result.report;
+        await Bun.write(join(outDir, 'report.json'), JSON.stringify(reportToSave, null, 2));
+
+        const relativeOut = relativizePath(outDir);
+        console.log(`✅ Artifacts saved → ${relativeOut}/`);
+        console.log('   - figma.png');
+        console.log('   - impl.png');
+        console.log('   - diff.png');
+        if (saveOverlay) console.log('   - overlay.png');
+        console.log('   - report.json');
+        console.log('');
       }
-
-      // Save report (without base64 by default)
-      const jsonOnly = parseBool(args.jsonOnly) ?? true;
-      const reportToSave = jsonOnly ? { ...result.report, artifacts: undefined } : result.report;
-      await Bun.write(join(outDir, 'report.json'), JSON.stringify(reportToSave, null, 2));
-
-      const relativeOut = relativizePath(outDir);
-      console.log(`✅ Artifacts saved → ${relativeOut}/`);
-      console.log('   - figma.png');
-      console.log('   - impl.png');
-      console.log('   - diff.png');
-      if (saveOverlay) console.log('   - overlay.png');
-      console.log('   - report.json');
-      console.log('');
     }
 
     console.log(result.summary);

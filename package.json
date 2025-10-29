@@ -26,7 +26,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "uimatch:current": "bun run scripts/uimatch-current.ts",
-    "uimatch:compare": "bun run scripts/uimatch-compare.ts",
+    "uimatch:compare": "bun run packages/uimatch-plugin/src/cli/index.ts compare",
     "uimatch:loop": "bun run scripts/uimatch-loop.ts",
     "uimatch:settings": "bun run scripts/uimatch-settings.ts"
   },

@@ -133,7 +133,8 @@ export class PlaywrightAdapter implements BrowserAdapter {
     try {
       if (opts.url) {
         const timeout = Number(process.env.UIMATCH_HTTP_TIMEOUT_MS) || 30_000;
-        const waitUntil = (process.env.UIMATCH_WAIT_UNTIL as 'load' | 'networkidle' | 'domcontentloaded') || 'load';
+        const waitUntil =
+          (process.env.UIMATCH_WAIT_UNTIL as 'load' | 'networkidle' | 'domcontentloaded') || 'load';
         await page.goto(opts.url, { waitUntil, timeout });
       } else {
         if (!opts.html) {
