@@ -84,17 +84,25 @@ function pruneStyleDiffs(
 }
 
 /**
- * Compares a Figma design with a live implementation.
+ * Compares Figma design with implementation.
+ *
+ * Two-layer comparison:
+ * - (A) Pixel: Always executed
+ * - (B) Style: Only when `expectedSpec` provided
+ *
+ * ⚠️ Without expectedSpec: styleDiffs=[], no style penalty (-20pts), DFS may be misleadingly high
  *
  * @param args - Comparison parameters
- * @returns Summary string and detailed comparison report
+ * @returns Summary and detailed report
  *
  * @example
  * ```typescript
- * const result = await uiMatchCompare({
+ * // Recommended: with style comparison
+ * await uiMatchCompare({
  *   figma: 'abc123:1-2',
  *   story: 'http://localhost:6006/?path=/story/button',
  *   selector: '#root button',
+ *   bootstrapExpectedFromFigma: true, // Auto-generate expectedSpec
  * });
  * ```
  */
@@ -263,6 +271,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     sizeMode: args.sizeMode,
     align: args.align,
     padColor: args.padColor,
+    contentBasis: args.contentBasis,
   });
 
   // 3.5) Filter style diffs to show only properties with actual differences
@@ -274,6 +283,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   // 4) Calculate metrics and quality gate
   const colorDeltaEAvg = result.colorDeltaEAvg ?? 0;
   const styleDiffs = result.styleDiffs ?? [];
+  // Note: false if no expectedSpec → no style penalty (-20pts) applied
   const hasHighSeverity = styleDiffs.some((d: { severity: string }) => d.severity === 'high');
 
   // Quality gate evaluation using settings
@@ -322,8 +332,23 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   // 0 ΔE = 0 penalty, 10+ ΔE = -30 penalty
   dfs -= Math.min(colorDeltaEAvg / 10, 1) * 30 * weights.color;
 
+  // Size mismatch penalty (up to -15 points)
+  // When dimensions differ and required padding/cropping (adjusted=true),
+  // penalize based on relative area difference to reflect layout discrepancies.
+  // This addresses cases where most pixels match but fundamental layout differs.
+  if (result.dimensions.adjusted) {
+    const figmaDim = result.dimensions.figma;
+    const implDim = result.dimensions.impl;
+    const areaFigma = figmaDim.width * figmaDim.height;
+    const areaImpl = implDim.width * implDim.height;
+    const areaGap = Math.abs(areaFigma - areaImpl) / Math.max(areaFigma, areaImpl); // 0..1
+    // Apply up to 15 points penalty, scaled by area difference (20 max * 0.75 cap)
+    const sizePenalty = Math.min(15, Math.round(areaGap * 20));
+    dfs -= sizePenalty;
+  }
+
   // High severity style diff penalty (-20 points)
-  // Apply maximum weight from all categories for severity penalty
+  // Only applies when expectedSpec provided and high-severity diffs detected
   if (hasHighSeverity) {
     const maxWeight = Math.max(
       weights.color,
