@@ -232,9 +232,15 @@ export function buildStyleDiffs(
     // colors (color, background-color, border-color)
     (['color', 'background-color', 'border-color'] as const).forEach((p) => {
       consider(p, () => {
-        const aRgb = parseCssColorToRgb(props[p]);
+        let aRgb = parseCssColorToRgb(props[p]);
         const ref = exp[p];
         if (!aRgb || !ref) return { ok: true };
+
+        // Flatten fully transparent background-color to white (consistent with image rendering)
+        if (p === 'background-color' && typeof aRgb.a === 'number' && aRgb.a <= 0.001) {
+          aRgb = { r: 255, g: 255, b: 255 };
+        }
+
         let expectedToken: string | undefined;
         let eRgb: RGB | undefined = parseCssColorToRgb(ref);
 
