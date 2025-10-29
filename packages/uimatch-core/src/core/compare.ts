@@ -2,7 +2,7 @@ import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import type { ExpectedSpec, StyleDiff, TokenMap } from '../types/index';
 import { parseCssColorToRgb } from '../utils/normalize';
-import { buildStyleDiffs, type DiffOptions } from './diff';
+import { buildStyleDiffs, calculateStyleFidelityScore, type DiffOptions } from './diff';
 
 /**
  * Size mode for handling dimension mismatches.
@@ -122,6 +122,21 @@ export interface CompareImageInput extends SizeHandlingOptions {
   expectedSpec?: ExpectedSpec;
 
   /**
+   * DOM element metadata (optional).
+   * Used to enrich style diffs with precise CSS selectors.
+   */
+  meta?: Record<
+    string,
+    {
+      tag: string;
+      id?: string;
+      class?: string;
+      testid?: string;
+      cssSelector?: string;
+    }
+  >;
+
+  /**
    * Token map for design tokens (optional).
    */
   tokens?: TokenMap;
@@ -219,6 +234,12 @@ export interface CompareImageResult {
    * Average color delta E (if style differences were calculated).
    */
   colorDeltaEAvg?: number;
+
+  /**
+   * Style Fidelity Score (0-100, where 100 = perfect fidelity).
+   * Calculated from normalized style differences across all categories.
+   */
+  styleFidelityScore?: number;
 }
 
 /**
@@ -673,6 +694,7 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     const styleDiffs = buildStyleDiffs(styles, expectedSpec, {
       ...diffOptions,
       tokens,
+      meta: input.meta,
     });
 
     result.styleDiffs = styleDiffs;
@@ -691,6 +713,9 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     if (colorDeltas.length > 0) {
       result.colorDeltaEAvg = colorDeltas.reduce((sum, d) => sum + d, 0) / colorDeltas.length;
     }
+
+    // Calculate Style Fidelity Score
+    result.styleFidelityScore = calculateStyleFidelityScore(styleDiffs, diffOptions?.weights);
   }
 
   return result;

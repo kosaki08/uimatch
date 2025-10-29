@@ -60,6 +60,16 @@ export interface DiffOptions {
     Record<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography', number>
   >;
   tokens?: TokenMap;
+  meta?: Record<
+    string,
+    {
+      tag: string;
+      id?: string;
+      class?: string;
+      testid?: string;
+      cssSelector?: string;
+    }
+  >;
 }
 
 /**
@@ -532,7 +542,7 @@ export function buildStyleDiffs(
     });
 
     // Generate patch hints
-    const patchHints = generatePatchHints(propDiffs);
+    const patchHints = generatePatchHints(propDiffs, sel, opts.meta?.[sel]);
 
     diffs.push({
       path: sel === '__self__' ? 'self' : sel,
@@ -540,6 +550,7 @@ export function buildStyleDiffs(
       properties: propDiffs,
       severity,
       patchHints,
+      meta: opts.meta?.[sel],
     });
   }
 
@@ -547,8 +558,19 @@ export function buildStyleDiffs(
 }
 
 /**
+ * Convert CSS property name to camelCase for inline styles
+ * @param prop CSS property name (e.g., 'font-size')
+ * @returns camelCase property name (e.g., 'fontSize')
+ */
+function toCamelCase(prop: string): string {
+  return prop.replace(/-([a-z])/g, (_, letter) => (letter as string).toUpperCase());
+}
+
+/**
  * Generate patch hints for style differences
  * @param propDiffs Property-level differences
+ * @param selector CSS selector for the element
+ * @param meta DOM metadata for the element
  * @returns Array of patch hints
  */
 function generatePatchHints(
@@ -561,9 +583,20 @@ function generatePatchHints(
       delta?: number;
       unit?: string;
     }
-  >
+  >,
+  selector: string,
+  meta?: {
+    tag: string;
+    id?: string;
+    class?: string;
+    testid?: string;
+    cssSelector?: string;
+  }
 ): PatchHint[] {
   const hints: PatchHint[] = [];
+
+  // Use cssSelector from meta if available, otherwise use raw selector
+  const cssSelector = meta?.cssSelector || selector;
 
   for (const [prop, diff] of Object.entries(propDiffs)) {
     // Exclude auxiliary properties from patch hints
@@ -580,25 +613,130 @@ function generatePatchHints(
       if (Math.abs(diff.delta) > 8) severity = 'high';
     }
 
-    // Color properties with token
+    // Determine suggested value (prefer token for colors)
+    let suggestedValue = diff.expected;
     if (diff.expectedToken && ['color', 'background-color', 'border-color'].includes(prop)) {
-      hints.push({
-        property: prop,
-        suggestedValue: `var(${diff.expectedToken})`,
-        severity,
-      });
-      continue;
+      suggestedValue = `var(${diff.expectedToken})`;
     }
 
-    // Generic hint
-    if (diff.expected) {
-      hints.push({
-        property: prop,
-        suggestedValue: diff.expected,
-        severity,
-      });
-    }
+    // Generate code examples
+    const cssExample = `${cssSelector} { ${prop}: ${suggestedValue}; }`;
+    const inlineExample = `${toCamelCase(prop)}: '${suggestedValue}'`;
+
+    // Basic Tailwind mapping (limited to common cases)
+    const tailwindExample: string | null = null;
+    // Note: Only provide Tailwind examples for basic cases to avoid incorrect suggestions
+    // For complex properties or when uncertain, leave as null
+
+    hints.push({
+      property: prop,
+      suggestedValue,
+      severity,
+      codeExample: {
+        css: cssExample,
+        tailwind: tailwindExample,
+        inline: inlineExample,
+      },
+    });
   }
 
   return hints;
+}
+
+/**
+ * Calculate Style Fidelity Score (SFS) from style differences.
+ * Returns a score from 0-100 where 100 means perfect fidelity.
+ *
+ * @param styleDiffs Array of style differences
+ * @param weights Category weights (defaults to equal weighting)
+ * @returns SFS score (0-100)
+ */
+export function calculateStyleFidelityScore(
+  styleDiffs: StyleDiff[],
+  weights?: Partial<
+    Record<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography', number>
+  >
+): number {
+  if (styleDiffs.length === 0) return 100;
+
+  // Default weights (equal)
+  const defaultWeights = {
+    color: 1,
+    spacing: 1,
+    radius: 1,
+    border: 1,
+    shadow: 1,
+    typography: 1,
+  };
+  const w = { ...defaultWeights, ...weights };
+
+  // Normalize each property difference to 0-1 scale
+  const normalizedDiffs: { value: number; category: string }[] = [];
+
+  for (const diff of styleDiffs) {
+    for (const [prop, propDiff] of Object.entries(diff.properties)) {
+      if (propDiff.delta == null) continue;
+
+      // Determine category
+      let category: string;
+      if (
+        /^font-/.test(prop) ||
+        prop === 'line-height' ||
+        prop === 'font-weight' ||
+        prop === 'letter-spacing'
+      ) {
+        category = 'typography';
+      } else if (prop === 'color' || prop === 'background-color' || prop === 'border-color') {
+        category = 'color';
+      } else if (prop === 'border-radius') {
+        category = 'radius';
+      } else if (prop === 'border-width') {
+        category = 'border';
+      } else if (prop === 'box-shadow') {
+        category = 'shadow';
+      } else if (
+        prop.startsWith('padding') ||
+        prop.startsWith('margin') ||
+        prop === 'gap' ||
+        prop === 'column-gap' ||
+        prop === 'row-gap'
+      ) {
+        category = 'spacing';
+      } else {
+        category = 'typography'; // default
+      }
+
+      // Normalize delta to 0-1 scale based on unit
+      let normalized: number;
+      if (propDiff.unit === 'ΔE') {
+        // Color delta E: 0-10 scale, clamp to 1.0
+        normalized = Math.min(1, Math.abs(propDiff.delta) / 10);
+      } else if (propDiff.unit === 'px') {
+        // Pixel difference: normalize by 16px (1rem), clamp to 1.0
+        normalized = Math.min(1, Math.abs(propDiff.delta) / 16);
+      } else {
+        // Other units: assume already in reasonable scale
+        normalized = Math.min(1, Math.abs(propDiff.delta));
+      }
+
+      normalizedDiffs.push({ value: normalized, category });
+    }
+  }
+
+  if (normalizedDiffs.length === 0) return 100;
+
+  // Calculate weighted average
+  let totalWeight = 0;
+  let weightedSum = 0;
+
+  for (const diff of normalizedDiffs) {
+    const weight = w[diff.category as keyof typeof w] ?? 1;
+    weightedSum += diff.value * weight;
+    totalWeight += weight;
+  }
+
+  const avgDiff = totalWeight > 0 ? weightedSum / totalWeight : 0;
+
+  // Convert to 0-100 score (100 = perfect, 0 = completely different)
+  return Math.round(100 * (1 - avgDiff));
 }

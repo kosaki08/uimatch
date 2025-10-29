@@ -226,14 +226,21 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
       const implPng = await locator.screenshot({ type: 'png' });
 
-      // Extract computed styles from the element and its children
+      // Extract computed styles and DOM metadata from the element and its children
       type StyleEvalArg = { max: number; props: string[] };
-      type StyleEvalRet = Record<string, Record<string, string>>;
+      type StyleEvalRet = {
+        styles: Record<string, Record<string, string>>;
+        meta: Record<
+          string,
+          { tag: string; id?: string; class?: string; testid?: string; cssSelector?: string }
+        >;
+      };
 
-      const styles = await locator.evaluate<StyleEvalRet, StyleEvalArg>(
+      const { styles, meta } = await locator.evaluate<StyleEvalRet, StyleEvalArg>(
         (root, arg) => {
           const { max, props } = arg;
 
+          // Extract computed styles for an element
           const toRec = (el: Element): Record<string, string> => {
             const st = globalThis.getComputedStyle(el);
             const out: Record<string, string> = {};
@@ -245,10 +252,46 @@ export class PlaywrightAdapter implements BrowserAdapter {
             return out;
           };
 
-          const base = root as Element;
-          const result: Record<string, Record<string, string>> = {};
-          result['__self__'] = toRec(base);
+          // Extract DOM metadata for an element
+          const getMeta = (el: Element) => {
+            const htmlEl = el as HTMLElement;
+            const testid = htmlEl.dataset?.testid;
 
+            // Generate CSS selector (prefer data-testid, fallback to tag.class#id)
+            let cssSelector: string;
+            if (testid) {
+              cssSelector = `[data-testid="${testid}"]`;
+            } else {
+              const tag = htmlEl.tagName.toLowerCase();
+              const id = htmlEl.id ? `#${htmlEl.id}` : '';
+              const classes =
+                htmlEl.className && typeof htmlEl.className === 'string'
+                  ? `.${htmlEl.className.trim().split(/\s+/).join('.')}`
+                  : '';
+              cssSelector = `${tag}${id}${classes}`;
+            }
+
+            return {
+              tag: htmlEl.tagName.toLowerCase(),
+              id: htmlEl.id || undefined,
+              class: htmlEl.className || undefined,
+              testid,
+              cssSelector,
+            };
+          };
+
+          const base = root as Element;
+          const stylesResult: Record<string, Record<string, string>> = {};
+          const metaResult: Record<
+            string,
+            { tag: string; id?: string; class?: string; testid?: string; cssSelector?: string }
+          > = {};
+
+          // Process root element
+          stylesResult['__self__'] = toRec(base);
+          metaResult['__self__'] = getMeta(base);
+
+          // Process children (prefer data-testid elements)
           const testsNodeList = base.querySelectorAll('[data-testid]');
           const tests = Array.from(testsNodeList);
           const allChildren = Array.from(base.querySelectorAll('*'));
@@ -260,9 +303,11 @@ export class PlaywrightAdapter implements BrowserAdapter {
             const htmlEl = el as HTMLElement;
             const testid = htmlEl.dataset?.testid;
             const key = testid ? `[data-testid="${testid}"]` : `:nth-child(${i + 1})`;
-            result[key] = toRec(el);
+            stylesResult[key] = toRec(el);
+            metaResult[key] = getMeta(el);
           }
-          return result;
+
+          return { styles: stylesResult, meta: metaResult };
         },
         { max: opts.maxChildren ?? 24, props: Array.from(DEFAULT_PROPS) as string[] }
       );
@@ -275,7 +320,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
           await browser.close();
         }
       }
-      return { implPng: Buffer.from(implPng), styles, box };
+      return { implPng: Buffer.from(implPng), styles, box, meta };
     } catch (e) {
       // Safe cleanup: check existence and wrap in try-catch to prevent secondary exceptions
       try {
