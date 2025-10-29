@@ -250,6 +250,34 @@ export interface StyleSummary {
 }
 
 /**
+ * Actionable step for fixing style differences
+ */
+export interface ActionableStep {
+  /** Step number (1-indexed) */
+  step: number;
+  /** Priority based on severity */
+  priority: 'high' | 'medium' | 'low';
+  /** CSS selector for the element */
+  selector: string;
+  /** DOM metadata for precise targeting */
+  meta?: {
+    tag: string;
+    id?: string;
+    class?: string;
+    testid?: string;
+    cssSelector?: string;
+  };
+  /** CSS property changes to apply */
+  cssChanges: Record<string, string>;
+  /** Code examples in different styling approaches */
+  codeExample: {
+    css: string;
+    tailwind?: string | null;
+    inline: string;
+  };
+}
+
+/**
  * Comparison result
  */
 export interface CompareResult {
@@ -262,6 +290,7 @@ export interface CompareResult {
       contentPixels?: number;
       colorDeltaEAvg: number;
       dfs: number;
+      styleFidelityScore?: number;
     };
     dimensions?: {
       figma: { width: number; height: number };
@@ -272,6 +301,8 @@ export interface CompareResult {
     };
     styleDiffs: StyleDiff[];
     styleSummary?: StyleSummary;
+    /** Actionable steps for fixing style differences (sorted by priority) */
+    actionableSteps?: ActionableStep[];
     qualityGate?: {
       /**
        * Whether the implementation passes the quality gate.

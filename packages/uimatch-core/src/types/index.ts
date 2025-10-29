@@ -1,4 +1,4 @@
-export type { BrowserAdapter, CaptureOptions, CaptureResult } from './adapters';
+export type { BrowserAdapter, CaptureOptions, CaptureResult, ElementMeta } from './adapters';
 export { createCaptureError, createComparisonError, createConfigError } from './errors';
 export type { AppError, BaseError, CaptureError, ComparisonError, ConfigError } from './errors';
 export {
@@ -105,6 +105,26 @@ export interface StyleDiff {
   severity: 'low' | 'medium' | 'high';
   /** Patch hints for fixing the differences */
   patchHints?: PatchHint[];
+  /** DOM element metadata for generating precise selectors */
+  meta?: {
+    tag: string;
+    id?: string;
+    class?: string;
+    testid?: string;
+    cssSelector?: string;
+  };
+}
+
+/**
+ * Code examples in different styling approaches
+ */
+export interface CodeExample {
+  /** Plain CSS (e.g., "selector { property: value; }") */
+  css: string;
+  /** Tailwind CSS classes (if applicable) */
+  tailwind?: string | null;
+  /** Inline style object (e.g., React style prop) */
+  inline: string;
 }
 
 /**
@@ -121,4 +141,6 @@ export interface PatchHint {
   line?: number;
   /** Severity of the issue */
   severity: 'low' | 'medium' | 'high';
+  /** Code examples in different styling approaches */
+  codeExample?: CodeExample;
 }

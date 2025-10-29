@@ -70,6 +70,22 @@ export interface CaptureOptions {
 }
 
 /**
+ * DOM element metadata for generating precise selectors.
+ */
+export interface ElementMeta {
+  /** HTML tag name (e.g., 'button', 'div') */
+  tag: string;
+  /** Element ID attribute (if present) */
+  id?: string;
+  /** Element class names (if present) */
+  class?: string;
+  /** data-testid attribute (if present) */
+  testid?: string;
+  /** Generated CSS selector for this element */
+  cssSelector?: string;
+}
+
+/**
  * Result of capturing a web page element.
  */
 export interface CaptureResult {
@@ -88,6 +104,12 @@ export interface CaptureResult {
    * Bounding box of the captured element.
    */
   box: { x: number; y: number; width: number; height: number };
+
+  /**
+   * DOM element metadata keyed by selector.
+   * Provides additional context for generating precise CSS selectors and code examples.
+   */
+  meta?: Record<string, ElementMeta>;
 }
 
 /**
