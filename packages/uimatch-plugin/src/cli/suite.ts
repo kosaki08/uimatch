@@ -19,6 +19,7 @@ type SuiteItem = {
   size?: 'strict' | 'pad' | 'crop' | 'scale';
   align?: 'center' | 'top-left' | 'top' | 'left';
   padColor?: 'auto' | { r: number; g: number; b: number };
+  contentBasis?: 'union' | 'intersection' | 'figma' | 'impl';
   thresholds?: Record<string, number>;
   pixelmatch?: { threshold?: number; includeAA?: boolean };
   tokens?: Record<string, Record<string, string>>;
@@ -89,6 +90,7 @@ function mergeItem(defaults: Partial<SuiteItem> | undefined, item: SuiteItem): S
     pixelmatch: { ...(defaults?.pixelmatch ?? {}), ...(item.pixelmatch ?? {}) },
     weights: { ...(defaults?.weights ?? {}), ...(item.weights ?? {}) },
     ignore: item.ignore ?? defaults?.ignore,
+    contentBasis: item.contentBasis ?? defaults?.contentBasis,
   };
 }
 
@@ -138,6 +140,13 @@ export async function runSuite(argv: string[]): Promise<void> {
       }
 
       try {
+        const sizeMode = item.size ?? 'pad';
+
+        // Smart defaults: when pad mode is used, prefer intersection + top-left
+        // to reduce noise from asymmetric padding (common in page vs component comparisons)
+        const align = item.align ?? (sizeMode === 'pad' ? 'top-left' : 'center');
+        const contentBasis = item.contentBasis ?? (sizeMode === 'pad' ? 'intersection' : 'union');
+
         const res = await uiMatchCompare({
           figma: item.figma,
           story: item.story,
@@ -146,9 +155,10 @@ export async function runSuite(argv: string[]): Promise<void> {
           dpr: item.dpr,
           detectStorybookIframe:
             item.detectStorybookIframe ?? /\/iframe\.html(\?|$)/.test(item.story),
-          sizeMode: item.size ?? 'pad',
-          align: item.align ?? 'top-left',
+          sizeMode,
+          align,
           padColor: item.padColor ?? 'auto',
+          contentBasis,
           thresholds: item.thresholds,
           pixelmatch: item.pixelmatch,
           tokens: item.tokens,

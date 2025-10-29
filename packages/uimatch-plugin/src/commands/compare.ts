@@ -384,6 +384,26 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   const summary = summaryParts.join(' | ');
 
+  // Calculate Style Fidelity Score (SFS) if style diffs exist
+  let styleSummary: CompareResult['report']['styleSummary'];
+  if (styleDiffs.length > 0) {
+    const { computeStyleSummary } = await import('../utils/style-score.js');
+    styleSummary = computeStyleSummary(
+      styleDiffs,
+      {
+        deltaE: tDe,
+        spacing: Number(settings.comparison.toleranceSpacing),
+        dimension: Number(settings.comparison.toleranceDimension),
+        layoutGap: Number(settings.comparison.toleranceLayoutGap),
+        radius: Number(settings.comparison.toleranceRadius),
+        borderWidth: Number(settings.comparison.toleranceBorderWidth),
+        shadowBlur: Number(settings.comparison.toleranceShadowBlur),
+        shadowColorExtraDE: Number(settings.comparison.toleranceShadowColorExtraDE),
+      },
+      args.weights
+    );
+  }
+
   return {
     summary,
     report: {
@@ -397,6 +417,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       },
       dimensions: result.dimensions,
       styleDiffs,
+      styleSummary,
       qualityGate: {
         pass,
         reasons,

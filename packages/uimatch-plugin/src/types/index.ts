@@ -226,6 +226,30 @@ export interface CompareArgs {
 }
 
 /**
+ * Category breakdown for style scoring
+ */
+export interface CategoryBreakdown {
+  category: string;
+  count: number;
+  avgNormalizedScore: number;
+  weight: number;
+}
+
+/**
+ * Style summary metrics
+ */
+export interface StyleSummary {
+  styleFidelityScore: number; // 0-100
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+  totalDiffs: number;
+  categoryBreakdown: CategoryBreakdown[];
+  coverage: number;
+  autofixableCount: number;
+}
+
+/**
  * Comparison result
  */
 export interface CompareResult {
@@ -247,6 +271,7 @@ export interface CompareResult {
       adjusted: boolean;
     };
     styleDiffs: StyleDiff[];
+    styleSummary?: StyleSummary;
     qualityGate?: {
       /**
        * Whether the implementation passes the quality gate.

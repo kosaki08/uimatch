@@ -311,4 +311,149 @@ describe('buildCompareConfig', () => {
       expect(config.bootstrapExpectedFromFigma).toBe(false);
     });
   });
+
+  describe('smart defaults for pad mode', () => {
+    test('should default align to top-left when size=pad and align not specified', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        size: 'pad',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.sizeMode).toBe('pad');
+      expect(config.align).toBe('top-left');
+    });
+
+    test('should default contentBasis to intersection when size=pad and contentBasis not specified', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        size: 'pad',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.sizeMode).toBe('pad');
+      expect(config.contentBasis).toBe('intersection');
+    });
+
+    test('should respect explicit align when size=pad', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        size: 'pad',
+        align: 'center',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.align).toBe('center');
+    });
+
+    test('should respect explicit contentBasis when size=pad', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        size: 'pad',
+        contentBasis: 'union',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.contentBasis).toBe('union');
+    });
+
+    test('should not apply smart defaults when size is not pad', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        size: 'strict',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.align).toBeUndefined();
+      expect(config.contentBasis).toBeUndefined();
+    });
+  });
+
+  describe('ignore parsing', () => {
+    test('should parse comma-separated ignore list', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        ignore: 'background-color,gap,border-width',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.ignore).toEqual(['background-color', 'gap', 'border-width']);
+    });
+
+    test('should trim whitespace from ignore properties', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        ignore: ' background-color , gap , border-width ',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.ignore).toEqual(['background-color', 'gap', 'border-width']);
+    });
+
+    test('should filter empty strings from ignore list', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        ignore: 'background-color,,gap',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.ignore).toEqual(['background-color', 'gap']);
+    });
+  });
+
+  describe('weights parsing', () => {
+    test('should parse valid JSON weights', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        weights: '{"color":0.5,"spacing":1,"typography":1}',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.weights).toEqual({
+        color: 0.5,
+        spacing: 1,
+        typography: 1,
+      });
+    });
+
+    test('should handle invalid JSON weights gracefully', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        weights: 'invalid json',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.weights).toBeUndefined();
+    });
+  });
 });

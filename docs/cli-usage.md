@@ -25,14 +25,32 @@ bun run uimatch:compare -- \
 - `story` - Target URL to compare (e.g., `http://localhost:3000`)
 - `selector` - CSS selector for element to capture
 
-### Key Options
+### Options
+
+#### Size Handling
 
 - `size=<mode>` - Size handling: `strict|pad|crop|scale` (default: `strict`)
+  - `pad` - Add letterboxing to smaller image (recommended for page vs component)
+  - `crop` - Compare common region only
+  - `scale` - Scale to match dimensions
+- `align=<mode>` - Alignment for pad/crop: `center|top-left|top|left` (default: `center`)
 - `contentBasis=<mode>` - Content area basis: `union|intersection|figma|impl` (default: `union`)
+  - `intersection` - Focus on overlapping area (recommended with `pad`)
+
+#### Style Comparison
+
+- `ignore=<props>` - Comma-separated CSS properties to exclude
+- `weights=<json>` - Category weights for DFS (e.g., `'{"color":0.5,"spacing":1}'`)
+- `bootstrap=<bool>` - Auto-generate expectedSpec from Figma (default: `true`)
+
+#### Output & Capture
+
 - `outDir=<path>` - Save artifacts to directory
-- `bootstrap=<bool>` - Auto-generate expectedSpec from Figma node
+- `format=<type>` - Output format: `standard|claude` (default: `standard`)
+- `patchTarget=<type>` - Patch format: `tailwind|css|vanilla-extract` (default: `tailwind`)
 - `viewport=<WxH>` - Viewport size (e.g., `1584x1104`)
 - `dpr=<number>` - Device pixel ratio (default: `2`)
+- `fontPreload=<urls>` - Font URLs to preload for consistent rendering
 
 ### Environment Variables
 
@@ -42,34 +60,73 @@ Required in `.env`:
 FIGMA_ACCESS_TOKEN=figd_xxx  # Figma Personal Access Token
 ```
 
-### Example
+### Example: Basic Comparison
 
 ```bash
 bun run uimatch:compare -- \
   figma="eUyFpkxbluuyFVn0mAmJSB:13-1023" \
   story="http://localhost:3000" \
   selector="main > div > div:nth-child(2)" \
-  size=pad \
-  contentBasis=figma \
-  outDir=.uimatch-out/comparison \
-  bootstrap=true
+  outDir=.uimatch-out
 ```
 
-### Output
+### Example: Page vs Component (Recommended Settings)
 
-Generates artifacts in `outDir`:
+```bash
+bun run uimatch:compare -- \
+  figma="FILEKEY:COMPONENT_NODE" \
+  story="http://localhost:3000" \
+  selector='[data-testid="component-root"]' \
+  size=pad \
+  align=top-left \
+  contentBasis=intersection \
+  ignore=background-color,gap \
+  outDir=.uimatch-out
+```
+
+**Why these settings:**
+
+- `size=pad` + `align=top-left` reduces asymmetric padding noise
+- `contentBasis=intersection` focuses on overlapping content only
+- `ignore` filters out parent wrapper styles
+
+### Example: LLM-Assisted Patching
+
+```bash
+bun run uimatch:compare -- \
+  figma="FILEKEY:NODEID" \
+  story="http://localhost:3000" \
+  selector='[data-testid="component"]' \
+  size=pad \
+  format=claude \
+  patchTarget=tailwind \
+  outDir=.uimatch-out
+```
+
+Generates:
+
+- `claude.json` - Structured diff data for LLM consumption
+- `claude-prompt.txt` - Ready-to-use prompt with instructions
+
+### Output Artifacts
+
+When `outDir` is specified, generates:
 
 - `figma.png` - Figma design screenshot
 - `impl.png` - Implementation screenshot
 - `diff.png` - Visual diff with red highlights
 - `report.json` - Detailed metrics
+- `claude.json` - LLM-formatted diffs (if `format=claude`)
+- `claude-prompt.txt` - Pre-formatted prompt (if `format=claude`)
 
 ### Metrics
 
 - **pixelDiffRatio** - Global pixel difference (0-1)
 - **pixelDiffRatioContent** - Content-only pixel difference (more accurate)
 - **contentCoverage** - Percentage of canvas that is content
-- **colorDeltaEAvg** - Average color difference (when styles captured)
+- **colorDeltaEAvg** - Average color difference (CIEDE2000)
+- **DFS (Design Fidelity Score)** - Weighted style matching score (0-100)
+- **styleFidelityScore (SFS)** - Normalized style score with category breakdown
 
 ## Suite Command
 
@@ -121,3 +178,44 @@ Generates directory per item with:
 - `figma.png`, `impl.png`, `diff.png` - Visual artifacts
 - `report.json` - Detailed metrics
 - `suite-report.json` - Overall summary (in outDir root)
+
+## Tips
+
+### Quality Gate Configuration
+
+Configure acceptance thresholds via settings:
+
+```bash
+# Development (relaxed)
+bun run uimatch:settings -- set \
+  comparison.acceptancePixelDiffRatio=0.15 \
+  comparison.acceptanceColorDeltaE=10
+
+# Production (strict)
+bun run uimatch:settings -- set \
+  comparison.acceptancePixelDiffRatio=0.05 \
+  comparison.acceptanceColorDeltaE=3
+```
+
+### Common Ignore Patterns
+
+- Layout wrappers: `background-color,gap,padding,margin`
+- Container styles: `border-width,box-shadow,outline`
+- Reset styles: `display,position,z-index`
+
+### ROI (Region of Interest) Matching
+
+Always compare equivalent regions:
+
+- **Figma**: Use component frame's node ID (not entire page)
+- **Implementation**: Use component root selector (not page container)
+
+```bash
+# ✅ Good: Component-to-component
+figma="FILEKEY:ACCORDION_COMPONENT_NODE"
+selector='[data-testid="accordion-root"]'
+
+# ❌ Bad: Page-to-component (creates noise)
+figma="FILEKEY:PAGE_NODE"
+selector='[data-testid="accordion-root"]'
+```

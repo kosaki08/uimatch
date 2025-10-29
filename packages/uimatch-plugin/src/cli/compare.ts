@@ -30,6 +30,10 @@ export interface ParsedArgs {
   bootstrap?: string;
   expected?: string;
   saveExpected?: string;
+  ignore?: string;
+  weights?: string;
+  format?: string;
+  patchTarget?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -154,6 +158,16 @@ function printUsage(): void {
   console.error('  bootstrap=<bool>        Derive expectedSpec from Figma node (default: true)');
   console.error('  expected=<path>         Load expectedSpec JSON and use it for style diffs');
   console.error('  saveExpected=<path>     If bootstrapped, save expectedSpec JSON to this path');
+  console.error(
+    '  ignore=<props>          CSV of CSS properties to exclude (e.g., background-color,gap)'
+  );
+  console.error(
+    '  weights=<json>          JSON weights for DFS (e.g., \'{"color":0.5,"spacing":1}\')'
+  );
+  console.error('  format=<type>           Output format (default|claude, default: default)');
+  console.error(
+    '  patchTarget=<target>    Patch format for Claude output (tailwind|css|vanilla-extract, default: tailwind)'
+  );
   console.error('');
   console.error('Example:');
   console.error(
@@ -210,7 +224,13 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
   if (sizeMode) config.sizeMode = sizeMode;
 
   const align = parseAlignment(args.align);
-  if (align) config.align = align;
+  if (align) {
+    config.align = align;
+  } else if (config.sizeMode === 'pad') {
+    // Smart default: when pad mode is used (often for page vs component comparison),
+    // default to top-left alignment to reduce asymmetric padding noise
+    config.align = 'top-left';
+  }
 
   const padColor = parseHexColor(args.padColor);
   if (padColor) {
@@ -220,7 +240,30 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
   }
 
   const contentBasis = parseContentBasis(args.contentBasis);
-  if (contentBasis) config.contentBasis = contentBasis;
+  if (contentBasis) {
+    config.contentBasis = contentBasis;
+  } else if (config.sizeMode === 'pad') {
+    // Smart default: when pad mode is used, default to intersection basis
+    // to focus on overlapping content area and reduce padding-induced noise
+    config.contentBasis = 'intersection';
+  }
+
+  // Parse ignore list (comma-separated CSS properties)
+  if (args.ignore) {
+    config.ignore = String(args.ignore)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  // Parse weights (JSON format)
+  if (args.weights) {
+    try {
+      config.weights = JSON.parse(String(args.weights)) as CompareArgs['weights'];
+    } catch (e) {
+      console.warn(`Failed to parse weights: ${(e as Error)?.message ?? String(e)}`);
+    }
+  }
 
   // Default to true for accurate DFS with style comparison
   // Without expectedSpec: styleDiffs=[], no style penalty (-20pts), DFS may be misleadingly high
@@ -325,6 +368,17 @@ export async function runCompare(argv: string[]): Promise<void> {
         const reportToSave = jsonOnly ? { ...result.report, artifacts: undefined } : result.report;
         await Bun.write(join(outDir, 'report.json'), JSON.stringify(reportToSave, null, 2));
 
+        // Save LLM-formatted output if requested
+        if (args.format === 'claude') {
+          const { formatForLLM, generateLLMPrompt } = await import('../utils/llm-formatter.js');
+          const patchTarget =
+            (args.patchTarget as 'tailwind' | 'css' | 'vanilla-extract') ?? 'tailwind';
+          const llmPayload = formatForLLM(result, { target: patchTarget, preferTokens: true });
+
+          await Bun.write(join(outDir, 'claude.json'), JSON.stringify(llmPayload, null, 2));
+          await Bun.write(join(outDir, 'claude-prompt.txt'), generateLLMPrompt(llmPayload));
+        }
+
         const relativeOut = relativizePath(outDir);
         console.log(`✅ Artifacts saved → ${relativeOut}/`);
         console.log('   - figma.png');
@@ -332,10 +386,30 @@ export async function runCompare(argv: string[]): Promise<void> {
         console.log('   - diff.png');
         if (saveOverlay) console.log('   - overlay.png');
         console.log('   - report.json');
+        if (args.format === 'claude') {
+          console.log('   - claude.json');
+          console.log('   - claude-prompt.txt');
+        }
         console.log('');
       }
     }
 
+    // Output format handling
+    if (args.format === 'claude') {
+      const { formatForLLM, generateLLMPrompt } = await import('../utils/llm-formatter.js');
+      const patchTarget =
+        (args.patchTarget as 'tailwind' | 'css' | 'vanilla-extract') ?? 'tailwind';
+      const llmPayload = formatForLLM(result, { target: patchTarget, preferTokens: true });
+
+      console.log('');
+      console.log('=== LLM-Formatted Output ===');
+      console.log('');
+      console.log(generateLLMPrompt(llmPayload));
+      console.log('');
+      process.exit(0);
+    }
+
+    // Standard output
     console.log(result.summary);
     console.log('');
 
@@ -346,6 +420,17 @@ export async function runCompare(argv: string[]): Promise<void> {
       console.log('Gate:', result.report.qualityGate?.pass ? '✅ PASS' : '❌ FAIL');
       console.log('Pixel diff ratio:', result.report.metrics.pixelDiffRatio.toFixed(4));
       console.log('Color delta E (avg):', result.report.metrics.colorDeltaEAvg.toFixed(2));
+
+      // Show SFS if available
+      if (result.report.styleSummary) {
+        console.log(`Style Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`);
+        console.log(
+          `  Breakdown: ${result.report.styleSummary.highCount} high, ${result.report.styleSummary.mediumCount} medium, ${result.report.styleSummary.lowCount} low`
+        );
+        console.log(
+          `  Autofixable: ${result.report.styleSummary.autofixableCount}/${result.report.styleSummary.totalDiffs}`
+        );
+      }
     }
 
     process.exit(result.report.qualityGate?.pass ? 0 : 1);
