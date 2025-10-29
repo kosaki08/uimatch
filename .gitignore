@@ -39,3 +39,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # uiMatch artifacts
 .uimatch-out/
 *.uimatch.log
+
+# Test artifacts (generated during test execution)
+**/fixtures/test-out/
+**/__tests__/fixtures/test-out/
