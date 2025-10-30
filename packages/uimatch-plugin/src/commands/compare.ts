@@ -83,7 +83,14 @@ function generateActionableSteps(
       testid?: string;
       cssSelector?: string;
     };
-  }>
+  }>,
+  metaRoot?: {
+    tag: string;
+    id?: string;
+    class?: string;
+    testid?: string;
+    cssSelector?: string;
+  }
 ): Array<{
   step: number;
   priority: 'high' | 'medium' | 'low';
@@ -171,7 +178,11 @@ function generateActionableSteps(
 
   // Add step numbers and generate code examples
   return steps.map((step, index) => {
-    const cssSelector = step.meta?.cssSelector ?? step.selector;
+    // Fallback for __self__ selector: use metaRoot cssSelector if available
+    const cssSelector =
+      step.meta?.cssSelector ??
+      (step.selector === '__self__' ? metaRoot?.cssSelector : undefined) ??
+      step.selector;
 
     // Generate CSS example
     const cssProps = Object.entries(step.cssChanges)
@@ -571,7 +582,10 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   }
 
   // Generate actionable steps from style diffs
-  const actionableSteps = styleDiffs.length > 0 ? generateActionableSteps(styleDiffs) : undefined;
+  // Extract metaRoot (__self__) for fallback in case individual selectors lack cssSelector
+  const metaRoot = cap.meta?.['__self__'];
+  const actionableSteps =
+    styleDiffs.length > 0 ? generateActionableSteps(styleDiffs, metaRoot) : undefined;
 
   return {
     summary,

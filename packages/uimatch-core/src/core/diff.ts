@@ -226,7 +226,8 @@ export function buildStyleDiffs(
       const a = norm(props['font-family']);
       const e = norm(exp['font-family']);
       if (!a || !e) return { ok: true };
-      return { ok: a === e, expected: exp['font-family'] };
+      const ok = a === e;
+      return { ok, expected: exp['font-family'], unit: 'categorical', delta: ok ? 0 : 1 };
     });
 
     // letter-spacing (px; "normal" => 0)
@@ -299,7 +300,8 @@ export function buildStyleDiffs(
       const a = props['border-style']?.trim();
       const e = exp['border-style']?.trim();
       if (!e || !a) return { ok: true };
-      return { ok: a === e, expected: e };
+      const ok = a === e;
+      return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
     });
 
     // spacing (padding and margin properties)
@@ -413,7 +415,8 @@ export function buildStyleDiffs(
       const a = normalize(props['display']);
       const e = exp['display'] ? normalize(exp['display']) : undefined;
       if (!e || !a) return { ok: true };
-      return { ok: a === e, expected: exp['display'] };
+      const ok = a === e;
+      return { ok, expected: exp['display'], unit: 'categorical', delta: ok ? 0 : 1 };
     });
 
     // flex-direction (strict equality)
@@ -421,7 +424,8 @@ export function buildStyleDiffs(
       const a = props['flex-direction']?.trim();
       const e = exp['flex-direction']?.trim();
       if (!e || !a) return { ok: true };
-      return { ok: a === e, expected: e };
+      const ok = a === e;
+      return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
     });
 
     // flex-wrap, align-content, place-items, place-content (string equality)
@@ -430,7 +434,8 @@ export function buildStyleDiffs(
         const a = props[p];
         const e = exp[p];
         if (!e || !a) return { ok: true };
-        return { ok: a === e, expected: e };
+        const ok = a === e;
+        return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
       });
     });
 
@@ -444,7 +449,8 @@ export function buildStyleDiffs(
         const a = normalize(props[p]);
         const e = exp[p] ? normalize(exp[p]) : undefined;
         if (!e || !a) return { ok: true };
-        return { ok: a === e, expected: exp[p] };
+        const ok = a === e;
+        return { ok, expected: exp[p], unit: 'categorical', delta: ok ? 0 : 1 };
       });
     });
 
@@ -455,7 +461,8 @@ export function buildStyleDiffs(
         const a = norm(props[p]);
         const e = norm(exp[p]);
         if (!e || !a) return { ok: true };
-        return { ok: a === e, expected: e };
+        const ok = a === e;
+        return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
       });
     });
 
@@ -467,7 +474,8 @@ export function buildStyleDiffs(
         const a = props[p]?.trim();
         const e = exp[p]?.trim();
         if (!e || !a) return { ok: true };
-        return { ok: a === e, expected: e };
+        const ok = a === e;
+        return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
       });
     });
 
@@ -488,7 +496,8 @@ export function buildStyleDiffs(
       const a = props['box-sizing']?.trim();
       const e = exp['box-sizing']?.trim();
       if (!e || !a) return { ok: true };
-      return { ok: a === e, expected: e };
+      const ok = a === e;
+      return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
     });
 
     // overflow-x, overflow-y (string equality)
@@ -497,7 +506,8 @@ export function buildStyleDiffs(
         const a = props[p]?.trim();
         const e = exp[p]?.trim();
         if (!e || !a) return { ok: true };
-        return { ok: a === e, expected: e };
+        const ok = a === e;
+        return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
       });
     });
 
@@ -601,7 +611,9 @@ function generatePatchHints(
   for (const [prop, diff] of Object.entries(propDiffs)) {
     // Exclude auxiliary properties from patch hints
     if (prop.startsWith('box-shadow-offset-')) continue;
-    if (!diff.expected || diff.delta == null) continue;
+    // Include diffs with expected value, even if delta is null (e.g., categorical mismatches without delta initially)
+    // or if actual differs from expected
+    if (!diff.expected || (diff.delta == null && diff.actual === diff.expected)) continue;
 
     // Determine severity based on delta and unit
     let severity: 'low' | 'medium' | 'high' = 'low';
@@ -611,6 +623,13 @@ function generatePatchHints(
     } else if (diff.unit === 'px') {
       if (Math.abs(diff.delta) > 4) severity = 'medium';
       if (Math.abs(diff.delta) > 8) severity = 'high';
+    } else if (diff.unit === 'categorical' && diff.delta === 1) {
+      // Categorical mismatches (display, flex-direction, align-items, etc.) are high severity for layout
+      if (['display', 'flex-direction', 'align-items', 'justify-content'].includes(prop)) {
+        severity = 'high';
+      } else {
+        severity = 'medium';
+      }
     }
 
     // Determine suggested value (prefer token for colors)
