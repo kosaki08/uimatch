@@ -5,7 +5,7 @@
  */
 
 import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { uiMatchCompare } from '../commands/compare.js';
 import type { CompareArgs } from '../types/index.js';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '../utils/sanitize.js';
@@ -346,7 +346,8 @@ export async function runCompare(argv: string[]): Promise<void> {
         console.warn('   - Compare function did not generate artifacts despite emitArtifacts=true');
         console.warn('   Skipping artifact save to disk.');
       } else {
-        const outDir = join(process.cwd(), args.outDir);
+        // Resolve outDir properly: if absolute, use as-is; if relative, resolve from cwd
+        const outDir = isAbsolute(args.outDir) ? args.outDir : resolve(process.cwd(), args.outDir);
         await mkdir(outDir, { recursive: true });
 
         const { figmaPngB64, implPngB64, diffPngB64 } = result.report.artifacts;

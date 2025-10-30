@@ -156,3 +156,113 @@ describe('Size Handling Modes', () => {
     expect(result.dimensions.compared.width).toBe(120);
   });
 });
+
+describe('Alignment Options', () => {
+  test('align: right with pad mode', () => {
+    const figmaPng = createTestPng(80, 100, { r: 255, g: 0, b: 0 });
+    const implPng = createTestPng(120, 100, { r: 0, g: 255, b: 0 });
+
+    const result = compareImages({
+      figmaPngB64: pngToBase64(figmaPng),
+      implPngB64: pngToBase64(implPng),
+      sizeMode: 'pad',
+      align: 'right',
+    });
+
+    expect(result.dimensions.adjusted).toBe(true);
+    expect(result.dimensions.compared.width).toBe(120);
+  });
+
+  test('align: bottom with pad mode', () => {
+    const figmaPng = createTestPng(100, 80, { r: 255, g: 0, b: 0 });
+    const implPng = createTestPng(100, 120, { r: 0, g: 255, b: 0 });
+
+    const result = compareImages({
+      figmaPngB64: pngToBase64(figmaPng),
+      implPngB64: pngToBase64(implPng),
+      sizeMode: 'pad',
+      align: 'bottom',
+    });
+
+    expect(result.dimensions.adjusted).toBe(true);
+    expect(result.dimensions.compared.height).toBe(120);
+  });
+
+  test('align: top-right with pad mode', () => {
+    const figmaPng = createTestPng(80, 80, { r: 255, g: 0, b: 0 });
+    const implPng = createTestPng(120, 100, { r: 0, g: 255, b: 0 });
+
+    const result = compareImages({
+      figmaPngB64: pngToBase64(figmaPng),
+      implPngB64: pngToBase64(implPng),
+      sizeMode: 'pad',
+      align: 'top-right',
+    });
+
+    expect(result.dimensions.adjusted).toBe(true);
+    expect(result.dimensions.compared.width).toBe(120);
+    expect(result.dimensions.compared.height).toBe(100);
+  });
+
+  test('align: bottom-left with pad mode', () => {
+    const figmaPng = createTestPng(80, 80, { r: 255, g: 0, b: 0 });
+    const implPng = createTestPng(120, 100, { r: 0, g: 255, b: 0 });
+
+    const result = compareImages({
+      figmaPngB64: pngToBase64(figmaPng),
+      implPngB64: pngToBase64(implPng),
+      sizeMode: 'pad',
+      align: 'bottom-left',
+    });
+
+    expect(result.dimensions.adjusted).toBe(true);
+    expect(result.dimensions.compared.width).toBe(120);
+    expect(result.dimensions.compared.height).toBe(100);
+  });
+
+  test('align: bottom-right with pad mode', () => {
+    const figmaPng = createTestPng(80, 80, { r: 255, g: 0, b: 0 });
+    const implPng = createTestPng(120, 100, { r: 0, g: 255, b: 0 });
+
+    const result = compareImages({
+      figmaPngB64: pngToBase64(figmaPng),
+      implPngB64: pngToBase64(implPng),
+      sizeMode: 'pad',
+      align: 'bottom-right',
+    });
+
+    expect(result.dimensions.adjusted).toBe(true);
+    expect(result.dimensions.compared.width).toBe(120);
+    expect(result.dimensions.compared.height).toBe(100);
+  });
+
+  test('align: right with crop mode', () => {
+    const figmaPng = createTestPng(100, 100, { r: 255, g: 0, b: 0 });
+    const implPng = createTestPng(120, 100, { r: 0, g: 255, b: 0 });
+
+    const result = compareImages({
+      figmaPngB64: pngToBase64(figmaPng),
+      implPngB64: pngToBase64(implPng),
+      sizeMode: 'crop',
+      align: 'right',
+    });
+
+    expect(result.dimensions.adjusted).toBe(true);
+    expect(result.dimensions.compared.width).toBe(100);
+  });
+
+  test('align: bottom with crop mode', () => {
+    const figmaPng = createTestPng(100, 100, { r: 255, g: 0, b: 0 });
+    const implPng = createTestPng(100, 120, { r: 0, g: 255, b: 0 });
+
+    const result = compareImages({
+      figmaPngB64: pngToBase64(figmaPng),
+      implPngB64: pngToBase64(implPng),
+      sizeMode: 'crop',
+      align: 'bottom',
+    });
+
+    expect(result.dimensions.adjusted).toBe(true);
+    expect(result.dimensions.compared.height).toBe(100);
+  });
+});
