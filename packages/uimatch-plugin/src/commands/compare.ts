@@ -36,15 +36,6 @@ function readPngSize(buffer: Buffer): { width: number; height: number } | null {
 }
 
 /**
- * Convert CSS property name to camelCase for inline styles
- * @param prop CSS property name (e.g., 'font-size')
- * @returns camelCase property name (e.g., 'fontSize')
- */
-function toCamelCase(prop: string): string {
-  return prop.replace(/-([a-z])/g, (_, letter) => (letter as string).toUpperCase());
-}
-
-/**
  * Generate actionable steps from style diffs.
  * Groups by selector, combines padding properties into shorthand, sorts by severity.
  *
@@ -69,11 +60,6 @@ function generateActionableSteps(
       property: string;
       suggestedValue: string;
       severity: 'low' | 'medium' | 'high';
-      codeExample?: {
-        css: string;
-        tailwind?: string | null;
-        inline: string;
-      };
     }>;
     meta?: {
       tag: string;
@@ -82,14 +68,7 @@ function generateActionableSteps(
       testid?: string;
       cssSelector?: string;
     };
-  }>,
-  metaRoot?: {
-    tag: string;
-    id?: string;
-    class?: string;
-    testid?: string;
-    cssSelector?: string;
-  }
+  }>
 ): Array<{
   step: number;
   priority: 'high' | 'medium' | 'low';
@@ -102,11 +81,6 @@ function generateActionableSteps(
     cssSelector?: string;
   };
   cssChanges: Record<string, string>;
-  codeExample: {
-    css: string;
-    tailwind?: string | null;
-    inline: string;
-  };
 }> {
   if (styleDiffs.length === 0) return [];
 
@@ -175,39 +149,14 @@ function generateActionableSteps(
     return priorityOrder[a.priority] - priorityOrder[b.priority];
   });
 
-  // Add step numbers and generate code examples
-  return steps.map((step, index) => {
-    // Fallback for __self__ selector: use metaRoot cssSelector if available
-    const cssSelector =
-      step.meta?.cssSelector ??
-      (step.selector === '__self__' ? metaRoot?.cssSelector : undefined) ??
-      step.selector;
-
-    // Generate CSS example
-    const cssProps = Object.entries(step.cssChanges)
-      .map(([prop, value]) => `  ${prop}: ${value};`)
-      .join('\n');
-    const cssExample = `${cssSelector} {\n${cssProps}\n}`;
-
-    // Generate inline example (React style object)
-    const inlineProps = Object.entries(step.cssChanges)
-      .map(([prop, value]) => `  ${toCamelCase(prop)}: '${value}'`)
-      .join(',\n');
-    const inlineExample = `{\n${inlineProps}\n}`;
-
-    return {
-      step: index + 1,
-      priority: step.priority,
-      selector: step.selector,
-      meta: step.meta,
-      cssChanges: step.cssChanges,
-      codeExample: {
-        css: cssExample,
-        tailwind: null, // Tailwind mapping not implemented in lightweight version
-        inline: inlineExample,
-      },
-    };
-  });
+  // Add step numbers
+  return steps.map((step, index) => ({
+    step: index + 1,
+    priority: step.priority,
+    selector: step.selector,
+    meta: step.meta,
+    cssChanges: step.cssChanges,
+  }));
 }
 
 /**
@@ -580,10 +529,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   }
 
   // Generate actionable steps from style diffs
-  // Extract metaRoot (__self__) for fallback in case individual selectors lack cssSelector
-  const metaRoot = cap.meta?.['__self__'];
-  const actionableSteps =
-    styleDiffs.length > 0 ? generateActionableSteps(styleDiffs, metaRoot) : undefined;
+  const actionableSteps = styleDiffs.length > 0 ? generateActionableSteps(styleDiffs) : undefined;
 
   return {
     summary,

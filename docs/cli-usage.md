@@ -47,7 +47,7 @@ bun run uimatch:compare -- \
 
 - `outDir=<path>` - Save artifacts to directory
 - `format=<type>` - Output format: `standard|claude` (default: `standard`)
-- `patchTarget=<type>` - Patch format: `tailwind|css|vanilla-extract` (default: `tailwind`)
+- `patchTarget=<type>` - Patch format for `format=claude`: `tailwind|css|vanilla-extract` (default: `tailwind`)
 - `viewport=<WxH>` - Viewport size (e.g., `1584x1104`)
 - `dpr=<number>` - Device pixel ratio (default: `2`)
 - `fontPreload=<urls>` - Font URLs to preload for consistent rendering

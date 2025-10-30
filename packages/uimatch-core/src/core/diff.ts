@@ -552,7 +552,7 @@ export function buildStyleDiffs(
     });
 
     // Generate patch hints
-    const patchHints = generatePatchHints(propDiffs, sel, opts.meta?.[sel]);
+    const patchHints = generatePatchHints(propDiffs);
 
     // Extract actual CSS selector for the element
     const selectorDisplay =
@@ -571,19 +571,8 @@ export function buildStyleDiffs(
 }
 
 /**
- * Convert CSS property name to camelCase for inline styles
- * @param prop CSS property name (e.g., 'font-size')
- * @returns camelCase property name (e.g., 'fontSize')
- */
-function toCamelCase(prop: string): string {
-  return prop.replace(/-([a-z])/g, (_, letter) => (letter as string).toUpperCase());
-}
-
-/**
  * Generate patch hints for style differences
  * @param propDiffs Property-level differences
- * @param selector CSS selector for the element
- * @param meta DOM metadata for the element
  * @returns Array of patch hints
  */
 function generatePatchHints(
@@ -596,20 +585,9 @@ function generatePatchHints(
       delta?: number;
       unit?: string;
     }
-  >,
-  selector: string,
-  meta?: {
-    tag: string;
-    id?: string;
-    class?: string;
-    testid?: string;
-    cssSelector?: string;
-  }
+  >
 ): PatchHint[] {
   const hints: PatchHint[] = [];
-
-  // Use cssSelector from meta if available, otherwise use raw selector
-  const cssSelector = meta?.cssSelector || selector;
 
   for (const [prop, diff] of Object.entries(propDiffs)) {
     // Exclude auxiliary properties from patch hints
@@ -641,24 +619,10 @@ function generatePatchHints(
       suggestedValue = `var(${diff.expectedToken})`;
     }
 
-    // Generate code examples
-    const cssExample = `${cssSelector} { ${prop}: ${suggestedValue}; }`;
-    const inlineExample = `${toCamelCase(prop)}: '${suggestedValue}'`;
-
-    // Basic Tailwind mapping (limited to common cases)
-    const tailwindExample: string | null = null;
-    // Note: Only provide Tailwind examples for basic cases to avoid incorrect suggestions
-    // For complex properties or when uncertain, leave as null
-
     hints.push({
       property: prop,
       suggestedValue,
       severity,
-      codeExample: {
-        css: cssExample,
-        tailwind: tailwindExample,
-        inline: inlineExample,
-      },
     });
   }
 
