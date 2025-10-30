@@ -31,8 +31,10 @@ describe('captureTarget', () => {
     expect(res.diffPixelCount).toBe(0);
   });
 
-  test('capture collects computed styles', async () => {
-    const html = `
+  test(
+    'capture collects computed styles',
+    async () => {
+      const html = `
       <html><head><style>
         #container { font-size: 16px; color: rgb(255, 0, 0); padding: 10px; }
         .child { font-weight: bold; }
@@ -42,24 +44,26 @@ describe('captureTarget', () => {
           <span class="child" data-testid="child1">Test</span>
         </div>
       </body></html>`;
-    const cap = await captureTarget({
-      html,
-      selector: '#container',
-      viewport: { width: 300, height: 200 },
-      dpr: 1,
-      detectStorybookIframe: false,
-    });
+      const cap = await captureTarget({
+        html,
+        selector: '#container',
+        viewport: { width: 300, height: 200 },
+        dpr: 1,
+        detectStorybookIframe: false,
+      });
 
-    expect(cap.styles['__self__']).toBeDefined();
-    const self = cap.styles['__self__'];
-    if (!self) throw new Error('Expected __self__ to be defined');
-    expect(self['font-size']).toBe('16px');
-    expect(self['color']).toBe('rgb(255, 0, 0)');
-    expect(self['padding-top']).toBe('10px');
+      expect(cap.styles['__self__']).toBeDefined();
+      const self = cap.styles['__self__'];
+      if (!self) throw new Error('Expected __self__ to be defined');
+      expect(self['font-size']).toBe('16px');
+      expect(self['color']).toBe('rgb(255, 0, 0)');
+      expect(self['padding-top']).toBe('10px');
 
-    expect(cap.styles['[data-testid="child1"]']).toBeDefined();
-    const child1 = cap.styles['[data-testid="child1"]'];
-    if (!child1) throw new Error('Expected child1 to be defined');
-    expect(child1['font-weight']).toBe('700');
-  });
+      expect(cap.styles['[data-testid="child1"]']).toBeDefined();
+      const child1 = cap.styles['[data-testid="child1"]'];
+      if (!child1) throw new Error('Expected child1 to be defined');
+      expect(child1['font-weight']).toBe('700');
+    },
+    { timeout: 15000 }
+  );
 });

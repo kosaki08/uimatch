@@ -14,13 +14,27 @@ import { buildStyleDiffs, calculateStyleFidelityScore, type DiffOptions } from '
 export type SizeMode = 'strict' | 'pad' | 'crop' | 'scale';
 
 /**
- * Alignment for padding when using `pad` size mode.
- * - `center`: Center the smaller image (default)
+ * Alignment for padding and cropping operations.
+ * - `center`: Center the image (default)
  * - `top-left`: Align to top-left corner
  * - `top`: Center horizontally, align to top
+ * - `top-right`: Align to top-right corner
  * - `left`: Align to left, center vertically
+ * - `right`: Align to right, center vertically
+ * - `bottom-left`: Align to bottom-left corner
+ * - `bottom`: Center horizontally, align to bottom
+ * - `bottom-right`: Align to bottom-right corner
  */
-export type ImageAlignment = 'center' | 'top-left' | 'top' | 'left';
+export type ImageAlignment =
+  | 'center'
+  | 'top-left'
+  | 'top'
+  | 'top-right'
+  | 'left'
+  | 'right'
+  | 'bottom-left'
+  | 'bottom'
+  | 'bottom-right';
 
 /**
  * Content basis mode for calculating pixel difference ratio denominator.
@@ -68,7 +82,8 @@ export interface SizeHandlingOptions {
   sizeMode?: SizeMode;
 
   /**
-   * Alignment when using `pad` size mode.
+   * Alignment for image positioning in `pad` and `crop` size modes.
+   * Determines where the image is positioned within the canvas.
    * @default 'center'
    */
   align?: ImageAlignment;
@@ -254,24 +269,30 @@ function calculateOffset(
   containerSize: { width: number; height: number },
   alignment: ImageAlignment
 ): { x: number; y: number } {
+  const centerX = Math.floor((containerSize.width - size.width) / 2);
+  const centerY = Math.floor((containerSize.height - size.height) / 2);
+  const maxX = containerSize.width - size.width;
+  const maxY = containerSize.height - size.height;
+
   switch (alignment) {
     case 'center':
-      return {
-        x: Math.floor((containerSize.width - size.width) / 2),
-        y: Math.floor((containerSize.height - size.height) / 2),
-      };
+      return { x: centerX, y: centerY };
     case 'top-left':
       return { x: 0, y: 0 };
     case 'top':
-      return {
-        x: Math.floor((containerSize.width - size.width) / 2),
-        y: 0,
-      };
+      return { x: centerX, y: 0 };
+    case 'top-right':
+      return { x: maxX, y: 0 };
     case 'left':
-      return {
-        x: 0,
-        y: Math.floor((containerSize.height - size.height) / 2),
-      };
+      return { x: 0, y: centerY };
+    case 'right':
+      return { x: maxX, y: centerY };
+    case 'bottom-left':
+      return { x: 0, y: maxY };
+    case 'bottom':
+      return { x: centerX, y: maxY };
+    case 'bottom-right':
+      return { x: maxX, y: maxY };
   }
 }
 

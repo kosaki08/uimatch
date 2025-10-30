@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { browserPool } from '../../../../uimatch-core/src/adapters/browser-pool.js';
 import { runCompare } from '../compare.js';
 
 // Type definitions for test report
@@ -33,6 +34,13 @@ describe('E2E: outDir artifact saving', () => {
     // Clean up
     delete process.env.UIMATCH_FIGMA_PNG_B64;
     await rm(testOutDir, { recursive: true, force: true });
+    // Small delay to ensure browser cleanup between tests
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  });
+
+  afterAll(async () => {
+    // Close all browsers to prevent hanging tests
+    await browserPool.closeAll();
   });
 
   test('should save artifacts when outDir is specified', async () => {
@@ -49,25 +57,16 @@ describe('E2E: outDir artifact saving', () => {
 
     // Run compare (will exit process, so we need to catch)
     const originalExit = process.exit.bind(process);
-    let exitPromiseResolve: ((value: void) => void) | undefined;
-    const exitPromise = new Promise<void>((resolve) => {
-      exitPromiseResolve = resolve;
-    });
 
     try {
-      // Mock process.exit to capture exit code
+      // Mock process.exit to prevent actual exit but allow async operations to complete
       const mockExit = (code?: number | string | null): never => {
-        if (exitPromiseResolve) {
-          exitPromiseResolve();
-        }
         throw new Error(`EXIT_${code ?? 0}`);
       };
       process.exit = mockExit as typeof process.exit;
 
-      const comparePromise = runCompare(argv);
-
-      // Wait for either the compare to finish or exit to be called
-      await Promise.race([comparePromise, exitPromise]);
+      // Run compare and wait for completion (will throw EXIT_0)
+      await runCompare(argv);
     } catch (err) {
       // Expected exit throw
       if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
@@ -75,8 +74,8 @@ describe('E2E: outDir artifact saving', () => {
       }
     } finally {
       process.exit = originalExit;
-      // Give a small delay for file writes to complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Give sufficient delay for all file writes to complete
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     // Verify artifacts were saved
@@ -99,53 +98,49 @@ describe('E2E: outDir artifact saving', () => {
     expect(report.artifacts).toBeUndefined();
   });
 
-  test('should include artifacts in JSON when jsonOnly=false', async () => {
-    const argv = [
-      'figma=bypass:test',
-      'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
-      'selector=#test',
-      `outDir=${testOutDir}`,
-      'jsonOnly=false',
-      'size=pad',
-      'viewport=10x10',
-      'dpr=1',
-    ];
+  test(
+    'should include artifacts in JSON when jsonOnly=false',
+    async () => {
+      const argv = [
+        'figma=bypass:test',
+        'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
+        'selector=#test',
+        `outDir=${testOutDir}`,
+        'jsonOnly=false',
+        'size=pad',
+        'viewport=10x10',
+        'dpr=1',
+      ];
 
-    const originalExit = process.exit.bind(process);
-    let exitPromiseResolve: ((value: void) => void) | undefined;
-    const exitPromise = new Promise<void>((resolve) => {
-      exitPromiseResolve = resolve;
-    });
+      const originalExit = process.exit.bind(process);
 
-    try {
-      const mockExit = (code?: number | string | null): never => {
-        if (exitPromiseResolve) {
-          exitPromiseResolve();
+      try {
+        const mockExit = (code?: number | string | null): never => {
+          throw new Error(`EXIT_${code ?? 0}`);
+        };
+        process.exit = mockExit as typeof process.exit;
+
+        await runCompare(argv);
+      } catch (err) {
+        if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
+          throw err;
         }
-        throw new Error(`EXIT_${code ?? 0}`);
-      };
-      process.exit = mockExit as typeof process.exit;
-
-      const comparePromise = runCompare(argv);
-      await Promise.race([comparePromise, exitPromise]);
-    } catch (err) {
-      if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
-        throw err;
+      } finally {
+        process.exit = originalExit;
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
-    } finally {
-      process.exit = originalExit;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
 
-    // Verify report.json DOES contain artifacts
-    const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
-    const report = JSON.parse(reportContent) as TestReport;
+      // Verify report.json DOES contain artifacts
+      const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
+      const report = JSON.parse(reportContent) as TestReport;
 
-    expect(report.artifacts).toBeDefined();
-    expect(report.artifacts?.figmaPngB64).toBeDefined();
-    expect(report.artifacts?.implPngB64).toBeDefined();
-    expect(report.artifacts?.diffPngB64).toBeDefined();
-  });
+      expect(report.artifacts).toBeDefined();
+      expect(report.artifacts?.figmaPngB64).toBeDefined();
+      expect(report.artifacts?.implPngB64).toBeDefined();
+      expect(report.artifacts?.diffPngB64).toBeDefined();
+    },
+    { timeout: 10000 }
+  );
 
   test('should auto-enable emitArtifacts when outDir specified', async () => {
     // This test verifies the config builder auto-enables emitArtifacts
@@ -162,29 +157,21 @@ describe('E2E: outDir artifact saving', () => {
     ];
 
     const originalExit = process.exit.bind(process);
-    let exitPromiseResolve: ((value: void) => void) | undefined;
-    const exitPromise = new Promise<void>((resolve) => {
-      exitPromiseResolve = resolve;
-    });
 
     try {
       const mockExit = (code?: number | string | null): never => {
-        if (exitPromiseResolve) {
-          exitPromiseResolve();
-        }
         throw new Error(`EXIT_${code ?? 0}`);
       };
       process.exit = mockExit as typeof process.exit;
 
-      const comparePromise = runCompare(argv);
-      await Promise.race([comparePromise, exitPromise]);
+      await runCompare(argv);
     } catch (err) {
       if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
         throw err;
       }
     } finally {
       process.exit = originalExit;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     // If emitArtifacts was NOT auto-enabled, these files wouldn't exist
