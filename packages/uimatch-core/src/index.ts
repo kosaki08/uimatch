@@ -18,6 +18,20 @@ export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from '.
 export { buildStyleDiffs } from './core/diff';
 export type { DiffOptions } from './core/diff';
 export {
+  calculateAreaGap,
+  calculateCQI,
+  detectSuspicions,
+  evaluateQualityGate,
+  shouldReEvaluate,
+} from './core/quality-gate';
+export type {
+  CQIParams,
+  HardGateViolation,
+  QualityGateResult,
+  QualityGateThresholds,
+  SuspicionDetection,
+} from './core/quality-gate';
+export {
   createCaptureError,
   createComparisonError,
   createConfigError,

@@ -23,11 +23,29 @@ export interface QualityGateProfile {
      * Maximum allowed layout category high-severity issues
      */
     maxLayoutHighIssues: number;
+    /**
+     * Critical area gap threshold for immediate failure (0-1)
+     * When exceeded, quality gate immediately fails regardless of other metrics
+     * @default 0.15 (15% area difference)
+     */
+    areaGapCritical?: number;
+    /**
+     * Warning area gap threshold (0-1)
+     * When exceeded, adds warning to quality gate reasons
+     * @default 0.05 (5% area difference)
+     */
+    areaGapWarning?: number;
   };
   /**
    * Content basis to use for comparison (affects contentRect calculation)
    */
   contentBasis?: 'union' | 'intersection';
+  /**
+   * Enable automatic re-evaluation for pad mode with union basis
+   * When true, the system will recommend intersection basis if suspicions are detected
+   * @default true
+   */
+  autoReEvaluate?: boolean;
 }
 
 /**
@@ -46,7 +64,10 @@ export const QUALITY_GATE_PROFILES: Record<string, QualityGateProfile> = {
       deltaE: 3.0,
       maxHighSeverityIssues: 0,
       maxLayoutHighIssues: 0,
+      areaGapCritical: 0.15, // 15% area difference fails immediately
+      areaGapWarning: 0.05, // 5% area difference triggers warning
     },
+    autoReEvaluate: true,
   },
 
   /**
@@ -61,7 +82,10 @@ export const QUALITY_GATE_PROFILES: Record<string, QualityGateProfile> = {
       deltaE: 5.0,
       maxHighSeverityIssues: 0,
       maxLayoutHighIssues: 0,
+      areaGapCritical: 0.2, // 20% area difference (more lenient for dev)
+      areaGapWarning: 0.08, // 8% area difference warning
     },
+    autoReEvaluate: true,
   },
 
   /**
@@ -77,8 +101,11 @@ export const QUALITY_GATE_PROFILES: Record<string, QualityGateProfile> = {
       deltaE: 5.0,
       maxHighSeverityIssues: 2,
       maxLayoutHighIssues: 0, // Layout issues are critical even with padding
+      areaGapCritical: 0.25, // 25% area difference (lenient due to padding)
+      areaGapWarning: 0.12, // 12% area difference warning
     },
     contentBasis: 'intersection', // Use intersection to exclude padding
+    autoReEvaluate: true, // Aggressive re-evaluation for pad scenarios
   },
 
   /**
@@ -93,7 +120,10 @@ export const QUALITY_GATE_PROFILES: Record<string, QualityGateProfile> = {
       deltaE: 8.0,
       maxHighSeverityIssues: 5,
       maxLayoutHighIssues: 2,
+      areaGapCritical: 0.3, // 30% area difference (very lenient)
+      areaGapWarning: 0.15, // 15% area difference warning
     },
+    autoReEvaluate: false, // Lenient profile doesn't need aggressive re-evaluation
   },
 
   /**
@@ -108,7 +138,10 @@ export const QUALITY_GATE_PROFILES: Record<string, QualityGateProfile> = {
       deltaE: 5.0, // Will be overridden by config
       maxHighSeverityIssues: 0, // Will be overridden by config
       maxLayoutHighIssues: 0, // Will be overridden by config
+      areaGapCritical: 0.15, // Will be overridden by config
+      areaGapWarning: 0.05, // Will be overridden by config
     },
+    autoReEvaluate: true, // Will be overridden by config
   },
 };
 

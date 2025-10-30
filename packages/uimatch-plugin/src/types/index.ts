@@ -2,7 +2,7 @@
  * Type definitions for uimatch-plugin
  */
 
-import type { ExpectedSpec, StyleDiff, TokenMap } from 'uimatch-core';
+import type { ExpectedSpec, QualityGateResult, StyleDiff, TokenMap } from 'uimatch-core';
 
 /**
  * Figma design variable (color, number, or string).
@@ -277,23 +277,12 @@ export interface CompareResult {
     };
     styleDiffs: StyleDiff[];
     styleSummary?: StyleSummary;
-    qualityGate?: {
-      /**
-       * Whether the implementation passes the quality gate.
-       */
-      pass: boolean;
-      /**
-       * Reasons why the implementation failed (if applicable).
-       */
-      reasons: string[];
-      /**
-       * Thresholds used for the quality gate.
-       */
-      thresholds: {
-        pixelDiffRatio: number;
-        deltaE: number;
-      };
-    };
+
+    /**
+     * Quality gate evaluation result (V1-compatible with V2 extensions)
+     */
+    qualityGate?: QualityGateResult;
+
     artifacts?: {
       figmaPngB64: string;
       implPngB64: string;
