@@ -36,6 +36,9 @@ export interface ParsedArgs {
   format?: string;
   patchTarget?: string;
   profile?: string;
+  showCqi?: string; // Show CQI in output
+  showSuspicions?: string; // Show suspicion warnings
+  showReEval?: string; // Show re-evaluation recommendations
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -173,6 +176,9 @@ function printUsage(): void {
   console.error(
     '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|lenient|custom)'
   );
+  console.error('  showCqi=<bool>          Display Composite Quality Indicator (default: true)');
+  console.error('  showSuspicions=<bool>   Display suspicion warnings (default: true)');
+  console.error('  showReEval=<bool>       Display re-evaluation recommendations (default: true)');
   console.error('');
   console.error('Example:');
   console.error(
@@ -511,9 +517,49 @@ export async function runCompare(argv: string[]): Promise<void> {
       console.log('Pixel diff ratio:', result.report.metrics.pixelDiffRatio.toFixed(4));
       console.log('Color delta E (avg):', result.report.metrics.colorDeltaEAvg.toFixed(2));
 
+      // === V2 Features (optional display) ===
+      const gate = result.report.qualityGate;
+      const showCqi = parseBool(args.showCqi) !== false; // Default: true
+      const showSuspicions = parseBool(args.showSuspicions) !== false; // Default: true
+      const showReEval = parseBool(args.showReEval) !== false; // Default: true
+
+      // Show CQI if available and enabled
+      if (showCqi && gate?.cqi !== undefined) {
+        const cqiEmoji = gate.cqi >= 90 ? '🟢' : gate.cqi >= 70 ? '🟡' : '🔴';
+        console.log(`CQI: ${cqiEmoji} ${gate.cqi}/100`);
+      }
+
+      // Show hard gate violations (always show if present)
+      if (gate?.hardGateViolations && gate.hardGateViolations.length > 0) {
+        console.log('\n⚠️  Hard Gate Violations:');
+        gate.hardGateViolations.forEach((v) => {
+          const severityEmoji = v.severity === 'critical' ? '🚨' : '⚠️';
+          console.log(`  ${severityEmoji} [${v.type}] ${v.reason}`);
+        });
+      }
+
+      // Show suspicions if enabled
+      if (showSuspicions && gate?.suspicions?.detected) {
+        console.log('\n🔍 Suspicions Detected:');
+        gate.suspicions.reasons.forEach((r) => {
+          console.log(`  • ${r}`);
+        });
+      }
+
+      // Show re-evaluation recommendation if enabled
+      if (showReEval && gate?.reEvaluated) {
+        console.log('\n💡 Re-evaluation Recommended:');
+        console.log('  Consider using contentBasis=intersection for more accurate metrics');
+        if (gate.originalMetrics) {
+          console.log(
+            `  Original: ${(gate.originalMetrics.pixelDiffRatioContent * 100).toFixed(2)}% (${gate.originalMetrics.contentBasis})`
+          );
+        }
+      }
+
       // Show SFS if available
       if (result.report.styleSummary) {
-        console.log(`Style Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`);
+        console.log(`\nStyle Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`);
         console.log(
           `  Breakdown: ${result.report.styleSummary.highCount} high, ${result.report.styleSummary.mediumCount} medium, ${result.report.styleSummary.lowCount} low`
         );

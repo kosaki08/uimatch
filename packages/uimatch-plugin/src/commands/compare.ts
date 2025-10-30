@@ -283,31 +283,30 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   // 4) Calculate metrics and quality gate
   const colorDeltaEAvg = result.colorDeltaEAvg ?? 0;
   const styleDiffs = result.styleDiffs ?? [];
-  // Note: false if no expectedSpec → no style penalty (-20pts) applied
-  const hasHighSeverity = styleDiffs.some((d: { severity: string }) => d.severity === 'high');
 
   // Quality gate evaluation using settings
   const tPix = args.thresholds?.pixelDiffRatio ?? settings.comparison.acceptancePixelDiffRatio;
   const tDe = args.thresholds?.deltaE ?? settings.comparison.acceptanceColorDeltaE;
 
-  // Use content-only ratio when available (pad mode with adjusted dimensions)
-  // This gives a more intuitive metric that matches visual perception
-  const effectivePixelDiffRatio = result.pixelDiffRatioContent ?? result.pixelDiffRatio;
-  const pass = effectivePixelDiffRatio <= tPix && colorDeltaEAvg <= tDe && !hasHighSeverity;
+  // Use unified quality gate (V2 logic)
+  const { evaluateQualityGate } = await import('uimatch-core');
+  const qualityGateResult = evaluateQualityGate(
+    result,
+    styleDiffs,
+    {
+      pixelDiffRatio: tPix,
+      deltaE: tDe,
+      areaGapCritical: 0.15, // V2 thresholds
+      areaGapWarning: 0.05,
+    },
+    args.contentBasis ?? 'union'
+  );
 
-  const reasons: string[] = [];
-  if (effectivePixelDiffRatio > tPix) {
-    const metricName = result.pixelDiffRatioContent ? 'pixelDiffRatioContent' : 'pixelDiffRatio';
-    reasons.push(
-      `${metricName} ${(effectivePixelDiffRatio * 100).toFixed(2)}% > ${(tPix * 100).toFixed(2)}%`
-    );
-  }
-  if (colorDeltaEAvg > tDe) {
-    reasons.push(`colorDeltaEAvg ${colorDeltaEAvg.toFixed(2)} > ${tDe.toFixed(2)}`);
-  }
-  if (hasHighSeverity) {
-    reasons.push('high severity style diffs present');
-  }
+  const { pass } = qualityGateResult;
+
+  // Variables needed for DFS calculation
+  const effectivePixelDiffRatio = result.pixelDiffRatioContent ?? result.pixelDiffRatio;
+  const hasHighSeverity = styleDiffs.some((d: { severity: string }) => d.severity === 'high');
 
   // Calculate Design Fidelity Score (0-100) with optional weights
   const weights = {
@@ -418,11 +417,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       dimensions: result.dimensions,
       styleDiffs,
       styleSummary,
-      qualityGate: {
-        pass,
-        reasons,
-        thresholds: { pixelDiffRatio: tPix, deltaE: tDe },
-      },
+      qualityGate: qualityGateResult, // Use the full V2 result
       artifacts: args.emitArtifacts
         ? {
             figmaPngB64: figmaPng.toString('base64'),
