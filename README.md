@@ -9,6 +9,11 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 - **Design tokens**: Token mapping for consistent design system
 - **Figma integration**: Direct Figma MCP integration for frame capture
 - **Quality scoring**: Design Fidelity Score (DFS 0-100)
+- **Quality Gate**: Enhanced validation with intelligent detection
+  - **Composite Quality Indicator (CQI)**: Single 0-100 score combining multiple quality dimensions
+  - **Suspicion Detection**: Automatic detection of problematic comparison scenarios
+  - **Re-evaluation Recommendations**: Smart suggestions for better metric accuracy
+  - **Hard Gates**: Area gap and severity violations for immediate failure
 - **Browser reuse**: Automatic browser pooling for faster iteration
 - **Iterative workflow**: Quality gates with automatic retry
 
