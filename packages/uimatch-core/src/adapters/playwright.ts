@@ -67,6 +67,12 @@ const DEFAULT_PROPS = [
   'flex-basis',
   // Visual
   'opacity',
+  // Position (for layout category)
+  'position',
+  'top',
+  'right',
+  'bottom',
+  'left',
 ] as const;
 
 /**

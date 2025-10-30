@@ -12,6 +12,7 @@ export interface CategoryWeights {
   color: number;
   spacing: number;
   typography: number;
+  layout: number;
   radius: number;
   border: number;
   shadow: number;
@@ -25,6 +26,7 @@ export const DEFAULT_WEIGHTS: CategoryWeights = {
   color: 1.2,
   spacing: 1.0,
   typography: 1.0,
+  layout: 1.2, // High weight - layout issues cause major visual breakage
   radius: 0.8,
   border: 0.8,
   shadow: 0.8,
@@ -66,7 +68,16 @@ export interface NormalizedStyleDiff {
   selector: string;
   property: string;
   severity: 'low' | 'medium' | 'high';
-  category: 'color' | 'spacing' | 'typography' | 'radius' | 'border' | 'shadow' | 'pixel' | 'other';
+  category:
+    | 'color'
+    | 'spacing'
+    | 'typography'
+    | 'layout'
+    | 'radius'
+    | 'border'
+    | 'shadow'
+    | 'pixel'
+    | 'other';
   normalizedScore: number; // 0 = perfect match, 1 = max deviation
   actual: string;
   expected: string;
@@ -112,6 +123,30 @@ function inferCategory(property: string): NormalizedStyleDiff['category'] {
     prop.includes('background')
   ) {
     return 'color';
+  }
+
+  // Layout properties - high impact on visual structure
+  if (
+    prop === 'display' ||
+    prop === 'position' ||
+    prop.includes('flex-') ||
+    prop === 'flex-direction' ||
+    prop === 'flex-wrap' ||
+    prop === 'flex-flow' ||
+    prop === 'justify-content' ||
+    prop === 'align-items' ||
+    prop === 'align-content' ||
+    prop === 'align-self' ||
+    prop.includes('grid-') ||
+    prop === 'grid-template-columns' ||
+    prop === 'grid-template-rows' ||
+    prop === 'grid-template-areas' ||
+    prop === 'grid-auto-columns' ||
+    prop === 'grid-auto-rows' ||
+    prop === 'grid-auto-flow' ||
+    prop.includes('place-')
+  ) {
+    return 'layout';
   }
 
   // Spacing properties
@@ -256,9 +291,19 @@ export function normalizeStyleDiffs(
  */
 export function calculateStyleFidelityScore(
   normalized: NormalizedStyleDiff[],
-  weights: Partial<CategoryWeights> = {}
+  weights: Partial<CategoryWeights> = {},
+  expectedPropertyCount?: number
 ): StyleSummary {
   const finalWeights = { ...DEFAULT_WEIGHTS, ...weights };
+
+  // Calculate coverage: compared properties / expected properties
+  const comparedCount = normalized.length;
+  const coverage =
+    expectedPropertyCount && expectedPropertyCount > 0
+      ? Math.min(1.0, comparedCount / expectedPropertyCount)
+      : comparedCount > 0
+        ? 1.0
+        : 0.0;
 
   if (normalized.length === 0) {
     return {
@@ -268,7 +313,7 @@ export function calculateStyleFidelityScore(
       lowCount: 0,
       totalDiffs: 0,
       categoryBreakdown: [],
-      coverage: 1.0,
+      coverage,
       autofixableCount: 0,
     };
   }
@@ -330,9 +375,16 @@ export function calculateStyleFidelityScore(
     lowCount,
     totalDiffs: normalized.length,
     categoryBreakdown,
-    coverage: 1.0, // TODO: Calculate from expected vs actual properties
+    coverage,
     autofixableCount,
   };
+}
+
+/**
+ * Check if a property key is an auxiliary key (helper for visualization, not a real CSS property)
+ */
+function isAuxiliaryKey(key: string): boolean {
+  return key.startsWith('box-shadow-offset-');
 }
 
 /**
@@ -343,6 +395,16 @@ export function computeStyleSummary(
   tolerances?: ToleranceThresholds,
   weights?: Partial<CategoryWeights>
 ): StyleSummary {
+  // Count expected properties across all style diffs (exclude auxiliary keys)
+  const expectedPropertyCount = styleDiffs.reduce((total, diff) => {
+    return (
+      total +
+      Object.entries(diff.properties).filter(
+        ([key, prop]) => !isAuxiliaryKey(key) && prop.expected !== undefined
+      ).length
+    );
+  }, 0);
+
   const normalized = normalizeStyleDiffs(styleDiffs, tolerances);
-  return calculateStyleFidelityScore(normalized, weights);
+  return calculateStyleFidelityScore(normalized, weights, expectedPropertyCount);
 }
