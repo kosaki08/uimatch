@@ -554,9 +554,16 @@ export function buildStyleDiffs(
     // Generate patch hints
     const patchHints = generatePatchHints(propDiffs, sel, opts.meta?.[sel]);
 
+    // Extract actual CSS selector and path
+    // selector: CSS identifier for the element (e.g., "div.w-full", "[data-testid='button']")
+    // path: file path (placeholder "self" for now, will be actual file path in the future)
+    const selectorDisplay =
+      sel === '__self__' ? (opts.meta?.[sel]?.cssSelector ?? opts.meta?.[sel]?.tag ?? 'self') : sel;
+    const pathDisplay = sel === '__self__' ? 'self' : sel;
+
     diffs.push({
-      path: sel === '__self__' ? 'self' : sel,
-      selector: sel,
+      path: pathDisplay,
+      selector: selectorDisplay,
       properties: propDiffs,
       severity,
       patchHints,
@@ -617,10 +624,10 @@ function generatePatchHints(
 
     // Determine severity based on delta and unit
     let severity: 'low' | 'medium' | 'high' = 'low';
-    if (diff.unit === 'ΔE') {
+    if (diff.unit === 'ΔE' && diff.delta != null) {
       if (diff.delta > 6) severity = 'high';
       else if (diff.delta > 3) severity = 'medium';
-    } else if (diff.unit === 'px') {
+    } else if (diff.unit === 'px' && diff.delta != null) {
       if (Math.abs(diff.delta) > 4) severity = 'medium';
       if (Math.abs(diff.delta) > 8) severity = 'high';
     } else if (diff.unit === 'categorical' && diff.delta === 1) {
