@@ -181,6 +181,16 @@ function pxToTailwind(property: string, px: number): string | undefined {
     return radiusMap[px];
   }
 
+  // Border width
+  if (prop.includes('border-width')) {
+    if (px === 0) return 'border-0';
+    if (px === 1) return 'border';
+    if (px === 2) return 'border-2';
+    if (px === 4) return 'border-4';
+    if (px === 8) return 'border-8';
+    return `border-[${px}px]`;
+  }
+
   return undefined;
 }
 
@@ -226,6 +236,7 @@ function generateSuggestions(
 
   // Tailwind suggestion (if applicable)
   if (target === 'tailwind' || target === 'css') {
+    // Pixel-based properties
     if (propData.unit === 'px' && expectedValue) {
       const px = parseFloat(expectedValue);
       if (!Number.isNaN(px)) {
@@ -237,12 +248,61 @@ function generateSuggestions(
     if (propData.expectedToken && property.includes('color')) {
       suggest.tailwind = `text-${propData.expectedToken.split('-').pop()}`;
     }
+
+    // Categorical properties (layout)
+    if (propData.unit === 'categorical') {
+      if (property === 'display') {
+        if (expectedValue === 'flex') suggest.tailwind = 'flex';
+        else if (expectedValue === 'grid') suggest.tailwind = 'grid';
+        else if (expectedValue === 'block') suggest.tailwind = 'block';
+        else if (expectedValue === 'inline-block') suggest.tailwind = 'inline-block';
+        else if (expectedValue === 'none') suggest.tailwind = 'hidden';
+      } else if (property === 'flex-direction') {
+        if (expectedValue === 'row') suggest.tailwind = 'flex-row';
+        else if (expectedValue === 'column') suggest.tailwind = 'flex-col';
+        else if (expectedValue === 'row-reverse') suggest.tailwind = 'flex-row-reverse';
+        else if (expectedValue === 'column-reverse') suggest.tailwind = 'flex-col-reverse';
+      } else if (property === 'align-items') {
+        const mapAI: Record<string, string> = {
+          center: 'items-center',
+          'flex-start': 'items-start',
+          start: 'items-start',
+          'flex-end': 'items-end',
+          end: 'items-end',
+          baseline: 'items-baseline',
+          stretch: 'items-stretch',
+        };
+        suggest.tailwind = mapAI[expectedValue];
+      } else if (property === 'justify-content') {
+        const mapJC: Record<string, string> = {
+          center: 'justify-center',
+          'flex-start': 'justify-start',
+          start: 'justify-start',
+          'flex-end': 'justify-end',
+          end: 'justify-end',
+          'space-between': 'justify-between',
+          'space-around': 'justify-around',
+          'space-evenly': 'justify-evenly',
+        };
+        suggest.tailwind = mapJC[expectedValue];
+      } else if (property === 'background-color' && /^#fff(f{0,2})?$/i.test(expectedValue)) {
+        suggest.tailwind = 'bg-white';
+      }
+    }
   }
 
   // Vanilla Extract suggestion (CSS-in-JS style)
   if (target === 'vanilla-extract') {
     const camelProp = property.replace(/-([a-z])/g, (g) => g[1]?.toUpperCase() ?? '');
-    suggest.vanillaExtract = `${camelProp}: '${expectedValue}'`;
+    // For categorical properties, use unquoted values if valid identifiers
+    if (
+      propData.unit === 'categorical' &&
+      ['display', 'flex-direction', 'align-items', 'justify-content'].includes(property)
+    ) {
+      suggest.vanillaExtract = `${camelProp}: '${expectedValue}'`;
+    } else {
+      suggest.vanillaExtract = `${camelProp}: '${expectedValue}'`;
+    }
   }
 
   return suggest;

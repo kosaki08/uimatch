@@ -121,6 +121,28 @@ Create `.uimatchrc.json` in your project root:
 }
 ```
 
+#### Recommended Thresholds for Pad+Intersection Mode
+
+When using `size=pad` with `contentBasis=intersection` (default), the default thresholds may be too strict during development. Consider these relaxed presets:
+
+**Development preset** (for active iteration):
+
+```bash
+bun run uimatch:settings -- set \
+  comparison.acceptancePixelDiffRatio=0.08 \
+  comparison.acceptanceColorDeltaE=5
+```
+
+**Production preset** (for final validation):
+
+```bash
+bun run uimatch:settings -- set \
+  comparison.acceptancePixelDiffRatio=0.01 \
+  comparison.acceptanceColorDeltaE=3
+```
+
+The pad+intersection mode calculates `pixelDiffRatioContent` based on the intersection of content areas, which provides a more intuitive metric for visual perception. A typical layout mismatch (e.g., flex-direction or padding differences) may result in 3-8% content-based pixel differences, which should be acceptable during iterative development.
+
 ## Browser Reuse
 
 The `/uiMatch loop` command automatically reuses browser instances for improved performance:
