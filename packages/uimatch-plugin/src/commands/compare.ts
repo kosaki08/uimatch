@@ -414,7 +414,6 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         contentPixels: result.contentPixels ?? undefined,
         colorDeltaEAvg,
         dfs,
-        styleFidelityScore: result.styleFidelityScore ?? undefined,
       },
       dimensions: result.dimensions,
       styleDiffs,

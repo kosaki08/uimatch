@@ -262,7 +262,6 @@ export interface CompareResult {
       contentPixels?: number;
       colorDeltaEAvg: number;
       dfs: number;
-      styleFidelityScore?: number;
     };
     dimensions?: {
       figma: { width: number; height: number };
@@ -270,6 +269,11 @@ export interface CompareResult {
       compared: { width: number; height: number };
       sizeMode: 'strict' | 'pad' | 'crop' | 'scale';
       adjusted: boolean;
+      /**
+       * Content rectangle coordinates (x1, y1, x2, y2) in the compared image space.
+       * Present when size adjustment creates padding and content areas differ.
+       */
+      contentRect?: { x1: number; y1: number; x2: number; y2: number };
     };
     styleDiffs: StyleDiff[];
     styleSummary?: StyleSummary;

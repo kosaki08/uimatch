@@ -2,7 +2,7 @@ import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import type { ExpectedSpec, StyleDiff, TokenMap } from '../types/index';
 import { parseCssColorToRgb } from '../utils/normalize';
-import { buildStyleDiffs, calculateStyleFidelityScore, type DiffOptions } from './diff';
+import { buildStyleDiffs, type DiffOptions } from './diff';
 
 /**
  * Size mode for handling dimension mismatches.
@@ -38,10 +38,13 @@ export type ImageAlignment =
 
 /**
  * Content basis mode for calculating pixel difference ratio denominator.
- * - `union`: Union of both content areas (current default, can reach coverage=1.0 easily)
- * - `intersection`: Intersection of both content areas (excludes padding-induced expansion)
+ * - `union`: Union of both content areas (default for backward compatibility)
+ * - `intersection`: Intersection of both content areas - **RECOMMENDED for pad mode** (excludes padding noise)
  * - `figma`: Use Figma's original content area only
  * - `impl`: Use implementation's original content area only
+ *
+ * **Best Practice**: Use `intersection` for pad comparisons to exclude letterboxing from metrics.
+ * The CLI automatically defaults to `intersection` when `sizeMode=pad`.
  */
 export type ContentBasis = 'union' | 'intersection' | 'figma' | 'impl';
 
@@ -97,10 +100,12 @@ export interface SizeHandlingOptions {
   /**
    * Content basis for calculating pixelDiffRatioContent denominator.
    * - `union`: Union of both content areas (default for backward compatibility)
-   * - `intersection`: Intersection only (excludes padding-induced expansion)
+   * - `intersection`: Intersection only (excludes padding-induced expansion) - **recommended for pad mode**
    * - `figma`: Figma's original content area
    * - `impl`: Implementation's original content area
-   * @default 'union'
+   *
+   * @default 'union' (but CLI automatically uses 'intersection' when sizeMode='pad')
+   * @recommended 'intersection' for pad comparisons to exclude letterboxing noise
    */
   contentBasis?: ContentBasis;
 }
@@ -190,6 +195,13 @@ export interface DimensionInfo {
    * Whether dimensions were adjusted.
    */
   adjusted: boolean;
+
+  /**
+   * Content rectangle used for pixel difference calculation (when contentBasis is applied).
+   * Coordinates are relative to the compared canvas.
+   * Only present when size was adjusted and content-based metrics are calculated.
+   */
+  contentRect?: { x1: number; y1: number; x2: number; y2: number };
 }
 
 /**
@@ -249,12 +261,6 @@ export interface CompareImageResult {
    * Average color delta E (if style differences were calculated).
    */
   colorDeltaEAvg?: number;
-
-  /**
-   * Style Fidelity Score (0-100, where 100 = perfect fidelity).
-   * Calculated from normalized style differences across all categories.
-   */
-  styleFidelityScore?: number;
 }
 
 /**
@@ -699,6 +705,9 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     result.contentPixels = contentMetrics.contentPixels;
     result.contentCoverage = contentMetrics.contentCoverage;
 
+    // Add content rectangle to dimensions for visualization
+    result.dimensions.contentRect = contentMetrics.contentRect;
+
     // Calculate content-only pixel diff ratio by counting diff pixels within content rect
     if (contentMetrics.contentPixels > 0) {
       const diffPixelCountInContent = countDiffPixelsInRect(
@@ -734,9 +743,6 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     if (colorDeltas.length > 0) {
       result.colorDeltaEAvg = colorDeltas.reduce((sum, d) => sum + d, 0) / colorDeltas.length;
     }
-
-    // Calculate Style Fidelity Score
-    result.styleFidelityScore = calculateStyleFidelityScore(styleDiffs, diffOptions?.weights);
   }
 
   return result;
