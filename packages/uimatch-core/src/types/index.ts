@@ -86,9 +86,7 @@ export type ExpectedSpec = Record<string, Partial<Record<string, string>>>;
  * Style difference detected between design and implementation
  */
 export interface StyleDiff {
-  /** Element path (e.g., "self", "[data-testid='button']") */
-  path: string;
-  /** CSS selector */
+  /** CSS selector for the element (e.g., "div.w-full", "[data-testid='button']") */
   selector: string;
   /** Property-level differences */
   properties: Record<

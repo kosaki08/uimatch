@@ -42,7 +42,6 @@ describe('buildStyleDiffs', () => {
 
     expect(diffs).toHaveLength(1);
     const firstDiff = getFirstDiff(diffs);
-    expect(firstDiff.path).toBe('self');
 
     const fontSizeProp = getProp(firstDiff, 'font-size');
     expect(fontSizeProp.actual).toBe('14px');
