@@ -1,6 +1,18 @@
 export { PlaywrightAdapter, browserPool, captureTarget } from './adapters/index';
-export { DEFAULT_CONFIG, loadConfig, mergeConfig } from './config/index';
-export type { AppConfig, CaptureConfig, ComparisonConfig } from './config/index';
+export {
+  DEFAULT_CONFIG,
+  QUALITY_GATE_PROFILES,
+  getQualityGateProfile,
+  listQualityGateProfiles,
+  loadConfig,
+  mergeConfig,
+} from './config/index';
+export type {
+  AppConfig,
+  CaptureConfig,
+  ComparisonConfig,
+  QualityGateProfile,
+} from './config/index';
 export { compareImages } from './core/compare';
 export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from './core/compare';
 export { buildStyleDiffs } from './core/diff';
