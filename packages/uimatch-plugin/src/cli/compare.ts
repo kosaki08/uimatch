@@ -6,6 +6,7 @@
 
 import { mkdir } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
+import { getQualityGateProfile } from 'uimatch-core';
 import { uiMatchCompare } from '../commands/compare.js';
 import type { CompareArgs } from '../types/index.js';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '../utils/sanitize.js';
@@ -34,6 +35,7 @@ export interface ParsedArgs {
   weights?: string;
   format?: string;
   patchTarget?: string;
+  profile?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -168,10 +170,13 @@ function printUsage(): void {
   console.error(
     '  patchTarget=<target>    Patch format for Claude output (tailwind|css|vanilla-extract, default: tailwind)'
   );
+  console.error(
+    '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|lenient|custom)'
+  );
   console.error('');
   console.error('Example:');
   console.error(
-    '  uimatch compare figma=AbCdEf:1-23 story=http://localhost:6006/iframe.html?id=button--default selector="#storybook-root" size=pad contentBasis=figma outDir=./out'
+    '  uimatch compare figma=AbCdEf:1-23 story=http://localhost:6006/iframe.html?id=button--default selector="#storybook-root" size=pad contentBasis=figma profile=component/strict outDir=./out'
   );
 }
 
@@ -269,6 +274,35 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
   // Without expectedSpec: styleDiffs=[], no style penalty (-20pts), DFS may be misleadingly high
   const bootstrap = parseBool(args.bootstrap) ?? true;
   config.bootstrapExpectedFromFigma = bootstrap;
+
+  // Apply quality gate profile if specified
+  if (args.profile) {
+    try {
+      const profile = getQualityGateProfile(args.profile);
+
+      // Override thresholds from profile
+      config.thresholds = {
+        pixelDiffRatio: profile.thresholds.pixelDiffRatio,
+        deltaE: profile.thresholds.deltaE,
+      };
+
+      // Override contentBasis if profile specifies it
+      if (profile.contentBasis && !args.contentBasis) {
+        config.contentBasis = profile.contentBasis;
+      }
+
+      // For pad mode profiles, enforce contentBasis if not explicitly set
+      if (
+        profile.contentBasis === 'intersection' &&
+        config.sizeMode === 'pad' &&
+        !args.contentBasis
+      ) {
+        config.contentBasis = 'intersection';
+      }
+    } catch (e) {
+      console.warn(`Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`);
+    }
+  }
 
   return config;
 }
@@ -414,6 +448,61 @@ export async function runCompare(argv: string[]): Promise<void> {
     console.log(result.summary);
     console.log('');
 
+    // Additional profile-based quality gate checks
+    let profileGatePass = result.report.qualityGate?.pass ?? false;
+    const additionalReasons: string[] = [];
+
+    if (args.profile) {
+      try {
+        const profile = getQualityGateProfile(args.profile);
+
+        // Check layout-specific high severity count
+        const LAYOUT_KEYS = new Set([
+          'display',
+          'position',
+          'flex-direction',
+          'flex-wrap',
+          'justify-content',
+          'align-items',
+          'align-content',
+          'grid-template-columns',
+          'grid-template-rows',
+          'grid-auto-flow',
+          'place-items',
+          'place-content',
+        ]);
+
+        const layoutHighCount = result.report.styleDiffs.filter((d) => {
+          return d.severity === 'high' && Object.keys(d.properties).some((k) => LAYOUT_KEYS.has(k));
+        }).length;
+
+        if (layoutHighCount > profile.thresholds.maxLayoutHighIssues) {
+          profileGatePass = false;
+          additionalReasons.push(
+            `layoutHighCount ${layoutHighCount} > ${profile.thresholds.maxLayoutHighIssues}`
+          );
+        }
+
+        // Check overall high severity count
+        const highCount = result.report.styleSummary?.highCount ?? 0;
+        if (highCount > profile.thresholds.maxHighSeverityIssues) {
+          profileGatePass = false;
+          additionalReasons.push(
+            `highSeverityCount ${highCount} > ${profile.thresholds.maxHighSeverityIssues}`
+          );
+        }
+
+        if (additionalReasons.length > 0) {
+          console.log(`Profile gate (${profile.name}): ❌ FAIL`);
+          additionalReasons.forEach((r) => console.log(`  - ${r}`));
+        } else if (args.profile) {
+          console.log(`Profile gate (${profile.name}): ✅ PASS`);
+        }
+      } catch (e) {
+        console.warn(`Failed to evaluate profile gate: ${(e as Error)?.message ?? String(e)}`);
+      }
+    }
+
     if (verbose) {
       console.log('Details:');
       console.log(JSON.stringify(result.report, null, 2));
@@ -434,7 +523,9 @@ export async function runCompare(argv: string[]): Promise<void> {
       }
     }
 
-    process.exit(result.report.qualityGate?.pass ? 0 : 1);
+    // Use profile gate result if more restrictive than base gate
+    const finalPass = (result.report.qualityGate?.pass ?? false) && profileGatePass;
+    process.exit(finalPass ? 0 : 1);
   } catch (error) {
     console.error('❌ Error:', error instanceof Error ? error.message : String(error));
     process.exit(1);
