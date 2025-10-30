@@ -554,15 +554,11 @@ export function buildStyleDiffs(
     // Generate patch hints
     const patchHints = generatePatchHints(propDiffs, sel, opts.meta?.[sel]);
 
-    // Extract actual CSS selector and path
-    // selector: CSS identifier for the element (e.g., "div.w-full", "[data-testid='button']")
-    // path: file path (placeholder "self" for now, will be actual file path in the future)
+    // Extract actual CSS selector for the element
     const selectorDisplay =
       sel === '__self__' ? (opts.meta?.[sel]?.cssSelector ?? opts.meta?.[sel]?.tag ?? 'self') : sel;
-    const pathDisplay = sel === '__self__' ? 'self' : sel;
 
     diffs.push({
-      path: pathDisplay,
       selector: selectorDisplay,
       properties: propDiffs,
       severity,

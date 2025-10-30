@@ -53,7 +53,6 @@ function toCamelCase(prop: string): string {
  */
 function generateActionableSteps(
   styleDiffs: Array<{
-    path: string;
     selector: string;
     properties: Record<
       string,
@@ -223,7 +222,6 @@ function generateActionableSteps(
  */
 function pruneStyleDiffs(
   diffs: Array<{
-    path: string;
     selector: string;
     properties: Record<
       string,
