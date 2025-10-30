@@ -36,130 +36,6 @@ function readPngSize(buffer: Buffer): { width: number; height: number } | null {
 }
 
 /**
- * Generate actionable steps from style diffs.
- * Groups by selector, combines padding properties into shorthand, sorts by severity.
- *
- * @param styleDiffs - Style differences
- * @returns Actionable steps sorted by priority
- */
-function generateActionableSteps(
-  styleDiffs: Array<{
-    selector: string;
-    properties: Record<
-      string,
-      {
-        actual?: string;
-        expected?: string;
-        expectedToken?: string;
-        delta?: number;
-        unit?: string;
-      }
-    >;
-    severity: 'low' | 'medium' | 'high';
-    patchHints?: Array<{
-      property: string;
-      suggestedValue: string;
-      severity: 'low' | 'medium' | 'high';
-    }>;
-    meta?: {
-      tag: string;
-      id?: string;
-      class?: string;
-      testid?: string;
-      cssSelector?: string;
-    };
-  }>
-): Array<{
-  step: number;
-  priority: 'high' | 'medium' | 'low';
-  selector: string;
-  meta?: {
-    tag: string;
-    id?: string;
-    class?: string;
-    testid?: string;
-    cssSelector?: string;
-  };
-  cssChanges: Record<string, string>;
-}> {
-  if (styleDiffs.length === 0) return [];
-
-  // Group by selector and aggregate CSS changes
-  const grouped = new Map<
-    string,
-    {
-      severity: 'high' | 'medium' | 'low';
-      meta?: (typeof styleDiffs)[0]['meta'];
-      cssChanges: Record<string, string>;
-      hints: (typeof styleDiffs)[0]['patchHints'];
-    }
-  >();
-
-  for (const diff of styleDiffs) {
-    if (!grouped.has(diff.selector)) {
-      grouped.set(diff.selector, {
-        severity: diff.severity,
-        meta: diff.meta,
-        cssChanges: {},
-        hints: diff.patchHints ?? [],
-      });
-    }
-
-    const group = grouped.get(diff.selector);
-    if (!group) continue;
-
-    // Collect CSS changes from patch hints
-    for (const hint of diff.patchHints ?? []) {
-      group.cssChanges[hint.property] = hint.suggestedValue;
-    }
-
-    // Update severity to highest
-    if (diff.severity === 'high') group.severity = 'high';
-    else if (diff.severity === 'medium' && group.severity !== 'high') group.severity = 'medium';
-  }
-
-  // Try to combine padding properties into shorthand
-  for (const group of grouped.values()) {
-    const top = group.cssChanges['padding-top'];
-    const right = group.cssChanges['padding-right'];
-    const bottom = group.cssChanges['padding-bottom'];
-    const left = group.cssChanges['padding-left'];
-
-    if (top && right && bottom && left) {
-      // All 4 sides present, combine into shorthand
-      group.cssChanges['padding'] = `${top} ${right} ${bottom} ${left}`;
-      delete group.cssChanges['padding-top'];
-      delete group.cssChanges['padding-right'];
-      delete group.cssChanges['padding-bottom'];
-      delete group.cssChanges['padding-left'];
-    }
-  }
-
-  // Convert to actionable steps and sort by severity
-  const steps = Array.from(grouped.entries()).map(([selector, group]) => ({
-    selector,
-    priority: group.severity,
-    meta: group.meta,
-    cssChanges: group.cssChanges,
-  }));
-
-  // Sort: high > medium > low
-  steps.sort((a, b) => {
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    return priorityOrder[a.priority] - priorityOrder[b.priority];
-  });
-
-  // Add step numbers
-  return steps.map((step, index) => ({
-    step: index + 1,
-    priority: step.priority,
-    selector: step.selector,
-    meta: step.meta,
-    cssChanges: step.cssChanges,
-  }));
-}
-
-/**
  * Filter style diffs to show only properties with meaningful differences.
  * Removes properties that:
  * - Have no expected value (not defined in expectedSpec)
@@ -528,9 +404,6 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     );
   }
 
-  // Generate actionable steps from style diffs
-  const actionableSteps = styleDiffs.length > 0 ? generateActionableSteps(styleDiffs) : undefined;
-
   return {
     summary,
     report: {
@@ -546,7 +419,6 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       dimensions: result.dimensions,
       styleDiffs,
       styleSummary,
-      actionableSteps,
       qualityGate: {
         pass,
         reasons,
