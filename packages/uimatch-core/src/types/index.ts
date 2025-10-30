@@ -114,18 +114,6 @@ export interface StyleDiff {
 }
 
 /**
- * Code examples in different styling approaches
- */
-export interface CodeExample {
-  /** Plain CSS (e.g., "selector { property: value; }") */
-  css: string;
-  /** Tailwind CSS classes (if applicable) */
-  tailwind?: string | null;
-  /** Inline style object (e.g., React style prop) */
-  inline: string;
-}
-
-/**
  * Suggested fix for a style difference
  */
 export interface PatchHint {
@@ -139,6 +127,4 @@ export interface PatchHint {
   line?: number;
   /** Severity of the issue */
   severity: 'low' | 'medium' | 'high';
-  /** Code examples in different styling approaches */
-  codeExample?: CodeExample;
 }

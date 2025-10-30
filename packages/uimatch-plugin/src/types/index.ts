@@ -269,12 +269,6 @@ export interface ActionableStep {
   };
   /** CSS property changes to apply */
   cssChanges: Record<string, string>;
-  /** Code examples in different styling approaches */
-  codeExample: {
-    css: string;
-    tailwind?: string | null;
-    inline: string;
-  };
 }
 
 /**
