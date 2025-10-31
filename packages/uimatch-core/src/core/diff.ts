@@ -68,6 +68,7 @@ export interface DiffOptions {
       class?: string;
       testid?: string;
       cssSelector?: string;
+      height?: number;
     }
   >;
 }

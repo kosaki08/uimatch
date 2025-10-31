@@ -4,6 +4,7 @@
  * Safe for commit and distribution with sanitized logging
  */
 
+import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { getQualityGateProfile } from 'uimatch-core';
@@ -25,6 +26,7 @@ export interface ParsedArgs {
   contentBasis?: string;
   emitArtifacts?: boolean;
   outDir?: string;
+  timestampOutDir?: string;
   overlay?: string;
   jsonOnly?: string;
   verbose?: string;
@@ -387,7 +389,20 @@ export async function runCompare(argv: string[]): Promise<void> {
         console.warn('   Skipping artifact save to disk.');
       } else {
         // Resolve outDir properly: if absolute, use as-is; if relative, resolve from cwd
-        const outDir = isAbsolute(args.outDir) ? args.outDir : resolve(process.cwd(), args.outDir);
+        let outDir = isAbsolute(args.outDir) ? args.outDir : resolve(process.cwd(), args.outDir);
+
+        // Add timestamp to avoid collisions if directory already exists
+        const timestampEnabled =
+          args.timestampOutDir !== undefined
+            ? parseBool(args.timestampOutDir) ?? true
+            : true;
+        if (timestampEnabled && existsSync(outDir)) {
+          const ts = new Date();
+          const pad = (n: number) => String(n).padStart(2, '0');
+          const stamp = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}`;
+          outDir = join(outDir, stamp);
+        }
+
         await mkdir(outDir, { recursive: true });
 
         const { figmaPngB64, implPngB64, diffPngB64 } = result.report.artifacts;
