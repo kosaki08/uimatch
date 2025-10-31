@@ -3,6 +3,7 @@
  */
 
 import { chromium, type Browser, type BrowserContext } from 'playwright';
+import { DEFAULT_CONFIG } from '../config/defaults';
 import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/adapters';
 import { browserPool } from './browser-pool';
 
@@ -88,6 +89,20 @@ const DEFAULT_PROPS = [
   'right',
   'bottom',
   'left',
+] as const;
+
+const EXTENDED_PROPS = [
+  ...DEFAULT_PROPS,
+  'z-index',
+  'align-self',
+  'place-self',
+  'outline-width',
+  'outline-style',
+  'outline-color',
+  'outline-offset',
+  'filter',
+  'backdrop-filter',
+  'text-wrap',
 ] as const;
 
 /**
@@ -248,7 +263,12 @@ export class PlaywrightAdapter implements BrowserAdapter {
       const implPng = await locator.screenshot({ type: 'png' });
 
       // Extract computed styles and DOM metadata from the element and its children
-      type StyleEvalArg = { max: number; props: string[] };
+      type StyleEvalArg = {
+        max: number;
+        maxDepth: number;
+        props: string[];
+        propsMode: CaptureOptions['propsMode'];
+      };
       type StyleEvalRet = {
         styles: Record<string, Record<string, string>>;
         meta: Record<
@@ -266,86 +286,65 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
       const { styles, meta } = await locator.evaluate<StyleEvalRet, StyleEvalArg>(
         (root, arg) => {
-          const { max, props } = arg;
+          const { max, maxDepth, props, propsMode } = arg;
+          const stylesResult: StyleEvalRet['styles'] = {};
+          const metaResult: StyleEvalRet['meta'] = {};
+          let seen = 0;
 
-          // Extract computed styles for an element
-          const toRec = (el: Element): Record<string, string> => {
-            const st = globalThis.getComputedStyle(el);
+          const rec = (el: Element) => {
+            const st = getComputedStyle(el);
+            const list = propsMode === 'all' ? Array.from(st) : props;
             const out: Record<string, string> = {};
-            for (let i = 0; i < props.length; i++) {
-              const p = props[i];
-              if (!p) continue;
+            for (const p of list) {
               out[p] = st.getPropertyValue(p) || '';
             }
             return out;
           };
 
-          // Extract DOM metadata for an element
-          const getMeta = (el: Element) => {
-            const htmlEl = el as HTMLElement;
-            const testid = htmlEl.dataset?.testid;
-
-            // Generate CSS selector (prefer data-testid, fallback to tag.class#id)
-            let cssSelector: string;
-            if (testid) {
-              cssSelector = `[data-testid="${testid}"]`;
-            } else {
-              const tag = htmlEl.tagName.toLowerCase();
-              const id = htmlEl.id ? `#${htmlEl.id}` : '';
-              const classes =
-                htmlEl.className && typeof htmlEl.className === 'string'
-                  ? `.${htmlEl.className.trim().split(/\s+/).join('.')}`
-                  : '';
-              cssSelector = `${tag}${id}${classes}`;
-            }
-
+          const info = (el: Element) => {
+            const h = el as HTMLElement; // HTMLElement
+            const testid = h.dataset?.testid;
+            const tag = h.tagName.toLowerCase();
+            const id = h.id ? `#${h.id}` : '';
+            const classes =
+              typeof h.className === 'string' && h.className
+                ? `.${h.className.trim().split(/\s+/).join('.')}`
+                : '';
             return {
-              tag: htmlEl.tagName.toLowerCase(),
-              id: htmlEl.id || undefined,
-              class: htmlEl.className || undefined,
+              tag,
+              id: h.id || undefined,
+              class: h.className || undefined,
               testid,
-              cssSelector,
-              height: htmlEl.offsetHeight || 0,
+              cssSelector: testid ? `[data-testid="${testid}"]` : `${tag}${id}${classes}`,
+              height: h.offsetHeight || 0,
             };
           };
 
-          const base = root as Element;
-          const stylesResult: Record<string, Record<string, string>> = {};
-          const metaResult: Record<
-            string,
-            {
-              tag: string;
-              id?: string;
-              class?: string;
-              testid?: string;
-              cssSelector?: string;
-              height?: number;
+          const walk = (el: Element, path: string, depth: number) => {
+            if (seen++ >= max) return;
+            stylesResult[path] = rec(el);
+            metaResult[path] = info(el);
+            if (depth >= maxDepth) return;
+            const kids = Array.from(el.children);
+            for (let i = 0; i < kids.length && seen < max; i++) {
+              const kid = kids[i];
+              if (kid) {
+                walk(kid, `${path} > :nth-child(${i + 1})`, depth + 1);
+              }
             }
-          > = {};
+          };
 
-          // Process root element
-          stylesResult['__self__'] = toRec(base);
-          metaResult['__self__'] = getMeta(base);
-
-          // Process children (prefer data-testid elements)
-          const testsNodeList = base.querySelectorAll('[data-testid]');
-          const tests = Array.from(testsNodeList);
-          const allChildren = Array.from(base.querySelectorAll('*'));
-          const chosen = (tests.length > 0 ? tests : allChildren).slice(0, max);
-
-          for (let i = 0; i < chosen.length; i++) {
-            const el = chosen[i];
-            if (!el) continue;
-            const htmlEl = el as HTMLElement;
-            const testid = htmlEl.dataset?.testid;
-            const key = testid ? `[data-testid="${testid}"]` : `:nth-child(${i + 1})`;
-            stylesResult[key] = toRec(el);
-            metaResult[key] = getMeta(el);
-          }
-
+          walk(root, '__self__', 0);
           return { styles: stylesResult, meta: metaResult };
         },
-        { max: opts.maxChildren ?? 24, props: Array.from(DEFAULT_PROPS) as string[] }
+        {
+          max: opts.maxChildren ?? DEFAULT_CONFIG.capture.defaultMaxChildren,
+          maxDepth: opts.maxDepth ?? DEFAULT_CONFIG.capture.defaultMaxDepth,
+          propsMode: opts.propsMode ?? 'extended',
+          props: Array.from(
+            (opts.propsMode ?? 'extended') === 'default' ? DEFAULT_PROPS : EXTENDED_PROPS
+          ) as string[],
+        }
       );
 
       if (effectiveReuse) {

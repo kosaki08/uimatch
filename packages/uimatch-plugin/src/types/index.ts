@@ -111,6 +111,27 @@ export interface CompareArgs {
   dpr?: number;
 
   /**
+   * Maximum child elements to collect styles from.
+   * @default 200
+   */
+  maxChildren?: number;
+
+  /**
+   * CSS properties to collect.
+   * - `default`: A curated list of common properties.
+   * - `extended`: `default` + additional layout and visual properties.
+   * - `all`: All computed styles.
+   * @default 'extended'
+   */
+  propsMode?: 'default' | 'extended' | 'all';
+
+  /**
+   * Maximum depth to traverse for child elements.
+   * @default 6
+   */
+  maxDepth?: number;
+
+  /**
    * Whether to detect and use Storybook iframe for capture.
    * When true, automatically switches to iframe content if Storybook URL is detected.
    * @default true
