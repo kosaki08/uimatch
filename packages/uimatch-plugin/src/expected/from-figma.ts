@@ -42,7 +42,12 @@ export interface FigmaNodeLite {
     lineHeightPx?: number;
     letterSpacing?: number; // px in REST
     fontFamily?: string;
+    textDecoration?: 'NONE' | 'UNDERLINE' | 'STRIKETHROUGH';
   };
+  // Dimensions
+  absoluteBoundingBox?: { width?: number; height?: number };
+  // Children
+  children?: FigmaNodeLite[];
 }
 
 const px = (n?: number): string | undefined =>
@@ -187,6 +192,91 @@ export function buildExpectedSpecFromFigma(
       if (letterSpacing) S['letter-spacing'] = letterSpacing;
     }
     if (n.style.fontFamily) S['font-family'] = n.style.fontFamily;
+    // Text decoration
+    if (n.style.textDecoration === 'UNDERLINE') {
+      S['text-decoration-line'] = 'underline';
+    }
+  }
+
+  // ===== Optional: Fixed dimensions (width/height) only when not HUG =====
+  if (n.absoluteBoundingBox?.width && n.layoutMode !== 'HUG') {
+    const width = px(n.absoluteBoundingBox.width);
+    if (width) S['width'] = width;
+  }
+  if (n.absoluteBoundingBox?.height && n.layoutMode !== 'HUG') {
+    const height = px(n.absoluteBoundingBox.height);
+    if (height) S['height'] = height;
+  }
+
+  // ===== Child elements (Auto Layout only) =====
+  const kids = Array.isArray(n.children) ? n.children : [];
+  if (n.layoutMode && n.layoutMode !== 'NONE' && kids.length > 0) {
+    kids.forEach((child, i) => {
+      const key = `:nth-child(${i + 1})`;
+      const K = (spec[key] ||= {});
+
+      // TEXT node properties
+      if (child.type === 'TEXT' && child.style) {
+        if (child.style.fontSize) {
+          const fontSize = px(child.style.fontSize);
+          if (fontSize) K['font-size'] = fontSize;
+        }
+        if (child.style.lineHeightPx) {
+          const lineHeight = px(child.style.lineHeightPx);
+          if (lineHeight) K['line-height'] = lineHeight;
+        }
+        if (child.style.fontWeight) {
+          K['font-weight'] = String(child.style.fontWeight);
+        }
+        if (child.style.letterSpacing !== undefined) {
+          const letterSpacing = px(child.style.letterSpacing);
+          if (letterSpacing) K['letter-spacing'] = letterSpacing;
+        }
+        if (child.style.fontFamily) {
+          K['font-family'] = child.style.fontFamily;
+        }
+        if (child.style.textDecoration === 'UNDERLINE') {
+          K['text-decoration-line'] = 'underline';
+        }
+      }
+
+      // Fill, stroke, corners, shadow (for all node types)
+      const childFills = Array.isArray(child.fills) ? child.fills : [];
+      const childStrokes = Array.isArray(child.strokes) ? child.strokes : [];
+      const childFill = childFills.find(
+        (p) => (p.visible ?? true) && p.type === 'SOLID' && p.color
+      );
+      const childStroke = childStrokes.find(
+        (p) => (p.visible ?? true) && p.type === 'SOLID' && p.color
+      );
+
+      const childBg = maybeTokenize(colorToCss(childFill?.color), tokens);
+      const childBorder = maybeTokenize(colorToCss(childStroke?.color), tokens);
+
+      if (childBg) K['background-color'] = childBg;
+      if (childBorder) K['border-color'] = childBorder;
+      if (typeof child.strokeWeight === 'number') {
+        const borderWidth = px(child.strokeWeight);
+        if (borderWidth) K['border-width'] = borderWidth;
+      }
+
+      // Corners
+      if (typeof child.cornerRadius === 'number') {
+        const radius = px(child.cornerRadius);
+        if (radius) K['border-radius'] = radius;
+      }
+
+      // Shadow
+      const childEffects = Array.isArray(child.effects) ? child.effects : [];
+      const childDrop = childEffects.find((e) => (e.visible ?? true) && e.type?.includes('SHADOW'));
+      if (childDrop) {
+        const ox = px(childDrop.offset?.x ?? 0) ?? '0px';
+        const oy = px(childDrop.offset?.y ?? 0) ?? '0px';
+        const blur = px(childDrop.radius ?? 0) ?? '0px';
+        const col = colorToCss(childDrop.color) ?? 'rgba(0,0,0,0.25)';
+        K['box-shadow'] = `${ox} ${oy} ${blur} ${col}`;
+      }
+    });
   }
 
   return spec;

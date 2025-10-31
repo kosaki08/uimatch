@@ -40,6 +40,8 @@ export interface QualityGateThresholds {
   areaGapCritical?: number;
   /** Area gap threshold for warning (0-1) */
   areaGapWarning?: number;
+  /** Minimum style coverage ratio (0-1) to prevent false high scores */
+  minStyleCoverage?: number;
 }
 
 /**
@@ -244,6 +246,7 @@ export function calculateCQI(
  * @param thresholds - Quality gate thresholds
  * @param contentBasis - Content basis mode used
  * @param cqiParams - CQI calculation parameters
+ * @param styleSummary - Style comparison summary with coverage info
  * @returns Quality gate result
  */
 export function evaluateQualityGate(
@@ -251,7 +254,8 @@ export function evaluateQualityGate(
   styleDiffs: StyleDiff[],
   thresholds: QualityGateThresholds,
   contentBasis: string = 'union',
-  cqiParams?: CQIParams
+  cqiParams?: CQIParams,
+  styleSummary?: { coverage?: number }
 ): QualityGateResult {
   const hardGateViolations: HardGateViolation[] = [];
   const reasons: string[] = [];
@@ -331,6 +335,18 @@ export function evaluateQualityGate(
 
   // Apply threshold checks (only if no hard gate violations)
   if (pass) {
+    // Check style coverage if threshold is set
+    if (
+      styleSummary?.coverage !== undefined &&
+      thresholds.minStyleCoverage !== undefined &&
+      styleSummary.coverage < thresholds.minStyleCoverage
+    ) {
+      pass = false;
+      reasons.push(
+        `styleCoverage ${(styleSummary.coverage * 100).toFixed(1)}% < ${(thresholds.minStyleCoverage * 100).toFixed(0)}%`
+      );
+    }
+
     if (effectivePixelRatio > thresholds.pixelDiffRatio) {
       pass = false;
       const metricName = result.pixelDiffRatioContent ? 'pixelDiffRatioContent' : 'pixelDiffRatio';

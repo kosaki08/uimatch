@@ -23,6 +23,19 @@ const DEFAULT_PROPS = [
   'border-radius',
   'border-color',
   'border-width',
+  // Side-specific border properties
+  'border-top-width',
+  'border-right-width',
+  'border-bottom-width',
+  'border-left-width',
+  'border-top-color',
+  'border-right-color',
+  'border-bottom-color',
+  'border-left-color',
+  'border-top-style',
+  'border-right-style',
+  'border-bottom-style',
+  'border-left-style',
   'box-shadow',
   'display',
   'flex-direction',
@@ -50,6 +63,8 @@ const DEFAULT_PROPS = [
   'text-align',
   'text-transform',
   'text-decoration-line',
+  'text-decoration-thickness',
+  'text-underline-offset',
   'white-space',
   'word-break',
   // Sizing constraints
@@ -238,7 +253,14 @@ export class PlaywrightAdapter implements BrowserAdapter {
         styles: Record<string, Record<string, string>>;
         meta: Record<
           string,
-          { tag: string; id?: string; class?: string; testid?: string; cssSelector?: string }
+          {
+            tag: string;
+            id?: string;
+            class?: string;
+            testid?: string;
+            cssSelector?: string;
+            height?: number;
+          }
         >;
       };
 
@@ -283,6 +305,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
               class: htmlEl.className || undefined,
               testid,
               cssSelector,
+              height: htmlEl.offsetHeight || 0,
             };
           };
 
@@ -290,7 +313,14 @@ export class PlaywrightAdapter implements BrowserAdapter {
           const stylesResult: Record<string, Record<string, string>> = {};
           const metaResult: Record<
             string,
-            { tag: string; id?: string; class?: string; testid?: string; cssSelector?: string }
+            {
+              tag: string;
+              id?: string;
+              class?: string;
+              testid?: string;
+              cssSelector?: string;
+              height?: number;
+            }
           > = {};
 
           // Process root element
