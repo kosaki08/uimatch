@@ -18,6 +18,9 @@ export interface ParsedArgs {
   selector?: string;
   viewport?: string;
   dpr?: string;
+  maxChildren?: string;
+  propsMode?: string;
+  maxDepth?: string;
   detectStorybookIframe?: string;
   iframe?: string;
   size?: string;
@@ -114,6 +117,17 @@ function parseContentBasis(
 }
 
 /**
+ * Parse props mode string
+ */
+function parsePropsMode(value?: string): 'default' | 'extended' | 'all' | undefined {
+  if (!value) return undefined;
+  if (['default', 'extended', 'all'].includes(value)) {
+    return value as 'default' | 'extended' | 'all';
+  }
+  return undefined;
+}
+
+/**
  * Parse hex color string (#RRGGBB) to RGB
  */
 function parseHexColor(value?: string): { r: number; g: number; b: number } | undefined {
@@ -139,6 +153,11 @@ function printUsage(): void {
   console.error('  selector=<css>          CSS selector for element to capture');
   console.error('');
   console.error('Optional:');
+  console.error('  maxChildren=<number>    Max child elements to analyze (default: 200)');
+  console.error(
+    '  propsMode=<mode>        CSS properties to collect (default|extended|all, default: extended)'
+  );
+  console.error('  maxDepth=<number>       Max depth to traverse for child elements (default: 6)');
   console.error('  viewport=<WxH>          Viewport size (e.g., 1584x1104)');
   console.error('  dpr=<number>            Device pixel ratio (default: 2)');
   console.error('  detectStorybookIframe=<bool>  Use Storybook iframe (true/false, default: true)');
@@ -216,6 +235,23 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
     // Auto-enable emitArtifacts when outDir is specified
     emitArtifacts: Boolean(args.emitArtifacts || args.outDir),
   };
+
+  if (args.maxChildren) {
+    const maxChildren = parseInt(args.maxChildren, 10);
+    if (!Number.isNaN(maxChildren)) config.maxChildren = maxChildren;
+  }
+
+  const propsMode = parsePropsMode(args.propsMode);
+  if (propsMode) {
+    config.propsMode = propsMode;
+  } else {
+    config.propsMode = 'extended';
+  }
+
+  if (args.maxDepth) {
+    const maxDepth = parseInt(args.maxDepth, 10);
+    if (!Number.isNaN(maxDepth)) config.maxDepth = maxDepth;
+  }
 
   const viewport = parseViewport(args.viewport);
   if (viewport) config.viewport = viewport;
@@ -393,9 +429,7 @@ export async function runCompare(argv: string[]): Promise<void> {
 
         // Add timestamp to avoid collisions if directory already exists
         const timestampEnabled =
-          args.timestampOutDir !== undefined
-            ? parseBool(args.timestampOutDir) ?? true
-            : true;
+          args.timestampOutDir !== undefined ? (parseBool(args.timestampOutDir) ?? true) : true;
         if (timestampEnabled && existsSync(outDir)) {
           const ts = new Date();
           const pad = (n: number) => String(n).padStart(2, '0');

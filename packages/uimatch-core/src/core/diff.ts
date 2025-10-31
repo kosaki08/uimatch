@@ -556,8 +556,7 @@ export function buildStyleDiffs(
     const patchHints = generatePatchHints(propDiffs);
 
     // Extract actual CSS selector for the element
-    const selectorDisplay =
-      sel === '__self__' ? (opts.meta?.[sel]?.cssSelector ?? opts.meta?.[sel]?.tag ?? 'self') : sel;
+    const selectorDisplay = opts.meta?.[sel]?.cssSelector ?? (sel === '__self__' ? 'self' : sel);
 
     diffs.push({
       selector: selectorDisplay,

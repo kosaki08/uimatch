@@ -28,9 +28,15 @@ export const CaptureConfigSchema = z.object({
 
   /**
    * Default maximum child elements to collect styles from
-   * @default 24
+   * @default 200
    */
-  defaultMaxChildren: z.number().int().positive().default(24),
+  defaultMaxChildren: z.number().int().positive().default(200),
+
+  /**
+   * Default maximum depth to traverse for child elements
+   * @default 6
+   */
+  defaultMaxDepth: z.number().int().positive().default(6),
 
   /**
    * Default idle wait after networkidle (ms)

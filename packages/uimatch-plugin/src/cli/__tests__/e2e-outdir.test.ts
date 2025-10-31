@@ -50,6 +50,7 @@ describe('E2E: outDir artifact saving', () => {
       'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
       'selector=#test',
       `outDir=${testOutDir}`,
+      'timestampOutDir=false',
       'size=pad', // Use pad mode to handle dimension mismatch
       'viewport=10x10', // Match the bypass PNG size
       'dpr=1', // Use dpr=1 for deterministic testing
@@ -106,6 +107,7 @@ describe('E2E: outDir artifact saving', () => {
         'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
         'selector=#test',
         `outDir=${testOutDir}`,
+        'timestampOutDir=false',
         'jsonOnly=false',
         'size=pad',
         'viewport=10x10',
@@ -150,6 +152,7 @@ describe('E2E: outDir artifact saving', () => {
       'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
       'selector=#test',
       `outDir=${testOutDir}`,
+      'timestampOutDir=false',
       'size=pad',
       'viewport=10x10',
       'dpr=1',

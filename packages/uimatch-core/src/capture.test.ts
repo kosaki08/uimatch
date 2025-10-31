@@ -59,8 +59,9 @@ describe('captureTarget', () => {
       expect(self['color']).toBe('rgb(255, 0, 0)');
       expect(self['padding-top']).toBe('10px');
 
-      expect(cap.styles['[data-testid="child1"]']).toBeDefined();
-      const child1 = cap.styles['[data-testid="child1"]'];
+      const childKey = '__self__ > :nth-child(1)';
+      expect(cap.styles[childKey]).toBeDefined();
+      const child1 = cap.styles[childKey];
       if (!child1) throw new Error('Expected child1 to be defined');
       expect(child1['font-weight']).toBe('700');
     },
