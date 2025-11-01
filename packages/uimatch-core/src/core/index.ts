@@ -6,6 +6,11 @@ export {
 } from './compare';
 export { buildStyleDiffs, type DiffOptions } from './diff';
 export {
+  formatRecommendationsAsMarkdown,
+  generateFixRecommendations,
+  type FixRecommendation,
+} from './fix-recommendations';
+export {
   calculateAreaGap,
   calculateCQI,
   detectSuspicions,

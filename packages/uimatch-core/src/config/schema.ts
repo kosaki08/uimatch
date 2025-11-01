@@ -130,6 +130,13 @@ export const ComparisonConfigSchema = z.object({
    * @default 1.0
    */
   toleranceShadowColorExtraDE: z.number().nonnegative().default(1.0),
+
+  /**
+   * Properties to ignore in style comparison (default noise filtering)
+   * Common decorative/non-essential properties that add noise to reports
+   * @default []
+   */
+  ignoreProperties: z.array(z.string()).default([]),
 });
 
 /**

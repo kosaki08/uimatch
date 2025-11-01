@@ -32,5 +32,6 @@ export const DEFAULT_CONFIG: AppConfig = {
     toleranceBorderWidth: 0.3,
     toleranceShadowBlur: 0.15,
     toleranceShadowColorExtraDE: 1.0,
+    ignoreProperties: [],
   },
 };

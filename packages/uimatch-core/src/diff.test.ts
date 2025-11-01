@@ -916,4 +916,174 @@ describe('buildStyleDiffs', () => {
     expect(fontFamilyProp?.expected).toBe('Roboto, sans-serif');
     expect(diffs[0]?.severity).toBe('medium');
   });
+
+  test('filters out non-visible elements (display:none)', () => {
+    const actual = {
+      __self__: { color: '#000000', display: 'block', width: '100px', height: '50px' },
+      script: { color: '#ffffff', display: 'none', width: '100px', height: '50px' }, // Should be filtered
+    };
+    const expected = {
+      __self__: { color: '#ff0000' },
+      script: { color: '#00ff00' },
+    };
+    const diffs = buildStyleDiffs(actual, expected);
+    // Only __self__ should be compared, script should be filtered out
+    expect(diffs.length).toBe(1);
+    expect(diffs[0]?.selector).toBe('self');
+    expect(diffs[0]?.properties['color']).toBeDefined();
+  });
+
+  test('filters out decorative elements (script tag)', () => {
+    const actual = {
+      __self__: { color: '#000000', width: '100px', height: '50px' },
+      script: { color: '#ffffff', display: 'block', width: '100px', height: '50px' }, // Decorative tag, should be filtered
+    };
+    const expected = {
+      __self__: { color: '#ff0000' },
+      script: { color: '#00ff00' },
+    };
+    const diffs = buildStyleDiffs(actual, expected);
+    // Only __self__ should be compared, script tag should be filtered
+    expect(diffs.length).toBe(1);
+    expect(diffs[0]?.selector).toBe('self');
+    expect(diffs[0]?.properties['color']).toBeDefined();
+  });
+
+  test('filters out zero-sized elements', () => {
+    const actual = {
+      __self__: { color: '#000000', width: '100px', height: '50px' },
+      hidden: { color: '#ffffff', width: '0px', height: '0px' }, // both width AND height are 0, should be filtered
+    };
+    const expected = {
+      __self__: { color: '#ff0000' },
+      hidden: { color: '#00ff00' },
+    };
+    const diffs = buildStyleDiffs(actual, expected);
+    // Only __self__ should be compared
+    expect(diffs.length).toBe(1);
+    expect(diffs[0]?.selector).toBe('self');
+    expect(diffs[0]?.properties['color']).toBeDefined();
+  });
+
+  test('filters out opacity:0 elements', () => {
+    const actual = {
+      __self__: { color: '#000000', opacity: '1', width: '100px', height: '50px' },
+      invisible: { color: '#ffffff', opacity: '0', width: '100px', height: '50px' }, // opacity=0, should be filtered
+    };
+    const expected = {
+      __self__: { color: '#ff0000' },
+      invisible: { color: '#00ff00' },
+    };
+    const diffs = buildStyleDiffs(actual, expected);
+    // Only __self__ should be compared
+    expect(diffs.length).toBe(1);
+    expect(diffs[0]?.selector).toBe('self');
+    expect(diffs[0]?.properties['color']).toBeDefined();
+  });
+
+  test('calculates priority scores for diffs', () => {
+    const actual = {
+      __self__: {
+        display: 'block',
+        gap: '0px',
+        color: '#000000',
+        width: '100px',
+        height: '50px',
+      },
+    };
+    const expected = {
+      __self__: {
+        display: 'flex',
+        gap: '8px',
+        color: 'var(--primary)',
+      },
+    };
+    const meta = {
+      __self__: {
+        tag: 'button',
+        id: 'submit',
+        height: 150,
+        cssSelector: 'button#submit',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected, { meta });
+
+    expect(diffs[0]?.priorityScore).toBeDefined();
+    expect(diffs[0]?.priorityScore).toBeGreaterThan(0);
+    expect(diffs[0]?.priorityScore).toBeLessThanOrEqual(100);
+  });
+
+  test('sorts diffs by priority score descending', () => {
+    const actual = {
+      button: {
+        display: 'block',
+        gap: '0px',
+        width: '100px',
+        height: '50px',
+      },
+      span: {
+        color: '#666666',
+        width: '50px',
+        height: '20px',
+      },
+    };
+    const expected = {
+      button: {
+        display: 'flex',
+        gap: '8px',
+      },
+      span: {
+        color: '#777777',
+      },
+    };
+    const meta = {
+      button: {
+        tag: 'button',
+        height: 100,
+        cssSelector: 'button',
+      },
+      span: {
+        tag: 'span',
+        height: 20,
+        cssSelector: 'span',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected, { meta });
+
+    expect(diffs.length).toBe(2);
+    // Button with layout diffs should be prioritized over span with color diff
+    expect(diffs[0]?.selector).toBe('button');
+    expect(diffs[0]?.priorityScore).toBeGreaterThan(diffs[1]?.priorityScore ?? 0);
+  });
+
+  test('prioritizes layout properties higher', () => {
+    const actual = {
+      layout: {
+        display: 'block',
+        width: '100px',
+        height: '50px',
+      },
+      color: {
+        color: '#000000',
+        width: '100px',
+        height: '50px',
+      },
+    };
+    const expected = {
+      layout: {
+        display: 'flex',
+      },
+      color: {
+        color: '#ffffff',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected);
+
+    // Layout diff should have higher priority than color diff
+    expect(diffs[0]?.selector).toBe('layout');
+    expect(diffs[0]?.priorityScore).toBeGreaterThan(diffs[1]?.priorityScore ?? 0);
+  });
 });
