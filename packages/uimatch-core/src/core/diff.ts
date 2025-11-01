@@ -429,6 +429,8 @@ export function buildStyleDiffs(
     ) => {
       if (ignore.has(prop)) return;
       const r = compare();
+      // Skip properties without expected value (not in spec)
+      if (r.expected === undefined) return;
       propDiffs[prop] = {
         actual: props[prop],
         expected: r.expected,
@@ -448,7 +450,8 @@ export function buildStyleDiffs(
       consider(p, () => {
         const a = toPx(props[p]);
         const e = exp[p] ? toPx(exp[p]) : undefined;
-        if (e == null || a == null) return { ok: true };
+        if (e == null) return { ok: true };
+        if (a == null) return { ok: false, expected: `${e}px` };
         const tol = Math.max(1, tDimension * e);
         const ok = Math.abs(a - e) <= tol;
         if (!ok) {
