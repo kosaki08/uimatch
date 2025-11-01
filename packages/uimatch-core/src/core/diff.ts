@@ -1,8 +1,15 @@
 /**
- * Style difference calculation
+ * Style difference calculation with staged checking support
  */
 
-import type { ExpectedSpec, PatchHint, StyleDiff, TokenMap } from '../types/index';
+import type {
+  CheckingStage,
+  DiffScope,
+  ExpectedSpec,
+  PatchHint,
+  StyleDiff,
+  TokenMap,
+} from '../types/index';
 import { deltaE2000 } from '../utils/color';
 import {
   normLineHeight,
@@ -72,6 +79,11 @@ export interface DiffOptions {
       elementKind?: 'text' | 'interactive' | 'container';
     }
   >;
+  /**
+   * Checking stage for progressive validation (parent → self → children)
+   * @default 'all'
+   */
+  stage?: CheckingStage;
 }
 
 /**
@@ -114,11 +126,168 @@ function isNoiseElement(
 }
 
 /**
+ * Determine the scope of a CSS property for staged checking
+ * @param prop CSS property name
+ * @returns Scope classification (ancestor/self/descendant)
+ */
+function getPropertyScope(prop: string): DiffScope {
+  // Parent container properties (background, border-radius, padding, gap, etc.)
+  const ancestorProps = [
+    'background-color',
+    'border-radius',
+    'border-width',
+    'border-style',
+    'border-color',
+    'border-top-width',
+    'border-right-width',
+    'border-bottom-width',
+    'border-left-width',
+    'border-top-style',
+    'border-right-style',
+    'border-bottom-style',
+    'border-left-style',
+    'border-top-color',
+    'border-right-color',
+    'border-bottom-color',
+    'border-left-color',
+    'padding-top',
+    'padding-right',
+    'padding-bottom',
+    'padding-left',
+    'gap',
+    'column-gap',
+    'row-gap',
+    'box-shadow',
+  ];
+
+  // Self properties (typography, sizing, positioning, etc.)
+  const selfProps = [
+    'color',
+    'font-size',
+    'font-weight',
+    'font-family',
+    'line-height',
+    'letter-spacing',
+    'width',
+    'height',
+    'min-width',
+    'max-width',
+    'min-height',
+    'max-height',
+    'display',
+    'flex-direction',
+    'align-items',
+    'justify-content',
+    'flex-wrap',
+    'align-content',
+    'place-items',
+    'place-content',
+    'flex-grow',
+    'flex-shrink',
+    'flex-basis',
+    'opacity',
+    'text-align',
+    'text-transform',
+    'text-decoration-line',
+    'white-space',
+    'word-break',
+    'box-sizing',
+    'overflow-x',
+    'overflow-y',
+    'grid-template-columns',
+    'grid-template-rows',
+    'grid-auto-flow',
+  ];
+
+  // Descendant properties (margin, which affects child spacing)
+  const descendantProps = ['margin-top', 'margin-right', 'margin-bottom', 'margin-left'];
+
+  if (ancestorProps.includes(prop)) return 'ancestor';
+  if (descendantProps.includes(prop)) return 'descendant';
+  if (selfProps.includes(prop)) return 'self';
+
+  // Default to self for unknown properties
+  return 'self';
+}
+
+/**
+ * Determine the dominant scope for a style diff based on its properties
+ * Only counts properties that have actual differences (non-zero delta or different values)
+ * @param propDiffs Property-level differences
+ * @returns Dominant scope (ancestor/self/descendant)
+ */
+function getDominantScope(
+  propDiffs: Record<string, { actual?: string; expected?: string; delta?: number; unit?: string }>
+): DiffScope {
+  // Filter to only properties with actual differences
+  const diffProps = Object.keys(propDiffs).filter((prop) => {
+    const diff = propDiffs[prop];
+    if (!diff) return false;
+    // Has difference if delta is non-zero or actual !== expected
+    const hasDelta = diff.delta !== undefined && diff.delta !== 0;
+    const valuesDiffer =
+      diff.actual !== undefined && diff.expected !== undefined && diff.actual !== diff.expected;
+    return hasDelta || valuesDiffer;
+  });
+
+  const scopes = diffProps.map(getPropertyScope);
+
+  // Count each scope type
+  const scopeCounts = scopes.reduce(
+    (acc, scope) => {
+      acc[scope] = (acc[scope] || 0) + 1;
+      return acc;
+    },
+    {} as Record<DiffScope, number>
+  );
+
+  // Return the scope with the highest count
+  // Priority: ancestor > self > descendant (for ties)
+  const ancestorCount = scopeCounts['ancestor'] || 0;
+  const selfCount = scopeCounts['self'] || 0;
+  const descendantCount = scopeCounts['descendant'] || 0;
+
+  if (ancestorCount > 0 && ancestorCount >= selfCount && ancestorCount >= descendantCount) {
+    return 'ancestor';
+  }
+  if (selfCount > 0 && selfCount >= descendantCount) {
+    return 'self';
+  }
+  return 'descendant';
+}
+
+/**
+ * Check if a diff should be included based on the checking stage
+ * @param scope Scope of the diff
+ * @param stage Current checking stage
+ * @returns True if diff should be included
+ */
+function shouldIncludeDiffAtStage(scope: DiffScope, stage: CheckingStage): boolean {
+  if (stage === 'all') return true;
+
+  if (stage === 'parent') {
+    return scope === 'ancestor';
+  }
+
+  if (stage === 'self') {
+    return scope === 'self';
+  }
+
+  if (stage === 'children') {
+    return scope === 'descendant';
+  }
+
+  return true;
+}
+
+/**
  * Build style differences between actual and expected styles
+ * Supports staged checking (parent → self → children) for progressive validation
+ *
  * @param actual Actual styles captured from implementation
  * @param expectedSpec Expected style specification
- * @param opts Diff options (thresholds, ignore, weights, tokens)
- * @returns Array of style differences
+ * @param opts Diff options (thresholds, ignore, weights, tokens, stage)
+ * @returns Array of style differences (filtered by stage if specified)
  */
 export function buildStyleDiffs(
   actual: Record<string, Record<string, string>>,
@@ -127,6 +296,7 @@ export function buildStyleDiffs(
 ): StyleDiff[] {
   const diffs: StyleDiff[] = [];
   const ignore = new Set(opts.ignore ?? []);
+  const stage = opts.stage ?? 'all';
 
   // Extract thresholds with defaults
   const tDeltaE = opts.thresholds?.deltaE ?? 3.0;
@@ -697,6 +867,14 @@ export function buildStyleDiffs(
     // Extract actual CSS selector for the element
     const selectorDisplay = opts.meta?.[sel]?.cssSelector ?? (sel === '__self__' ? 'self' : sel);
 
+    // Determine dominant scope for this diff
+    const scope = getDominantScope(propDiffs);
+
+    // Check if this diff should be included at the current stage
+    if (!shouldIncludeDiffAtStage(scope, stage)) {
+      continue;
+    }
+
     diffs.push({
       selector: selectorDisplay,
       properties: propDiffs,
@@ -704,11 +882,20 @@ export function buildStyleDiffs(
       patchHints,
       meta: opts.meta?.[sel],
       priorityScore,
+      scope,
     });
   }
 
-  // Sort diffs by priority score (descending) for better fix recommendations
-  return diffs.sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0));
+  // Sort diffs by scope first (ancestor → self → descendant), then by priority score
+  return diffs.sort((a, b) => {
+    // Primary sort: scope (ancestor < self < descendant for ordering)
+    const scopeOrder: Record<DiffScope, number> = { ancestor: 0, self: 1, descendant: 2 };
+    const scopeDiff = (scopeOrder[a.scope ?? 'self'] ?? 1) - (scopeOrder[b.scope ?? 'self'] ?? 1);
+    if (scopeDiff !== 0) return scopeDiff;
+
+    // Secondary sort: priority score (descending)
+    return (b.priorityScore ?? 0) - (a.priorityScore ?? 0);
+  });
 }
 
 /**

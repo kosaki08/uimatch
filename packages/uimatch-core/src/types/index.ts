@@ -83,6 +83,23 @@ export interface TokenMap {
 export type ExpectedSpec = Record<string, Partial<Record<string, string>>>;
 
 /**
+ * Scope of element in DOM hierarchy for staged checking
+ * - ancestor: Parent container element (background, border-radius, padding, gap)
+ * - self: Element itself (typography, sizing, etc.)
+ * - descendant: Child elements
+ */
+export type DiffScope = 'ancestor' | 'self' | 'descendant';
+
+/**
+ * Checking stage for progressive validation
+ * - parent: Check only parent container styles first
+ * - self: Check element's own styles
+ * - children: Check child elements
+ * - all: Check all levels (default)
+ */
+export type CheckingStage = 'parent' | 'self' | 'children' | 'all';
+
+/**
  * Style difference detected between design and implementation
  */
 export interface StyleDiff {
@@ -117,6 +134,11 @@ export interface StyleDiff {
    * Based on: layout impact, element prominence, token usage, severity
    */
   priorityScore?: number;
+  /**
+   * Scope of this diff in DOM hierarchy
+   * Used for staged checking to prioritize parent → self → children validation
+   */
+  scope?: DiffScope;
 }
 
 /**
