@@ -7,3 +7,9 @@ export {
   type BoxShadowParsed,
   type RGB,
 } from './normalize';
+export {
+  analyzeLayoutAxis,
+  checkLayoutMismatch,
+  generateExpectedLayout,
+  inferVisualAxis,
+} from './visual-axis';
