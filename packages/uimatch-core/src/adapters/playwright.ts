@@ -2,7 +2,7 @@
  * Playwright adapter for browser automation
  */
 
-import { chromium, type Browser, type BrowserContext } from 'playwright';
+import { chromium, type Browser, type BrowserContext, type Frame, type Locator } from 'playwright';
 import { DEFAULT_CONFIG } from '../config/defaults';
 import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/adapters';
 import { browserPool } from './browser-pool';
@@ -104,6 +104,152 @@ const EXTENDED_PROPS = [
   'backdrop-filter',
   'text-wrap',
 ] as const;
+
+/**
+ * Resolves a selector string with optional prefix to a Playwright Locator.
+ *
+ * Supported prefixes:
+ * - `role:button[name="View docs"]` → getByRole('button', { name: 'View docs' })
+ * - `role:button[name=/docs/i][exact]` → getByRole with regex name and exact option
+ * - `role:heading[level=1]` → getByRole('heading', { level: 1 })
+ * - `role:button[pressed=true]` → getByRole('button', { pressed: true })
+ * - `testid:accordion-item` → getByTestId('accordion-item')
+ * - `text:"Continue"` or `text:'Continue'` → getByText('Continue', { exact: true })
+ * - `text:/Continue/i` → getByText(/Continue/i)
+ * - `xpath://div[@class="header"]` → locator('xpath=//div[@class="header"]')
+ * - `css:.bg-white` → locator('.bg-white')
+ * - `dompath:__self__ > :nth-child(2)` → locator for child element (use after initial capture)
+ * - No prefix → assumes CSS selector (backward compatible)
+ *
+ * Unknown prefixes:
+ * - With UIMATCH_SELECTOR_STRICT=true → throws error (strict mode for CI)
+ * - Otherwise → fallback to CSS selector (lenient mode for interactive use)
+ *
+ * @param frame - Target frame
+ * @param selectorString - Selector with optional prefix
+ * @returns Playwright Locator
+ * @throws Error when prefix is unknown and UIMATCH_SELECTOR_STRICT=true
+ */
+function resolveLocator(frame: Frame, selectorString: string): Locator {
+  const colonIndex = selectorString.indexOf(':');
+  if (colonIndex === -1) {
+    // No prefix - assume CSS selector for backward compatibility
+    return frame.locator(selectorString);
+  }
+
+  const prefix = selectorString.slice(0, colonIndex);
+  const rest = selectorString.slice(colonIndex + 1);
+
+  switch (prefix) {
+    case 'role': {
+      // Parse role:button[name="View docs"][exact] or role:button[name=/.../i][level=1]
+      // Basic format: role:button or role:button[name="text"]
+      const roleMatch = /^([a-z]+)(.*)$/i.exec(rest);
+      if (!roleMatch) {
+        throw new Error(`Invalid role selector format: "${selectorString}"`);
+      }
+      const [, roleName, optionsStr] = roleMatch;
+      if (!roleName) {
+        throw new Error(`Invalid role selector format: "${selectorString}"`);
+      }
+
+      // Parse options from bracket notation
+      const options: Parameters<typeof frame.getByRole>[1] = {};
+      if (optionsStr) {
+        // Extract [name="..."] or [name=/.../i]
+        const nameMatch = /\[name=(?:"([^"]+)"|\/([^/]+)\/([a-z]*)|'([^']+)')\]/i.exec(optionsStr);
+        if (nameMatch) {
+          if (nameMatch[1] || nameMatch[4]) {
+            // String name: [name="text"] or [name='text']
+            options.name = nameMatch[1] || nameMatch[4];
+          } else if (nameMatch[2]) {
+            // Regex name: [name=/pattern/flags]
+            options.name = new RegExp(nameMatch[2], nameMatch[3] || '');
+          }
+        }
+
+        // Extract [exact]
+        if (/\[exact\]/i.test(optionsStr)) {
+          options.exact = true;
+        }
+
+        // Extract [level=N]
+        const levelMatch = /\[level=(\d+)\]/i.exec(optionsStr);
+        if (levelMatch) {
+          options.level = Number(levelMatch[1]);
+        }
+
+        // Extract [pressed=true|false]
+        const pressedMatch = /\[pressed=(true|false)\]/i.exec(optionsStr);
+        if (pressedMatch) {
+          options.pressed = pressedMatch[1] === 'true';
+        }
+      }
+
+      return frame.getByRole(roleName as Parameters<typeof frame.getByRole>[0], options);
+    }
+
+    case 'testid': {
+      return frame.getByTestId(rest);
+    }
+
+    case 'text': {
+      const s = rest.trim();
+      // Handle exact match with double or single quotes: text:"Continue" or text:'Continue'
+      if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+        let raw = s.slice(1, -1);
+        // Handle escape sequences: \" \' \\ \n \t
+        raw = raw
+          .replace(/\\"/g, '"')
+          .replace(/\\'/g, "'")
+          .replace(/\\\\/g, '\\')
+          .replace(/\\n/g, '\n')
+          .replace(/\\t/g, '\t');
+        return frame.getByText(raw, { exact: true });
+      }
+      // Handle regex: text:/Continue/i
+      if (s.startsWith('/')) {
+        const lastSlash = s.lastIndexOf('/');
+        if (lastSlash > 0) {
+          const pattern = s.slice(1, lastSlash);
+          const flags = s.slice(lastSlash + 1);
+          return frame.getByText(new RegExp(pattern, flags));
+        }
+      }
+      // Default: treat as plain text
+      return frame.getByText(s);
+    }
+
+    case 'xpath': {
+      return frame.locator(`xpath=${rest}`);
+    }
+
+    case 'css': {
+      return frame.locator(rest);
+    }
+
+    case 'dompath': {
+      // Internal DOM path after capture (e.g., "__self__ > :nth-child(2)")
+      return frame.locator(rest);
+    }
+
+    default: {
+      // Unknown prefix behavior:
+      // - UIMATCH_SELECTOR_STRICT=true → throw error (strict mode for CI)
+      // - Otherwise → fallback to CSS selector (lenient mode for interactive use)
+      if (process.env.UIMATCH_SELECTOR_STRICT === 'true') {
+        throw new Error(
+          `Unknown selector prefix: "${prefix}"\n` +
+            `Supported prefixes: role:, testid:, text:, xpath:, css:, dompath:\n` +
+            `If this is a CSS selector with a colon (e.g., a[href*="https:"]), it should still work in lenient mode.\n` +
+            `Set UIMATCH_SELECTOR_STRICT=false or remove it to enable CSS fallback.`
+        );
+      }
+      // Lenient fallback: treat entire string as CSS selector
+      return frame.locator(selectorString);
+    }
+  }
+}
 
 /**
  * Playwright implementation of BrowserAdapter.
@@ -220,7 +366,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
         });
       }, idleWaitMs);
 
-      const locator = frame.locator(opts.selector);
+      const locator = resolveLocator(frame, opts.selector);
 
       try {
         await locator.waitFor({ state: 'visible', timeout: 10_000 });
