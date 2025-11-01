@@ -370,26 +370,6 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   // Ensure DFS is in range [0, 100]
   dfs = Math.max(0, Math.min(100, Math.round(dfs)));
 
-  // 5) Generate summary
-  const summaryParts = [
-    pass ? 'PASS' : 'FAIL',
-    `DFS: ${dfs}`,
-    `pixelDiffRatio: ${(result.pixelDiffRatio * 100).toFixed(2)}%`,
-  ];
-
-  // Show content-only ratio if available (more intuitive metric)
-  if (result.pixelDiffRatioContent !== undefined) {
-    summaryParts.push(`pixelDiffRatioContent: ${(result.pixelDiffRatioContent * 100).toFixed(2)}%`);
-    summaryParts.push(`contentCoverage: ${((result.contentCoverage ?? 0) * 100).toFixed(1)}%`);
-  }
-
-  summaryParts.push(`colorDeltaEAvg: ${colorDeltaEAvg.toFixed(2)}`);
-  summaryParts.push(
-    `styleDiffs: ${styleDiffs.length} (high: ${styleDiffs.filter((d: { severity: string }) => d.severity === 'high').length})`
-  );
-
-  const summary = summaryParts.join(' | ');
-
   // Calculate Style Fidelity Score (SFS) if style diffs exist
   let styleSummary: CompareResult['report']['styleSummary'];
   if (styleDiffs.length > 0) {
@@ -409,6 +389,33 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       args.weights
     );
   }
+
+  // 5) Generate summary (always use styleSummary for consistency if available)
+  const summaryParts = [
+    pass ? 'PASS' : 'FAIL',
+    `DFS: ${dfs}`,
+    `pixelDiffRatio: ${(result.pixelDiffRatio * 100).toFixed(2)}%`,
+  ];
+
+  // Show content-only ratio if available (more intuitive metric)
+  if (result.pixelDiffRatioContent !== undefined) {
+    summaryParts.push(`pixelDiffRatioContent: ${(result.pixelDiffRatioContent * 100).toFixed(2)}%`);
+    summaryParts.push(`contentCoverage: ${((result.contentCoverage ?? 0) * 100).toFixed(1)}%`);
+  }
+
+  summaryParts.push(`colorDeltaEAvg: ${colorDeltaEAvg.toFixed(2)}`);
+
+  // Use styleSummary counts for consistency with report.json
+  if (styleSummary) {
+    summaryParts.push(`styleDiffs: ${styleSummary.totalDiffs} (high: ${styleSummary.highCount})`);
+  } else {
+    // Fallback to styleDiffs array when styleSummary is not calculated
+    summaryParts.push(
+      `styleDiffs: ${styleDiffs.length} (high: ${styleDiffs.filter((d: { severity: string }) => d.severity === 'high').length})`
+    );
+  }
+
+  const summary = summaryParts.join(' | ');
 
   return {
     summary,
