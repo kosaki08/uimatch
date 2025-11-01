@@ -128,10 +128,13 @@ function isNoiseElement(
 /**
  * Normalize property name to kebab-case
  * Handles both kebab-case and camelCase input
+ * CSS custom properties (--*) are returned as-is without normalization
  * @param prop Property name in any case
  * @returns kebab-case property name
  */
 function toKebabCase(prop: string): string {
+  // CSS custom properties (--token) should not be normalized
+  if (prop.startsWith('--')) return prop;
   return prop.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
 }
 
@@ -155,9 +158,20 @@ function expandShorthand(prop: string): string[] {
       return ['border-width', 'border-style', 'border-color'];
     case 'background':
       return ['background-color']; // Minimal expansion for scope purposes
+    case 'outline':
+      return ['outline-width', 'outline-style', 'outline-color'];
     default:
-      return [normalized];
+      break;
   }
+
+  // Handle border-side shorthand (border-top, border-right, border-bottom, border-left)
+  const borderSideMatch = normalized.match(/^border-(top|right|bottom|left)$/);
+  if (borderSideMatch) {
+    const side = borderSideMatch[1];
+    return [`border-${side}-width`, `border-${side}-style`, `border-${side}-color`];
+  }
+
+  return [normalized];
 }
 
 /**
@@ -239,6 +253,9 @@ function getPropertyScope(prop: string): DiffScope {
     'box-shadow', // Shadow is typically element decoration
     'box-shadow-offset-x', // Synthetic property from box-shadow comparison
     'box-shadow-offset-y', // Synthetic property from box-shadow comparison
+    'outline-width', // Outline is element decoration
+    'outline-style',
+    'outline-color',
   ]);
 
   // Descendant properties (margin, which affects child spacing)
