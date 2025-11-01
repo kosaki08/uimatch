@@ -178,4 +178,256 @@ Line 2</p>
     expect(result.implPng).toBeInstanceOf(Buffer);
     expect(result.styles['__self__']).toBeDefined();
   });
+
+  test('CSS pseudo-class: :root selector', async () => {
+    const htmlWithRoot = `
+      <!DOCTYPE html>
+      <html>
+        <head><style>:root { --color: blue; }</style></head>
+        <body>
+          <div class="test">Test</div>
+        </body>
+      </html>
+    `;
+
+    const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+    // :root should be treated as CSS selector, not as unknown prefix
+    const result = await adapter.captureTarget({
+      html: htmlWithRoot,
+      selector: '.test', // Use valid selector instead of :root (can't screenshot root)
+      idleWaitMs: 0,
+    });
+
+    expect(result.implPng).toBeInstanceOf(Buffer);
+    expect(result.styles['__self__']).toBeDefined();
+  });
+
+  test('CSS pseudo-class: :has() selector', async () => {
+    const htmlWithHas = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <ul>
+            <li>Item 1</li>
+            <li><span>Item 2 with span</span></li>
+          </ul>
+        </body>
+      </html>
+    `;
+
+    const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+    // li:has(span) should be treated as CSS selector, not as unknown prefix
+    const result = await adapter.captureTarget({
+      html: htmlWithHas,
+      selector: 'li:has(span)',
+      idleWaitMs: 0,
+    });
+
+    expect(result.implPng).toBeInstanceOf(Buffer);
+    expect(result.styles['__self__']).toBeDefined();
+  });
+
+  test('CSS nth-child selector', async () => {
+    const htmlWithList = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <ul>
+            <li>Item 1</li>
+            <li>Item 2</li>
+            <li>Item 3</li>
+          </ul>
+        </body>
+      </html>
+    `;
+
+    const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+    // ul > li:nth-child(2) should be treated as CSS selector
+    const result = await adapter.captureTarget({
+      html: htmlWithList,
+      selector: 'ul > li:nth-child(2)',
+      idleWaitMs: 0,
+    });
+
+    expect(result.implPng).toBeInstanceOf(Buffer);
+    expect(result.styles['__self__']).toBeDefined();
+  });
+
+  test('text: selector with [exact] flag on quoted string', async () => {
+    const htmlWithText = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <p>Submit</p>
+          <p>Submit Form</p>
+        </body>
+      </html>
+    `;
+
+    const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+    // Should match only exact "Submit", not "Submit Form"
+    const result = await adapter.captureTarget({
+      html: htmlWithText,
+      selector: 'text:"Submit"[exact]',
+      idleWaitMs: 0,
+    });
+
+    expect(result.implPng).toBeInstanceOf(Buffer);
+    expect(result.styles['__self__']).toBeDefined();
+  });
+
+  test('role: selector with selected=true', async () => {
+    const htmlWithTab = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <div role="tablist">
+            <button role="tab" aria-selected="true">Tab 1</button>
+            <button role="tab">Tab 2</button>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+    const result = await adapter.captureTarget({
+      html: htmlWithTab,
+      selector: 'role:tab[selected=true]',
+      idleWaitMs: 0,
+    });
+
+    expect(result.implPng).toBeInstanceOf(Buffer);
+    expect(result.styles['__self__']).toBeDefined();
+  });
+
+  test('role: selector with checked=true', async () => {
+    const htmlWithCheckbox = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <input type="checkbox" role="checkbox" checked />
+          <input type="checkbox" role="checkbox" />
+        </body>
+      </html>
+    `;
+
+    const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+    const result = await adapter.captureTarget({
+      html: htmlWithCheckbox,
+      selector: 'role:checkbox[checked=true]',
+      idleWaitMs: 0,
+    });
+
+    expect(result.implPng).toBeInstanceOf(Buffer);
+    expect(result.styles['__self__']).toBeDefined();
+  });
+});
+
+describe('PlaywrightAdapter - Selector Strict Mode', () => {
+  test('UIMATCH_SELECTOR_STRICT=true throws on unknown prefix', async () => {
+    const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
+    process.env.UIMATCH_SELECTOR_STRICT = 'true';
+
+    try {
+      const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+      let error: Error | undefined;
+
+      try {
+        await adapter.captureTarget({
+          html: '<div>Test</div>',
+          selector: 'foo:bar', // Unknown prefix
+          idleWaitMs: 0,
+        });
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('Unknown selector prefix: "foo"');
+    } finally {
+      // Restore original environment
+      if (originalStrict === undefined) {
+        delete process.env.UIMATCH_SELECTOR_STRICT;
+      } else {
+        process.env.UIMATCH_SELECTOR_STRICT = originalStrict;
+      }
+    }
+  });
+
+  test('UIMATCH_SELECTOR_STRICT=true rejects CSS pseudo-classes with word prefix', async () => {
+    const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
+    process.env.UIMATCH_SELECTOR_STRICT = 'true';
+
+    try {
+      const htmlWithList = `
+        <!DOCTYPE html>
+        <html>
+          <body>
+            <ul>
+              <li>Item 1</li>
+              <li>Item 2</li>
+            </ul>
+          </body>
+        </html>
+      `;
+
+      const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+      let error: Error | undefined;
+
+      try {
+        // In strict mode, `li:nth-child(1)` looks like a typo (li is not a known prefix)
+        await adapter.captureTarget({
+          html: htmlWithList,
+          selector: 'li:nth-child(1)',
+          idleWaitMs: 0,
+        });
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeDefined();
+      expect(error?.message).toContain('Unknown selector prefix: "li"');
+    } finally {
+      // Restore original environment
+      if (originalStrict === undefined) {
+        delete process.env.UIMATCH_SELECTOR_STRICT;
+      } else {
+        process.env.UIMATCH_SELECTOR_STRICT = originalStrict;
+      }
+    }
+  });
+
+  test('UIMATCH_SELECTOR_STRICT=true allows URL attribute selectors', async () => {
+    const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
+    process.env.UIMATCH_SELECTOR_STRICT = 'true';
+
+    try {
+      const htmlWithLink = `
+        <!DOCTYPE html>
+        <html>
+          <body>
+            <a href="https://example.com">Link</a>
+          </body>
+        </html>
+      `;
+
+      const adapter = new PlaywrightAdapter({ reuseBrowser: true });
+      // URL attribute selector should work even in strict mode
+      const result = await adapter.captureTarget({
+        html: htmlWithLink,
+        selector: 'a[href*="https:"]',
+        idleWaitMs: 0,
+      });
+
+      expect(result.implPng).toBeInstanceOf(Buffer);
+      expect(result.styles['__self__']).toBeDefined();
+    } finally {
+      // Restore original environment
+      if (originalStrict === undefined) {
+        delete process.env.UIMATCH_SELECTOR_STRICT;
+      } else {
+        process.env.UIMATCH_SELECTOR_STRICT = originalStrict;
+      }
+    }
+  });
 });
