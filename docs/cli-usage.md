@@ -49,7 +49,9 @@ bun run uimatch:compare -- \
 - `format=<type>` - Output format: `standard|claude` (default: `standard`)
 - `patchTarget=<type>` - Patch format for `format=claude`: `tailwind|css|vanilla-extract` (default: `tailwind`)
 - `viewport=<WxH>` - Viewport size (e.g., `1584x1104`)
-- `dpr=<number>` - Device pixel ratio (default: `2`)
+- `dpr=<number>` - Device pixel ratio for browser capture (default: `2`)
+- `figmaScale=<number>` - Figma image export scale, independent of browser DPR (default: `2`)
+- `figmaAutoRoi=<bool>` - Auto-detect optimal child node when parent is too large (default: `false`)
 - `fontPreload=<urls>` - Font URLs to preload for consistent rendering
 
 ### Environment Variables
@@ -211,11 +213,22 @@ Always compare equivalent regions:
 - **Implementation**: Use component root selector (not page container)
 
 ```bash
-# ✅ Good: Component-to-component
+# Good: Component-to-component
 figma="FILEKEY:ACCORDION_COMPONENT_NODE"
 selector='[data-testid="accordion-root"]'
 
-# ❌ Bad: Page-to-component (creates noise)
+# Bad: Page-to-component (creates noise)
 figma="FILEKEY:PAGE_NODE"
 selector='[data-testid="accordion-root"]'
+```
+
+**Auto-ROI Feature**: When `figmaAutoRoi=true`, automatically detects the best matching child node if the specified Figma node is significantly larger than the implementation capture. Useful when only page-level node IDs are available.
+
+```bash
+# Auto-detect optimal child node
+figma="FILEKEY:PAGE_NODE"
+selector='[data-testid="accordion-root"]'
+figmaAutoRoi=true
+size=pad
+contentBasis=intersection
 ```
