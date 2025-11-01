@@ -1,4 +1,13 @@
-export type { BrowserAdapter, CaptureOptions, CaptureResult, ElementMeta } from './adapters';
+import type { LayoutData as AdapterLayoutData } from './adapters';
+
+export type { PartialComputedStyle } from '../utils/visual-axis';
+export type {
+  BrowserAdapter,
+  CaptureOptions,
+  CaptureResult,
+  ElementMeta,
+  LayoutData,
+} from './adapters';
 export { createCaptureError, createComparisonError, createConfigError } from './errors';
 export type { AppError, BaseError, CaptureError, ComparisonError, ConfigError } from './errors';
 export {
@@ -16,6 +25,16 @@ export {
 } from './result';
 
 /**
+ * Figma layout metadata for axis inference
+ */
+export interface FigmaLayoutMeta {
+  /** Layout mode from Figma: "HORIZONTAL" | "VERTICAL" | "NONE" */
+  layoutMode?: 'HORIZONTAL' | 'VERTICAL' | 'NONE';
+  /** Item spacing (gap) in pixels */
+  itemSpacing?: number;
+}
+
+/**
  * Input for the compare function
  */
 export interface CompareInput {
@@ -30,6 +49,10 @@ export interface CompareInput {
    * default: 0.1
    */
   threshold?: number;
+  /** Figma layout metadata (for layout axis analysis) */
+  figmaLayoutMeta?: FigmaLayoutMeta;
+  /** Implementation layout data (from Playwright capture) */
+  implLayoutData?: AdapterLayoutData;
 }
 
 /**
@@ -61,6 +84,8 @@ export interface CompareResult {
   styleDiffs?: StyleDiff[];
   /** Average color delta E (perceptual color difference) */
   colorDeltaEAvg?: number;
+  /** Layout axis analysis result (if layout data provided) */
+  layoutAnalysis?: AxisAnalysisResult;
 }
 
 /**
@@ -186,6 +211,8 @@ export interface AxisAnalysisResult {
   confidence: number;
   /** Whether there's a mismatch between declared and visual */
   hasMismatch: boolean;
+  /** Whether visual axis is ambiguous (useful for severity adjustment) */
+  ambiguous: boolean;
 }
 
 /**

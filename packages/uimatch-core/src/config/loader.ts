@@ -35,6 +35,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
         ? parseFloat(env.COLOR_DELTA_E_THRESHOLD)
         : DEFAULT_CONFIG.comparison.colorDeltaEThreshold,
     },
+    axisInference: {
+      ...DEFAULT_CONFIG.axisInference,
+    },
   };
 
   // Validate using zod schema
@@ -56,6 +59,10 @@ export function mergeConfig(partial: Partial<AppConfig>): AppConfig {
     comparison: {
       ...DEFAULT_CONFIG.comparison,
       ...partial.comparison,
+    },
+    axisInference: {
+      ...DEFAULT_CONFIG.axisInference,
+      ...partial.axisInference,
     },
   };
 
