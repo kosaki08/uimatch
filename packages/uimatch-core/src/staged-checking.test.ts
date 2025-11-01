@@ -363,6 +363,60 @@ describe('Staged Checking', () => {
     });
   });
 
+  describe('Shorthand Property Expansion', () => {
+    test('border-top longhand properties are parent-scoped', () => {
+      const actual = {
+        '.card': {
+          'border-top-width': '1px',
+          'border-top-style': 'solid',
+          'border-top-color': '#000000',
+        },
+      };
+
+      const expected: ExpectedSpec = {
+        '.card': {
+          'border-top-width': '2px',
+          'border-top-style': 'solid',
+          'border-top-color': '#333333',
+        },
+      };
+
+      const parentDiffs = buildStyleDiffs(actual, expected, { stage: 'parent' });
+      const selfDiffs = buildStyleDiffs(actual, expected, { stage: 'self' });
+
+      // border-top properties should appear in parent stage (ancestor scope)
+      expect(parentDiffs.length).toBeGreaterThan(0);
+      expect(parentDiffs.every((d) => d.scope === 'ancestor')).toBe(true);
+
+      // Should not appear in self stage
+      expect(selfDiffs.length).toBe(0);
+    });
+
+    test('outline longhand properties are self-scoped', () => {
+      const actual = {
+        '.btn': {
+          'outline-width': '1px',
+          'outline-style': 'solid',
+          'outline-color': '#000000',
+          color: '#000000',
+        },
+      };
+
+      const expected: ExpectedSpec = {
+        '.btn': {
+          'outline-width': '2px',
+          'outline-style': 'dashed',
+          'outline-color': '#333333',
+          color: '#ffffff',
+        },
+      };
+
+      const selfDiffs = buildStyleDiffs(actual, expected, { stage: 'self' });
+      expect(selfDiffs.length).toBeGreaterThan(0);
+      expect(selfDiffs.every((d) => d.scope === 'self')).toBe(true);
+    });
+  });
+
   describe('Progressive Validation Workflow', () => {
     test('enables progressive parent → self → children validation', () => {
       // Define separate elements with distinct scopes to test progressive validation
