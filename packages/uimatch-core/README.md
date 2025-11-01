@@ -135,6 +135,36 @@ await pool.release(browser);
 await pool.closeAll();
 ```
 
+### Enhanced Selectors
+
+Playwright adapter supports prefixed selectors: `role:`, `testid:`, `text:`, `xpath:`, `css:`, `dompath:`.
+
+```typescript
+selector: 'role:button[name="Submit"]';
+selector: 'role:heading[level=1]';
+selector: 'role:tab[selected=true]';
+selector: 'testid:submit-btn';
+selector: 'text:"Continue"';
+selector: 'text:/continue/i';
+selector: '.button'; // CSS selector (no prefix)
+```
+
+Text selectors support `[exact]` flag and escape sequences (`\n`, `\t`, `\"`, `\'`, `\\`).
+
+Role selectors support `name`, `level`, `pressed`, `selected`, `checked`, `expanded`, `disabled`, `includeHidden` options.
+
+### Environment Variables
+
+- `UIMATCH_HEADLESS` - Headless mode (default: `true`)
+- `UIMATCH_CHROME_CHANNEL` - Chrome channel (`chrome`, `msedge`)
+- `UIMATCH_CHROME_ARGS` - Chrome arguments (space-separated)
+- `UIMATCH_HTTP_TIMEOUT_MS` - Navigation timeout (default: `30000`)
+- `UIMATCH_WAIT_UNTIL` - Wait strategy (`load`, `networkidle`, `domcontentloaded`)
+- `UIMATCH_SELECTOR_STRICT` - Reject unknown prefixes (default: `false`)
+- `UIMATCH_SELECTOR_FIRST` - Return first match (default: `false`)
+- `DEBUG=uimatch:selector` - Log selector resolution
+- `BASIC_AUTH_USER`, `BASIC_AUTH_PASS` - Basic authentication
+
 ## API Reference
 
 ### compareImages(input: CompareImageInput): Promise&lt;CompareImageResult&gt;

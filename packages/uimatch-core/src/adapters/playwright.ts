@@ -112,14 +112,16 @@ const EXTENDED_PROPS = [
  * - `role:button[name="View docs"]` → getByRole('button', { name: 'View docs' })
  * - `role:button[name=/docs/i][exact]` → getByRole with regex name and exact option
  * - `role:heading[level=1]` → getByRole('heading', { level: 1 })
- * - `role:button[pressed=true]` → getByRole('button', { pressed: true })
+ * - `role:button[pressed=true|selected=true|checked=true]` → Boolean state options
  * - `testid:accordion-item` → getByTestId('accordion-item')
  * - `text:"Continue"` or `text:'Continue'` → getByText('Continue', { exact: true })
+ * - `text:"Continue"[exact]` or `text:/Continue/i[exact]` → Explicit exact match
  * - `text:/Continue/i` → getByText(/Continue/i)
  * - `xpath://div[@class="header"]` → locator('xpath=//div[@class="header"]')
  * - `css:.bg-white` → locator('.bg-white')
  * - `dompath:__self__ > :nth-child(2)` → locator for child element (use after initial capture)
  * - No prefix → assumes CSS selector (backward compatible)
+ * - CSS pseudo-classes (`:root`, `:has()`, etc.) → treated as CSS selectors
  *
  * Unknown prefixes:
  * - With UIMATCH_SELECTOR_STRICT=true → throws error (strict mode for CI)
@@ -131,14 +133,54 @@ const EXTENDED_PROPS = [
  * @throws Error when prefix is unknown and UIMATCH_SELECTOR_STRICT=true
  */
 function resolveLocator(frame: Frame, selectorString: string): Locator {
-  const colonIndex = selectorString.indexOf(':');
-  if (colonIndex === -1) {
-    // No prefix - assume CSS selector for backward compatibility
-    return frame.locator(selectorString);
+  // DEBUG logging for troubleshooting
+  const DEBUG = process.env.DEBUG?.includes('uimatch:selector');
+  if (DEBUG) {
+    console.debug('[uimatch:selector] input:', selectorString);
   }
 
-  const prefix = selectorString.slice(0, colonIndex);
-  const rest = selectorString.slice(colonIndex + 1);
+  // Only match known prefixes to avoid false positives with CSS selectors
+  // Known prefixes: role, testid, text, xpath, css, dompath
+  // This regex explicitly matches ONLY known prefixes, so:
+  // - `role:button` → matches (known prefix)
+  // - `li:nth-child(1)` → no match (li is not a known prefix) → treated as CSS
+  // - `:root` → no match (starts with colon) → treated as CSS
+  // - `a[href*="https:"]` → no match (doesn't start with known prefix) → treated as CSS
+  const knownPrefixes = ['role', 'testid', 'text', 'xpath', 'css', 'dompath'];
+  const prefixPattern = new RegExp(`^(${knownPrefixes.join('|')}):(.*)$`, 's');
+  const m = selectorString.match(prefixPattern);
+
+  if (!m) {
+    // No known prefix detected → treat as CSS selector
+    if (DEBUG) {
+      console.debug('[uimatch:selector] no known prefix → CSS fallback');
+    }
+
+    // In strict mode, check if selector looks like it might have a typo
+    // (has a colon with a word before it that's not a known prefix)
+    if (process.env.UIMATCH_SELECTOR_STRICT === 'true') {
+      const unknownPrefixCheck = selectorString.match(/^([a-z]\w+):(.*)$/i);
+      if (unknownPrefixCheck) {
+        const [, suspiciousPrefix] = unknownPrefixCheck;
+        throw new Error(
+          `Unknown selector prefix: "${suspiciousPrefix}"\n` +
+            `Supported prefixes: ${knownPrefixes.join(', ')}\n` +
+            `If this is a CSS selector (e.g., "li:nth-child(1)"), ` +
+            `set UIMATCH_SELECTOR_STRICT=false to enable CSS fallback.`
+        );
+      }
+    }
+
+    return applyFirstIfNeeded(frame.locator(selectorString));
+  }
+
+  const prefix = m[1];
+  const rest = m[2];
+
+  // Type guard: ensure prefix and rest are defined
+  if (!prefix || !rest) {
+    throw new Error(`Invalid selector format: "${selectorString}"`);
+  }
 
   switch (prefix) {
     case 'role': {
@@ -184,71 +226,128 @@ function resolveLocator(frame: Frame, selectorString: string): Locator {
         if (pressedMatch) {
           options.pressed = pressedMatch[1] === 'true';
         }
+
+        // Extract boolean options: [selected=true|false], [checked=true|false], etc.
+        const booleanOptions = [
+          'selected',
+          'checked',
+          'expanded',
+          'disabled',
+          'includeHidden',
+        ] as const;
+        for (const key of booleanOptions) {
+          const pattern = new RegExp(`\\[${key}=(true|false)\\]`, 'i');
+          const match = pattern.exec(optionsStr);
+          if (match) {
+            // Use type assertion to satisfy TypeScript
+            (options as Record<string, unknown>)[key] = match[1] === 'true';
+          }
+        }
       }
 
-      return frame.getByRole(roleName as Parameters<typeof frame.getByRole>[0], options);
+      if (DEBUG) {
+        console.debug('[uimatch:selector] role:', { roleName, options });
+      }
+      return applyFirstIfNeeded(
+        frame.getByRole(roleName as Parameters<typeof frame.getByRole>[0], options)
+      );
     }
 
     case 'testid': {
-      return frame.getByTestId(rest);
+      if (DEBUG) {
+        console.debug('[uimatch:selector] testid:', rest);
+      }
+      return applyFirstIfNeeded(frame.getByTestId(rest));
     }
 
     case 'text': {
-      const s = rest.trim();
-      // Handle exact match with double or single quotes: text:"Continue" or text:'Continue'
+      let s = rest.trim();
+
+      // Check for [exact] flag and remove it from the string
+      const exactFlag = /\[exact\]/i.test(s);
+      s = s.replace(/\[exact\]/gi, '').trim();
+
+      // Handle quoted strings: text:"Continue" or text:'Continue'
       if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
         let raw = s.slice(1, -1);
-        // Handle escape sequences: \" \' \\ \n \t
+        // Handle escape sequences: \\ must be processed first to avoid double-processing
         raw = raw
+          .replace(/\\\\/g, '\\')
           .replace(/\\"/g, '"')
           .replace(/\\'/g, "'")
-          .replace(/\\\\/g, '\\')
           .replace(/\\n/g, '\n')
           .replace(/\\t/g, '\t');
-        return frame.getByText(raw, { exact: true });
+        if (DEBUG) {
+          console.debug('[uimatch:selector] text (quoted):', { raw, exact: true });
+        }
+        // Quoted strings always use exact:true
+        return applyFirstIfNeeded(frame.getByText(raw, { exact: true }));
       }
+
       // Handle regex: text:/Continue/i
       if (s.startsWith('/')) {
         const lastSlash = s.lastIndexOf('/');
         if (lastSlash > 0) {
           const pattern = s.slice(1, lastSlash);
           const flags = s.slice(lastSlash + 1);
-          return frame.getByText(new RegExp(pattern, flags));
+          if (DEBUG) {
+            console.debug('[uimatch:selector] text (regex):', {
+              pattern,
+              flags,
+              exact: exactFlag || false,
+            });
+          }
+          return applyFirstIfNeeded(
+            frame.getByText(new RegExp(pattern, flags), { exact: exactFlag || false })
+          );
         }
       }
+
       // Default: treat as plain text
-      return frame.getByText(s);
+      if (DEBUG) {
+        console.debug('[uimatch:selector] text (plain):', { text: s, exact: exactFlag || false });
+      }
+      return applyFirstIfNeeded(frame.getByText(s, { exact: exactFlag || false }));
     }
 
     case 'xpath': {
-      return frame.locator(`xpath=${rest}`);
+      if (DEBUG) {
+        console.debug('[uimatch:selector] xpath:', rest);
+      }
+      return applyFirstIfNeeded(frame.locator(`xpath=${rest}`));
     }
 
     case 'css': {
-      return frame.locator(rest);
+      if (DEBUG) {
+        console.debug('[uimatch:selector] css:', rest);
+      }
+      return applyFirstIfNeeded(frame.locator(rest));
     }
 
     case 'dompath': {
       // Internal DOM path after capture (e.g., "__self__ > :nth-child(2)")
+      if (DEBUG) {
+        console.debug('[uimatch:selector] dompath:', rest);
+      }
+      // Don't apply first() for internal DOM paths - we want exact child selector
       return frame.locator(rest);
     }
-
-    default: {
-      // Unknown prefix behavior:
-      // - UIMATCH_SELECTOR_STRICT=true → throw error (strict mode for CI)
-      // - Otherwise → fallback to CSS selector (lenient mode for interactive use)
-      if (process.env.UIMATCH_SELECTOR_STRICT === 'true') {
-        throw new Error(
-          `Unknown selector prefix: "${prefix}"\n` +
-            `Supported prefixes: role:, testid:, text:, xpath:, css:, dompath:\n` +
-            `If this is a CSS selector with a colon (e.g., a[href*="https:"]), it should still work in lenient mode.\n` +
-            `Set UIMATCH_SELECTOR_STRICT=false or remove it to enable CSS fallback.`
-        );
-      }
-      // Lenient fallback: treat entire string as CSS selector
-      return frame.locator(selectorString);
-    }
   }
+
+  // This should never be reached due to knownPrefixes check above
+  throw new Error(`Unhandled selector prefix: "${prefix}"`);
+}
+
+/**
+ * Applies `.first()` to the locator if UIMATCH_SELECTOR_FIRST=true.
+ * Useful for handling multiple matching elements (e.g., getByRole, getByText).
+ *
+ * @param locator - Target locator
+ * @returns Locator (optionally with `.first()`)
+ */
+function applyFirstIfNeeded(locator: Locator): Locator {
+  const useFirst = process.env.UIMATCH_SELECTOR_FIRST === 'true';
+  return useFirst ? locator.first() : locator;
 }
 
 /**
