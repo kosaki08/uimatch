@@ -109,10 +109,15 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const cfg = loadSkillConfig();
   const settings = getSettings(); // Read from .uimatchrc.json if exists
 
-  // Use default DPR from config (defaults to 2), clamped to Figma scale limits (1-4)
-  // Note: Figma API typically requires scale >= 1.0
-  const dprRaw = args.dpr ?? cfg.defaultDpr;
-  const dpr = Math.max(1, Math.min(dprRaw, 4));
+  // Browser DPR (for implementation capture) - no clamping needed
+  const dpr = args.dpr ?? cfg.defaultDpr;
+
+  // Figma scale (separate from browser DPR) - clamped to Figma API limits (1-4)
+  const figmaScaleRaw = args.figmaScale ?? settings.capture.defaultFigmaScale;
+  const figmaScale = Math.max(1, Math.min(figmaScaleRaw, 4));
+
+  // Auto-ROI feature (detect best matching child node)
+  const figmaAutoRoi = args.figmaAutoRoi ?? settings.capture.figmaAutoRoi;
 
   // Configure pixelmatch with settings fallback
   const pixelmatch = {
@@ -166,9 +171,14 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     // REST fallback: Use Figma REST API (no MCP required)
     const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
     const { fileKey: fk, nodeId: nid } = parsed; // URL or shorthand already resolved
-    figmaPng = await rest.getFramePng({ fileKey: fk, nodeId: nid, scale: dpr });
+
+    // Auto-ROI: Detect and use best matching child node if enabled
+    // This will be triggered after implementation capture, so we defer it for now
     fileKey = fk;
     nodeId = nid;
+
+    // Fetch PNG with figmaScale (separate from browser DPR)
+    figmaPng = await rest.getFramePng({ fileKey: fk, nodeId: nid, scale: figmaScale });
   } else {
     // Early validation: If no PAT and trying to use URL/fileKey:nodeId format,
     // provide clear guidance before attempting MCP
@@ -193,7 +203,8 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       fileKey = parsed.fileKey;
       nodeId = parsed.nodeId;
     }
-    figmaPng = await figmaClient.getFramePng({ fileKey, nodeId, scale: dpr });
+    // Use figmaScale for MCP as well (separate from browser DPR)
+    figmaPng = await figmaClient.getFramePng({ fileKey, nodeId, scale: figmaScale });
   }
   // Variables will be used in Phase 3 for TokenMap matching
   // const variables = await figmaClient.getVariables({ fileKey });
@@ -229,6 +240,44 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         ? { username: process.env.BASIC_AUTH_USER, password: process.env.BASIC_AUTH_PASS }
         : undefined),
   });
+
+  // 2.4) Auto-ROI: Automatically detect and use best matching child node if enabled
+  // Only works with REST API (requires FIGMA_ACCESS_TOKEN)
+  if (
+    figmaAutoRoi &&
+    process.env.FIGMA_ACCESS_TOKEN &&
+    fileKey !== 'env-bypass' &&
+    nodeId !== 'env-bypass'
+  ) {
+    try {
+      const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
+      const implSize = readPngSize(cap.implPng);
+
+      if (implSize && cap.box) {
+        // Use actual captured element dimensions (not viewport)
+        const targetWidth = cap.box.width;
+        const targetHeight = cap.box.height;
+
+        const roiResult = await rest.autoDetectRoi({
+          fileKey,
+          nodeId,
+          targetWidth,
+          targetHeight,
+        });
+
+        if (roiResult.wasAdjusted) {
+          console.log(
+            `[uimatch] Auto-ROI enabled: Re-fetching Figma PNG for node ${roiResult.nodeId}`
+          );
+          nodeId = roiResult.nodeId;
+          figmaPng = await rest.getFramePng({ fileKey, nodeId, scale: figmaScale });
+        }
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[uimatch] Auto-ROI failed (continuing with original node): ${errMsg}`);
+    }
+  }
 
   // 2.5) Bootstrap expectedSpec from Figma node if requested and none provided
   let expectedSpec = args.expectedSpec;

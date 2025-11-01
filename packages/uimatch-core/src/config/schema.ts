@@ -53,6 +53,21 @@ export const CaptureConfigSchema = z.object({
    * HTTP Basic Authentication password (from env)
    */
   basicAuthPass: z.string().optional(),
+
+  /**
+   * Default Figma image scale (separate from browser DPR)
+   * @default 2
+   * @remarks Allows independent control of Figma export resolution vs browser capture resolution
+   */
+  defaultFigmaScale: z.number().positive().default(2),
+
+  /**
+   * Enable automatic ROI detection from Figma child nodes
+   * @default false
+   * @remarks When true, if specified node is much larger than implementation capture,
+   *          automatically finds closest matching child frame and uses it instead
+   */
+  figmaAutoRoi: z.boolean().default(false),
 });
 
 /**
