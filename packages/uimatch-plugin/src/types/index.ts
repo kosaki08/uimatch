@@ -319,6 +319,20 @@ export interface CompareResult {
      */
     qualityGate?: QualityGateResult;
 
+    /**
+     * Additional metadata about the comparison
+     */
+    meta?: {
+      /**
+       * Auto-ROI detection metadata (when figmaAutoRoi is enabled)
+       */
+      figmaAutoRoi?: {
+        applied: boolean;
+        from?: string;
+        to?: string;
+      };
+    };
+
     artifacts?: {
       figmaPngB64: string;
       implPngB64: string;

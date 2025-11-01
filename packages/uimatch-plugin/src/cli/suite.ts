@@ -15,6 +15,8 @@ type SuiteItem = {
   selector: string; // CSS selector for the root element
   viewport?: { width: number; height: number };
   dpr?: number;
+  figmaScale?: number; // Figma export scale (1-4, separate from browser DPR)
+  figmaAutoRoi?: boolean; // Auto-detect best matching child node (REST only)
   detectStorybookIframe?: boolean;
   size?: 'strict' | 'pad' | 'crop' | 'scale';
   align?: 'center' | 'top-left' | 'top' | 'left';
@@ -153,6 +155,8 @@ export async function runSuite(argv: string[]): Promise<void> {
           selector: item.selector,
           viewport: item.viewport,
           dpr: item.dpr,
+          figmaScale: item.figmaScale,
+          figmaAutoRoi: item.figmaAutoRoi,
           detectStorybookIframe:
             item.detectStorybookIframe ?? /\/iframe\.html(\?|$)/.test(item.story),
           sizeMode,

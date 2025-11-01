@@ -131,6 +131,8 @@ export function displaySettings(config: AppConfig): void {
     `  Default viewport: ${config.capture.defaultViewportWidth}x${config.capture.defaultViewportHeight}`
   );
   console.log(`  Default DPR: ${config.capture.defaultDpr}`);
+  console.log(`  Default Figma scale: ${config.capture.defaultFigmaScale}`);
+  console.log(`  Auto ROI: ${config.capture.figmaAutoRoi}`);
   console.log(`  Idle wait: ${config.capture.defaultIdleWaitMs}ms`);
   console.log(`  Max children to analyze: ${config.capture.defaultMaxChildren}`);
 
