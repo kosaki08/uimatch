@@ -181,8 +181,24 @@ function pxToTailwind(property: string, px: number): string | undefined {
     return radiusMap[px];
   }
 
-  // Border width
-  if (prop.includes('border-width')) {
+  // Border width (including per-side)
+  if (prop.includes('border-width') || /border-(top|right|bottom|left)-width/.test(prop)) {
+    const side = prop.match(/border-(top|right|bottom|left)-width/)?.[1];
+    const cls = (n: number) =>
+      n === 0 ? '0' : n === 1 ? '' : n === 2 ? '2' : n === 4 ? '4' : n === 8 ? '8' : `[${n}px]`;
+
+    if (side) {
+      // Per-side border: border-t, border-r, border-b, border-l
+      const v = cls(px);
+      const sideAbbr = side[0]; // t/r/b/l
+      return v === '0'
+        ? `border-${sideAbbr}-0`
+        : v === ''
+          ? `border-${sideAbbr}`
+          : `border-${sideAbbr}-${v}`;
+    }
+
+    // All-sides border
     if (px === 0) return 'border-0';
     if (px === 1) return 'border';
     if (px === 2) return 'border-2';

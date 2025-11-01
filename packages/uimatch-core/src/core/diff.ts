@@ -74,6 +74,45 @@ export interface DiffOptions {
 }
 
 /**
+ * Check if an element should be filtered out as noise (non-visible or decorative)
+ * @param selector CSS selector or tag name
+ * @param props Computed styles for the element
+ * @param meta Element metadata (optional, for tag detection)
+ * @returns True if element should be filtered out
+ */
+function isNoiseElement(
+  selector: string,
+  props: Record<string, string>,
+  meta?: { tag?: string }
+): boolean {
+  // Filter out non-visible elements (display:none, visibility:hidden, opacity:0)
+  if (props['display'] === 'none') return true;
+  if (props['visibility'] === 'hidden') return true;
+  if (props['opacity'] === '0') return true;
+
+  // Filter out zero-sized elements (only if BOTH width AND height are 0)
+  // Use toPx to avoid NaN issues (auto/fit-content etc.)
+  const width = toPx(props['width']);
+  const height = toPx(props['height']);
+  if (width === 0 && height === 0) {
+    return true;
+  }
+
+  // Filter out decorative/non-visual elements (script, style, meta, link, template, noscript)
+  const decorativeTags = /^(script|style|meta|link|template|noscript|head|title)$/i;
+  const tagFromMeta = meta?.tag?.toLowerCase();
+  const tagFromSel = selector.match(/^([a-z]+)/i)?.[1]?.toLowerCase();
+  if (
+    (tagFromMeta && decorativeTags.test(tagFromMeta)) ||
+    (tagFromSel && decorativeTags.test(tagFromSel))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Build style differences between actual and expected styles
  * @param actual Actual styles captured from implementation
  * @param expectedSpec Expected style specification
@@ -101,6 +140,10 @@ export function buildStyleDiffs(
   const categoriesOf = (
     prop: string
   ): Array<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography'> => {
+    // Per-side border properties
+    if (/^border-(top|right|bottom|left)-color$/.test(prop)) return ['color'];
+    if (/^border-(top|right|bottom|left)-(width|style)$/.test(prop)) return ['border'];
+
     if (
       /^font-/.test(prop) ||
       prop === 'line-height' ||
@@ -125,6 +168,9 @@ export function buildStyleDiffs(
   };
 
   for (const [sel, props] of Object.entries(actual)) {
+    // Filter out noise elements (non-visible or decorative)
+    if (isNoiseElement(sel, props, opts.meta?.[sel])) continue;
+
     // Only compare if selector is explicitly defined in expectedSpec
     // Fallback to __self__ only for __self__ selector to avoid false positives
     const exp = expectedSpec[sel] ?? (sel === '__self__' ? (expectedSpec['__self__'] ?? {}) : {});
@@ -242,16 +288,17 @@ export function buildStyleDiffs(
     });
 
     // colors (color, background-color, border-color)
+    // NOTE: For style comparison, we preserve transparency to detect design intent differences
+    // (e.g., text button with transparent bg vs filled button). Pixel comparison still flattens
+    // transparent to white for consistent rendering comparison.
     (['color', 'background-color', 'border-color'] as const).forEach((p) => {
       consider(p, () => {
-        let aRgb = parseCssColorToRgb(props[p]);
+        const aRgb = parseCssColorToRgb(props[p]);
         const ref = exp[p];
         if (!aRgb || !ref) return { ok: true };
 
-        // Flatten fully transparent background-color to white (consistent with image rendering)
-        if (p === 'background-color' && typeof aRgb.a === 'number' && aRgb.a <= 0.001) {
-          aRgb = { r: 255, g: 255, b: 255 };
-        }
+        // Do NOT flatten transparent background-color in style comparison
+        // to preserve design intent (text button vs filled button distinction)
 
         let expectedToken: string | undefined;
         let eRgb: RGB | undefined = parseCssColorToRgb(ref);
@@ -287,7 +334,7 @@ export function buildStyleDiffs(
       return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
     });
 
-    // border-width
+    // border-width (shorthand)
     consider('border-width', () => {
       const a = toPx(props['border-width']);
       const e = exp['border-width'] ? toPx(exp['border-width']) : undefined;
@@ -296,13 +343,88 @@ export function buildStyleDiffs(
       return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
     });
 
-    // border-style
+    // border-width per-side (to detect border-bottom vs all-sides difference)
+    (
+      [
+        'border-top-width',
+        'border-right-width',
+        'border-bottom-width',
+        'border-left-width',
+      ] as const
+    ).forEach((p) => {
+      consider(p, () => {
+        const a = toPx(props[p]);
+        const e = exp[p] ? toPx(exp[p]) : undefined;
+        if (e == null || a == null) return { ok: true };
+        const tol = Math.max(1, tBorderWidth * e);
+        return { ok: Math.abs(a - e) <= tol, delta: a - e, unit: 'px', expected: `${e}px` };
+      });
+    });
+
+    // border-style (shorthand)
     consider('border-style', () => {
       const a = props['border-style']?.trim();
       const e = exp['border-style']?.trim();
       if (!e || !a) return { ok: true };
       const ok = a === e;
       return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
+    });
+
+    // border-style per-side
+    (
+      [
+        'border-top-style',
+        'border-right-style',
+        'border-bottom-style',
+        'border-left-style',
+      ] as const
+    ).forEach((p) => {
+      consider(p, () => {
+        const a = props[p]?.trim();
+        const e = exp[p]?.trim();
+        if (!e || !a) return { ok: true };
+        const ok = a === e;
+        return { ok, expected: e, unit: 'categorical', delta: ok ? 0 : 1 };
+      });
+    });
+
+    // border-color per-side
+    (
+      [
+        'border-top-color',
+        'border-right-color',
+        'border-bottom-color',
+        'border-left-color',
+      ] as const
+    ).forEach((p) => {
+      consider(p, () => {
+        const aRgb = parseCssColorToRgb(props[p]);
+        const ref = exp[p];
+        if (!aRgb || !ref) return { ok: true };
+
+        let expectedToken: string | undefined;
+        let eRgb: RGB | undefined = parseCssColorToRgb(ref);
+
+        // TokenMap lookup (expected is var(--x))
+        if (!eRgb && ref.startsWith('var(') && opts.tokens?.color) {
+          const tokenName = ref.slice(4, -1).trim(); // --x
+          const hex = opts.tokens.color[tokenName];
+          if (hex) {
+            eRgb = parseCssColorToRgb(hex);
+            expectedToken = tokenName;
+          }
+        }
+        if (!eRgb) return { ok: true };
+
+        const dE = deltaE2000(aRgb, eRgb);
+        return {
+          ok: dE <= tDeltaE,
+          delta: +dE.toFixed(2),
+          unit: 'ΔE',
+          expected: ref,
+          expectedToken,
+        };
+      });
     });
 
     // spacing (padding and margin properties)
@@ -555,6 +677,9 @@ export function buildStyleDiffs(
     // Generate patch hints
     const patchHints = generatePatchHints(propDiffs);
 
+    // Calculate priority score
+    const priorityScore = calculatePriorityScore(propDiffs, severity, opts.meta?.[sel]);
+
     // Extract actual CSS selector for the element
     const selectorDisplay = opts.meta?.[sel]?.cssSelector ?? (sel === '__self__' ? 'self' : sel);
 
@@ -564,10 +689,115 @@ export function buildStyleDiffs(
       severity,
       patchHints,
       meta: opts.meta?.[sel],
+      priorityScore,
     });
   }
 
-  return diffs;
+  // Sort diffs by priority score (descending) for better fix recommendations
+  return diffs.sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0));
+}
+
+/**
+ * Calculate priority score for a style difference (0-100, higher = more important)
+ * @param propDiffs Property-level differences
+ * @param severity Overall severity
+ * @param meta Element metadata
+ * @returns Priority score
+ */
+function calculatePriorityScore(
+  propDiffs: Record<
+    string,
+    {
+      actual?: string;
+      expected?: string;
+      expectedToken?: string;
+      delta?: number;
+      unit?: string;
+    }
+  >,
+  severity: 'low' | 'medium' | 'high',
+  meta?: {
+    tag: string;
+    id?: string;
+    class?: string;
+    testid?: string;
+    cssSelector?: string;
+    height?: number;
+  }
+): number {
+  let score = 0;
+
+  // 1. Layout impact (40 points max) - highest priority
+  const layoutProps = [
+    'display',
+    'flex-direction',
+    'align-items',
+    'justify-content',
+    'gap',
+    'padding-top',
+    'padding-bottom',
+    'padding-left',
+    'padding-right',
+    'width',
+    'height',
+  ];
+  // Only count properties with actual differences (delta exists or actual !== expected)
+  const layoutDiffs = Object.keys(propDiffs).filter((p) => {
+    if (!layoutProps.includes(p)) return false;
+    const diff = propDiffs[p];
+    if (!diff) return false;
+    // Has difference if delta is non-zero or actual !== expected
+    const hasDelta = diff.delta !== undefined && diff.delta !== 0;
+    const valuesDiffer =
+      diff.actual !== undefined && diff.expected !== undefined && diff.actual !== diff.expected;
+    return hasDelta || valuesDiffer;
+  });
+  if (layoutDiffs.length > 0) {
+    score += 20 + Math.min(layoutDiffs.length * 5, 20); // 20-40 points
+  }
+
+  // 2. Element prominence (25 points max) - size and tag importance
+  if (meta) {
+    // Tag importance: h1-h6, button, a > div, span
+    const prominentTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'button', 'a'];
+    if (prominentTags.includes(meta.tag.toLowerCase())) {
+      score += 10;
+    }
+
+    // Size-based prominence (larger elements are more noticeable)
+    if (meta.height !== undefined) {
+      if (meta.height > 100)
+        score += 10; // Large element
+      else if (meta.height > 50) score += 5; // Medium element
+    }
+
+    // Font size prominence
+    const fontSize = propDiffs['font-size'];
+    if (fontSize?.actual) {
+      const size = parseFloat(fontSize.actual);
+      if (size > 24) score += 5; // Large text
+    }
+  }
+
+  // 3. Token usage (20 points max) - token diffs are easy to fix and maintain consistency
+  // Only count properties with actual differences that have tokens
+  const tokenDiffs = Object.values(propDiffs).filter((d) => {
+    if (!d || !d.expectedToken) return false;
+    // Has difference if delta is non-zero or actual !== expected
+    const hasDelta = d.delta !== undefined && d.delta !== 0;
+    const valuesDiffer =
+      d.actual !== undefined && d.expected !== undefined && d.actual !== d.expected;
+    return hasDelta || valuesDiffer;
+  }).length;
+  if (tokenDiffs > 0) {
+    score += 10 + Math.min(tokenDiffs * 5, 10); // 10-20 points
+  }
+
+  // 4. Severity multiplier (15 points max)
+  const severityScore = { low: 5, medium: 10, high: 15 };
+  score += severityScore[severity];
+
+  return Math.min(100, Math.round(score));
 }
 
 /**

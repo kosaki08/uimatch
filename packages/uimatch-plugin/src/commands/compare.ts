@@ -248,6 +248,10 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   }
 
   // 3) Image diff with style comparison
+  // Merge default ignoreProperties from settings with per-run ignore
+  const defaultIgnore = settings.comparison?.ignoreProperties ?? [];
+  const mergedIgnore = Array.from(new Set([...defaultIgnore, ...(args.ignore ?? [])]));
+
   const result: CompareImageResult = compareImages({
     figmaPngB64: figmaPng.toString('base64'),
     implPngB64: cap.implPng.toString('base64'),
@@ -267,7 +271,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         shadowBlur: args.thresholds?.shadowBlur,
         shadowColorExtraDE: args.thresholds?.shadowColorExtraDE,
       },
-      ignore: args.ignore,
+      ignore: mergedIgnore,
       weights: args.weights,
     },
     // Size handling options

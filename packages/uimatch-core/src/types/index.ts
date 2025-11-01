@@ -110,7 +110,13 @@ export interface StyleDiff {
     class?: string;
     testid?: string;
     cssSelector?: string;
+    height?: number;
   };
+  /**
+   * Priority score for fix recommendations (0-100, higher = more important)
+   * Based on: layout impact, element prominence, token usage, severity
+   */
+  priorityScore?: number;
 }
 
 /**

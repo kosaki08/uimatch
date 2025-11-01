@@ -368,17 +368,6 @@ The plugin requires a Figma MCP server for design access. Configure via `.claude
 }
 ```
 
-### Figma REST API (Fallback)
-
-If MCP server is unavailable, the plugin falls back to Figma REST API:
-
-```typescript
-import { FigmaRestAdapter } from 'uimatch-plugin';
-
-const adapter = new FigmaRestAdapter(process.env.FIGMA_API_TOKEN!);
-const result = await adapter.fetchDesign('fileKey', 'nodeId');
-```
-
 ## Examples
 
 ### Basic Component Comparison
