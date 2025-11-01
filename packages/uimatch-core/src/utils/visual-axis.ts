@@ -84,6 +84,7 @@ export function inferVisualAxis(rects: Rect[]): { axis: Axis; confidence: number
 
 /**
  * Analyze layout axis by comparing declared mode with visual inference
+ * Accepts both lowercase ('horizontal'|'vertical') and Figma format ('HORIZONTAL'|'VERTICAL'|'NONE')
  *
  * @param childRects - Child element bounding boxes
  * @param declaredMode - Layout mode declared in Figma (if available)
@@ -91,8 +92,14 @@ export function inferVisualAxis(rects: Rect[]): { axis: Axis; confidence: number
  */
 export function analyzeLayoutAxis(
   childRects: Rect[],
-  declaredMode?: 'horizontal' | 'vertical'
+  declaredMode?: 'horizontal' | 'vertical' | 'HORIZONTAL' | 'VERTICAL' | 'NONE'
 ): AxisAnalysisResult {
+  // Normalize declared mode to lowercase, ignore 'NONE'
+  const normalizedDeclared =
+    declaredMode && declaredMode !== 'NONE'
+      ? (declaredMode.toLowerCase() as 'horizontal' | 'vertical')
+      : undefined;
+
   const { axis: visualAxis, confidence } = inferVisualAxis(childRects);
 
   // Determine true axis based on policy:
@@ -101,22 +108,24 @@ export function analyzeLayoutAxis(
   // 3. If ambiguous → keep as ambiguous with issue flag
   let trueAxis: Axis = visualAxis;
   let hasMismatch = false;
+  const ambiguous = visualAxis === 'ambiguous';
 
-  if (declaredMode && visualAxis !== 'ambiguous') {
-    hasMismatch = declaredMode !== visualAxis;
+  if (normalizedDeclared && visualAxis !== 'ambiguous') {
+    hasMismatch = normalizedDeclared !== visualAxis;
     // Visual takes precedence over declared mode
     trueAxis = visualAxis;
-  } else if (declaredMode && visualAxis === 'ambiguous') {
+  } else if (normalizedDeclared && visualAxis === 'ambiguous') {
     // If visual is ambiguous but we have a declaration, use it with lower confidence
-    trueAxis = declaredMode;
+    trueAxis = normalizedDeclared;
   }
 
   return {
     visualAxis,
-    declaredMode,
+    declaredMode: normalizedDeclared,
     trueAxis,
     confidence,
     hasMismatch,
+    ambiguous,
   };
 }
 
@@ -186,22 +195,36 @@ function parseGapValue(gap: string | undefined | null): number | null {
 }
 
 /**
+ * Partial computed style for layout mismatch checking
+ * Allows passing POJO from Playwright evaluate() without full CSSStyleDeclaration
+ */
+export type PartialComputedStyle =
+  | Pick<CSSStyleDeclaration, 'display' | 'flexDirection' | 'gridAutoFlow' | 'alignItems' | 'gap'>
+  | {
+      display?: string;
+      flexDirection?: string;
+      gridAutoFlow?: string;
+      alignItems?: string;
+      gap?: string;
+    };
+
+/**
  * Check if DOM layout matches expected layout based on axis
  * Returns severity of mismatch
  * Uses lenient checking for ambiguous or low-confidence axis detection
  *
- * @param computedStyle - Computed style from DOM element
+ * @param computedStyle - Computed style from DOM element (full or partial)
  * @param expectedLayout - Expected layout from Figma analysis
  * @param opts - Optional axis analysis result for lenient checking
  * @returns Severity level ('none' | 'low' | 'medium' | 'high')
  */
 export function checkLayoutMismatch(
-  computedStyle: CSSStyleDeclaration,
+  computedStyle: PartialComputedStyle,
   expectedLayout: ExpectedLayout,
   opts?: { axisResult?: AxisAnalysisResult }
 ): 'none' | 'low' | 'medium' | 'high' {
   // Normalize display values (inline-flex → flex, etc.)
-  const display = normalizeDisplay(computedStyle.display);
+  const display = normalizeDisplay(computedStyle.display || '');
   const flexDirection = computedStyle.flexDirection;
   const gridAutoFlow = computedStyle.gridAutoFlow;
   const alignItems = computedStyle.alignItems;
