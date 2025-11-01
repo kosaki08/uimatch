@@ -134,3 +134,46 @@ export interface PatchHint {
   /** Severity of the issue */
   severity: 'low' | 'medium' | 'high';
 }
+
+/**
+ * Visual axis types for layout analysis
+ */
+export type Axis = 'horizontal' | 'vertical' | 'ambiguous';
+
+/**
+ * Rectangle for axis inference
+ */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Result of visual axis analysis
+ */
+export interface AxisAnalysisResult {
+  /** Inferred visual axis from child element positions */
+  visualAxis: Axis;
+  /** Declared layout mode from Figma (if available) */
+  declaredMode?: 'horizontal' | 'vertical';
+  /** True comparison axis (prioritizes visual over declared) */
+  trueAxis: Axis;
+  /** Confidence score for axis inference (0-1) */
+  confidence: number;
+  /** Whether there's a mismatch between declared and visual */
+  hasMismatch: boolean;
+}
+
+/**
+ * Expected layout specification based on axis analysis
+ */
+export interface ExpectedLayout {
+  display: 'flex' | 'grid';
+  flexDirection?: 'row' | 'column';
+  gap?: string;
+  alignItems?: string;
+  gridAutoFlow?: 'row' | 'column';
+  gridTemplateColumns?: string;
+}
