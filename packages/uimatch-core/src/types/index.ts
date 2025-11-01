@@ -1,13 +1,5 @@
-import type { LayoutData as AdapterLayoutData } from './adapters';
-
 export type { PartialComputedStyle } from '../utils/visual-axis';
-export type {
-  BrowserAdapter,
-  CaptureOptions,
-  CaptureResult,
-  ElementMeta,
-  LayoutData,
-} from './adapters';
+export type { BrowserAdapter, CaptureOptions, CaptureResult, ElementMeta } from './adapters';
 export { createCaptureError, createComparisonError, createConfigError } from './errors';
 export type { AppError, BaseError, CaptureError, ComparisonError, ConfigError } from './errors';
 export {
@@ -51,8 +43,6 @@ export interface CompareInput {
   threshold?: number;
   /** Figma layout metadata (for layout axis analysis) */
   figmaLayoutMeta?: FigmaLayoutMeta;
-  /** Implementation layout data (from Playwright capture) */
-  implLayoutData?: AdapterLayoutData;
 }
 
 /**
