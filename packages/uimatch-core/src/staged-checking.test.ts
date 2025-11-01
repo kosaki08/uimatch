@@ -315,6 +315,54 @@ describe('Staged Checking', () => {
     });
   });
 
+  describe('box-shadow Scope Classification', () => {
+    test('classifies box-shadow as self scope (element decoration)', () => {
+      const actual = {
+        '.shadow': {
+          'box-shadow': '0 2px 4px rgba(0,0,0,0.1)',
+          color: '#000000',
+        },
+      };
+
+      const expected: ExpectedSpec = {
+        '.shadow': {
+          'box-shadow': '0 10px 20px rgba(255,0,0,1)',
+          color: '#ffffff',
+        },
+      };
+
+      const diffs = buildStyleDiffs(actual, expected, { stage: 'all' });
+      expect(diffs.length).toBeGreaterThan(0);
+      const diff = diffs.find((d) => d.selector === '.shadow');
+      // box-shadow is now classified as 'self' (element decoration) instead of 'ancestor'
+      expect(diff?.scope).toBe('self');
+    });
+
+    test('box-shadow filtered correctly by stage=self', () => {
+      const actual = {
+        '.shadow': {
+          'box-shadow': '0 2px 4px rgba(0,0,0,0.1)',
+          color: '#000000',
+        },
+      };
+
+      const expected: ExpectedSpec = {
+        '.shadow': {
+          'box-shadow': '0 10px 20px rgba(255,0,0,1)',
+          color: '#ffffff',
+        },
+      };
+
+      const diffsSelf = buildStyleDiffs(actual, expected, { stage: 'self' });
+      expect(diffsSelf.length).toBeGreaterThan(0);
+      expect(diffsSelf.every((d) => d.scope === 'self')).toBe(true);
+
+      // Should not appear in parent stage
+      const diffsParent = buildStyleDiffs(actual, expected, { stage: 'parent' });
+      expect(diffsParent.length).toBe(0);
+    });
+  });
+
   describe('Progressive Validation Workflow', () => {
     test('enables progressive parent → self → children validation', () => {
       // Define separate elements with distinct scopes to test progressive validation

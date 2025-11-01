@@ -126,13 +126,52 @@ function isNoiseElement(
 }
 
 /**
+ * Normalize property name to kebab-case
+ * Handles both kebab-case and camelCase input
+ * @param prop Property name in any case
+ * @returns kebab-case property name
+ */
+function toKebabCase(prop: string): string {
+  return prop.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
+}
+
+/**
+ * Expand shorthand properties to their longhand equivalents
+ * This ensures consistent scope classification regardless of whether
+ * the design/implementation uses shorthand or longhand notation
+ * @param prop CSS property name (kebab-case)
+ * @returns Array of longhand property names
+ */
+function expandShorthand(prop: string): string[] {
+  const normalized = toKebabCase(prop);
+
+  // Shorthand expansions (minimal set for scope detection)
+  switch (normalized) {
+    case 'margin':
+      return ['margin-top', 'margin-right', 'margin-bottom', 'margin-left'];
+    case 'padding':
+      return ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
+    case 'border':
+      return ['border-width', 'border-style', 'border-color'];
+    case 'background':
+      return ['background-color']; // Minimal expansion for scope purposes
+    default:
+      return [normalized];
+  }
+}
+
+/**
  * Determine the scope of a CSS property for staged checking
+ * Accepts both kebab-case and camelCase, handles shorthand properties
  * @param prop CSS property name
  * @returns Scope classification (ancestor/self/descendant)
  */
 function getPropertyScope(prop: string): DiffScope {
+  // Normalize and expand shorthand
+  const props = expandShorthand(prop);
+
   // Parent container properties (background, border-radius, padding, gap, etc.)
-  const ancestorProps = [
+  const ancestorProps = new Set([
     'background-color',
     'border-radius',
     'border-width',
@@ -157,11 +196,11 @@ function getPropertyScope(prop: string): DiffScope {
     'gap',
     'column-gap',
     'row-gap',
-    'box-shadow',
-  ];
+  ]);
 
   // Self properties (typography, sizing, positioning, etc.)
-  const selfProps = [
+  // box-shadow moved here as it's typically element decoration, not container property
+  const selfProps = new Set([
     'color',
     'font-size',
     'font-weight',
@@ -197,14 +236,18 @@ function getPropertyScope(prop: string): DiffScope {
     'grid-template-columns',
     'grid-template-rows',
     'grid-auto-flow',
-  ];
+    'box-shadow', // Shadow is typically element decoration
+    'box-shadow-offset-x', // Synthetic property from box-shadow comparison
+    'box-shadow-offset-y', // Synthetic property from box-shadow comparison
+  ]);
 
   // Descendant properties (margin, which affects child spacing)
-  const descendantProps = ['margin-top', 'margin-right', 'margin-bottom', 'margin-left'];
+  const descendantProps = new Set(['margin-top', 'margin-right', 'margin-bottom', 'margin-left']);
 
-  if (ancestorProps.includes(prop)) return 'ancestor';
-  if (descendantProps.includes(prop)) return 'descendant';
-  if (selfProps.includes(prop)) return 'self';
+  // If any expanded property matches ancestor scope, classify as ancestor
+  if (props.some((p) => ancestorProps.has(p))) return 'ancestor';
+  if (props.some((p) => descendantProps.has(p))) return 'descendant';
+  if (props.some((p) => selfProps.has(p))) return 'self';
 
   // Default to self for unknown properties
   return 'self';
