@@ -136,6 +136,7 @@ describe('Visual Axis Inference', () => {
         trueAxis: 'horizontal' as const,
         confidence: 0.8,
         hasMismatch: false,
+        ambiguous: false,
       };
 
       const layout = generateExpectedLayout(axisResult, 16);
@@ -151,6 +152,7 @@ describe('Visual Axis Inference', () => {
         trueAxis: 'vertical' as const,
         confidence: 0.8,
         hasMismatch: false,
+        ambiguous: false,
       };
 
       const layout = generateExpectedLayout(axisResult, 12);
@@ -165,6 +167,7 @@ describe('Visual Axis Inference', () => {
         trueAxis: 'ambiguous' as const,
         confidence: 0.3,
         hasMismatch: false,
+        ambiguous: true,
       };
 
       const layout = generateExpectedLayout(axisResult);
@@ -178,6 +181,7 @@ describe('Visual Axis Inference', () => {
         trueAxis: 'horizontal' as const,
         confidence: 0.8,
         hasMismatch: false,
+        ambiguous: false,
       };
 
       const layout = generateExpectedLayout(axisResult);
@@ -312,6 +316,7 @@ describe('Visual Axis Inference', () => {
           trueAxis: 'ambiguous',
           confidence: 0.4,
           hasMismatch: false,
+          ambiguous: true,
         },
       });
       expect(severity).toBe('low');
