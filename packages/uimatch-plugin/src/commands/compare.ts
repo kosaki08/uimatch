@@ -243,6 +243,9 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   // 2.4) Auto-ROI: Automatically detect and use best matching child node if enabled
   // Only works with REST API (requires FIGMA_ACCESS_TOKEN)
+  type AutoRoiMeta = { applied: boolean; from?: string; to?: string };
+  let roiMeta: AutoRoiMeta = { applied: false };
+
   if (
     figmaAutoRoi &&
     process.env.FIGMA_ACCESS_TOKEN &&
@@ -258,6 +261,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         const targetWidth = cap.box.width;
         const targetHeight = cap.box.height;
 
+        const originalNodeId = nodeId;
         const roiResult = await rest.autoDetectRoi({
           fileKey,
           nodeId,
@@ -271,6 +275,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
           );
           nodeId = roiResult.nodeId;
           figmaPng = await rest.getFramePng({ fileKey, nodeId, scale: figmaScale });
+          roiMeta = { applied: true, from: originalNodeId, to: nodeId };
         }
       }
     } catch (err) {
@@ -481,6 +486,9 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       styleDiffs,
       styleSummary,
       qualityGate: qualityGateResult, // Use the full V2 result
+      meta: {
+        figmaAutoRoi: roiMeta,
+      },
       artifacts: args.emitArtifacts
         ? {
             figmaPngB64: figmaPng.toString('base64'),

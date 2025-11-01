@@ -112,6 +112,87 @@ describe('buildCompareConfig', () => {
     });
   });
 
+  describe('figmaScale parsing', () => {
+    test('should parse valid figmaScale', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        figmaScale: '3',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.figmaScale).toBe(3);
+    });
+
+    test('should parse decimal figmaScale', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        figmaScale: '2.5',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.figmaScale).toBe(2.5);
+    });
+
+    test('should skip invalid figmaScale', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        figmaScale: 'invalid',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.figmaScale).toBeUndefined();
+    });
+  });
+
+  describe('figmaAutoRoi parsing', () => {
+    test('should parse figmaAutoRoi=true', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        figmaAutoRoi: 'true',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.figmaAutoRoi).toBe(true);
+    });
+
+    test('should parse figmaAutoRoi=false', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        figmaAutoRoi: 'false',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.figmaAutoRoi).toBe(false);
+    });
+
+    test('should keep figmaAutoRoi undefined when not specified', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+      };
+
+      const config = buildCompareConfig(args);
+
+      expect(config.figmaAutoRoi).toBeUndefined();
+    });
+  });
+
   describe('size mode parsing', () => {
     test.each(['strict', 'pad', 'crop', 'scale'] as const)(
       'should parse valid size mode: %s',
