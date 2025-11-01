@@ -105,10 +105,25 @@ export interface CompareArgs {
   viewport?: { width: number; height: number };
 
   /**
-   * Device pixel ratio.
+   * Device pixel ratio (for browser capture).
    * @default 2
    */
   dpr?: number;
+
+  /**
+   * Figma image scale (separate from browser DPR).
+   * Allows independent control of Figma export resolution.
+   * @default 2
+   */
+  figmaScale?: number;
+
+  /**
+   * Enable automatic ROI detection from Figma child nodes.
+   * When true, if specified node is much larger than implementation capture,
+   * automatically finds closest matching child frame and uses it instead.
+   * @default false
+   */
+  figmaAutoRoi?: boolean;
 
   /**
    * Maximum child elements to collect styles from.

@@ -18,6 +18,8 @@ export interface ParsedArgs {
   selector?: string;
   viewport?: string;
   dpr?: string;
+  figmaScale?: string;
+  figmaAutoRoi?: string;
   maxChildren?: string;
   propsMode?: string;
   maxDepth?: string;
@@ -160,6 +162,10 @@ function printUsage(): void {
   console.error('  maxDepth=<number>       Max depth to traverse for child elements (default: 6)');
   console.error('  viewport=<WxH>          Viewport size (e.g., 1584x1104)');
   console.error('  dpr=<number>            Device pixel ratio (default: 2)');
+  console.error('  figmaScale=<number>     Figma export scale factor (1-4, default: 2)');
+  console.error(
+    '  figmaAutoRoi=<bool>     Auto-detect best matching child node (true/false, default: false)'
+  );
   console.error('  detectStorybookIframe=<bool>  Use Storybook iframe (true/false, default: true)');
   console.error(
     '  size=<mode>             Size handling mode (strict|pad|crop|scale, default: strict)'
@@ -260,6 +266,14 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
     const dprValue = parseFloat(args.dpr);
     if (!Number.isNaN(dprValue)) config.dpr = dprValue;
   }
+
+  if (args.figmaScale) {
+    const figmaScaleValue = parseFloat(args.figmaScale);
+    if (!Number.isNaN(figmaScaleValue)) config.figmaScale = figmaScaleValue;
+  }
+
+  const autoRoi = parseBool(args.figmaAutoRoi);
+  if (autoRoi !== undefined) config.figmaAutoRoi = autoRoi;
 
   const detectIframeFlag = parseBool(args.detectStorybookIframe) ?? parseBool(args.iframe);
   if (detectIframeFlag !== undefined) {

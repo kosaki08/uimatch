@@ -13,6 +13,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     defaultViewportWidth: 1440,
     defaultViewportHeight: 900,
     defaultDpr: 2,
+    defaultFigmaScale: 2,
+    figmaAutoRoi: false,
     defaultMaxChildren: 200,
     defaultMaxDepth: 6,
     defaultIdleWaitMs: 150,
