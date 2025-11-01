@@ -115,13 +115,27 @@ function build(
   const strokes = Array.isArray(n.strokes) ? n.strokes : [];
   const solidFill = fills.find((p) => (p.visible ?? true) && p.type === 'SOLID' && p.color);
   const solidStroke = strokes.find((p) => (p.visible ?? true) && p.type === 'SOLID' && p.color);
-  const bg = maybeTokenize(colorToCss(solidFill?.color), tokens);
-  const border = maybeTokenize(colorToCss(solidStroke?.color), tokens);
-  if (bg) S['background-color'] = bg;
-  if (border) S['border-color'] = border;
-  if (typeof n.strokeWeight === 'number') {
-    const borderWidth = px(n.strokeWeight);
-    if (borderWidth) S['border-width'] = borderWidth;
+  const fillCss = maybeTokenize(colorToCss(solidFill?.color), tokens);
+  const strokeCss = maybeTokenize(colorToCss(solidStroke?.color), tokens);
+
+  // For TEXT nodes: fill → color (text color), not background-color
+  // For shape/frame nodes: fill → background-color
+  if (fillCss) {
+    if (n.type === 'TEXT') {
+      S['color'] = fillCss;
+    } else {
+      S['background-color'] = fillCss;
+    }
+  }
+
+  // For TEXT nodes: stroke is typically text-stroke (not CSS border), so we skip it
+  // For shape/frame nodes: stroke → border-color
+  if (n.type !== 'TEXT' && strokeCss) {
+    S['border-color'] = strokeCss;
+    if (typeof n.strokeWeight === 'number') {
+      const borderWidth = px(n.strokeWeight);
+      if (borderWidth) S['border-width'] = borderWidth;
+    }
   }
 
   // ===== Corners =====

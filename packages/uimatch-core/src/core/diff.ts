@@ -69,6 +69,7 @@ export interface DiffOptions {
       testid?: string;
       cssSelector?: string;
       height?: number;
+      elementKind?: 'text' | 'interactive' | 'container';
     }
   >;
 }
@@ -296,6 +297,19 @@ export function buildStyleDiffs(
         const aRgb = parseCssColorToRgb(props[p]);
         const ref = exp[p];
         if (!aRgb || !ref) return { ok: true };
+
+        // Detect TEXT element with background-color expectation but no color expectation
+        // This likely indicates Figma TEXT fill being misinterpreted as background
+        const isTextElement = opts.meta?.[sel]?.elementKind === 'text';
+        const isTextTag = /^(p|h[1-6]|span|a|label|li|strong|em|code)$/i.test(
+          opts.meta?.[sel]?.tag ?? ''
+        );
+        if ((isTextElement || isTextTag) && p === 'background-color' && !exp['color']) {
+          // Likely misinterpreted TEXT fill as background-color
+          // Suppress or downgrade this comparison (return ok: true to skip)
+          // The correct expectation should be in 'color' property
+          return { ok: true };
+        }
 
         // Do NOT flatten transparent background-color in style comparison
         // to preserve design intent (text button vs filled button distinction)
@@ -723,6 +737,7 @@ function calculatePriorityScore(
     testid?: string;
     cssSelector?: string;
     height?: number;
+    elementKind?: 'text' | 'interactive' | 'container';
   }
 ): number {
   let score = 0;
@@ -758,10 +773,28 @@ function calculatePriorityScore(
 
   // 2. Element prominence (25 points max) - size and tag importance
   if (meta) {
+    // Interactive elements (button, a, input) are more critical for visual accuracy
+    const isInteractive =
+      meta.elementKind === 'interactive' ||
+      ['button', 'a', 'input'].includes(meta.tag.toLowerCase());
+
     // Tag importance: h1-h6, button, a > div, span
     const prominentTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'button', 'a'];
     if (prominentTags.includes(meta.tag.toLowerCase())) {
       score += 10;
+    }
+
+    // Interactive elements with background-color differences get higher priority
+    if (isInteractive && propDiffs['background-color']) {
+      const bgDiff = propDiffs['background-color'];
+      const hasDelta = bgDiff.delta !== undefined && bgDiff.delta !== 0;
+      const valuesDiffer =
+        bgDiff.actual !== undefined &&
+        bgDiff.expected !== undefined &&
+        bgDiff.actual !== bgDiff.expected;
+      if (hasDelta || valuesDiffer) {
+        score += 15; // Boost interactive element background diffs
+      }
     }
 
     // Size-based prominence (larger elements are more noticeable)

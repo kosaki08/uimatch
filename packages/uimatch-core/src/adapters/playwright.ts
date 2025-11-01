@@ -280,6 +280,12 @@ export class PlaywrightAdapter implements BrowserAdapter {
             testid?: string;
             cssSelector?: string;
             height?: number;
+            role?: string;
+            href?: string;
+            type?: string;
+            tabindex?: string;
+            cursor?: string;
+            elementKind?: 'interactive' | 'text' | 'container';
           }
         >;
       };
@@ -310,6 +316,35 @@ export class PlaywrightAdapter implements BrowserAdapter {
               typeof h.className === 'string' && h.className
                 ? `.${h.className.trim().split(/\s+/).join('.')}`
                 : '';
+
+            // Detect element kind for better style diff analysis
+            const role = h.getAttribute('role') || undefined;
+            const href = (h as HTMLAnchorElement).href || undefined;
+            const type = (h as HTMLInputElement | HTMLButtonElement).type || undefined;
+            const tabindex = h.getAttribute('tabindex') || undefined;
+            const cursor = getComputedStyle(h).cursor || undefined;
+
+            // Classify element kind: interactive, text, or container
+            let elementKind: 'interactive' | 'text' | 'container' = 'container';
+            const isInteractive =
+              tag === 'button' ||
+              tag === 'a' ||
+              tag === 'input' ||
+              tag === 'select' ||
+              tag === 'textarea' ||
+              role === 'button' ||
+              role === 'link' ||
+              role === 'tab' ||
+              role === 'menuitem' ||
+              cursor === 'pointer';
+            const isText = /^(p|h[1-6]|span|label|li|a)$/.test(tag);
+
+            if (isInteractive) {
+              elementKind = 'interactive';
+            } else if (isText) {
+              elementKind = 'text';
+            }
+
             return {
               tag,
               id: h.id || undefined,
@@ -317,6 +352,12 @@ export class PlaywrightAdapter implements BrowserAdapter {
               testid,
               cssSelector: testid ? `[data-testid="${testid}"]` : `${tag}${id}${classes}`,
               height: h.offsetHeight || 0,
+              role,
+              href,
+              type,
+              tabindex,
+              cursor,
+              elementKind,
             };
           };
 
