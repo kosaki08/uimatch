@@ -245,6 +245,49 @@ function resolveLocator(frame: Frame, selectorString: string): Locator {
         }
       }
 
+      // Boolean options (selected, checked, etc.) can be slow with getByRole heuristics
+      // Convert to CSS selector with both aria-* and native :checked/:disabled support
+      const hasBoolean =
+        optionsStr &&
+        /\[(selected|checked|pressed|expanded|disabled)=(true|false)\]/i.test(optionsStr);
+
+      if (hasBoolean && optionsStr) {
+        const getBool = (key: string): string | undefined => {
+          const match = new RegExp(`\\[${key}=(true|false)\\]`, 'i').exec(optionsStr);
+          return match?.[1];
+        };
+
+        const css: string[] = [`[role="${roleName}"]`];
+        const selected = getBool('selected');
+        if (selected) css.push(`[aria-selected="${selected}"]`);
+        const pressed = getBool('pressed');
+        if (pressed) css.push(`[aria-pressed="${pressed}"]`);
+        const expanded = getBool('expanded');
+        if (expanded) css.push(`[aria-expanded="${expanded}"]`);
+        const disabled = getBool('disabled');
+        if (disabled) css.push(`[aria-disabled="${disabled}"]`);
+
+        const checked = getBool('checked');
+        if (checked) {
+          // Support both aria-checked and native :checked pseudo-class
+          if (roleName === 'checkbox' || roleName === 'radio') {
+            css.push(
+              checked === 'true'
+                ? ':is([aria-checked="true"], :checked)'
+                : ':is([aria-checked="false"], :not(:checked))'
+            );
+          } else {
+            css.push(`[aria-checked="${checked}"]`);
+          }
+        }
+
+        if (DEBUG) {
+          console.debug('[uimatch:selector] role (CSS fallback):', { roleName, css });
+        }
+        return applyFirstIfNeeded(frame.locator(css.join('')));
+      }
+
+      // No boolean options: use standard getByRole
       if (DEBUG) {
         console.debug('[uimatch:selector] role:', { roleName, options });
       }
@@ -267,7 +310,36 @@ function resolveLocator(frame: Frame, selectorString: string): Locator {
       const exactFlag = /\[exact\]/i.test(s);
       s = s.replace(/\[exact\]/gi, '').trim();
 
-      // Handle quoted strings: text:"Continue" or text:'Continue'
+      // Handle quoted strings with [exact] flag: use XPath for deterministic matching
+      // This avoids getByText heuristics which can be slow in some environments
+      if (
+        exactFlag &&
+        ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))
+      ) {
+        let raw = s.slice(1, -1);
+        // Handle escape sequences: \\ must be processed first to avoid double-processing
+        raw = raw
+          .replace(/\\\\/g, '\\')
+          .replace(/\\"/g, '"')
+          .replace(/\\'/g, "'")
+          .replace(/\\n/g, '\n')
+          .replace(/\\t/g, '\t');
+
+        // XPath string literal helper (handles quotes in text)
+        const xpathLiteral = (text: string): string => {
+          if (!text.includes("'")) return `'${text}'`;
+          if (!text.includes('"')) return `"${text}"`;
+          // Mixed quotes: use concat()
+          return `concat('${text.split("'").join(`',"'","'`)}')`;
+        };
+
+        if (DEBUG) {
+          console.debug('[uimatch:selector] text (XPath exact):', { raw });
+        }
+        return frame.locator(`xpath=//*[normalize-space(string())=${xpathLiteral(raw)}]`);
+      }
+
+      // Handle quoted strings without [exact]: use getByText with exact:true
       if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
         let raw = s.slice(1, -1);
         // Handle escape sequences: \\ must be processed first to avoid double-processing
@@ -385,6 +457,18 @@ export class PlaywrightAdapter implements BrowserAdapter {
   async captureTarget(opts: CaptureOptions): Promise<CaptureResult> {
     if (!opts.url && !opts.html) throw new Error('captureTarget: url or html is required');
 
+    // Strict mode: Fail fast on unknown selector prefix before any heavy operations
+    if (process.env.UIMATCH_SELECTOR_STRICT === 'true') {
+      const knownPrefixes = /^(role|testid|text|xpath|css|dompath):/i;
+      const possiblePrefix = /^([a-z]\w+):(.*)$/i;
+      if (!knownPrefixes.test(opts.selector) && possiblePrefix.test(opts.selector)) {
+        const badPrefix = opts.selector.split(':', 1)[0];
+        throw new Error(
+          `Unknown selector prefix: "${badPrefix}"\nSupported: role, testid, text, xpath, css, dompath`
+        );
+      }
+    }
+
     let browser: Browser;
     let context: BrowserContext;
     let shouldCloseBrowser = true;
@@ -412,6 +496,12 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
     const page = await context.newPage();
     try {
+      // Set shorter default timeouts to ensure page-level timeout < test timeout
+      const selTimeout = Number(process.env.UIMATCH_SELECTOR_WAIT_MS ?? 8000);
+      const navTimeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 8000);
+      page.setDefaultTimeout(selTimeout);
+      page.setDefaultNavigationTimeout(navTimeout);
+
       if (opts.url) {
         const timeout = Number(process.env.UIMATCH_HTTP_TIMEOUT_MS) || 30_000;
         const waitUntil =
@@ -422,7 +512,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
           throw new Error('Either url or html must be provided');
         }
         // HTML mode: no external resources, use shorter timeout with domcontentloaded
-        const htmlTimeout = Number(process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS ?? 2500);
+        const htmlTimeout = Number(process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS ?? 2000);
         await page.setContent(opts.html, { waitUntil: 'domcontentloaded', timeout: htmlTimeout });
       }
 
@@ -467,10 +557,77 @@ export class PlaywrightAdapter implements BrowserAdapter {
         });
       }, idleWaitMs);
 
-      const locator = resolveLocator(frame, opts.selector);
+      // Resolve locator with intelligent fallback for reliability
+      const locator = await (async () => {
+        // Primary: standard resolution
+        let loc = resolveLocator(frame, opts.selector);
 
-      // Allow shorter wait timeout in test environments
-      const selTimeout = Number(process.env.UIMATCH_SELECTOR_WAIT_MS ?? 10_000);
+        // Quick probe to detect if element exists (avoid long timeout)
+        const probeMs = Number(process.env.UIMATCH_PROBE_TIMEOUT_MS ?? 700);
+        try {
+          await loc.first().waitFor({ state: 'attached', timeout: probeMs });
+          return loc;
+        } catch {
+          // Fallback: Environment-specific optimizations for role/text selectors
+          // This avoids getByRole/getByText heuristics which can be slow in headless mode
+
+          // Fallback for role selectors with boolean attributes (selected, checked, etc.)
+          const roleMatch = opts.selector.match(/^role:([a-z]+)(.*)$/i);
+          if (roleMatch) {
+            const roleName = roleMatch[1]?.toLowerCase();
+            const optStr = roleMatch[2] || '';
+
+            // Extract boolean attributes and convert to CSS selector
+            const getBool = (key: string): string | undefined => {
+              const match = new RegExp(`\\[${key}=(true|false)\\]`, 'i').exec(optStr);
+              return match?.[1];
+            };
+
+            const css: string[] = [`[role="${roleName}"]`];
+            const selected = getBool('selected');
+            if (selected) css.push(`[aria-selected="${selected}"]`);
+            const checked = getBool('checked');
+            if (checked) css.push(`[aria-checked="${checked}"]`);
+            const pressed = getBool('pressed');
+            if (pressed) css.push(`[aria-pressed="${pressed}"]`);
+            const expanded = getBool('expanded');
+            if (expanded) css.push(`[aria-expanded="${expanded}"]`);
+            const disabled = getBool('disabled');
+            if (disabled) css.push(`[aria-disabled="${disabled}"]`);
+
+            loc = frame.locator(css.join(''));
+            return loc;
+          }
+
+          // Fallback for exact text match: use XPath for deterministic matching
+          const textMatch = opts.selector.match(/^text:\s*["']([\s\S]*?)["'](\[exact\])?$/i);
+          if (textMatch) {
+            const rawText = textMatch[1]
+              ?.replace(/\\\\/g, '\\')
+              .replace(/\\"/g, '"')
+              .replace(/\\'/g, "'")
+              .replace(/\\n/g, '\n')
+              .replace(/\\t/g, '\t');
+
+            // XPath string literal helper (handles quotes in text)
+            const xpathLiteral = (s: string): string => {
+              if (!s.includes("'")) return `'${s}'`;
+              if (!s.includes('"')) return `"${s}"`;
+              return `concat('${s.split("'").join(`',"'","'`)}')`;
+            };
+
+            if (rawText !== undefined) {
+              loc = frame.locator(`xpath=//*[normalize-space(string())=${xpathLiteral(rawText)}]`);
+              return loc;
+            }
+          }
+
+          // No fallback available, return original locator (will fail with timeout)
+          return loc;
+        }
+      })();
+
+      // Use the same timeout value that was already defined above
       try {
         await locator.waitFor({ state: 'visible', timeout: selTimeout });
       } catch {
@@ -500,7 +657,8 @@ export class PlaywrightAdapter implements BrowserAdapter {
         (el as HTMLElement).scrollIntoView({ block: 'center', inline: 'center' })
       );
 
-      const box = await locator.boundingBox();
+      // Add explicit timeout to prevent hanging beyond test timeout
+      const box = await locator.boundingBox({ timeout: selTimeout });
       if (!box) {
         throw new Error(
           `captureTarget: boundingBox not available for selector="${opts.selector}"\n\n` +
@@ -509,7 +667,8 @@ export class PlaywrightAdapter implements BrowserAdapter {
         );
       }
 
-      const implPng = await locator.screenshot({ type: 'png' });
+      // Add explicit timeout to screenshot as well
+      const implPng = await locator.screenshot({ type: 'png', timeout: selTimeout });
 
       // Extract computed styles and DOM metadata from the element and its children
       type StyleEvalArg = {

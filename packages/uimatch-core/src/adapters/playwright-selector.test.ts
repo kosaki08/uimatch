@@ -48,7 +48,9 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     const result = await adapter.captureTarget({
       html: testHtml,
       selector: '.button',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -61,7 +63,9 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     const result = await adapter.captureTarget({
       html: testHtml,
       selector: 'css:.button',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -73,7 +77,9 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     const result = await adapter.captureTarget({
       html: testHtml,
       selector: 'testid:submit-btn',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -87,7 +93,9 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     const result = await adapter.captureTarget({
       html: testHtml,
       selector: 'text:"Submit"',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -99,7 +107,9 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     const result = await adapter.captureTarget({
       html: testHtml,
       selector: "text:'Submit'",
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -124,7 +134,9 @@ Line 2</p>
     const result1 = await adapter.captureTarget({
       html: htmlWithEscapes,
       selector: 'text:"Text with \\"quotes\\" and \'apostrophes\'"',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
     expect(result1.implPng).toBeInstanceOf(Buffer);
 
@@ -132,7 +144,9 @@ Line 2</p>
     const result2 = await adapter.captureTarget({
       html: htmlWithEscapes,
       selector: 'text:"Line 1\\nLine 2"',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
     expect(result2.implPng).toBeInstanceOf(Buffer);
   });
@@ -142,7 +156,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: testHtml,
       selector: 'role:button[name="Submit"]',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -163,7 +179,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: htmlWithLink,
       selector: 'role:link[name=/doc/i]',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -184,7 +202,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: htmlWithLink,
       selector: 'a[href*="https:"]',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -207,7 +227,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: htmlWithRoot,
       selector: '.test', // Use valid selector instead of :root (can't screenshot root)
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -232,7 +254,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: htmlWithHas,
       selector: 'li:has(span)',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -258,7 +282,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: htmlWithList,
       selector: 'ul > li:nth-child(2)',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -281,7 +307,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: htmlWithText,
       selector: 'text:"Submit"[exact]',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -305,7 +333,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: htmlWithTab,
       selector: 'role:tab[selected=true]',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -327,7 +357,9 @@ Line 2</p>
     const result = await adapter.captureTarget({
       html: htmlWithCheckbox,
       selector: 'role:checkbox[checked=true]',
+      detectStorybookIframe: false,
       idleWaitMs: 0,
+      dpr: 1,
     });
 
     expect(result.implPng).toBeInstanceOf(Buffer);
@@ -348,7 +380,9 @@ describe('PlaywrightAdapter - Selector Strict Mode', () => {
         await adapter.captureTarget({
           html: '<div>Test</div>',
           selector: 'foo:bar', // Unknown prefix
+          detectStorybookIframe: false,
           idleWaitMs: 0,
+          dpr: 1,
         });
       } catch (e) {
         error = e as Error;
@@ -391,7 +425,9 @@ describe('PlaywrightAdapter - Selector Strict Mode', () => {
         await adapter.captureTarget({
           html: htmlWithList,
           selector: 'li:nth-child(1)',
+          detectStorybookIframe: false,
           idleWaitMs: 0,
+          dpr: 1,
         });
       } catch (e) {
         error = e as Error;
@@ -428,7 +464,9 @@ describe('PlaywrightAdapter - Selector Strict Mode', () => {
       const result = await adapter.captureTarget({
         html: htmlWithLink,
         selector: 'a[href*="https:"]',
+        detectStorybookIframe: false,
         idleWaitMs: 0,
+        dpr: 1,
       });
 
       expect(result.implPng).toBeInstanceOf(Buffer);
