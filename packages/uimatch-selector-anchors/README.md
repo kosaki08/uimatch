@@ -93,6 +93,53 @@ export UIMATCH_STABILITY_SPECIFICITY_WEIGHT=0.1
 
 These variables are checked at runtime and override default values, enabling post-deployment tuning without code changes.
 
+## Configuration
+
+### Timeout Settings
+
+The plugin uses configurable timeouts for various operations. You can adjust these via environment variables:
+
+**AST Parsing Timeouts:**
+
+The AST resolution uses a tiered fallback strategy with three timeout levels:
+
+```bash
+# Fast path timeout (tag + data-testid/id only) - default: 300ms
+export UIMATCH_AST_FAST_PATH_TIMEOUT_MS=300
+
+# Attribute-only parsing timeout (all attributes, no text) - default: 600ms
+export UIMATCH_AST_ATTR_TIMEOUT_MS=600
+
+# Full parse timeout (everything including text) - default: 900ms
+export UIMATCH_AST_FULL_TIMEOUT_MS=900
+```
+
+**Other Timeouts:**
+
+```bash
+# Liveness probe timeout - default: 600ms
+export UIMATCH_PROBE_TIMEOUT_MS=600
+
+# HTML parsing timeout - default: 300ms
+export UIMATCH_HTML_PARSE_TIMEOUT_MS=300
+
+# Snippet hash matching timeout - default: 50ms
+export UIMATCH_SNIPPET_MATCH_TIMEOUT_MS=50
+```
+
+**Snippet Matching Configuration:**
+
+```bash
+# Maximum search radius for snippet matching (lines) - default: 400
+export UIMATCH_SNIPPET_MAX_RADIUS=400
+
+# High confidence threshold for early exit (0.0-1.0) - default: 0.92
+export UIMATCH_SNIPPET_HIGH_CONFIDENCE=0.92
+
+# Fuzzy matching threshold (0.0-1.0) - default: 0.55
+export UIMATCH_SNIPPET_FUZZY_THRESHOLD=0.55
+```
+
 ## Anchors JSON Format
 
 ### Minimal Example

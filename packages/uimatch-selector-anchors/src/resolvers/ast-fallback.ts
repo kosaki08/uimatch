@@ -14,10 +14,8 @@
 
 import ts from 'typescript';
 import type { SelectorHint } from '../types/schema.js';
-import {
-  buildHintFromAttributes,
-  generateSelectorsFromAttributes,
-} from './selector-utils.js';
+import { compileSafeRegex } from '../utils/safe-regex.js';
+import { buildHintFromAttributes, generateSelectorsFromAttributes } from './selector-utils.js';
 
 /**
  * Result of a parsing attempt at any level
@@ -220,51 +218,96 @@ export function heuristicCandidates(sourceContent: string, line: number): ParseL
     const contextLines = lines.slice(Math.max(0, line - 3), line + 3).join('\n');
 
     // Try to extract data-testid
-    const testidMatch = contextLines.match(/data-testid=["']([^"']+)["']/);
-    if (testidMatch?.[1]) {
-      const testid = testidMatch[1];
-      attributes['data-testid'] = testid;
-      selectors.push(`[data-testid="${testid}"]`);
-      reasons.push(`Found data-testid via regex: ${testid}`);
+    const testidResult = compileSafeRegex('data-testid=["\'](([^"\'])+)["\']');
+    if (testidResult.success) {
+      const testidMatch = contextLines.match(testidResult.regex);
+      if (testidMatch?.[1]) {
+        const testid = testidMatch[1];
+        attributes['data-testid'] = testid;
+        selectors.push(`[data-testid="${testid}"]`);
+        reasons.push(`Found data-testid via regex: ${testid}`);
+      }
+    } else {
+      reasons.push(`data-testid regex failed: ${testidResult.error}, using literal search`);
+      // Fallback to simple string search
+      const testidLiteral = contextLines.match(/data-testid="([^"]+)"/);
+      if (testidLiteral?.[1]) {
+        const testid = testidLiteral[1];
+        attributes['data-testid'] = testid;
+        selectors.push(`[data-testid="${testid}"]`);
+        reasons.push(`Found data-testid via literal search: ${testid}`);
+      }
     }
 
     // Try to extract id
-    const idMatch = contextLines.match(/\bid=["']([^"']+)["']/);
-    if (idMatch?.[1]) {
-      const id = idMatch[1];
-      attributes['id'] = id;
-      selectors.push(`#${id}`);
-      reasons.push(`Found id via regex: ${id}`);
+    const idResult = compileSafeRegex('\\bid=["\'](([^"\'])+)["\']');
+    if (idResult.success) {
+      const idMatch = contextLines.match(idResult.regex);
+      if (idMatch?.[1]) {
+        const id = idMatch[1];
+        attributes['id'] = id;
+        selectors.push(`#${id}`);
+        reasons.push(`Found id via regex: ${id}`);
+      }
+    } else {
+      reasons.push(`id regex failed: ${idResult.error}, using literal search`);
+      const idLiteral = contextLines.match(/id="([^"]+)"/);
+      if (idLiteral?.[1]) {
+        const id = idLiteral[1];
+        attributes['id'] = id;
+        selectors.push(`#${id}`);
+        reasons.push(`Found id via literal search: ${id}`);
+      }
     }
 
     // Try to extract role
-    const roleMatch = contextLines.match(/\brole=["']([^"']+)["']/);
-    if (roleMatch?.[1]) {
-      const role = roleMatch[1];
-      attributes['role'] = role;
-      selectors.push(`role:${role}`);
-      reasons.push(`Found role via regex: ${role}`);
+    const roleResult = compileSafeRegex('\\brole=["\'](([^"\'])+)["\']');
+    if (roleResult.success) {
+      const roleMatch = contextLines.match(roleResult.regex);
+      if (roleMatch?.[1]) {
+        const role = roleMatch[1];
+        attributes['role'] = role;
+        selectors.push(`role:${role}`);
+        reasons.push(`Found role via regex: ${role}`);
+      }
+    } else {
+      reasons.push(`role regex failed: ${roleResult.error}, using literal search`);
+      const roleLiteral = contextLines.match(/role="([^"]+)"/);
+      if (roleLiteral?.[1]) {
+        const role = roleLiteral[1];
+        attributes['role'] = role;
+        selectors.push(`role:${role}`);
+        reasons.push(`Found role via literal search: ${role}`);
+      }
     }
 
     // Try to extract text content (between > and <)
-    const textMatch = targetLine.match(/>([^<]{1,24})</);
-    if (textMatch?.[1]) {
-      const text = textMatch[1].trim();
-      if (text) {
-        const escapedText = text.replace(/"/g, '\\"');
-        selectors.push(`text:"${escapedText}"`);
-        reasons.push(`Found text content via regex: ${text}`);
+    const textResult = compileSafeRegex('>([^<]{1,24})<');
+    if (textResult.success) {
+      const textMatch = targetLine.match(textResult.regex);
+      if (textMatch?.[1]) {
+        const text = textMatch[1].trim();
+        if (text) {
+          const escapedText = text.replace(/"/g, '\\"');
+          selectors.push(`text:"${escapedText}"`);
+          reasons.push(`Found text content via regex: ${text}`);
+        }
       }
+    } else {
+      reasons.push(`text regex failed: ${textResult.error}`);
     }
 
     // If we found nothing, try common tag patterns
     if (selectors.length === 0) {
-      const tagMatch = targetLine.match(/<(\w+)\b/);
-      if (tagMatch) {
-        const tag = tagMatch[1];
-        reasons.push(`Fallback to tag name: ${tag}`);
-        // Don't add bare tag selectors as they're too fragile
-        // Just note it in reasons for debugging
+      const tagResult = compileSafeRegex('<(\\w+)\\b');
+      if (tagResult.success) {
+        const tagMatch = targetLine.match(tagResult.regex);
+        if (tagMatch) {
+          const tag = tagMatch[1];
+          reasons.push(`Fallback to tag name: ${tag}`);
+          // Don't add bare tag selectors as they're too fragile
+          // Just note it in reasons for debugging
+        }
       }
     }
 
