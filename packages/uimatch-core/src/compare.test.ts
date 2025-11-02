@@ -70,4 +70,28 @@ describe('compareImages', () => {
     // Verify it's a valid base64 string
     expect(result.diffPngB64).toMatch(/^[A-Za-z0-9+/]+=*$/);
   });
+
+  test('should flatten transparent white to opaque white with minimal diff', () => {
+    const transparentPngB64 = loadFixtureAsBase64('transparent-white.png');
+    const opaquePngB64 = loadFixtureAsBase64('opaque-white.png');
+
+    const result = compareImages({ figmaPngB64: transparentPngB64, implPngB64: opaquePngB64 });
+
+    // After flattening transparent white (50% alpha) to white background,
+    // the result should be very close to opaque white
+    expect(result.pixelDiffRatio).toBeLessThan(0.01); // Less than 1% difference
+    expect(result.diffPixelCount).toBeLessThan(100); // Minimal diff pixels (anti-aliasing noise)
+    expect(result.totalPixels).toBe(10000); // 100x100
+  });
+
+  test('should skip alpha processing for fully opaque PNGs', () => {
+    const opaqueWhite1 = loadFixtureAsBase64('opaque-white.png');
+    const opaqueWhite2 = loadFixtureAsBase64('opaque-white.png');
+
+    const result = compareImages({ figmaPngB64: opaqueWhite1, implPngB64: opaqueWhite2 });
+
+    // Fully opaque identical images should have zero difference
+    expect(result.pixelDiffRatio).toBe(0);
+    expect(result.diffPixelCount).toBe(0);
+  });
 });
