@@ -14,6 +14,10 @@ Design-to-implementation comparison tool that evaluates how closely an implement
   - **Suspicion Detection**: Automatic detection of problematic comparison scenarios
   - **Re-evaluation Recommendations**: Smart suggestions for better metric accuracy
   - **Hard Gates**: Area gap and severity violations for immediate failure
+- **Selector Resolution Plugins**: Extensible selector resolution with plugin architecture
+  - **Plugin Interface (SPI)**: Standard contract for selector resolution plugins
+  - **Automatic Fallback**: Safe NOP behavior when plugins are unavailable
+  - **@uimatch/selector-anchors**: Anchor-based selector resolution for stable selectors
 - **Browser reuse**: Automatic browser pooling for faster iteration
 - **Iterative workflow**: Quality gates with automatic retry
 
@@ -34,6 +38,9 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 ```bash
 # Compare Figma design with implementation
 /uiMatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
+
+# With selector resolution plugin
+/uiMatch compare figma=... story=... selector=... selectorsPath=./anchors.json
 
 # Iterative comparison loop
 /uiMatch loop figma=... story=... selector=... maxIters=5

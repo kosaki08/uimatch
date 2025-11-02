@@ -43,6 +43,14 @@ bun run uimatch:compare -- \
 - `weights=<json>` - Category weights for DFS (e.g., `'{"color":0.5,"spacing":1}'`)
 - `bootstrap=<bool>` - Auto-generate expectedSpec from Figma (default: `true`)
 
+#### Selector Resolution
+
+- `selectors=<path>` - Path to selector anchors JSON
+- `selectorsWriteBack=<bool>` - Write resolved selectors back to JSON (default: `false`)
+- `selectorsPlugin=<pkg>` - Plugin package (default: `@uimatch/selector-anchors`)
+
+Enables automatic resolution of stable selectors via AST analysis and liveness checking.
+
 #### Output & Capture
 
 - `outDir=<path>` - Save artifacts to directory
@@ -60,6 +68,17 @@ Required in `.env`:
 
 ```bash
 FIGMA_ACCESS_TOKEN=figd_xxx  # Figma Personal Access Token
+```
+
+Optional:
+
+```bash
+# Selector resolution plugin (alternative to selectorsPlugin= argument)
+UIMATCH_SELECTORS_PLUGIN=@uimatch/selector-anchors
+
+# Basic authentication for target URLs
+BASIC_AUTH_USER=username
+BASIC_AUTH_PASS=password
 ```
 
 ### Example: Basic Comparison

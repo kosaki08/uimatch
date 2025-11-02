@@ -9,6 +9,9 @@
     "uimatch-scoring": "workspace:*",
     "zod": "^4.1.12"
   },
+  "optionalDependencies": {
+    "@uimatch/selector-anchors": "workspace:*"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./cli": "./src/cli/index.ts"
