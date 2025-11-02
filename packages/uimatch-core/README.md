@@ -146,6 +146,7 @@ selector: 'role:tab[selected=true]';
 selector: 'testid:submit-btn';
 selector: 'text:"Continue"';
 selector: 'text:/continue/i';
+selector: 'dompath:html/body/div[1]/main/section[2]/article';
 selector: '.button'; // CSS selector (no prefix)
 ```
 

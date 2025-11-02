@@ -225,7 +225,7 @@ function printUsage(): void {
   console.error(
     '  weights=<json>          JSON weights for DFS (e.g., \'{"color":0.5,"spacing":1}\')'
   );
-  console.error('  format=<type>           Output format (default|claude, default: default)');
+  console.error('  format=<type>           Output format (standard|claude, default: standard)');
   console.error(
     '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|lenient|custom)'
   );
