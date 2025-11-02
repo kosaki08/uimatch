@@ -150,10 +150,21 @@ For details, see [CLI Usage](docs/cli-usage.md#selector-resolution).
 
 ## Requirements
 
-- Bun or Node.js >=22.11.0
+**Development**: Bun (required for monorepo workspace and scripts)
+**Distribution**: Node.js >=22.11.0 (CLI built with tsup runs on Node.js)
+
 - Playwright (auto-installed via postinstall)
 
 ## Configuration
+
+### Figma CSS Mapping
+
+Figma design properties are mapped to CSS as follows:
+
+- **TEXT nodes**: `fill` → `color` (text color)
+- **Other nodes**: `fill` → `background-color`, `stroke` → `border-color`
+
+This ensures accurate color comparison for text elements vs. containers.
 
 ### Environment Variables
 
