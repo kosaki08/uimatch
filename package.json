@@ -13,7 +13,7 @@
     "ci:postinstall": "bunx playwright install --with-deps chromium",
     "doctor": "bun scripts/doctor.ts",
     "pretest": "bun ./packages/uimatch-core/scripts/generate-fixtures.ts",
-    "test": "bun test --recursive",
+    "test": "bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
     "test:e2e": "npx playwright test e2e/",
     "test:compare": "bun ./scripts/test-compare.ts",
     "lint": "eslint .",

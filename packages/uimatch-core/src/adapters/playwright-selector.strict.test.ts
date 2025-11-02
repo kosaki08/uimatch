@@ -3,25 +3,35 @@ import { browserPool } from './browser-pool';
 import { captureTarget } from './playwright';
 
 const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: 15000 });
+const ENABLE_BROWSER_TESTS = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+const run = ENABLE_BROWSER_TESTS ? describe : describe.skip;
 
-beforeAll(async () => {
-  process.env.UIMATCH_HEADLESS = 'true';
-  // Set reasonable timeouts for E2E tests
-  process.env.UIMATCH_SELECTOR_FIRST = 'true';
-  process.env.UIMATCH_NAV_TIMEOUT_MS = '1500';
-  process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS = '1200';
-  process.env.UIMATCH_SELECTOR_WAIT_MS = '3000';
-  process.env.UIMATCH_PROBE_TIMEOUT_MS = '600';
-  process.env.UIMATCH_BBOX_TIMEOUT_MS = '800';
-  process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = '1000';
-  await browserPool.getBrowser();
-});
+if (!ENABLE_BROWSER_TESTS) {
+  console.warn(
+    '[uimatch] Skipping Playwright integration tests (set UIMATCH_ENABLE_BROWSER_TESTS=true to enable)'
+  );
+}
 
-afterAll(async () => {
-  await browserPool.closeAll();
-});
+if (ENABLE_BROWSER_TESTS) {
+  beforeAll(async () => {
+    process.env.UIMATCH_HEADLESS = 'true';
+    // Set reasonable timeouts for E2E tests
+    process.env.UIMATCH_SELECTOR_FIRST = 'true';
+    process.env.UIMATCH_NAV_TIMEOUT_MS = '1500';
+    process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS = '1200';
+    process.env.UIMATCH_SELECTOR_WAIT_MS = '3000';
+    process.env.UIMATCH_PROBE_TIMEOUT_MS = '600';
+    process.env.UIMATCH_BBOX_TIMEOUT_MS = '800';
+    process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = '1000';
+    await browserPool.getBrowser();
+  });
 
-describe('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
+  afterAll(async () => {
+    await browserPool.closeAll();
+  });
+}
+
+run('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
   itT('UIMATCH_SELECTOR_STRICT=true throws on unknown prefix', async () => {
     const orig = process.env.UIMATCH_SELECTOR_STRICT;
     process.env.UIMATCH_SELECTOR_STRICT = 'true';

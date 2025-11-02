@@ -104,6 +104,24 @@ bun run format
 - [v0.1 Specification](docs/specs/v0.1.md) - MVP implementation spec
 - [AGENTS.md](AGENTS.md) - AI assistant guidelines
 
+## Testing
+
+- Unit tests: `bun test` runs tests under `packages/*/src/**/*.test.ts` only (excludes `dist/`).
+- Browser integration tests (Playwright) are disabled by default to avoid failures in restricted environments.
+
+Enable integration tests:
+
+```bash
+export UIMATCH_ENABLE_BROWSER_TESTS=true
+bunx playwright install chromium
+# Optional stability flags
+export UIMATCH_CHROME_CHANNEL=chrome
+export UIMATCH_CHROME_ARGS="--no-sandbox --disable-gpu --single-process --no-zygote"
+export UIMATCH_HEADLESS=true
+
+bun test
+```
+
 ## Selector Resolution Plugin
 
 UIMatch supports pluggable selector resolution for stable element location:

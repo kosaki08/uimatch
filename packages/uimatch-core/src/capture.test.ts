@@ -8,7 +8,21 @@ import { compareImages } from './core/compare';
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
 const redBase64 = () => readFileSync(join(FIXTURES_DIR, 'red-100x100.png')).toString('base64');
 
-describe('captureTarget', () => {
+const ENABLE_BROWSER_TESTS = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+
+const run = ENABLE_BROWSER_TESTS ? describe : describe.skip;
+
+if (!ENABLE_BROWSER_TESTS) {
+  // Provide a helpful note when these integration tests are intentionally skipped
+  // to avoid false negatives in restricted environments.
+  // Set UIMATCH_ENABLE_BROWSER_TESTS=true to enable Playwright-based tests.
+
+  console.warn(
+    '[uimatch] Skipping Playwright integration tests (set UIMATCH_ENABLE_BROWSER_TESTS=true to enable)'
+  );
+}
+
+run('captureTarget', () => {
   // E2E stabilization: reduce startup cost and shorten timeouts
   beforeAll(async () => {
     process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
