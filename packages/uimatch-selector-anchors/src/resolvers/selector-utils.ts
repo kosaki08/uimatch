@@ -269,55 +269,87 @@ export function generateSelectorsFromAttributes(
  * Calculate specificity score for a selector
  * Used for ordering selector candidates consistently
  *
- * Scoring system:
- * - ID: 100 points
- * - data-testid: 90 points
- * - role with options: 80 points
- * - class: 10 points
- * - attribute: 10 points
- * - pseudo-class: 10 points
- * - tag: 1 point
+ * Scoring system (aligned with CSS specificity):
+ * - data-testid: 100 points (most stable for testing)
+ * - ID (#foo): 100 points (unique identifier)
+ * - role with options: 80 points + 5 per option
+ * - class (.foo): 10 points per class
+ * - attribute ([type="text"]): 10 points per attribute
+ * - pseudo-class (:checked): 10 points per pseudo-class
+ * - tag (button): 1 point per tag
+ * - text selector: 0 points (non-CSS, Playwright-specific)
+ *
+ * Note: Properly counts ID selectors to avoid false negatives with #id syntax
  */
 export function calculateSpecificityScore(selector: string): number {
+  // Special case: text selectors have no CSS specificity
+  if (selector.startsWith('text:') || selector.startsWith('text="')) {
+    return 0;
+  }
+
+  // Special case: role selectors should not count as tag
+  const isRoleSelector = selector.startsWith('role:');
+
   let score = 0;
 
-  // ID selector
-  if (selector.includes('#')) {
+  // data-testid (highest priority for testing)
+  if (selector.includes('data-testid')) {
     score += 100;
   }
 
-  // data-testid
-  if (selector.includes('data-testid')) {
-    score += 90;
+  // ID selector: count #foo patterns (must be # followed by identifier)
+  // Strip attribute selectors first to avoid counting # inside [href="#foo"]
+  const withoutAttrs = selector.replace(/\[[^\]]*\]/g, '');
+  const idMatches = withoutAttrs.match(/#[a-zA-Z_][\w-]*/g);
+  if (idMatches) {
+    score += idMatches.length * 100;
   }
 
-  // role selector
-  if (selector.startsWith('role:')) {
+  // role selector (semantic, accessible)
+  if (isRoleSelector) {
     score += 80;
     // Add points for each option
     const optionCount = (selector.match(/\[/g) || []).length;
     score += optionCount * 5;
+    // Early return to avoid tag counting
+    return score;
   }
 
-  // Class selector
-  const classCount = (selector.match(/\./g) || []).length;
-  score += classCount * 10;
+  // Class selector: count .classname patterns
+  const classMatches = selector.match(/\.[a-zA-Z_][\w-]*/g);
+  if (classMatches) {
+    score += classMatches.length * 10;
+  }
 
-  // Attribute selector (excluding data-testid and role options)
-  const attrMatches = selector.match(/\[(?!.*role:)[^\]]+\]/g);
+  // Attribute selector: count [attr] or [attr="value"] patterns
+  const attrMatches = selector.match(/\[[^\]]+\]/g);
   if (attrMatches) {
     score += attrMatches.length * 10;
   }
 
-  // Pseudo-class selector
-  const pseudoMatches = selector.match(/:[a-z-]+/g);
+  // Pseudo-class selector: count :pseudo patterns
+  // Must be single colon (not ::), and extract just the :pseudo part
+  const pseudoMatches = selector.match(/:(?!:)[a-z-]+/g);
   if (pseudoMatches) {
+    // Count each pseudo-class occurrence
     score += pseudoMatches.length * 10;
   }
 
-  // Tag selector (lowest priority, only if not already counted)
-  if (score === 0) {
-    score += 1;
+  // Tag selector (lowest priority)
+  // Count number of tag selectors (separated by space, >, +, ~)
+  // Exclude if selector is empty, wildcard, or non-tag patterns
+  if (selector === '' || selector === '*') {
+    return score; // No tag score for empty or universal selector
+  }
+
+  // Split by combinators and count valid tag names
+  const parts = selector.split(/[\s>+~]+/);
+  for (const part of parts) {
+    // Check if part starts with a lowercase letter (tag selector)
+    // Exclude if it starts with #, ., [, or :
+    if (part && /^[a-z]/i.test(part) && !/^[#.[]:]/.test(part)) {
+      score += 1;
+    }
   }
 
   return score;
