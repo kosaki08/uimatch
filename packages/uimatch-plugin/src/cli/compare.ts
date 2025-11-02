@@ -216,7 +216,7 @@ function printUsage(): void {
   );
   console.error('  format=<type>           Output format (default|claude, default: default)');
   console.error(
-    '  patchTarget=<target>    Patch format for Claude output (tailwind|css|vanilla-extract, default: tailwind)'
+    '  patchTarget=<target>    Patch format for Claude output (css|vanilla-extract, default: css)'
   );
   console.error(
     '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|lenient|custom)'
@@ -506,8 +506,15 @@ export async function runCompare(argv: string[]): Promise<void> {
         // Save LLM-formatted output if requested
         if (args.format === 'claude') {
           const { formatForLLM, generateLLMPrompt } = await import('../utils/llm-formatter.js');
-          const patchTarget =
-            (args.patchTarget as 'tailwind' | 'css' | 'vanilla-extract') ?? 'tailwind';
+          let patchTarget = (args.patchTarget as 'css' | 'vanilla-extract' | 'tailwind') ?? 'css';
+
+          // Migration path: warn if user explicitly specified 'tailwind'
+          if (patchTarget === 'tailwind') {
+            console.warn('[uimatch] patchTarget=tailwind is deprecated and will be removed.');
+            console.warn('          Falling back to patchTarget=css.');
+            patchTarget = 'css';
+          }
+
           const llmPayload = formatForLLM(result, { target: patchTarget, preferTokens: true });
 
           await Bun.write(join(outDir, 'claude.json'), JSON.stringify(llmPayload, null, 2));
@@ -532,8 +539,15 @@ export async function runCompare(argv: string[]): Promise<void> {
     // Output format handling
     if (args.format === 'claude') {
       const { formatForLLM, generateLLMPrompt } = await import('../utils/llm-formatter.js');
-      const patchTarget =
-        (args.patchTarget as 'tailwind' | 'css' | 'vanilla-extract') ?? 'tailwind';
+      let patchTarget = (args.patchTarget as 'css' | 'vanilla-extract' | 'tailwind') ?? 'css';
+
+      // Migration path: warn if user explicitly specified 'tailwind'
+      if (patchTarget === 'tailwind') {
+        console.warn('[uimatch] patchTarget=tailwind is deprecated and will be removed.');
+        console.warn('          Falling back to patchTarget=css.');
+        patchTarget = 'css';
+      }
+
       const llmPayload = formatForLLM(result, { target: patchTarget, preferTokens: true });
 
       console.log('');

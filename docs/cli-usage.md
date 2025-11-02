@@ -70,7 +70,7 @@ Selector resolution is **optional and pluggable** via SPI (Service Provider Inte
 
 - `outDir=<path>` - Save artifacts to directory
 - `format=<type>` - Output format: `standard|claude` (default: `standard`)
-- `patchTarget=<type>` - Patch format for `format=claude`: `tailwind|css|vanilla-extract` (default: `tailwind`)
+- `patchTarget=<type>` - Patch format for `format=claude`: `css|vanilla-extract` (default: `css`)
 - `viewport=<WxH>` - Viewport size (e.g., `1584x1104`)
 - `dpr=<number>` - Device pixel ratio for browser capture (default: `2`)
 - `figmaScale=<number>` - Figma image export scale, independent of browser DPR (default: `2`)
@@ -142,7 +142,7 @@ bun run uimatch:compare -- \
   selector='[data-testid="component"]' \
   size=pad \
   format=claude \
-  patchTarget=tailwind \
+  patchTarget=css \
   outDir=.uimatch-out
 ```
 
