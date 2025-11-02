@@ -50,6 +50,7 @@ export interface ParsedArgs {
   showReEval?: string;
   selectors?: string;
   selectorsWriteBack?: string;
+  selectorsPlugin?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -169,6 +170,9 @@ function printUsage(): void {
   console.error(
     '  selectorsWriteBack=<bool>  Write back resolved selectors to JSON (default: false)'
   );
+  console.error(
+    '  selectorsPlugin=<pkg>   Selector resolution plugin package (default: @uimatch/selector-anchors)'
+  );
   console.error('  maxChildren=<number>    Max child elements to analyze (default: 200)');
   console.error(
     '  propsMode=<mode>        CSS properties to collect (default|extended|all, default: extended)'
@@ -274,6 +278,11 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
   // Write back resolved selectors
   if (args.selectorsWriteBack) {
     config.selectorsWriteBack = parseBool(args.selectorsWriteBack) ?? false;
+  }
+
+  // Selector resolution plugin
+  if (args.selectorsPlugin) {
+    config.selectorsPlugin = args.selectorsPlugin;
   }
 
   if (args.maxChildren) {

@@ -145,7 +145,14 @@ export interface ProbeResult {
   selector: string;
 
   /**
+   * Whether the selector is alive (found and optionally visible)
+   * @deprecated Use isValid instead (kept for backward compatibility)
+   */
+  isAlive?: boolean;
+
+  /**
    * Whether the selector is valid (found and optionally visible)
+   * Preferred over isAlive for consistency with validation terminology
    */
   isValid: boolean;
 

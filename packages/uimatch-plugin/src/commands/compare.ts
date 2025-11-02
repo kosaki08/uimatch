@@ -101,14 +101,15 @@ interface ResolveOutput {
  * @returns Resolved selector information
  */
 async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<ResolveOutput> {
-  // Determine plugin ID from environment variable, CLI arg, or default
+  // Determine plugin ID from CLI arg or environment variable
+  // Only fall back to default if anchorsPath is explicitly provided
   const pluginId =
-    process.env.UIMATCH_SELECTORS_PLUGIN?.trim() ||
-    args.selectorsPlugin ||
-    '@uimatch/selector-anchors';
+    args.selectorsPlugin ??
+    process.env.UIMATCH_SELECTORS_PLUGIN?.trim() ??
+    (args.selectorsPath ? '@uimatch/selector-anchors' : undefined);
 
-  // Skip if no plugin specified and no anchors path provided
-  if (!pluginId && !args.selectorsPath) {
+  // Skip if no plugin specified
+  if (!pluginId) {
     return { selector: args.selector };
   }
 
@@ -121,9 +122,8 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     return { selector: args.selector };
   }
 
-  // Create lightweight Playwright-based probe
-  const browser = await browserPool.getBrowser();
-  const context = await browser.newContext({
+  // Create lightweight Playwright-based probe using BrowserPool context management
+  const context = await browserPool.createContext({
     viewport: args.viewport,
     deviceScaleFactor: args.dpr ?? 2,
     httpCredentials: args.basicAuth,
@@ -147,15 +147,18 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
             timeout: opts?.timeoutMs ?? 600,
           });
           const isVisible = await locator.isVisible().catch(() => false);
+          const result = isVisible || !visible;
 
           return {
             selector,
-            isValid: isVisible || !visible,
+            isAlive: result, // Backward compatibility
+            isValid: result,
             checkTime: performance.now() - startTime,
           };
         } catch (err) {
           return {
             selector,
+            isAlive: false, // Backward compatibility
             isValid: false,
             checkTime: performance.now() - startTime,
             error: err instanceof Error ? err.message : String(err),
@@ -180,6 +183,12 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
         : pluginModule
     ) as SelectorResolverPlugin;
 
+    // Validate plugin interface before use
+    if (!plugin || typeof plugin.resolve !== 'function') {
+      console.warn(`[uimatch] selector plugin "${pluginId}" has no resolve(). Skip.`);
+      return { selector: args.selector };
+    }
+
     // Resolve selector using plugin
     const resolved = await plugin.resolve(resolveContext);
 
@@ -192,7 +201,7 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     console.warn('[uimatch] selector plugin failed:', err instanceof Error ? err.message : err);
     return { selector: args.selector };
   } finally {
-    await context.close();
+    await browserPool.closeContext(context);
   }
 }
 
