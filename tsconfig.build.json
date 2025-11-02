@@ -1,4 +1,8 @@
 {
   "files": [],
-  "references": [{ "path": "./packages/uimatch-core" }, { "path": "./packages/uimatch-plugin" }]
+  "references": [
+    { "path": "./packages/uimatch-core" },
+    { "path": "./packages/uimatch-scoring" },
+    { "path": "./packages/uimatch-plugin" }
+  ]
 }

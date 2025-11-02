@@ -2,23 +2,15 @@
   "name": "uimatch-plugin",
   "version": "0.1.0",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "bin": {
-    "uimatch": "./dist/cli/index.js"
+    "uimatch": "./src/cli/index.ts"
   },
   "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./cli": {
-      "import": "./dist/cli/index.js"
-    }
+    ".": "./src/index.ts",
+    "./cli": "./src/cli/index.ts"
   },
-  "files": [
-    "dist"
-  ],
   "dependencies": {
     "uimatch-core": "workspace:*",
     "uimatch-scoring": "workspace:*",
