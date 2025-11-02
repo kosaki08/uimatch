@@ -11,11 +11,11 @@ const DEFAULT_TIMEOUTS = {
   /** Timeout for liveness probe checks */
   PROBE_TIMEOUT: 600,
 
-  /** Timeout for AST parsing operations */
-  AST_PARSE_TIMEOUT: 100,
+  /** Timeout for AST parsing operations (increased to 300ms for real-world codebases) */
+  AST_PARSE_TIMEOUT: 300,
 
-  /** Timeout for HTML parsing operations */
-  HTML_PARSE_TIMEOUT: 100,
+  /** Timeout for HTML parsing operations (increased to 300ms for real-world codebases) */
+  HTML_PARSE_TIMEOUT: 300,
 
   /** Timeout for snippet hash matching */
   SNIPPET_MATCH_TIMEOUT: 50,

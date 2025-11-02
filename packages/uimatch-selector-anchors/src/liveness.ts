@@ -35,17 +35,38 @@ export async function checkLivenessPriority(
 /**
  * Check liveness for all selectors and return results
  *
- * Performs parallel checks to minimize total wait time
+ * Performs parallel checks to minimize total wait time.
+ * Uses allSettled pattern to ensure one failure doesn't block other checks.
  *
  * @param probe - Probe instance for liveness checking
  * @param selectors - Selectors to check
  * @param options - Check options
- * @returns Array of liveness results
+ * @returns Array of liveness results (failed checks return isValid:false)
  */
 export async function checkLivenessAll(
   probe: Probe,
   selectors: string[],
   options: ProbeOptions = {}
 ): Promise<ProbeResult[]> {
-  return Promise.all(selectors.map((selector) => probe.check(selector, options)));
+  const settled = await Promise.allSettled(
+    selectors.map((selector) => probe.check(selector, options))
+  );
+
+  return settled.map((result, index) => {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+
+    // Handle rejected promise: convert to invalid ProbeResult
+    const selector = selectors[index];
+    const error = result.reason instanceof Error ? result.reason.message : String(result.reason);
+
+    return {
+      selector: selector ?? 'unknown',
+      isValid: false,
+      isAlive: false,
+      checkTime: 0,
+      error,
+    };
+  });
 }

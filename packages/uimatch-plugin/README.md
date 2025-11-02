@@ -53,8 +53,11 @@ Compare a Figma design with implementation:
 # Basic comparison
 /uiMatch compare figma=AbCdEf123:456-789 story=http://localhost:6006/?path=/story/button selector="#root button"
 
-# With custom thresholds
-/uiMatch compare figma=AbCdEf123:456-789 story=http://localhost:6006 selector=".card" pixelThreshold=0.05 colorThreshold=5.0
+# With custom thresholds (using thresholds object)
+/uiMatch compare figma=AbCdEf123:456-789 story=http://localhost:6006 selector=".card" thresholds.pixelDiffRatio=0.05 thresholds.deltaE=5.0
+
+# With quality profile
+/uiMatch compare figma=AbCdEf123:456-789 story=http://localhost:6006 selector=".card" profile=development
 
 # With output directory
 /uiMatch compare figma=... story=... selector=... outDir=./comparison-results
@@ -65,8 +68,9 @@ Compare a Figma design with implementation:
 - `figma`: Figma file key and node ID (format: `fileKey:nodeId`)
 - `story`: Implementation URL (Storybook, localhost, or deployed)
 - `selector`: CSS selector for target element
-- `pixelThreshold`: (Optional) Pixel difference acceptance threshold (0-1, default: 0.03)
-- `colorThreshold`: (Optional) Color ΔE acceptance threshold (default: 3.0)
+- `profile`: (Optional) Quality profile (`strict` | `development` | `relaxed`, default from settings)
+- `thresholds.pixelDiffRatio`: (Optional) Pixel difference ratio (0-1, overrides profile)
+- `thresholds.deltaE`: (Optional) Color ΔE threshold (0-50, overrides profile)
 - `outDir`: (Optional) Output directory for artifacts (screenshots, diffs)
 
 **Output**:

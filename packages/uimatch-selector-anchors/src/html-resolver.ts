@@ -61,10 +61,12 @@ export async function resolveFromHTML(
     return null;
   }
 
-  // Extract attributes and generate selectors
+  // Extract attributes and text content
   const attributes = extractAttributes(targetElement);
-  const hint = buildHintFromAttributes(attributes);
-  const selectors = generateSelectorsFromAttributes(attributes, targetElement);
+  const elementText = extractTextContent(targetElement);
+
+  const hint = buildHintFromAttributes(attributes, elementText);
+  const selectors = generateSelectorsFromAttributes(attributes, targetElement, elementText);
 
   return {
     selectors,
@@ -72,7 +74,7 @@ export async function resolveFromHTML(
     element: {
       tag: targetElement.nodeName,
       attributes,
-      text: extractTextContent(targetElement),
+      text: elementText,
     },
   };
 }
@@ -181,9 +183,12 @@ function extractTextContent(element: Element): string | undefined {
 }
 
 /**
- * Build selector hint from attributes
+ * Build selector hint from attributes and text content
  */
-function buildHintFromAttributes(attributes: Record<string, string>): SelectorHint {
+function buildHintFromAttributes(
+  attributes: Record<string, string>,
+  elementText?: string
+): SelectorHint {
   const hint: SelectorHint = {};
 
   // Determine preferred strategies based on available attributes
@@ -203,6 +208,16 @@ function buildHintFromAttributes(attributes: Record<string, string>): SelectorHi
     hint.ariaLabel = attributes['aria-label'];
   }
 
+  // Add text selector for short text content (1-24 chars)
+  // This improves LLM detection of "human-readable" elements like buttons
+  if (elementText && elementText.length >= 1 && elementText.length <= 24) {
+    hint.expectedText = elementText;
+    if (!hint.testid && !hint.role) {
+      // Prefer text over CSS for elements with readable text
+      prefer.push('text');
+    }
+  }
+
   if (prefer.length === 0) {
     // Fallback to CSS if no semantic attributes
     prefer.push('css');
@@ -214,11 +229,12 @@ function buildHintFromAttributes(attributes: Record<string, string>): SelectorHi
 }
 
 /**
- * Generate selector candidates from attributes
+ * Generate selector candidates from attributes and text content
  */
 function generateSelectorsFromAttributes(
   attributes: Record<string, string>,
-  element: Element
+  element: Element,
+  elementText?: string
 ): string[] {
   const selectors: string[] = [];
 
@@ -236,12 +252,19 @@ function generateSelectorsFromAttributes(
     }
   }
 
-  // Priority 3: id
+  // Priority 3: text selector for short text (1-24 chars)
+  if (elementText && elementText.length >= 1 && elementText.length <= 24) {
+    // Escape special characters in text
+    const escapedText = elementText.replace(/"/g, '\\"');
+    selectors.push(`text:"${escapedText}"`);
+  }
+
+  // Priority 4: id
   if (attributes['id']) {
     selectors.push(`#${attributes['id']}`);
   }
 
-  // Priority 4: class (first class only for stability)
+  // Priority 5: class (first class only for stability)
   if (attributes['class']) {
     const firstClass = attributes['class'].split(/\s+/)[0];
     if (firstClass) {
@@ -249,7 +272,7 @@ function generateSelectorsFromAttributes(
     }
   }
 
-  // Priority 5: tag + unique attribute combination
+  // Priority 6: tag + unique attribute combination
   const tag = element.tagName;
   if (attributes['name']) {
     selectors.push(`${tag}[name="${attributes['name']}"]`);
