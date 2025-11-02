@@ -250,8 +250,11 @@ function resolveLocator(frame: Frame, selectorString: string): Locator {
       const hasBoolean =
         optionsStr &&
         /\[(selected|checked|pressed|expanded|disabled)=(true|false)\]/i.test(optionsStr);
+      const hasName = optionsStr && /\[name=/.test(optionsStr);
 
-      if (hasBoolean && optionsStr) {
+      // Only apply CSS fallback for boolean options when name is not specified
+      // This prevents losing accessible name filtering accuracy
+      if (hasBoolean && optionsStr && !hasName) {
         const getBool = (key: string): string | undefined => {
           const match = new RegExp(`\\[${key}=(true|false)\\]`, 'i').exec(optionsStr);
           return match?.[1];
@@ -336,7 +339,7 @@ function resolveLocator(frame: Frame, selectorString: string): Locator {
         if (DEBUG) {
           console.debug('[uimatch:selector] text (XPath exact):', { raw });
         }
-        return frame.locator(`xpath=//*[normalize-space(string())=${xpathLiteral(raw)}]`);
+        return frame.locator(`xpath=//*[normalize-space(.)=${xpathLiteral(raw)}]`);
       }
 
       // Handle quoted strings without [exact]: use getByText with exact:true
@@ -497,8 +500,8 @@ export class PlaywrightAdapter implements BrowserAdapter {
     const page = await context.newPage();
     try {
       // Set shorter default timeouts to ensure page-level timeout < test timeout
-      const selTimeout = Number(process.env.UIMATCH_SELECTOR_WAIT_MS ?? 8000);
-      const navTimeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 8000);
+      const selTimeout = Number(process.env.UIMATCH_SELECTOR_WAIT_MS ?? 6000);
+      const navTimeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 6000);
       page.setDefaultTimeout(selTimeout);
       page.setDefaultNavigationTimeout(navTimeout);
 
@@ -563,7 +566,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
         let loc = resolveLocator(frame, opts.selector);
 
         // Quick probe to detect if element exists (avoid long timeout)
-        const probeMs = Number(process.env.UIMATCH_PROBE_TIMEOUT_MS ?? 700);
+        const probeMs = Number(process.env.UIMATCH_PROBE_TIMEOUT_MS ?? 1200);
         try {
           await loc.first().waitFor({ state: 'attached', timeout: probeMs });
           return loc;
@@ -617,7 +620,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
             };
 
             if (rawText !== undefined) {
-              loc = frame.locator(`xpath=//*[normalize-space(string())=${xpathLiteral(rawText)}]`);
+              loc = frame.locator(`xpath=//*[normalize-space(.)=${xpathLiteral(rawText)}]`);
               return loc;
             }
           }
@@ -631,26 +634,20 @@ export class PlaywrightAdapter implements BrowserAdapter {
       try {
         await locator.waitFor({ state: 'visible', timeout: selTimeout });
       } catch {
-        // Provide actionable error message with suggestions
-        const testIdElements = await frame.locator('[data-testid]').count();
-        const suggestions: string[] = [
-          `Selector "${opts.selector}" not found or not visible.`,
-          '',
-          'Suggestions:',
-        ];
-
-        if (testIdElements > 0) {
-          suggestions.push('- Try using a [data-testid] selector');
+        // Limit diagnostic time to prevent double timeout (waitFor + diagnostics > test timeout)
+        const timedCount = (sel: string, ms = 150) =>
+          Promise.race<number>([
+            frame.locator(sel).count(),
+            new Promise<number>((r) => setTimeout(() => r(-1), ms)),
+          ]);
+        let hint = '';
+        try {
+          const n = await timedCount('[data-testid]');
+          if (n > 0) hint = ' (data-testid elements detected)';
+        } catch {
+          // Ignore diagnostic errors
         }
-
-        if (opts.detectStorybookIframe !== false) {
-          suggestions.push('- If not using Storybook, try setting detectStorybookIframe: false');
-        }
-
-        suggestions.push('- Verify the element is rendered and visible');
-        suggestions.push('- Check if the element requires user interaction to appear');
-
-        throw new Error(suggestions.join('\n'));
+        throw new Error(`Selector "${opts.selector}" not found or not visible${hint}.`);
       }
 
       await locator.evaluate((el) =>
