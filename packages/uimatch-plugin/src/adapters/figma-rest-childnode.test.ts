@@ -5,7 +5,14 @@ import { describe, expect, test } from 'bun:test';
 import type { FigmaNodeMetadata } from './figma-rest';
 
 // Helper to create test parent node
-function createTestParent(children: Array<{ id: string; type: string; name: string; box: { x: number; y: number; width: number; height: number } }>) {
+function createTestParent(
+  children: Array<{
+    id: string;
+    type: string;
+    name: string;
+    box: { x: number; y: number; width: number; height: number };
+  }>
+) {
   return {
     children: children.map((c) => ({
       id: c.id,
@@ -34,8 +41,18 @@ describe('FigmaRestClient child-node mapping', () => {
     // This test verifies the scoring algorithm indirectly via findBestChildForDomBox
     // We cannot test private methods, so we validate the public API behavior
     const parent = createTestParent([
-      { id: 'child1', type: 'FRAME', name: 'Child1', box: { x: 20, y: 30, width: 100, height: 50 } },
-      { id: 'child2', type: 'FRAME', name: 'Child2', box: { x: 200, y: 150, width: 80, height: 40 } },
+      {
+        id: 'child1',
+        type: 'FRAME',
+        name: 'Child1',
+        box: { x: 20, y: 30, width: 100, height: 50 },
+      },
+      {
+        id: 'child2',
+        type: 'FRAME',
+        name: 'Child2',
+        box: { x: 200, y: 150, width: 80, height: 40 },
+      },
     ]);
 
     expect(parent.children).toHaveLength(2);
@@ -49,8 +66,18 @@ describe('FigmaRestClient child-node mapping', () => {
 
   test('should filter by node type', () => {
     const parent = createTestParent([
-      { id: 'unsupported', type: 'VECTOR', name: 'Vector', box: { x: 20, y: 30, width: 100, height: 50 } },
-      { id: 'supported', type: 'FRAME', name: 'Frame', box: { x: 20, y: 30, width: 100, height: 50 } },
+      {
+        id: 'unsupported',
+        type: 'VECTOR',
+        name: 'Vector',
+        box: { x: 20, y: 30, width: 100, height: 50 },
+      },
+      {
+        id: 'supported',
+        type: 'FRAME',
+        name: 'Frame',
+        box: { x: 20, y: 30, width: 100, height: 50 },
+      },
     ]);
 
     const frameChildren = parent.children.filter((c) => c.type === 'FRAME');

@@ -12,8 +12,13 @@
     "./cli": "./src/cli/index.ts"
   },
   "dependencies": {
+    "parse5": "^8.0.0",
+    "typescript": "^5.9.3",
     "uimatch-core": "workspace:*",
     "uimatch-scoring": "workspace:*",
     "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/parse5": "^7.0.0"
   }
 }
