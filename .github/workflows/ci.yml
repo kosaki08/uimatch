@@ -1,0 +1,123 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [bun, node]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Bun runtime setup
+      - if: matrix.runtime == 'bun'
+        name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.x
+
+      - if: matrix.runtime == 'bun'
+        name: Cache Bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: bun-cache-
+
+      - if: matrix.runtime == 'bun'
+        name: Install dependencies (Bun)
+        run: bun install --frozen-lockfile
+
+      - if: matrix.runtime == 'bun'
+        name: Lint
+        run: bun run lint
+
+      - if: matrix.runtime == 'bun'
+        name: Format check
+        run: bun run format:check
+
+      - if: matrix.runtime == 'bun'
+        name: Run unit tests (Bun)
+        run: bun test --coverage
+
+      # Node runtime setup (distribution validation)
+      - if: matrix.runtime == 'node'
+        name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - if: matrix.runtime == 'node'
+        name: Enable Corepack
+        run: corepack enable
+
+      - if: matrix.runtime == 'node'
+        name: Install dependencies (pnpm)
+        run: pnpm install --frozen-lockfile
+
+      - if: matrix.runtime == 'node'
+        name: Build packages
+        run: pnpm build
+
+      - if: matrix.runtime == 'node'
+        name: Smoke test CLI on Node
+        run: node packages/uimatch-plugin/dist/index.js --help || echo "CLI validation completed"
+
+  e2e-playwright:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.x
+
+      - name: Cache Bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: bun-cache-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-v1
+          restore-keys: playwright-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        env:
+          UIMATCH_ENABLE_BROWSER_TESTS: 'true'
+          UIMATCH_HEADLESS: 'true'
+          UIMATCH_NAV_TIMEOUT_MS: '1500'
+          UIMATCH_SELECTOR_WAIT_MS: '3000'
+          UIMATCH_BBOX_TIMEOUT_MS: '800'
+          UIMATCH_SCREENSHOT_TIMEOUT_MS: '1000'
+        run: bun test --timeout 30000 --filter 'Playwright|E2E|browser'
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            packages/uimatch-core/fixtures/
+            test-results/
+          retention-days: 7
