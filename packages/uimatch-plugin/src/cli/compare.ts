@@ -414,12 +414,13 @@ export async function runCompare(argv: string[]): Promise<void> {
     process.exit(2);
   }
 
-  const verbose = parseBool(args.verbose) ?? false;
-
   try {
-    // Build configuration using extracted function
+    // Build configuration using extracted function (this includes verbose decision)
     const config = buildCompareConfig(args);
     const saveExpectedPath = args.saveExpected;
+
+    // Use config.verbose as the single source of truth
+    const verbose = config.verbose;
 
     // Load expectedSpec from file if provided.
     if (args.expected) {

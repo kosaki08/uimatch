@@ -8,6 +8,7 @@ import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/ada
 import { browserPool } from './browser-pool';
 import { DEFAULT_PROPS, EXTENDED_PROPS } from './playwright/constants';
 import { resolveLocator } from './playwright/locator-resolver';
+import { createTimeBudget, getE2ETimeBudget, type TimeBudget } from './playwright/time-budget';
 
 /**
  * Playwright implementation of BrowserAdapter.
@@ -46,6 +47,11 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
     const isHtmlMode = Boolean(opts.html);
 
+    // Initialize time budget system for E2E tests
+    const timeBudget: TimeBudget | undefined = process.env.UIMATCH_E2E_TIME_BUDGET_MS
+      ? createTimeBudget(getE2ETimeBudget())
+      : undefined;
+
     let browser: Browser;
     let context: BrowserContext;
     let shouldCloseBrowser = true;
@@ -74,15 +80,26 @@ export class PlaywrightAdapter implements BrowserAdapter {
     const page = await context.newPage();
     try {
       // Set shorter default timeouts to ensure page-level timeout < test timeout
-      const selTimeout = Number(process.env.UIMATCH_SELECTOR_WAIT_MS ?? 6000);
-      const visibleTimeout = isHtmlMode ? Math.min(selTimeout, 2500) : selTimeout;
-      const bboxTimeout = Number(
-        process.env.UIMATCH_BBOX_TIMEOUT_MS ?? (isHtmlMode ? 800 : selTimeout)
+      // If time budget is enabled, dynamically adjust timeouts based on remaining budget
+      const baseSelTimeout = Number(process.env.UIMATCH_SELECTOR_WAIT_MS ?? 6000);
+      const baseVisibleTimeout = isHtmlMode ? Math.min(baseSelTimeout, 2500) : baseSelTimeout;
+      const baseBboxTimeout = Number(
+        process.env.UIMATCH_BBOX_TIMEOUT_MS ?? (isHtmlMode ? 800 : baseSelTimeout)
       );
-      const shotTimeout = Number(
-        process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? (isHtmlMode ? 1000 : selTimeout)
+      const baseShotTimeout = Number(
+        process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? (isHtmlMode ? 1000 : baseSelTimeout)
       );
-      const navTimeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 6000);
+      const baseNavTimeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 6000);
+
+      // Apply time budget constraints if enabled
+      const selTimeout = timeBudget ? timeBudget.allocate(baseSelTimeout) : baseSelTimeout;
+      const visibleTimeout = timeBudget
+        ? timeBudget.allocate(baseVisibleTimeout)
+        : baseVisibleTimeout;
+      const bboxTimeout = timeBudget ? timeBudget.allocate(baseBboxTimeout) : baseBboxTimeout;
+      const shotTimeout = timeBudget ? timeBudget.allocate(baseShotTimeout) : baseShotTimeout;
+      const navTimeout = timeBudget ? timeBudget.allocate(baseNavTimeout) : baseNavTimeout;
+
       page.setDefaultTimeout(selTimeout);
       page.setDefaultNavigationTimeout(navTimeout);
 
@@ -155,7 +172,8 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
         // Quick probe to detect if element exists (avoid long timeout)
         // HTMLモードではクイックプローブをスキップ（そのまま visible 待機へ）
-        const probeMs = Number(process.env.UIMATCH_PROBE_TIMEOUT_MS ?? 1200);
+        const baseProbeMs = Number(process.env.UIMATCH_PROBE_TIMEOUT_MS ?? 1200);
+        const probeMs = timeBudget ? timeBudget.allocate(baseProbeMs, 300) : baseProbeMs;
         if (!isHtmlMode && probeMs > 0) {
           try {
             await loc.first().waitFor({ state: 'attached', timeout: probeMs });
