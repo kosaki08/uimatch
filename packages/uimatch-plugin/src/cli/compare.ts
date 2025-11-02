@@ -16,6 +16,8 @@ export interface ParsedArgs {
   figma?: string;
   story?: string;
   selector?: string;
+  subselector?: string;
+  figmaChildStrategy?: string;
   viewport?: string;
   dpr?: string;
   figmaScale?: string;
@@ -43,9 +45,11 @@ export interface ParsedArgs {
   format?: string;
   patchTarget?: string;
   profile?: string;
-  showCqi?: string; // Show CQI in output
-  showSuspicions?: string; // Show suspicion warnings
-  showReEval?: string; // Show re-evaluation recommendations
+  showCqi?: string;
+  showSuspicions?: string;
+  showReEval?: string;
+  selectors?: string;
+  selectorsWriteBack?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -155,6 +159,16 @@ function printUsage(): void {
   console.error('  selector=<css>          CSS selector for element to capture');
   console.error('');
   console.error('Optional:');
+  console.error(
+    '  subselector=<selector>  Child element inside selector for Figma child-node mapping'
+  );
+  console.error(
+    '  figmaChildStrategy=<mode>  Child-node mapping strategy (area|area+position, default: area+position)'
+  );
+  console.error('  selectors=<path>        Path to selector anchors JSON (LLM-managed)');
+  console.error(
+    '  selectorsWriteBack=<bool>  Write back resolved selectors to JSON (default: false)'
+  );
   console.error('  maxChildren=<number>    Max child elements to analyze (default: 200)');
   console.error(
     '  propsMode=<mode>        CSS properties to collect (default|extended|all, default: extended)'
@@ -241,6 +255,26 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
     // Auto-enable emitArtifacts when outDir is specified
     emitArtifacts: Boolean(args.emitArtifacts || args.outDir),
   };
+
+  // Child selector for Figma child-node mapping
+  if (args.subselector) {
+    config.subselector = args.subselector;
+  }
+
+  // Child-node mapping strategy
+  if (args.figmaChildStrategy && ['area', 'area+position'].includes(args.figmaChildStrategy)) {
+    config.figmaChildStrategy = args.figmaChildStrategy as 'area' | 'area+position';
+  }
+
+  // Selector anchors JSON path
+  if (args.selectors) {
+    config.selectorsPath = args.selectors;
+  }
+
+  // Write back resolved selectors
+  if (args.selectorsWriteBack) {
+    config.selectorsWriteBack = parseBool(args.selectorsWriteBack) ?? false;
+  }
 
   if (args.maxChildren) {
     const maxChildren = parseInt(args.maxChildren, 10);

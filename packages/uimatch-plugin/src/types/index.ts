@@ -101,6 +101,21 @@ export interface CompareArgs {
   selector: string;
 
   /**
+   * Optional child element inside `selector` for Figma child-node mapping.
+   * When provided, finds the best matching Figma child node based on size/position.
+   * Supports CSS, dompath, role, testid, and text selectors.
+   */
+  subselector?: string;
+
+  /**
+   * Strategy for child-node mapping (when subselector is provided).
+   * - `area`: Match by size only
+   * - `area+position`: Match by size and relative position (default)
+   * @default 'area+position'
+   */
+  figmaChildStrategy?: 'area' | 'area+position';
+
+  /**
    * Viewport dimensions.
    */
   viewport?: { width: number; height: number };
@@ -260,6 +275,18 @@ export interface CompareArgs {
    * @default 'union'
    */
   contentBasis?: 'union' | 'intersection' | 'figma' | 'impl';
+
+  /**
+   * Path to selector anchors JSON (LLM-managed TODO/JSON).
+   * Enables automatic selector resolution and liveness checking.
+   */
+  selectorsPath?: string;
+
+  /**
+   * Write back resolved selectors to anchors JSON.
+   * @default false
+   */
+  selectorsWriteBack?: boolean;
 }
 
 /**

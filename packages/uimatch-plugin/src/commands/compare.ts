@@ -110,6 +110,18 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const cfg = loadSkillConfig();
   const settings = getSettings(); // Read from .uimatchrc.json if exists
 
+  // Selectors anchors processing (MVP: stub for future AST implementation)
+  // TODO: Implement AST-based selector resolution, liveness checking, and stability scoring
+  // if (args.selectorsPath) {
+  //   const anchors = await loadSelectorsAnchors(args.selectorsPath);
+  //   const resolved = await resolveAnchors(anchors, args.story);
+  //   if (resolved.selector) args.selector = resolved.selector;
+  //   if (resolved.subselector) args.subselector = resolved.subselector;
+  //   if (args.selectorsWriteBack && resolved.updated) {
+  //     await saveSelectorsAnchors(args.selectorsPath, resolved.updated);
+  //   }
+  // }
+
   // Browser DPR (for implementation capture) - no clamping needed
   const dpr = args.dpr ?? cfg.defaultDpr;
 
@@ -235,6 +247,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const cap: CaptureResult = await captureTarget({
     url: args.story,
     selector: args.selector,
+    childSelector: args.subselector,
     viewport: effectiveViewport,
     dpr,
     maxChildren: args.maxChildren ?? settings.capture.defaultMaxChildren,
@@ -250,6 +263,40 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         ? { username: process.env.BASIC_AUTH_USER, password: process.env.BASIC_AUTH_PASS }
         : undefined),
   });
+
+  // 2.3) Figma child-node auto-selection (when subselector is provided)
+  // Find best matching Figma child node based on DOM child box
+  if (
+    args.subselector &&
+    cap.childBox &&
+    process.env.FIGMA_ACCESS_TOKEN &&
+    parsed &&
+    parsed !== 'current'
+  ) {
+    try {
+      const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
+      const usePos = (args.figmaChildStrategy ?? 'area+position') === 'area+position';
+
+      const pick = await rest.findBestChildForDomBox({
+        fileKey,
+        parentNodeId: nodeId,
+        domChildAbs: cap.childBox,
+        domRootAbs: cap.box,
+        usePosition: usePos,
+      });
+
+      if (pick.nodeId) {
+        console.log(
+          `[uimatch] Child-node mapping: Found Figma child "${pick.debug?.picked}" (${pick.nodeId})`
+        );
+        nodeId = pick.nodeId;
+        figmaPng = await rest.getFramePng({ fileKey, nodeId, scale: figmaScale });
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[uimatch] Child-node mapping failed (continuing with parent): ${errMsg}`);
+    }
+  }
 
   // 2.4) Auto-ROI: Automatically detect and use best matching child node if enabled
   // Only works with REST API (requires FIGMA_ACCESS_TOKEN)

@@ -196,6 +196,96 @@ export class FigmaRestClient {
   }
 
   /**
+   * Find best matching child by DOM child box (size + position)
+   * @param parent - Parent node document
+   * @param parentMeta - Parent node metadata
+   * @param domChildRel - DOM child box normalized relative to root (0..1)
+   * @param usePosition - Include position in matching score
+   * @returns Best matching child metadata, or null if no suitable match found
+   */
+  private findChildByDomBox(
+    parent: Record<string, unknown>,
+    parentMeta: FigmaNodeMetadata,
+    domChildRel: { w: number; h: number; cx: number; cy: number },
+    usePosition: boolean
+  ): FigmaNodeMetadata | null {
+    const kids = (parent.children as Record<string, unknown>[]) ?? [];
+    let best: FigmaNodeMetadata | null = null;
+    let bestScore = Infinity;
+
+    for (const k of kids) {
+      const m = this.extractNodeMetadata(k);
+      if (!m) continue;
+
+      // Consider FRAME, COMPONENT, INSTANCE, TEXT, GROUP
+      if (!['FRAME', 'COMPONENT', 'INSTANCE', 'TEXT', 'GROUP'].includes(m.type)) continue;
+
+      // Normalize child relative to parent
+      const wRel = m.width / parentMeta.width;
+      const hRel = m.height / parentMeta.height;
+      const cxRel = (m.x + m.width / 2 - parentMeta.x) / parentMeta.width;
+      const cyRel = (m.y + m.height / 2 - parentMeta.y) / parentMeta.height;
+
+      // Calculate differences
+      const areaDiff = Math.abs(wRel * hRel - domChildRel.w * domChildRel.h);
+      const aspectDiff = Math.abs(m.width / m.height - domChildRel.w / (domChildRel.h + 1e-6));
+      const posDiff = usePosition ? Math.hypot(cxRel - domChildRel.cx, cyRel - domChildRel.cy) : 0;
+
+      // Weighted score: area (70%) + aspect (20%) + position (10%)
+      const score = areaDiff * 0.7 + Math.abs(aspectDiff) * 0.2 + posDiff * 0.1;
+
+      if (score < bestScore) {
+        bestScore = score;
+        best = m;
+      }
+    }
+
+    return best;
+  }
+
+  /**
+   * Find best child for DOM child box (subselector)
+   * @param params.fileKey - Figma file key
+   * @param params.parentNodeId - Parent node ID
+   * @param params.domChildAbs - DOM child absolute box (page coordinates)
+   * @param params.domRootAbs - DOM root absolute box (page coordinates)
+   * @param params.usePosition - Include position in matching (default: true)
+   * @returns Best matching child node ID, or null if not found
+   */
+  async findBestChildForDomBox(params: {
+    fileKey: string;
+    parentNodeId: string;
+    domChildAbs: { x: number; y: number; width: number; height: number };
+    domRootAbs: { x: number; y: number; width: number; height: number };
+    usePosition?: boolean;
+  }): Promise<{ nodeId: string | null; debug?: { picked?: string } }> {
+    try {
+      const parent = await this.getNode({ fileKey: params.fileKey, nodeId: params.parentNodeId });
+      const parentMeta = this.extractNodeMetadata(parent);
+      if (!parentMeta) return { nodeId: null };
+
+      // Normalize DOM child relative to root
+      const rel = {
+        w: params.domChildAbs.width / params.domRootAbs.width,
+        h: params.domChildAbs.height / params.domRootAbs.height,
+        cx:
+          (params.domChildAbs.x - params.domRootAbs.x + params.domChildAbs.width / 2) /
+          params.domRootAbs.width,
+        cy:
+          (params.domChildAbs.y - params.domRootAbs.y + params.domChildAbs.height / 2) /
+          params.domRootAbs.height,
+      };
+
+      const picked = this.findChildByDomBox(parent, parentMeta, rel, params.usePosition ?? true);
+      return { nodeId: picked?.id ?? null, debug: { picked: picked?.name } };
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[figma-child-node] Failed to find child: ${errMsg}`);
+      return { nodeId: null };
+    }
+  }
+
+  /**
    * Automatically detect and use best matching child node if parent is much larger than target
    * @param params.fileKey - Figma file key
    * @param params.nodeId - Parent node ID
