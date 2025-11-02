@@ -50,13 +50,29 @@ export const MetadataSchema = z.object({
 export type Metadata = z.infer<typeof MetadataSchema>;
 
 /**
+ * Snippet context schema - configuration for code snippet extraction
+ */
+export const SnippetContextSchema = z.object({
+  contextBefore: z.number().int().nonnegative().default(3).describe('Lines before target line'),
+  contextAfter: z.number().int().nonnegative().default(3).describe('Lines after target line'),
+  algorithm: z
+    .enum(['sha1', 'sha256', 'md5'])
+    .default('sha1')
+    .describe('Hash algorithm used for snippet'),
+});
+
+export type SnippetContext = z.infer<typeof SnippetContextSchema>;
+
+/**
  * Selector anchor schema - represents a single anchor point
  */
 export const SelectorAnchorSchema = z.object({
   id: z.string().describe('Unique identifier for this anchor'),
   source: SourceLocationSchema.describe('Source code location'),
   hint: SelectorHintSchema.optional().describe('Hints for selector generation'),
-  snippetHash: z.string().optional().describe('Hash of surrounding code snippet (±3 lines)'),
+  snippetHash: z.string().optional().describe('Hash of surrounding code snippet (±N lines)'),
+  snippet: z.string().optional().describe('Original snippet text used to build the hash'),
+  snippetContext: SnippetContextSchema.optional().describe('Snippet extraction configuration'),
   subselector: z
     .string()
     .optional()

@@ -55,7 +55,8 @@ export async function resolveFromHTML(
   });
 
   // Find element at position
-  const targetElement = findElementAtPosition(document, line, col);
+  // parse5's sourceCodeLocation is 1-based for columns, but caller convention is 0-based
+  const targetElement = findElementAtPosition(document, line, col + 1);
 
   if (!targetElement) {
     return null;
@@ -81,8 +82,9 @@ export async function resolveFromHTML(
 
 /**
  * Find HTML element at specific line/col position
+ * @param col1 - Column position (1-based, matching parse5 convention)
  */
-function findElementAtPosition(node: ParentNode, line: number, col: number): Element | null {
+function findElementAtPosition(node: ParentNode, line: number, col1: number): Element | null {
   if (!('childNodes' in node)) {
     return null;
   }
@@ -102,9 +104,9 @@ function findElementAtPosition(node: ParentNode, line: number, col: number): Ele
     const startTag = location.startTag;
     if (startTag) {
       const isInStartTag =
-        (line === startTag.startLine && col >= startTag.startCol) ||
+        (line === startTag.startLine && col1 >= startTag.startCol) ||
         (line > startTag.startLine && line < startTag.endLine) ||
-        (line === startTag.endLine && col <= startTag.endCol);
+        (line === startTag.endLine && col1 <= startTag.endCol);
 
       if (isInStartTag) {
         return child;
@@ -113,13 +115,13 @@ function findElementAtPosition(node: ParentNode, line: number, col: number): Ele
 
     // Check if position is within element's full range
     const isInElement =
-      (line === location.startLine && col >= location.startCol) ||
+      (line === location.startLine && col1 >= location.startCol) ||
       (line > location.startLine && line < location.endLine) ||
-      (line === location.endLine && col <= location.endCol);
+      (line === location.endLine && col1 <= location.endCol);
 
     if (isInElement && 'childNodes' in child) {
       // Recursively check children first (prefer most specific element)
-      const childResult = findElementAtPosition(child as ParentNode, line, col);
+      const childResult = findElementAtPosition(child as ParentNode, line, col1);
       if (childResult) {
         return childResult;
       }

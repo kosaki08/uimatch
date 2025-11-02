@@ -106,7 +106,22 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
 
         // Check snippet hash match (fuzzy match if needed)
         try {
-          const matchedLine = await findSnippetMatch(resolvedFile, anchor.snippetHash, line);
+          // If snippet and context are available, use them for fuzzy matching
+          // Otherwise fallback to hash-only exact match
+          const hashOrResult =
+            anchor.snippet && anchor.snippetContext
+              ? {
+                  hash: anchor.snippetHash,
+                  snippet: anchor.snippet,
+                  startLine: Math.max(1, line - (anchor.snippetContext.contextBefore ?? 3)),
+                  endLine: line + (anchor.snippetContext.contextAfter ?? 3),
+                }
+              : anchor.snippetHash;
+
+          const matchedLine = await findSnippetMatch(resolvedFile, hashOrResult, line, {
+            contextBefore: anchor.snippetContext?.contextBefore ?? 3,
+            contextAfter: anchor.snippetContext?.contextAfter ?? 3,
+          });
 
           if (matchedLine !== null) {
             reasons.push(`Snippet matched at line ${matchedLine}`);

@@ -23,6 +23,13 @@ export interface SnippetHashOptions {
    * @default 'sha1'
    */
   algorithm?: 'sha1' | 'sha256' | 'md5';
+
+  /**
+   * Timeout for snippet matching (milliseconds)
+   * If specified, search will stop when time limit is reached
+   * @default undefined (no timeout)
+   */
+  timeoutMs?: number;
 }
 
 /**
@@ -209,6 +216,9 @@ export async function findSnippetMatch(
     Number(process.env.UIMATCH_SNIPPET_MAX_RADIUS ?? 400)
   );
 
+  // Set up timeout deadline if specified
+  const deadline = options.timeoutMs ? Date.now() + options.timeoutMs : null;
+
   // Create lightweight hash generator from already-loaded lines array
   const hashFromLines = (line: number) => {
     const { contextBefore = 3, contextAfter = 3 } = options;
@@ -220,10 +230,19 @@ export async function findSnippetMatch(
   };
 
   for (let offset = 0; offset <= searchRadius; offset++) {
+    // Check timeout before processing each offset
+    if (deadline && Date.now() > deadline) {
+      break;
+    }
+
     const candidates =
       offset === 0 ? [originalLine] : [originalLine - offset, originalLine + offset];
 
     for (const candidateLine of candidates) {
+      // Check timeout for each candidate
+      if (deadline && Date.now() > deadline) {
+        break;
+      }
       if (candidateLine < 1 || candidateLine > lines.length) continue;
 
       try {
