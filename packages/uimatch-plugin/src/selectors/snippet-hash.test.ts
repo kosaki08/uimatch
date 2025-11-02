@@ -134,10 +134,10 @@ export function Hero() {
       await writeFile(filePath, code);
 
       // Generate hash at line 5
-      const { hash } = await generateSnippetHash(filePath, 5);
+      const result = await generateSnippetHash(filePath, 5);
 
       // Find should return same line
-      const found = await findSnippetMatch(filePath, hash, 5);
+      const found = await findSnippetMatch(filePath, result, 5);
       expect(found).toBe(5);
     });
 
@@ -161,13 +161,13 @@ export function Hero() {
 
       // Generate hash from original code at line 3
       await writeFile(filePath, originalCode);
-      const { hash } = await generateSnippetHash(filePath, 3);
+      const result = await generateSnippetHash(filePath, 3);
 
       // Modify code (function moved down by 2 lines)
       await writeFile(filePath, modifiedCode);
 
-      // Find should locate new position (line 5)
-      const found = await findSnippetMatch(filePath, hash, 3);
+      // Find should locate new position (line 6)
+      const found = await findSnippetMatch(filePath, result, 3);
       expect(found).toBe(6);
     });
 
@@ -186,13 +186,13 @@ export function Hero() {
 
       // Generate hash from original
       await writeFile(filePath, originalCode);
-      const { hash } = await generateSnippetHash(filePath, 2);
+      const result = await generateSnippetHash(filePath, 2);
 
       // Replace with completely different code
       await writeFile(filePath, completelyDifferentCode);
 
       // Should not find match
-      const found = await findSnippetMatch(filePath, hash, 2);
+      const found = await findSnippetMatch(filePath, result, 2);
       expect(found).toBeNull();
     });
 
@@ -211,13 +211,13 @@ export function Hero() {
 
       // Generate hash from original
       await writeFile(filePath, originalCode);
-      const { hash } = await generateSnippetHash(filePath, 2);
+      const result = await generateSnippetHash(filePath, 2);
 
       // Modify slightly
       await writeFile(filePath, slightlyModifiedCode);
 
       // Should find approximate match (>75% similarity)
-      const found = await findSnippetMatch(filePath, hash, 2);
+      const found = await findSnippetMatch(filePath, result, 2);
       expect(found).toBe(2);
     });
   });
