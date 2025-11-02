@@ -14,6 +14,45 @@ export interface AnchorScore {
 }
 
 /**
+ * Normalize selector for comparison
+ * - Removes extra whitespace
+ * - Normalizes quotes (double -> single)
+ * - Basic format standardization
+ */
+function normalizeSelector(selector: string): string {
+  return selector
+    .trim()
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .replace(/"/g, "'"); // Normalize quotes
+}
+
+/**
+ * Check if selector contains testid in various formats
+ * Handles both [data-testid="value"] and testid:value formats
+ */
+function hasTestId(selector: string, testid: string): boolean {
+  const normalized = normalizeSelector(selector);
+  return (
+    normalized.includes(`testid:${testid}`) ||
+    normalized.includes(`[data-testid='${testid}']`) ||
+    normalized.includes(`data-testid='${testid}'`)
+  );
+}
+
+/**
+ * Check if selector contains role in various formats
+ * Handles both [role="value"] and role:value formats
+ */
+function hasRole(selector: string, role: string): boolean {
+  const normalized = normalizeSelector(selector);
+  return (
+    normalized.includes(`role:${role}`) ||
+    normalized.includes(`[role='${role}']`) ||
+    normalized.includes(`role='${role}'`)
+  );
+}
+
+/**
  * Match anchors against initial selector hint
  * Returns anchors sorted by relevance score (highest first)
  *
@@ -28,30 +67,39 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
     reasons: [],
   }));
 
+  // Normalize initial selector once for all comparisons
+  const normalizedInitial = normalizeSelector(initialSelector);
+
   // Score each anchor based on various criteria
   for (const result of results) {
     const { anchor } = result;
 
     // 1. Last known selector exact match (highest priority)
-    if (anchor.lastKnown?.selector === initialSelector) {
-      result.score += 100;
-      result.reasons.push('Exact match with last known selector');
+    if (anchor.lastKnown?.selector) {
+      const normalizedLast = normalizeSelector(anchor.lastKnown.selector);
+
+      if (normalizedLast === normalizedInitial) {
+        result.score += 100;
+        result.reasons.push('Exact match with last known selector');
+      }
+      // 2. Last known selector bidirectional partial match
+      else if (
+        normalizedInitial.includes(normalizedLast) ||
+        normalizedLast.includes(normalizedInitial)
+      ) {
+        result.score += 50;
+        result.reasons.push('Partial match with last known selector');
+      }
     }
 
-    // 2. Last known selector partial match
-    if (anchor.lastKnown?.selector && initialSelector.includes(anchor.lastKnown.selector)) {
-      result.score += 50;
-      result.reasons.push('Partial match with last known selector');
-    }
-
-    // 3. Hint testid match
-    if (anchor.hint?.testid && initialSelector.includes(`[data-testid="${anchor.hint.testid}"]`)) {
+    // 3. Hint testid match with format flexibility
+    if (anchor.hint?.testid && hasTestId(initialSelector, anchor.hint.testid)) {
       result.score += 80;
       result.reasons.push('Matches testid hint');
     }
 
-    // 4. Hint role match
-    if (anchor.hint?.role && initialSelector.includes(`[role="${anchor.hint.role}"]`)) {
+    // 4. Hint role match with format flexibility
+    if (anchor.hint?.role && hasRole(initialSelector, anchor.hint.role)) {
       result.score += 70;
       result.reasons.push('Matches role hint');
     }

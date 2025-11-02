@@ -138,11 +138,15 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
 
             if (file.match(/\.(tsx?|jsx?)$/)) {
               // resolveFromTypeScript handles its own tiered timeout strategy:
-              // 1. Fast path (300ms) - critical attributes only
-              // 2. Attribute-only (600ms) - all attributes
-              // 3. Full parse (900ms) - including text content
+              // 1. Fast path - critical attributes only
+              // 2. Attribute-only - all attributes
+              // 3. Full parse - including text content
               // 4. Heuristics - regex-based fallback
-              const astResult = await resolveFromTypeScript(resolvedFile, matchedLine, col);
+              const astResult = await resolveFromTypeScript(resolvedFile, matchedLine, col, {
+                fastPath: config.timeouts.astFastPath,
+                attr: config.timeouts.astAttr,
+                full: config.timeouts.astFull,
+              });
 
               if (astResult) {
                 selectors = astResult.selectors;

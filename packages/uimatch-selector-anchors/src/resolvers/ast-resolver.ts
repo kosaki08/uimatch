@@ -37,12 +37,18 @@ export interface ASTResolverResult {
  * @param file - Path to TypeScript/JSX file
  * @param line - Target line number (1-indexed)
  * @param col - Target column number (0-indexed)
+ * @param timeouts - Optional configurable timeouts for tiered fallback strategy
  * @returns Resolver result with selector candidates
  */
 export async function resolveFromTypeScript(
   file: string,
   line: number,
-  col: number
+  col: number,
+  timeouts?: {
+    fastPath?: number;
+    attr?: number;
+    full?: number;
+  }
 ): Promise<ASTResolverResult | null> {
   const absolutePath = resolve(file);
   const content = await readFile(absolutePath, 'utf-8');
@@ -77,19 +83,24 @@ export async function resolveFromTypeScript(
     return null;
   }
 
+  // Use configurable timeouts or environment variables or hardcoded defaults
+  const FAST = timeouts?.fastPath ?? Number(process.env.UIMATCH_AST_FAST_PATH_TIMEOUT_MS ?? 300);
+  const ATTR = timeouts?.attr ?? Number(process.env.UIMATCH_AST_ATTR_TIMEOUT_MS ?? 600);
+  const FULL = timeouts?.full ?? Number(process.env.UIMATCH_AST_FULL_TIMEOUT_MS ?? 900);
+
   // Tiered fallback strategy:
-  // 1. Try fast path (300ms) - tag, data-testid, id only
-  // 2. Try attribute-only (600ms) - all attributes, no text
-  // 3. Try full parse (900ms) - everything including text
+  // 1. Try fast path (FAST ms) - tag, data-testid, id only
+  // 2. Try attribute-only (ATTR ms) - all attributes, no text
+  // 3. Try full parse (FULL ms) - everything including text
   // 4. Fallback to heuristics - regex-based extraction
 
   const reasons: string[] = [];
 
   // Level 1: Fast path
-  const fastResult = await withTimeout(Promise.resolve(fastPathParse(jsxElement)), 300);
+  const fastResult = await withTimeout(Promise.resolve(fastPathParse(jsxElement)), FAST);
 
   if (fastResult && fastResult.selectors.length > 0) {
-    reasons.push('Fast path succeeded (< 300ms)');
+    reasons.push(`Fast path succeeded (< ${FAST}ms)`);
     reasons.push(...fastResult.reasons);
 
     return {
@@ -102,10 +113,10 @@ export async function resolveFromTypeScript(
   reasons.push('Fast path incomplete or timed out, trying attribute-only');
 
   // Level 2: Attribute-only
-  const attrResult = await withTimeout(Promise.resolve(attributeOnlyParse(jsxElement)), 600);
+  const attrResult = await withTimeout(Promise.resolve(attributeOnlyParse(jsxElement)), ATTR);
 
   if (attrResult && attrResult.selectors.length > 0) {
-    reasons.push('Attribute-only succeeded (< 600ms)');
+    reasons.push(`Attribute-only succeeded (< ${ATTR}ms)`);
     reasons.push(...attrResult.reasons);
 
     return {
@@ -144,11 +155,11 @@ export async function resolveFromTypeScript(
         }
       })()
     ),
-    900
+    FULL
   );
 
   if (fullParseResult && fullParseResult.selectors.length > 0) {
-    reasons.push('Full parse succeeded (< 900ms)');
+    reasons.push(`Full parse succeeded (< ${FULL}ms)`);
     return fullParseResult;
   }
 
@@ -298,4 +309,3 @@ function extractTextContent(element: ts.JsxElement | ts.JsxSelfClosingElement): 
 
   return texts.length > 0 ? texts.join(' ') : undefined;
 }
-
