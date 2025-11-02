@@ -132,6 +132,31 @@ function calculateSpecificityScore(selector: string): number {
     return 0.6;
   }
 
+  // text: selector with exact match - moderate specificity
+  // Higher than generic text but lower than structural selectors
+  if (selector.startsWith('text:')) {
+    // Check if it's exact match (contains quotes or is short)
+    const hasExact = selector.includes('"') || selector.includes("'");
+    const textContent = selector
+      .replace(/^text:/, '')
+      .replace(/['"]/g, '')
+      .trim();
+    const isShort = textContent.length <= 2;
+
+    // Short text (<=2 chars) is prone to collision, score lower
+    if (isShort) {
+      return 0.4;
+    }
+
+    // Exact text match with reasonable length
+    if (hasExact) {
+      return 0.55;
+    }
+
+    // Generic text selector
+    return 0.5;
+  }
+
   // Attribute selectors: moderate specificity
   if (selector.includes('[')) {
     return 0.5;

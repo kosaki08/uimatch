@@ -94,6 +94,32 @@ describe('parseCssColorToRgb', () => {
     expect(parseCssColorToRgb('rgba(255, 0, 0, 0.5)')).toEqual({ r: 255, g: 0, b: 0, a: 0.5 });
   });
 
+  test('parses hsl() colors', () => {
+    // Red: hsl(0, 100%, 50%)
+    expect(parseCssColorToRgb('hsl(0, 100%, 50%)')).toEqual({ r: 255, g: 0, b: 0 });
+    // Green: hsl(120, 100%, 50%)
+    expect(parseCssColorToRgb('hsl(120, 100%, 50%)')).toEqual({ r: 0, g: 255, b: 0 });
+    // Blue: hsl(240, 100%, 50%)
+    expect(parseCssColorToRgb('hsl(240, 100%, 50%)')).toEqual({ r: 0, g: 0, b: 255 });
+    // Gray: hsl(0, 0%, 50%)
+    expect(parseCssColorToRgb('hsl(0, 0%, 50%)')).toEqual({ r: 128, g: 128, b: 128 });
+  });
+
+  test('parses hsla() colors', () => {
+    expect(parseCssColorToRgb('hsla(0, 100%, 50%, 1)')).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+    expect(parseCssColorToRgb('hsla(0, 100%, 50%, 0.5)')).toEqual({
+      r: 255,
+      g: 0,
+      b: 0,
+      a: 0.5,
+    });
+  });
+
+  test('parses hsl() with deg unit', () => {
+    expect(parseCssColorToRgb('hsl(0deg, 100%, 50%)')).toEqual({ r: 255, g: 0, b: 0 });
+    expect(parseCssColorToRgb('hsl(120deg, 100%, 50%)')).toEqual({ r: 0, g: 255, b: 0 });
+  });
+
   test('returns undefined for invalid colors', () => {
     expect(parseCssColorToRgb(undefined)).toBeUndefined();
     expect(parseCssColorToRgb('')).toBeUndefined();

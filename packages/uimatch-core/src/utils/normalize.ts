@@ -69,8 +69,63 @@ export function normLineHeight(value?: string, fontSize = 16): number | undefine
 }
 
 /**
+ * Convert HSL to RGB
+ * @param h Hue (0-360)
+ * @param s Saturation (0-100)
+ * @param l Lightness (0-100)
+ * @returns RGB object
+ */
+function hslToRgb(h: number, s: number, l: number): RGB {
+  // Normalize values
+  h = h % 360;
+  if (h < 0) h += 360;
+  s = Math.max(0, Math.min(100, s)) / 100;
+  l = Math.max(0, Math.min(100, l)) / 100;
+
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+
+  let r = 0,
+    g = 0,
+    b = 0;
+
+  if (h >= 0 && h < 60) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (h >= 60 && h < 120) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (h >= 120 && h < 180) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (h >= 180 && h < 240) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (h >= 240 && h < 300) {
+    r = x;
+    g = 0;
+    b = c;
+  } else if (h >= 300 && h < 360) {
+    r = c;
+    g = 0;
+    b = x;
+  }
+
+  return {
+    r: Math.round((r + m) * 255),
+    g: Math.round((g + m) * 255),
+    b: Math.round((b + m) * 255),
+  };
+}
+
+/**
  * Parse CSS color to RGB
- * Supports: hex (#RGB, #RRGGBB, #RRGGBBAA), rgb(), rgba()
+ * Supports: hex (#RGB, #RRGGBB, #RRGGBBAA), rgb(), rgba(), hsl(), hsla()
  * @param color CSS color value
  * @returns RGB object, or undefined if parsing fails
  */
@@ -126,6 +181,23 @@ export function parseCssColorToRgb(color?: string): RGB | undefined {
     if (a !== undefined && isNaN(a)) return undefined;
 
     return a !== undefined ? { r, g, b, a } : { r, g, b };
+  }
+
+  // hsl() or hsla()
+  const hslMatch = trimmed.match(
+    /^hsla?\(\s*([\d.]+)(?:deg)?\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*(?:,\s*([\d.]+)\s*)?\)$/
+  );
+  if (hslMatch && hslMatch[1] && hslMatch[2] && hslMatch[3]) {
+    const h = parseFloat(hslMatch[1]);
+    const s = parseFloat(hslMatch[2]);
+    const l = parseFloat(hslMatch[3]);
+    const a = hslMatch[4] ? parseFloat(hslMatch[4]) : undefined;
+
+    if (isNaN(h) || isNaN(s) || isNaN(l)) return undefined;
+    if (a !== undefined && isNaN(a)) return undefined;
+
+    const rgb = hslToRgb(h, s, l);
+    return a !== undefined ? { ...rgb, a } : rgb;
   }
 
   return undefined;

@@ -240,12 +240,17 @@ function generateSelectorsFromAttributes(
 ): string[] {
   const selectors: string[] = [];
 
-  // Priority 1: data-testid
+  // Priority 1: data-testid (most stable for testing)
   if (attributes['data-testid']) {
     selectors.push(`[data-testid="${attributes['data-testid']}"]`);
   }
 
-  // Priority 2: role with aria-label
+  // Priority 2: id (unique identifier, high specificity)
+  if (attributes['id']) {
+    selectors.push(`#${attributes['id']}`);
+  }
+
+  // Priority 3: role with aria-label (semantic, accessible)
   if (attributes['role']) {
     if (attributes['aria-label']) {
       selectors.push(`role:${attributes['role']}[name="${attributes['aria-label']}"]`);
@@ -254,16 +259,11 @@ function generateSelectorsFromAttributes(
     }
   }
 
-  // Priority 3: text selector for short text (1-24 chars)
+  // Priority 4: text selector for short text (1-24 chars)
   if (elementText && elementText.length >= 1 && elementText.length <= 24) {
     // Escape special characters in text
     const escapedText = elementText.replace(/"/g, '\\"');
     selectors.push(`text:"${escapedText}"`);
-  }
-
-  // Priority 4: id
-  if (attributes['id']) {
-    selectors.push(`#${attributes['id']}`);
   }
 
   // Priority 5: class (first class only for stability)

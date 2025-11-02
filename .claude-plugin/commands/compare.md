@@ -277,7 +277,7 @@ The command returns a structured result:
 
 - `viewport=<WxH>` - Viewport size (e.g., 1584x1104)
 - `dpr=<number>` - Device pixel ratio (default: 2)
-- `detectStorybookIframe=<bool>` - Use Storybook iframe (default: true)
+- `detectStorybookIframe=<bool>` - Auto-detect Storybook iframe (default: auto-detects only when URL contains /iframe.html)
 - `size=<mode>` - Size handling (strict|pad|crop|scale, default: strict)
 - `align=<mode>` - Alignment for pad/crop (center|top-left|top|left)
 - `padColor=<color>` - Padding color (auto|#RRGGBB, default: auto)
