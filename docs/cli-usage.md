@@ -45,8 +45,8 @@ bun run uimatch:compare -- \
 
 #### Selector Resolution
 
-- `selectors=<path>` - Path to selector anchors JSON
-- `selectorsWriteBack=<bool>` - Write resolved selectors back to JSON (default: `false`)
+- `selectors=<path>` - Path to anchors JSON (internally: `anchorsPath`)
+- `selectorsWriteBack=<bool>` - Write back to anchors JSON (default: `false`)
 - `selectorsPlugin=<pkg>` - Plugin package (defaults to `@uimatch/selector-anchors` when `selectors` is specified)
 
 **Pluggable Architecture:**

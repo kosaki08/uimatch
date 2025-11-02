@@ -3,7 +3,7 @@ import {
   checkLiveness,
   checkLivenessAll,
   checkLivenessPriority,
-} from '../packages/uimatch-plugin/src/selectors/liveness.js';
+} from '../packages/uimatch-selector-anchors/src/liveness.js';
 
 const HTML_CONTENT = `
   <!DOCTYPE html>

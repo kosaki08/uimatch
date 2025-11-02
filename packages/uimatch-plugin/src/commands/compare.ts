@@ -201,9 +201,10 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     // Handle write-back if plugin provided updated anchors
     if (resolved.updatedAnchors && args.selectorsPath) {
       try {
-        const { saveSelectorsAnchors } = await import('@uimatch/selector-anchors');
-        // Type assertion is safe because plugin implementation guarantees the structure
-        await saveSelectorsAnchors(args.selectorsPath, resolved.updatedAnchors as never);
+        // Generic JSON write-back (plugin-agnostic)
+        const fs = await import('node:fs/promises');
+        const updatedJson = JSON.stringify(resolved.updatedAnchors, null, 2);
+        await fs.writeFile(args.selectorsPath, updatedJson, 'utf-8');
         console.log(`[uimatch] Updated anchors file: ${args.selectorsPath}`);
       } catch (err) {
         console.warn(
