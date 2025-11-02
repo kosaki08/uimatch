@@ -6,105 +6,8 @@ import { chromium, type Browser, type BrowserContext, type Locator } from 'playw
 import { DEFAULT_CONFIG } from '../config/defaults';
 import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/adapters';
 import { browserPool } from './browser-pool';
+import { DEFAULT_PROPS, EXTENDED_PROPS } from './playwright/constants';
 import { resolveLocator } from './playwright/locator-resolver';
-
-/**
- * Default CSS properties to extract from captured elements.
- * Includes typography, colors, layout (flex/grid), borders, spacing, and dimensions.
- */
-const DEFAULT_PROPS = [
-  'width',
-  'height',
-  'font-size',
-  'line-height',
-  'font-weight',
-  'font-family',
-  'letter-spacing',
-  'color',
-  'background-color',
-  'border-radius',
-  'border-color',
-  'border-width',
-  // Side-specific border properties
-  'border-top-width',
-  'border-right-width',
-  'border-bottom-width',
-  'border-left-width',
-  'border-top-color',
-  'border-right-color',
-  'border-bottom-color',
-  'border-left-color',
-  'border-top-style',
-  'border-right-style',
-  'border-bottom-style',
-  'border-left-style',
-  'box-shadow',
-  'display',
-  'flex-direction',
-  'flex-wrap',
-  'justify-content',
-  'align-items',
-  'align-content',
-  'gap',
-  'column-gap',
-  'row-gap',
-  'grid-template-columns',
-  'grid-template-rows',
-  'grid-auto-flow',
-  'place-items',
-  'place-content',
-  'padding-top',
-  'padding-right',
-  'padding-bottom',
-  'padding-left',
-  'margin-top',
-  'margin-right',
-  'margin-bottom',
-  'margin-left',
-  // Text & formatting
-  'text-align',
-  'text-transform',
-  'text-decoration-line',
-  'text-decoration-thickness',
-  'text-underline-offset',
-  'white-space',
-  'word-break',
-  // Sizing constraints
-  'min-width',
-  'max-width',
-  'min-height',
-  'max-height',
-  'box-sizing',
-  // Overflow
-  'overflow-x',
-  'overflow-y',
-  // Flex extras
-  'flex-grow',
-  'flex-shrink',
-  'flex-basis',
-  // Visual
-  'opacity',
-  // Position (for layout category)
-  'position',
-  'top',
-  'right',
-  'bottom',
-  'left',
-] as const;
-
-const EXTENDED_PROPS = [
-  ...DEFAULT_PROPS,
-  'z-index',
-  'align-self',
-  'place-self',
-  'outline-width',
-  'outline-style',
-  'outline-color',
-  'outline-offset',
-  'filter',
-  'backdrop-filter',
-  'text-wrap',
-] as const;
 
 /**
  * Playwright implementation of BrowserAdapter.
@@ -142,26 +45,6 @@ export class PlaywrightAdapter implements BrowserAdapter {
     if (!opts.url && !opts.html) throw new Error('captureTarget: url or html is required');
 
     const isHtmlMode = Boolean(opts.html);
-
-    // Strict mode: Fail fast on unknown selector prefix before any heavy operations
-    if (process.env.UIMATCH_SELECTOR_STRICT === 'true') {
-      const knownPrefixes = /^(role|testid|text|xpath|css|dompath):/i;
-      const possiblePrefix = /^([a-z]\w+):(.*)$/i;
-      // Exclude common CSS pseudo-classes/elements to avoid false positives
-      const cssPseudoPattern =
-        /:(?:nth-child|nth-of-type|first-child|last-child|first-of-type|last-of-type|only-child|only-of-type|hover|focus|active|visited|link|disabled|enabled|checked|indeterminate|root|empty|target|lang|not|is|where|has|before|after|first-line|first-letter)/i;
-
-      if (
-        !knownPrefixes.test(opts.selector) &&
-        possiblePrefix.test(opts.selector) &&
-        !cssPseudoPattern.test(opts.selector)
-      ) {
-        const badPrefix = opts.selector.split(':', 1)[0];
-        throw new Error(
-          `Unknown selector prefix: "${badPrefix}"\nSupported: role, testid, text, xpath, css, dompath`
-        );
-      }
-    }
 
     let browser: Browser;
     let context: BrowserContext;

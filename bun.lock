@@ -63,7 +63,7 @@
       },
       "devDependencies": {
         "@types/bun": "latest",
-        "typescript": "^5.0.0",
+        "typescript": "^5.9.3",
       },
     },
     "packages/uimatch-selector-anchors": {
@@ -72,11 +72,11 @@
       "dependencies": {
         "@uimatch/selector-spi": "workspace:*",
         "parse5": "^8.0.0",
-        "typescript": "^5.7.2",
         "zod": "^4.1.12",
       },
       "devDependencies": {
         "@types/bun": "^1.1.13",
+        "typescript": "^5.9.3",
       },
     },
     "packages/uimatch-selector-spi": {
@@ -84,7 +84,7 @@
       "version": "0.1.0",
       "devDependencies": {
         "@types/bun": "latest",
-        "typescript": "^5.8.3",
+        "typescript": "^5.9.3",
       },
     },
   },

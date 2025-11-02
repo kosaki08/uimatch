@@ -26,6 +26,6 @@
   "license": "ISC",
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.3"
   }
 }
