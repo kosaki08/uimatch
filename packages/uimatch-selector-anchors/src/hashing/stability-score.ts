@@ -142,13 +142,20 @@ function calculateSpecificityScore(selector: string): number {
       .replace(/['"]/g, '')
       .trim();
     const isShort = textContent.length <= 2;
+    const isReasonableLength = textContent.length >= 5 && textContent.length <= 24;
 
     // Short text (<=2 chars) is prone to collision, score lower
     if (isShort) {
       return 0.4;
     }
 
-    // Exact text match with reasonable length
+    // Exact text match with reasonable length (5-24 chars) - safer than short text
+    // Aligns with role[name]=0.9 and id=0.6 hierarchy
+    if (hasExact && isReasonableLength) {
+      return 0.6;
+    }
+
+    // Exact text match but longer or shorter (outside safe range)
     if (hasExact) {
       return 0.55;
     }

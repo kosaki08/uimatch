@@ -332,6 +332,8 @@ When used within Claude Code, the output is formatted for AI assistant consumpti
 
 **Access Priority**: BYPASS (test mode) > REST API (`FIGMA_ACCESS_TOKEN`) > MCP Server
 
+### Option 1: MCP Server (Recommended)
+
 Configure MCP via `.claude-plugin/mcp.json`:
 
 ```json
@@ -343,7 +345,35 @@ Configure MCP via `.claude-plugin/mcp.json`:
 }
 ```
 
-REST API mode requires `FIGMA_ACCESS_TOKEN` environment variable and supports all features without MCP infrastructure.
+**Example with `figma=current` (requires Figma MCP)**:
+
+```bash
+# Use currently selected node in Figma desktop app
+/uiMatch compare \
+  figma=current \
+  story=http://localhost:6006/?path=/story/button \
+  selector="#root button"
+
+# Works with MCP server running - no need to manually copy file keys or node IDs
+# The Figma MCP server automatically fetches the selected node context
+```
+
+This is the smoothest workflow: open your design in Figma desktop, select the frame, and run the command. The MCP server handles node ID extraction automatically.
+
+### Option 2: REST API (Alternative)
+
+REST API mode requires `FIGMA_ACCESS_TOKEN` environment variable and supports all features without MCP infrastructure:
+
+```bash
+export FIGMA_ACCESS_TOKEN=your-personal-access-token
+
+/uiMatch compare \
+  figma=AbCdEf123:1-23 \
+  story=http://localhost:6006 \
+  selector="#root button"
+```
+
+**Note**: REST API mode requires explicit `fileKey:nodeId` format. Use MCP for `figma=current` support.
 
 ## Examples
 
