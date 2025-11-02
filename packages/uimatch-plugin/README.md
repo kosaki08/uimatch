@@ -214,6 +214,17 @@ await setSettings({ comparison: { acceptancePixelDiffRatio: 0.05 } });
 | `lenient`           | 0.15           | 8.0 | 0.30            | union        | PoC/prototype           |
 | `custom`            | (config)       |     |                 |              | From settings file      |
 
+**Threshold Layers:**
+
+- **Quality Gate (Acceptance)**: Pass/fail thresholds for overall comparison (shown in profiles above)
+  - `acceptancePixelDiffRatio` / `acceptanceColorDeltaE` in settings
+  - Default: 3.0 for color ΔE (strict validation)
+- **Style Diff (Detection)**: Per-property change detection thresholds (internal to diff engine)
+  - `defaultThresholds.deltaE` in core comparison
+  - Default: 5.0 for color ΔE (broader detection)
+
+These are separate layers: detection threshold captures all notable differences, while acceptance threshold determines pass/fail status.
+
 ### Environment Variables
 
 Required for Figma integration:

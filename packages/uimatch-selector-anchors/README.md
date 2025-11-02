@@ -49,6 +49,8 @@ console.log(resolution.reasons); // Selection reasoning
 4. Verify liveness via Probe interface
 5. Score stability and return best match
 
+**Fuzzy Matching**: When original line number no longer matches, searches nearby lines in the same file using partial match scoring (80% token match + 20% char match). Default threshold: 0.6 (with original snippet) / exact match only (without original snippet).
+
 ### Stability Scoring
 
 Stability scores (0-100) are calculated using weighted components:
