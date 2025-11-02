@@ -4,9 +4,9 @@
  * Safe for commit and distribution with sanitized logging
  */
 
-import { uiMatchCompare } from '#/commands/compare';
-import type { CompareArgs } from '#/types/index';
-import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#/utils/sanitize';
+import { uiMatchCompare } from '#plugin/commands/compare';
+import type { CompareArgs } from '#plugin/types/index';
+import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#plugin/utils/sanitize';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';

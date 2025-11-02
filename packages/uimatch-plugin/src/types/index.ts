@@ -2,7 +2,7 @@
  * Type definitions for uimatch-plugin
  */
 
-import type { StyleSummary } from '#/utils/style-score';
+import type { StyleSummary } from '#plugin/utils/style-score';
 import type { ExpectedSpec, QualityGateResult, StyleDiff, TokenMap } from 'uimatch-core';
 
 /**

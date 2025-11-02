@@ -4,7 +4,7 @@
  * Execute multiple compare jobs (screens/components) from a JSON suite file.
  */
 
-import { uiMatchCompare } from '#/commands/compare';
+import { uiMatchCompare } from '#plugin/commands/compare';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 

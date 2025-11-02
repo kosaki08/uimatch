@@ -1,4 +1,4 @@
-import type { SelectorHint } from '#/types/schema';
+import type { SelectorHint } from '#anchors/types/schema';
 import type { ProbeResult } from '@uimatch/selector-spi';
 
 /**

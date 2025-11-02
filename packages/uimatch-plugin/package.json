@@ -12,8 +12,7 @@
     "uimatch": "./dist/cli/index.js"
   },
   "imports": {
-    "#/*": "./dist/*",
-    "#cli/*": "./dist/cli/*"
+    "#plugin/*": "./dist/*"
   },
   "scripts": {
     "build": "tsup",

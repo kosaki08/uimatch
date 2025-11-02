@@ -13,4 +13,10 @@ export default defineConfig({
   external: ['playwright', 'chromium-bidi'],
   // Add Node shebang for CLI distribution (works with both Node and Bun)
   banner: { js: '#!/usr/bin/env node' },
+  // Configure esbuild to replace #plugin/* with relative paths for runtime compatibility
+  esbuildOptions(options) {
+    options.alias = options.alias || {};
+    // Map #plugin/* to src/* at build time (esbuild will resolve to relative paths)
+    options.alias['#plugin'] = './src';
+  },
 });

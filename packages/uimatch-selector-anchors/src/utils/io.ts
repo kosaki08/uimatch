@@ -1,5 +1,5 @@
-import type { SelectorsAnchors } from '#/types/schema';
-import { SelectorsAnchorsSchema } from '#/types/schema';
+import type { SelectorsAnchors } from '#anchors/types/schema';
+import { SelectorsAnchorsSchema } from '#anchors/types/schema';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 

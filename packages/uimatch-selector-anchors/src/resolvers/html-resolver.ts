@@ -1,4 +1,4 @@
-import type { SelectorHint } from '#/types/schema';
+import type { SelectorHint } from '#anchors/types/schema';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import * as parse5 from 'parse5';

@@ -24,7 +24,7 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "#/*": ["./src/*"]
+      "#anchors/*": ["./src/*"]
     }
   },
   "include": ["src/**/*"],

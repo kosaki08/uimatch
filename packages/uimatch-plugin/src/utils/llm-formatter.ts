@@ -3,7 +3,7 @@
  * Transforms comparison results into actionable patch suggestions
  */
 
-import type { CompareResult } from '#/types/index';
+import type { CompareResult } from '#plugin/types/index';
 import type { StyleDiff } from 'uimatch-core';
 
 /**
