@@ -7,12 +7,6 @@ import type { StyleDiff } from 'uimatch-core';
 import type { CompareResult } from '../types/index.js';
 
 /**
- * Target format for patch suggestions
- * Note: Tailwind support has been removed to reduce noise and focus on CSS/vanilla-extract
- */
-export type PatchTarget = 'css' | 'vanilla-extract';
-
-/**
  * Confidence level for patch suggestions
  */
 export type PatchConfidence = 'high' | 'medium' | 'low';
@@ -27,10 +21,7 @@ export interface StyleIssue {
   delta: number | string;
   unit: 'px' | 'ΔE' | 'categorical';
   severity: 'low' | 'medium' | 'high';
-  suggest: {
-    css?: string;
-    vanillaExtract?: string;
-  };
+  suggest: string;
   confidence: PatchConfidence;
   note: string;
 }
@@ -55,14 +46,9 @@ export interface LLMPayload {
     medium: number;
     low: number;
   };
-  rules: {
-    target: PatchTarget;
-    preferTokens: boolean;
-  };
+  preferTokens: boolean;
   diffs: ComponentDiff[];
 }
-
-// Tailwind conversion removed - focusing on CSS and vanilla-extract only
 
 /**
  * Determine confidence level based on property metadata
@@ -89,36 +75,14 @@ function determineConfidence(
 }
 
 /**
- * Generate patch suggestions for a property
+ * Generate CSS patch suggestion for a property
  */
-function generateSuggestions(
-  property: string,
-  propData: StyleDiff['properties'][string],
-  target: PatchTarget
-): StyleIssue['suggest'] {
-  const suggest: StyleIssue['suggest'] = {};
-
+function generateSuggestion(property: string, propData: StyleDiff['properties'][string]): string {
   // Guard against undefined expected value
   const expectedValue = propData.expected ?? '';
 
-  // CSS suggestion (always available)
-  suggest.css = `${property}: ${expectedValue};`;
-
-  // Vanilla Extract suggestion (CSS-in-JS style)
-  if (target === 'vanilla-extract') {
-    const camelProp = property.replace(/-([a-z])/g, (g) => g[1]?.toUpperCase() ?? '');
-    // For categorical properties, use unquoted values if valid identifiers
-    if (
-      propData.unit === 'categorical' &&
-      ['display', 'flex-direction', 'align-items', 'justify-content'].includes(property)
-    ) {
-      suggest.vanillaExtract = `${camelProp}: '${expectedValue}'`;
-    } else {
-      suggest.vanillaExtract = `${camelProp}: '${expectedValue}'`;
-    }
-  }
-
-  return suggest;
+  // CSS suggestion
+  return `${property}: ${expectedValue};`;
 }
 
 /**
@@ -180,9 +144,9 @@ function guessComponentName(report: CompareResult['report']): string {
  */
 export function formatForLLM(
   result: CompareResult,
-  options: { target?: PatchTarget; preferTokens?: boolean } = {}
+  options: { preferTokens?: boolean } = {}
 ): LLMPayload {
-  const { target = 'css', preferTokens = true } = options;
+  const { preferTokens = true } = options;
   const { report } = result;
 
   const componentName = guessComponentName(report);
@@ -229,7 +193,7 @@ export function formatForLLM(
           delta: propData.delta,
           unit: propData.unit as StyleIssue['unit'],
           severity: diff.severity,
-          suggest: generateSuggestions(property, propData, target),
+          suggest: generateSuggestion(property, propData),
           confidence: determineConfidence(property, propData, normalizedScore),
           note: generateNote(property, propData),
         };
@@ -244,10 +208,7 @@ export function formatForLLM(
   return {
     component: componentName,
     score,
-    rules: {
-      target,
-      preferTokens,
-    },
+    preferTokens,
     diffs,
   };
 }
@@ -257,12 +218,12 @@ export function formatForLLM(
  */
 export function generateLLMPrompt(payload: LLMPayload): string {
   const instruction = `Fix the following style differences in the ${payload.component} component.
-Apply minimal changes using ${payload.rules.target} format.
-${payload.rules.preferTokens ? 'Prefer design tokens (CSS variables) when available.' : ''}
+Apply minimal changes using CSS format.
+${payload.preferTokens ? 'Prefer design tokens (CSS variables) when available.' : ''}
 
 Output format:
 1. Summary of changes
-2. Patch code (${payload.rules.target})
+2. Patch code (CSS)
 3. Risk assessment
 
 Style differences:`;

@@ -43,7 +43,7 @@ export interface ParsedArgs {
   ignore?: string;
   weights?: string;
   format?: string;
-  patchTarget?: string;
+  patchTarget?: string; // Deprecated: will be removed in next version
   profile?: string;
   showCqi?: string;
   showSuspicions?: string;
@@ -215,9 +215,6 @@ function printUsage(): void {
     '  weights=<json>          JSON weights for DFS (e.g., \'{"color":0.5,"spacing":1}\')'
   );
   console.error('  format=<type>           Output format (default|claude, default: default)');
-  console.error(
-    '  patchTarget=<target>    Patch format for Claude output (css|vanilla-extract, default: css)'
-  );
   console.error(
     '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|lenient|custom)'
   );
@@ -506,16 +503,14 @@ export async function runCompare(argv: string[]): Promise<void> {
         // Save LLM-formatted output if requested
         if (args.format === 'claude') {
           const { formatForLLM, generateLLMPrompt } = await import('../utils/llm-formatter.js');
-          let patchTarget = (args.patchTarget as 'css' | 'vanilla-extract' | 'tailwind') ?? 'css';
 
-          // Migration path: warn if user explicitly specified 'tailwind'
-          if (patchTarget === 'tailwind') {
-            console.warn('[uimatch] patchTarget=tailwind is deprecated and will be removed.');
-            console.warn('          Falling back to patchTarget=css.');
-            patchTarget = 'css';
+          // Deprecation warning for patchTarget parameter
+          if (args.patchTarget) {
+            console.warn('[uimatch] ⚠️  patchTarget parameter is deprecated and will be removed.');
+            console.warn('          Output format is now CSS-only for maximum compatibility.');
           }
 
-          const llmPayload = formatForLLM(result, { target: patchTarget, preferTokens: true });
+          const llmPayload = formatForLLM(result, { preferTokens: true });
 
           await Bun.write(join(outDir, 'claude.json'), JSON.stringify(llmPayload, null, 2));
           await Bun.write(join(outDir, 'claude-prompt.txt'), generateLLMPrompt(llmPayload));
@@ -539,16 +534,14 @@ export async function runCompare(argv: string[]): Promise<void> {
     // Output format handling
     if (args.format === 'claude') {
       const { formatForLLM, generateLLMPrompt } = await import('../utils/llm-formatter.js');
-      let patchTarget = (args.patchTarget as 'css' | 'vanilla-extract' | 'tailwind') ?? 'css';
 
-      // Migration path: warn if user explicitly specified 'tailwind'
-      if (patchTarget === 'tailwind') {
-        console.warn('[uimatch] patchTarget=tailwind is deprecated and will be removed.');
-        console.warn('          Falling back to patchTarget=css.');
-        patchTarget = 'css';
+      // Deprecation warning for patchTarget parameter
+      if (args.patchTarget) {
+        console.warn('[uimatch] ⚠️  patchTarget parameter is deprecated and will be removed.');
+        console.warn('          Output format is now CSS-only for maximum compatibility.');
       }
 
-      const llmPayload = formatForLLM(result, { target: patchTarget, preferTokens: true });
+      const llmPayload = formatForLLM(result, { preferTokens: true });
 
       console.log('');
       console.log('=== LLM-Formatted Output ===');
