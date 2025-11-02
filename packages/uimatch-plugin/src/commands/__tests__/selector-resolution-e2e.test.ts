@@ -5,7 +5,10 @@
  * Creates temporary TSX file and anchors.json to simulate real workflow
  */
 
-import type { SelectorAnchor, SelectorsData } from '@uimatch/selector-anchors';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+
+import type { SelectorsAnchors } from '@uimatch/selector-anchors';
+import type { Probe, ProbeResult, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
 import { describe, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -43,37 +46,46 @@ export function Button() {
 
       // Create anchors.json with anchor pointing to component
       const anchorsPath = join(tmpDir, 'anchors.json');
-      const initialAnchors: SelectorsData = {
-        version: '1.0',
+      const initialAnchors: SelectorsAnchors = {
+        version: '1.0.0',
         anchors: [
           {
             id: 'submit-button',
-            componentName: 'Button',
+            source: {
+              file: componentPath,
+              line: 6,
+              col: 0,
+            },
+            hint: {
+              prefer: ['testid', 'role'],
+              testid: 'submit-btn',
+              role: 'button',
+            },
             snippetHash: 'test-hash-123',
+            snippet: '<button data-testid="submit-btn" className="btn btn-primary">',
             subselector: '[data-testid="submit-btn"]',
-            lastKnownSelector: '[data-testid="submit-btn"]',
-            stabilityScore: 95,
-            sourceFilePath: componentPath,
-            sourceFileLineRange: [4, 8],
-            rawSnippet: '<button data-testid="submit-btn"',
-            detectedTestId: 'submit-btn',
-            detectedRole: 'button',
-          } satisfies SelectorAnchor,
+            lastKnown: {
+              selector: '[data-testid="submit-btn"]',
+              stabilityScore: 95,
+            },
+            meta: {
+              component: 'Button',
+              description: 'Submit button',
+            },
+          },
         ],
       };
       await writeFile(anchorsPath, JSON.stringify(initialAnchors, null, 2), 'utf-8');
 
       // Import plugin and resolve
-      const plugin = await import('@uimatch/selector-anchors');
+      const pluginModule = (await import('@uimatch/selector-anchors')) as {
+        default: SelectorResolverPlugin;
+      };
+      const plugin = pluginModule.default;
 
       // Mock probe that validates testid selector
-      const mockProbe = {
-        async check(selector: string): Promise<{
-          selector: string;
-          isValid: boolean;
-          isAlive: boolean;
-          checkTime: number;
-        }> {
+      const mockProbe: Probe = {
+        async check(selector: string): Promise<ProbeResult> {
           await Promise.resolve(); // Simulate async
           return {
             selector,
@@ -85,7 +97,7 @@ export function Button() {
       };
 
       // Resolve with writeBack enabled
-      const result = await plugin.default.resolve({
+      const result: Resolution = await plugin.resolve({
         url: 'http://localhost:3000',
         initialSelector: '.btn-primary',
         anchorsPath,
@@ -105,21 +117,24 @@ export function Button() {
 
       // Verify updatedAnchors includes updated data
       expect(result.updatedAnchors).toBeDefined();
-      expect(result.updatedAnchors?.version).toBe('1.0');
+      expect(result.updatedAnchors?.version).toBe('1.0.0');
       expect(result.updatedAnchors?.anchors).toHaveLength(1);
 
       // Verify anchor was updated with AST data
       if (result.updatedAnchors) {
-        const anchors = result.updatedAnchors.anchors as SelectorAnchor[];
-        expect(anchors.length).toBeGreaterThan(0);
-        const updatedAnchor = anchors[0];
+        const updatedData = result.updatedAnchors as SelectorsAnchors;
+        expect(updatedData.anchors.length).toBeGreaterThan(0);
+        const updatedAnchor = updatedData.anchors[0];
         if (updatedAnchor) {
           expect(updatedAnchor.id).toBe('submit-button');
           expect(updatedAnchor.subselector).toBe('[data-testid="submit-btn"]');
 
-          // Verify liveness tracking
-          expect(updatedAnchor.lastSeen).toBeDefined();
-          expect(updatedAnchor.lastMatchedAt).toBeDefined();
+          // Verify liveness tracking - check lastKnown
+          expect(updatedAnchor.lastKnown).toBeDefined();
+          if (updatedAnchor.lastKnown) {
+            expect(updatedAnchor.lastKnown.selector).toBe('[data-testid="submit-btn"]');
+            expect(updatedAnchor.lastKnown.timestamp).toBeDefined();
+          }
         }
       }
     } finally {
@@ -148,33 +163,43 @@ export function Form() {
       await writeFile(componentPath, componentCode, 'utf-8');
 
       const anchorsPath = join(tmpDir, 'anchors.json');
-      const anchors: SelectorsData = {
-        version: '1.0',
+      const anchors: SelectorsAnchors = {
+        version: '1.0.0',
         anchors: [
           {
             id: 'email-input',
-            componentName: 'Form',
+            source: {
+              file: componentPath,
+              line: 7,
+              col: 6,
+            },
+            hint: {
+              prefer: ['role', 'css'],
+              role: 'textbox',
+            },
             snippetHash: 'form-hash-456',
+            snippet: '<input type="email" name="email" />',
             subselector: 'dompath:form/label/input[type="email"]',
-            lastKnownSelector: 'input[type="email"][name="email"]',
-            stabilityScore: 80,
-            sourceFilePath: componentPath,
-            sourceFileLineRange: [6, 8],
-            rawSnippet: '<input type="email"',
-          } satisfies SelectorAnchor,
+            lastKnown: {
+              selector: 'input[type="email"][name="email"]',
+              stabilityScore: 80,
+            },
+            meta: {
+              component: 'Form',
+              description: 'Email input field',
+            },
+          },
         ],
       };
       await writeFile(anchorsPath, JSON.stringify(anchors, null, 2), 'utf-8');
 
-      const plugin = await import('@uimatch/selector-anchors');
+      const pluginModule = (await import('@uimatch/selector-anchors')) as {
+        default: SelectorResolverPlugin;
+      };
+      const plugin = pluginModule.default;
 
-      const mockProbe = {
-        async check(selector: string): Promise<{
-          selector: string;
-          isValid: boolean;
-          isAlive: boolean;
-          checkTime: number;
-        }> {
+      const mockProbe: Probe = {
+        async check(selector: string): Promise<ProbeResult> {
           await Promise.resolve(); // Simulate async
           return {
             selector,
@@ -185,7 +210,7 @@ export function Form() {
         },
       };
 
-      const result = await plugin.default.resolve({
+      const result: Resolution = await plugin.resolve({
         url: 'http://localhost:3000',
         initialSelector: 'input[type="email"]',
         anchorsPath,
@@ -220,44 +245,64 @@ export function MultiButton() {
       await writeFile(componentPath, componentCode, 'utf-8');
 
       const anchorsPath = join(tmpDir, 'anchors.json');
-      const anchors: SelectorsData = {
-        version: '1.0',
+      const anchors: SelectorsAnchors = {
+        version: '1.0.0',
         anchors: [
           {
             id: 'submit-btn',
-            componentName: 'MultiButton',
+            source: {
+              file: componentPath,
+              line: 6,
+              col: 6,
+            },
+            hint: {
+              prefer: ['testid'],
+              testid: 'submit',
+            },
             snippetHash: 'hash-1',
+            snippet: '<button data-testid="submit">Submit</button>',
             subselector: '[data-testid="submit"]',
-            lastKnownSelector: '[data-testid="submit"]',
-            stabilityScore: 90,
-            sourceFilePath: componentPath,
-            sourceFileLineRange: [6, 6],
-            rawSnippet: '<button data-testid="submit"',
-          } satisfies SelectorAnchor,
+            lastKnown: {
+              selector: '[data-testid="submit"]',
+              stabilityScore: 90,
+            },
+            meta: {
+              component: 'MultiButton',
+            },
+          },
           {
             id: 'cancel-btn',
-            componentName: 'MultiButton',
+            source: {
+              file: componentPath,
+              line: 7,
+              col: 6,
+            },
+            hint: {
+              prefer: ['testid'],
+              testid: 'cancel',
+            },
             snippetHash: 'hash-2',
+            snippet: '<button data-testid="cancel">Cancel</button>',
             subselector: '[data-testid="cancel"]',
-            lastKnownSelector: '[data-testid="cancel"]',
-            stabilityScore: 85,
-            sourceFilePath: componentPath,
-            sourceFileLineRange: [7, 7],
-            rawSnippet: '<button data-testid="cancel"',
-          } satisfies SelectorAnchor,
+            lastKnown: {
+              selector: '[data-testid="cancel"]',
+              stabilityScore: 85,
+            },
+            meta: {
+              component: 'MultiButton',
+            },
+          },
         ],
       };
       await writeFile(anchorsPath, JSON.stringify(anchors, null, 2), 'utf-8');
 
-      const plugin = await import('@uimatch/selector-anchors');
+      const pluginModule = (await import('@uimatch/selector-anchors')) as {
+        default: SelectorResolverPlugin;
+      };
+      const plugin = pluginModule.default;
 
-      const mockProbe = {
-        async check(selector: string): Promise<{
-          selector: string;
-          isValid: boolean;
-          isAlive: boolean;
-          checkTime: number;
-        }> {
+      const mockProbe: Probe = {
+        async check(selector: string): Promise<ProbeResult> {
           await Promise.resolve(); // Simulate async
           return {
             selector,
@@ -269,7 +314,7 @@ export function MultiButton() {
       };
 
       // Only match submit button
-      const result = await plugin.default.resolve({
+      const result: Resolution = await plugin.resolve({
         url: 'http://localhost:3000',
         initialSelector: '[data-testid="submit"]',
         anchorsPath,
@@ -283,11 +328,15 @@ export function MultiButton() {
 
       // Only matched anchor should have updated timestamp
       if (result.updatedAnchors) {
-        const anchors = result.updatedAnchors.anchors as SelectorAnchor[];
-        const submitAnchor = anchors.find((a) => a.id === 'submit-btn');
-        const cancelAnchor = anchors.find((a) => a.id === 'cancel-btn');
+        const updatedData = result.updatedAnchors as SelectorsAnchors;
+        const submitAnchor = updatedData.anchors.find((a) => a.id === 'submit-btn');
+        const cancelAnchor = updatedData.anchors.find((a) => a.id === 'cancel-btn');
 
-        expect(submitAnchor?.lastMatchedAt).toBeDefined();
+        expect(submitAnchor).toBeDefined();
+        expect(submitAnchor?.lastKnown).toBeDefined();
+        if (submitAnchor?.lastKnown) {
+          expect(submitAnchor.lastKnown.timestamp).toBeDefined();
+        }
         // Cancel anchor shouldn't have new match timestamp (if it wasn't matched before)
         // but should still exist in the output
         expect(cancelAnchor).toBeDefined();

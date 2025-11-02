@@ -93,6 +93,20 @@ export UIMATCH_STABILITY_SPECIFICITY_WEIGHT=0.1
 
 These variables are checked at runtime and override default values, enabling post-deployment tuning without code changes.
 
+**Weight Normalization:**
+
+The plugin automatically normalizes weights to ensure they sum to 1.0. You can specify any positive numbers, and they will be proportionally adjusted:
+
+```bash
+# These weights (sum=10) will be normalized to (0.4, 0.2, 0.3, 0.1)
+export UIMATCH_STABILITY_HINT_WEIGHT=4
+export UIMATCH_STABILITY_SNIPPET_WEIGHT=2
+export UIMATCH_STABILITY_LIVENESS_WEIGHT=3
+export UIMATCH_STABILITY_SPECIFICITY_WEIGHT=1
+```
+
+**Priority:** Programmatic options (via `stabilityScoreOptions`) > Environment variables > Default values
+
 ## Configuration
 
 ### Timeout Settings
