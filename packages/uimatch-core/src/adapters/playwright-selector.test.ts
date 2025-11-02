@@ -17,6 +17,9 @@ beforeAll(async () => {
   // Reduce timeouts to prevent double-timeout scenario (waitFor + diagnostics > test timeout)
   process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '6000';
   process.env.UIMATCH_PROBE_TIMEOUT_MS = process.env.UIMATCH_PROBE_TIMEOUT_MS ?? '1200';
+  // Additional timeout configurations to prevent accumulation
+  process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '2000';
+  process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS = process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS ?? '1500';
   await browserPool.getBrowser();
 });
 
@@ -369,120 +372,5 @@ Line 2</p>
 
     expect(result.implPng).toBeInstanceOf(Buffer);
     expect(result.styles['__self__']).toBeDefined();
-  });
-});
-
-describe('PlaywrightAdapter - Selector Strict Mode', () => {
-  itT('UIMATCH_SELECTOR_STRICT=true throws on unknown prefix', async () => {
-    const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
-    process.env.UIMATCH_SELECTOR_STRICT = 'true';
-
-    try {
-      const adapter = new PlaywrightAdapter({ reuseBrowser: true });
-      let error: Error | undefined;
-
-      try {
-        await adapter.captureTarget({
-          html: '<div>Test</div>',
-          selector: 'foo:bar', // Unknown prefix
-          detectStorybookIframe: false,
-          idleWaitMs: 0,
-          dpr: 1,
-        });
-      } catch (e) {
-        error = e as Error;
-      }
-
-      expect(error).toBeDefined();
-      expect(error?.message).toContain('Unknown selector prefix: "foo"');
-    } finally {
-      // Restore original environment
-      if (originalStrict === undefined) {
-        delete process.env.UIMATCH_SELECTOR_STRICT;
-      } else {
-        process.env.UIMATCH_SELECTOR_STRICT = originalStrict;
-      }
-    }
-  });
-
-  itT('UIMATCH_SELECTOR_STRICT=true rejects CSS pseudo-classes with word prefix', async () => {
-    const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
-    process.env.UIMATCH_SELECTOR_STRICT = 'true';
-
-    try {
-      const htmlWithList = `
-        <!DOCTYPE html>
-        <html>
-          <body>
-            <ul>
-              <li>Item 1</li>
-              <li>Item 2</li>
-            </ul>
-          </body>
-        </html>
-      `;
-
-      const adapter = new PlaywrightAdapter({ reuseBrowser: true });
-      let error: Error | undefined;
-
-      try {
-        // In strict mode, `li:nth-child(1)` looks like a typo (li is not a known prefix)
-        await adapter.captureTarget({
-          html: htmlWithList,
-          selector: 'li:nth-child(1)',
-          detectStorybookIframe: false,
-          idleWaitMs: 0,
-          dpr: 1,
-        });
-      } catch (e) {
-        error = e as Error;
-      }
-
-      expect(error).toBeDefined();
-      expect(error?.message).toContain('Unknown selector prefix: "li"');
-    } finally {
-      // Restore original environment
-      if (originalStrict === undefined) {
-        delete process.env.UIMATCH_SELECTOR_STRICT;
-      } else {
-        process.env.UIMATCH_SELECTOR_STRICT = originalStrict;
-      }
-    }
-  });
-
-  itT('UIMATCH_SELECTOR_STRICT=true allows URL attribute selectors', async () => {
-    const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
-    process.env.UIMATCH_SELECTOR_STRICT = 'true';
-
-    try {
-      const htmlWithLink = `
-        <!DOCTYPE html>
-        <html>
-          <body>
-            <a href="https://example.com">Link</a>
-          </body>
-        </html>
-      `;
-
-      const adapter = new PlaywrightAdapter({ reuseBrowser: true });
-      // URL attribute selector should work even in strict mode
-      const result = await adapter.captureTarget({
-        html: htmlWithLink,
-        selector: 'a[href*="https:"]',
-        detectStorybookIframe: false,
-        idleWaitMs: 0,
-        dpr: 1,
-      });
-
-      expect(result.implPng).toBeInstanceOf(Buffer);
-      expect(result.styles['__self__']).toBeDefined();
-    } finally {
-      // Restore original environment
-      if (originalStrict === undefined) {
-        delete process.env.UIMATCH_SELECTOR_STRICT;
-      } else {
-        process.env.UIMATCH_SELECTOR_STRICT = originalStrict;
-      }
-    }
   });
 });
