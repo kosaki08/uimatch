@@ -1,4 +1,4 @@
-import type { SelectorHint } from '#/types/schema';
+import type { SelectorHint } from '#anchors/types/schema';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import ts from 'typescript';
@@ -21,7 +21,7 @@ export interface ASTResolverResult {
    * The actual JSX element found at the location
    */
   element?: {
-    tag: string;
+    tag?: string;
     attributes: Record<string, string>;
     text?: string;
   };
@@ -42,6 +42,11 @@ export async function resolveFromTypeScript(
 ): Promise<ASTResolverResult | null> {
   const absolutePath = resolve(file);
   const content = await readFile(absolutePath, 'utf-8');
+
+  // Import fallback utilities
+  const { fastPathParse, attributeOnlyParse, heuristicCandidates, withTimeout } = await import(
+    './ast-fallback.js'
+  );
 
   // Parse TypeScript/JSX
   const sourceFile = ts.createSourceFile(
@@ -68,22 +73,99 @@ export async function resolveFromTypeScript(
     return null;
   }
 
-  // Extract attributes and text content
-  const attributes = extractJsxAttributes(jsxElement);
-  const elementText = extractTextContent(jsxElement);
+  // Tiered fallback strategy:
+  // 1. Try fast path (300ms) - tag, data-testid, id only
+  // 2. Try attribute-only (600ms) - all attributes, no text
+  // 3. Try full parse (900ms) - everything including text
+  // 4. Fallback to heuristics - regex-based extraction
 
-  const hint = buildHintFromAttributes(attributes, elementText);
-  const selectors = generateSelectorsFromAttributes(attributes, elementText);
+  const reasons: string[] = [];
 
-  return {
-    selectors,
-    hint,
-    element: {
-      tag: getJsxTagName(jsxElement),
-      attributes,
-      text: elementText,
-    },
-  };
+  // Level 1: Fast path
+  const fastResult = await withTimeout(Promise.resolve(fastPathParse(jsxElement)), 300);
+
+  if (fastResult && fastResult.selectors.length > 0) {
+    reasons.push('Fast path succeeded (< 300ms)');
+    reasons.push(...fastResult.reasons);
+
+    return {
+      selectors: fastResult.selectors,
+      hint: fastResult.hint,
+      element: fastResult.element,
+    };
+  }
+
+  reasons.push('Fast path incomplete or timed out, trying attribute-only');
+
+  // Level 2: Attribute-only
+  const attrResult = await withTimeout(Promise.resolve(attributeOnlyParse(jsxElement)), 600);
+
+  if (attrResult && attrResult.selectors.length > 0) {
+    reasons.push('Attribute-only succeeded (< 600ms)');
+    reasons.push(...attrResult.reasons);
+
+    return {
+      selectors: attrResult.selectors,
+      hint: attrResult.hint,
+      element: attrResult.element,
+    };
+  }
+
+  reasons.push('Attribute-only incomplete or timed out, trying full parse');
+
+  // Level 3: Full parse (original implementation)
+  const fullParseResult = await withTimeout(
+    Promise.resolve(
+      (() => {
+        try {
+          // Extract attributes and text content
+          const attributes = extractJsxAttributes(jsxElement);
+          const elementText = extractTextContent(jsxElement);
+
+          const hint = buildHintFromAttributes(attributes, elementText);
+          const selectors = generateSelectorsFromAttributes(attributes, elementText);
+
+          return {
+            selectors,
+            hint,
+            element: {
+              tag: getJsxTagName(jsxElement),
+              attributes,
+              text: elementText,
+            },
+          };
+        } catch {
+          return null;
+        }
+      })()
+    ),
+    900
+  );
+
+  if (fullParseResult && fullParseResult.selectors.length > 0) {
+    reasons.push('Full parse succeeded (< 900ms)');
+    return fullParseResult;
+  }
+
+  reasons.push('Full parse timed out or failed, using heuristics');
+
+  // Level 4: Heuristics (last resort)
+  const heuristicResult = heuristicCandidates(content, line);
+
+  if (heuristicResult.selectors.length > 0) {
+    reasons.push('Heuristics generated candidates');
+    reasons.push(...heuristicResult.reasons);
+
+    return {
+      selectors: heuristicResult.selectors,
+      hint: heuristicResult.hint,
+      element: heuristicResult.element,
+    };
+  }
+
+  // Complete failure
+  reasons.push('All parsing strategies failed');
+  return null;
 }
 
 /**

@@ -8,6 +8,7 @@ import type { Resolution, ResolveContext, SelectorResolverPlugin } from '@uimatc
 import { dirname, isAbsolute, resolve as resolvePath } from 'node:path';
 import { findSnippetMatch } from './hashing/snippet-hash.js';
 import { calculateStabilityScore, findMostStableSelector } from './hashing/stability-score.js';
+import { selectBestAnchor } from './matching/anchor-matcher.js';
 import { resolveFromTypeScript } from './resolvers/ast-resolver.js';
 import { resolveFromHTML } from './resolvers/html-resolver.js';
 import { getConfig } from './types/config.js';
@@ -79,23 +80,27 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
       };
     }
 
-    // For now, implement a basic passthrough that demonstrates the integration
-    // Full implementation will be done in Phase 4
     const reasons: string[] = [];
     reasons.push(`Loaded ${anchorsData.anchors.length} anchors from ${context.anchorsPath}`);
 
     // If we have anchors, try to find the best match
     if (anchorsData.anchors.length > 0) {
-      // Get the first anchor as a demo (Phase 4 will implement full matching logic)
-      const anchor = anchorsData.anchors[0];
-      if (!anchor) {
+      // Select best matching anchor based on initialSelector
+      const bestMatch = selectBestAnchor(anchorsData.anchors, context.initialSelector);
+
+      if (!bestMatch) {
         return {
           selector: context.initialSelector,
-          reasons: ['No valid anchors found, using initial selector'],
+          reasons: [
+            'No valid anchors found matching the initial selector',
+            'Using initial selector',
+          ],
         };
       }
 
-      reasons.push(`Found anchor: ${anchor.id}`);
+      const anchor = bestMatch.anchor;
+      reasons.push(`Selected anchor: ${anchor.id} (score: ${bestMatch.score})`);
+      reasons.push(...bestMatch.reasons);
 
       // Try to resolve from source file if snippet hash exists
       if (anchor.snippetHash && anchor.source) {
@@ -127,21 +132,25 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
           if (matchedLine !== null) {
             reasons.push(`Snippet matched at line ${matchedLine}`);
 
-            // Try AST resolution based on file extension with timeout protection
+            // Try AST resolution based on file extension
+            // Note: resolveFromTypeScript now has internal tiered fallback with timeouts
             let selectors: string[] = [];
 
             if (file.match(/\.(tsx?|jsx?)$/)) {
-              const astResult = await withTimeout(
-                resolveFromTypeScript(resolvedFile, matchedLine, col),
-                config.timeouts.astParse
-              );
+              // resolveFromTypeScript handles its own tiered timeout strategy:
+              // 1. Fast path (300ms) - critical attributes only
+              // 2. Attribute-only (600ms) - all attributes
+              // 3. Full parse (900ms) - including text content
+              // 4. Heuristics - regex-based fallback
+              const astResult = await resolveFromTypeScript(resolvedFile, matchedLine, col);
+
               if (astResult) {
                 selectors = astResult.selectors;
                 reasons.push(
                   `AST resolution found ${selectors.length} selector candidates from TypeScript/JSX`
                 );
               } else {
-                reasons.push('AST resolution timed out or failed');
+                reasons.push('AST resolution failed completely (all fallback levels exhausted)');
               }
             } else if (file.match(/\.html?$/)) {
               const htmlResult = await withTimeout(
@@ -308,6 +317,7 @@ export default plugin;
 export * from '@uimatch/selector-spi';
 export * from './hashing/snippet-hash.js';
 export * from './hashing/stability-score.js';
+export * from './matching/anchor-matcher.js';
 export * from './resolvers/ast-resolver.js';
 export * from './resolvers/html-resolver.js';
 export * from './types/config.js';
