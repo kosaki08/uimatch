@@ -5,6 +5,9 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { browserPool } from './browser-pool';
 import { captureTarget } from './playwright';
 
+const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
+const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: TEST_TIMEOUT });
+
 // Configure environment for faster E2E tests
 beforeAll(() => {
   process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
@@ -22,7 +25,7 @@ describe('Playwright childBox capture - with childSelector', () => {
     await browserPool.getBrowser();
   });
 
-  test('should capture childBox for CSS child selector', async () => {
+  itT('should capture childBox for CSS child selector', async () => {
     const html = `
       <div id="parent" style="width: 400px; height: 300px; position: relative;">
         <button id="child" style="width: 100px; height: 50px; position: absolute; left: 20px; top: 30px;">
@@ -43,7 +46,7 @@ describe('Playwright childBox capture - with childSelector', () => {
     expect(result.childBox?.height).toBeGreaterThan(0);
   });
 
-  test('should not fail when childSelector not found', async () => {
+  itT('should not fail when childSelector not found', async () => {
     const html = `<div id="parent">No child</div>`;
 
     const result = await captureTarget({
@@ -63,7 +66,7 @@ describe('Playwright childBox capture - without childSelector', () => {
     await browserPool.getBrowser();
   });
 
-  test('should work without childSelector', async () => {
+  itT('should work without childSelector', async () => {
     const html = `<div id="parent">Content</div>`;
 
     const result = await captureTarget({
