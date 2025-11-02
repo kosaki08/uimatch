@@ -38,5 +38,8 @@
     "prettier-plugin-organize-imports": "^4.3.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.2"
+  },
+  "dependencies": {
+    "parse5": "^8.0.0"
   }
 }

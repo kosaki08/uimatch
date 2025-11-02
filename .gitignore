@@ -43,3 +43,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Test artifacts (generated during test execution)
 **/fixtures/test-out/
 **/__tests__/fixtures/test-out/
+
+# Playwright test results
+test-results/
+playwright-report/
+playwright/.cache/
