@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   checkLivenessAll,
   checkLivenessPriority,
-} from '../packages/uimatch-selector-anchors/src/liveness.js';
+} from '../packages/uimatch-selector-anchors/src/utils/liveness.js';
 import { createPlaywrightProbe } from './helpers/playwright-probe.js';
 
 const HTML_CONTENT = `
