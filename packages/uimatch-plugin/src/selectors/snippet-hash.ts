@@ -102,20 +102,90 @@ export async function generateSnippetHash(
 }
 
 /**
+ * Calculate text similarity between two strings using a hybrid approach
+ * combining token overlap and character-level similarity
+ * Returns a score between 0 and 1, where 1 is identical
+ */
+function calculateTextSimilarity(text1: string, text2: string): number {
+  if (text1 === text2) return 1.0;
+
+  if (text1.length === 0 && text2.length === 0) return 1.0;
+  if (text1.length === 0 || text2.length === 0) return 0.0;
+
+  // Normalize whitespace for comparison
+  const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
+  const norm1 = normalize(text1);
+  const norm2 = normalize(text2);
+
+  // 1. Calculate character-level similarity (weighted 40%)
+  const len1 = norm1.length;
+  const len2 = norm2.length;
+  const minLen = Math.min(len1, len2);
+  const maxLen = Math.max(len1, len2);
+
+  let charMatches = 0;
+  for (let i = 0; i < minLen; i++) {
+    if (norm1[i] === norm2[i]) {
+      charMatches++;
+    }
+  }
+  const charScore = charMatches / maxLen;
+
+  // 2. Calculate token-level similarity (weighted 80%)
+  const tokenize = (text: string): string[] => {
+    // Extract meaningful code tokens (identifiers, keywords)
+    const tokens = text
+      .toLowerCase()
+      .split(/[\s\n\r\t,;.(){}[\]<>'"]+/)
+      .filter((t) => t.length > 1 && /[a-z0-9_]/.test(t)); // Filter noise
+    return tokens;
+  };
+
+  const tokens1 = tokenize(text1);
+  const tokens2 = tokenize(text2);
+
+  // Use multiset (bag) intersection for better matching
+  // This counts how many tokens appear in both, even if duplicated
+  const countMap1 = new Map<string, number>();
+  const countMap2 = new Map<string, number>();
+
+  for (const t of tokens1) {
+    countMap1.set(t, (countMap1.get(t) || 0) + 1);
+  }
+  for (const t of tokens2) {
+    countMap2.set(t, (countMap2.get(t) || 0) + 1);
+  }
+
+  // Count matching tokens (minimum count in both)
+  let matches = 0;
+  for (const [token, count1] of countMap1) {
+    const count2 = countMap2.get(token) || 0;
+    matches += Math.min(count1, count2);
+  }
+
+  const total = Math.max(tokens1.length, tokens2.length);
+  const tokenScore = total > 0 ? matches / total : 0.0;
+
+  // Combined score: 20% character similarity + 80% token similarity
+  // Token-based matching works better for code that has moved or changed slightly
+  return charScore * 0.2 + tokenScore * 0.8;
+}
+
+/**
  * Find the best matching location for a snippet in a file
  *
  * This is useful when code has moved but the snippet hash doesn't match exactly
  * due to minor changes.
  *
  * @param file - Path to source file
- * @param targetHash - Expected snippet hash
+ * @param targetHashOrResult - Expected snippet hash string OR full SnippetHashResult with original snippet
  * @param originalLine - Original line number where snippet was found
  * @param options - Configuration options
  * @returns New line number if found, or null if no good match
  */
 export async function findSnippetMatch(
   file: string,
-  targetHash: string,
+  targetHashOrResult: string | SnippetHashResult,
   originalLine: number,
   options: SnippetHashOptions = {}
 ): Promise<number | null> {
@@ -123,10 +193,15 @@ export async function findSnippetMatch(
   const content = await readFile(absolutePath, 'utf-8');
   const lines = content.split('\n');
 
-  // Extract algorithm and hash from target (e.g., "sha1:7a2c" -> ["sha1", "7a2c"])
-  const [targetAlgorithm, targetHashValue] = targetHash.split(':') as [string, string];
+  // Extract hash and optional original snippet
+  const targetHash =
+    typeof targetHashOrResult === 'string' ? targetHashOrResult : targetHashOrResult.hash;
+  const originalSnippet =
+    typeof targetHashOrResult === 'object' ? targetHashOrResult.snippet : null;
 
-  let bestMatch: { line: number; score: number } | null = null;
+  const [targetAlgorithm] = targetHash.split(':') as [string, string];
+
+  let bestMatch: { line: number; score: number; snippet: string } | null = null;
 
   // Search in expanding radius from original line
   const searchRadius = Math.max(50, lines.length);
@@ -144,30 +219,19 @@ export async function findSnippetMatch(
           algorithm: targetAlgorithm as 'sha1' | 'sha256' | 'md5',
         });
 
-        // Extract hash value for comparison
-        const [, candidateHashValue] = result.hash.split(':') as [string, string];
-
-        // Calculate similarity (simple prefix matching)
-        let matchingChars = 0;
-        const minLength = Math.min(targetHashValue.length, candidateHashValue.length);
-        for (let i = 0; i < minLength; i++) {
-          if (targetHashValue[i] === candidateHashValue[i]) {
-            matchingChars++;
-          } else {
-            break;
-          }
-        }
-
-        const score = matchingChars / Math.max(targetHashValue.length, candidateHashValue.length);
-
-        // Perfect match
-        if (score === 1.0) {
+        // Check for exact hash match first
+        if (result.hash === targetHash) {
           return candidateLine;
         }
 
-        // Track best partial match (at least 50% matching)
-        if (score >= 0.5 && (!bestMatch || score > bestMatch.score)) {
-          bestMatch = { line: candidateLine, score };
+        // For fuzzy matching, compare snippet text content (only if we have original snippet)
+        if (originalSnippet !== null) {
+          const score = calculateTextSimilarity(originalSnippet, result.snippet);
+
+          // Track best partial match (at least 50% matching)
+          if (score >= 0.5 && (!bestMatch || score > bestMatch.score)) {
+            bestMatch = { line: candidateLine, score, snippet: result.snippet };
+          }
         }
       } catch {
         // Skip lines that cause errors
@@ -176,6 +240,7 @@ export async function findSnippetMatch(
     }
   }
 
-  // Return best match if it's good enough (>= 75% similarity)
-  return bestMatch && bestMatch.score >= 0.75 ? bestMatch.line : null;
+  // Return best match if it's good enough (>= 60% similarity)
+  // This threshold balances finding moved code vs avoiding false matches
+  return bestMatch && bestMatch.score >= 0.6 ? bestMatch.line : null;
 }
