@@ -229,8 +229,15 @@ export async function findSnippetMatch(
           const score = calculateTextSimilarity(originalSnippet, result.snippet);
 
           // Track best partial match (at least 50% matching)
-          if (score >= 0.5 && (!bestMatch || score > bestMatch.score)) {
-            bestMatch = { line: candidateLine, score, snippet: result.snippet };
+          // When scores are equal, prefer later line numbers (code moved down)
+          if (score >= 0.5) {
+            if (
+              !bestMatch ||
+              score > bestMatch.score + 1e-6 ||
+              (Math.abs(score - bestMatch.score) <= 1e-6 && candidateLine > bestMatch.line)
+            ) {
+              bestMatch = { line: candidateLine, score, snippet: result.snippet };
+            }
           }
         }
       } catch {

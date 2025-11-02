@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { browserPool } from './adapters/browser-pool';
 import { captureTarget } from './adapters/playwright';
 import { compareImages } from './core/compare';
 
@@ -8,6 +9,22 @@ const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
 const redBase64 = () => readFileSync(join(FIXTURES_DIR, 'red-100x100.png')).toString('base64');
 
 describe('captureTarget', () => {
+  // E2E stabilization: reduce startup cost and shorten timeouts
+  beforeAll(async () => {
+    process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
+    process.env.UIMATCH_SELECTOR_FIRST = process.env.UIMATCH_SELECTOR_FIRST ?? 'true';
+    process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS =
+      process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS ?? '1200';
+    process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
+    process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '2500';
+    process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '800';
+    process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '1000';
+    await browserPool.getBrowser();
+  });
+
+  afterAll(async () => {
+    await browserPool.closeAll();
+  });
   test('html mode: 100x100 red box equals fixture', async () => {
     const html = `
       <html><head><style>
