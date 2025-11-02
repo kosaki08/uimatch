@@ -5,6 +5,7 @@
  */
 
 import type { Resolution, ResolveContext, SelectorResolverPlugin } from '@uimatch/selector-spi';
+import { dirname, isAbsolute, resolve as resolvePath } from 'node:path';
 import { resolveFromTypeScript } from './ast-resolver.js';
 import { getConfig } from './config.js';
 import { resolveFromHTML } from './html-resolver.js';
@@ -13,6 +14,21 @@ import { checkLivenessAll } from './liveness.js';
 import type { SelectorsAnchors } from './schema.js';
 import { findSnippetMatch } from './snippet-hash.js';
 import { calculateStabilityScore, findMostStableSelector } from './stability-score.js';
+
+/**
+ * Resolve project path relative to anchors file directory
+ *
+ * @param anchorsPath - Path to the anchors JSON file
+ * @param file - Source file path (absolute or relative)
+ * @returns Absolute path to the source file
+ */
+function resolveProjectPath(anchorsPath: string, file: string): string {
+  if (isAbsolute(file)) {
+    return file;
+  }
+  const anchorsDir = dirname(anchorsPath);
+  return resolvePath(anchorsDir, file);
+}
 
 /**
  * Execute a promise with timeout protection
@@ -85,9 +101,12 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
       if (anchor.snippetHash && anchor.source) {
         const { file, line, col } = anchor.source;
 
+        // Resolve source file path relative to anchors file
+        const resolvedFile = resolveProjectPath(context.anchorsPath, file);
+
         // Check snippet hash match (fuzzy match if needed)
         try {
-          const matchedLine = await findSnippetMatch(file, anchor.snippetHash, line);
+          const matchedLine = await findSnippetMatch(resolvedFile, anchor.snippetHash, line);
 
           if (matchedLine !== null) {
             reasons.push(`Snippet matched at line ${matchedLine}`);
@@ -97,7 +116,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
 
             if (file.match(/\.(tsx?|jsx?)$/)) {
               const astResult = await withTimeout(
-                resolveFromTypeScript(file, matchedLine, col),
+                resolveFromTypeScript(resolvedFile, matchedLine, col),
                 config.timeouts.astParse
               );
               if (astResult) {
@@ -110,7 +129,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
               }
             } else if (file.match(/\.html?$/)) {
               const htmlResult = await withTimeout(
-                resolveFromHTML(file, matchedLine, col),
+                resolveFromHTML(resolvedFile, matchedLine, col),
                 config.timeouts.htmlParse
               );
               if (htmlResult) {
@@ -153,15 +172,16 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                 const best = findMostStableSelector(candidatesWithScores);
 
                 if (best) {
+                  const stabilityScore = Math.round(best.score.overall * 100);
                   reasons.push(`Evaluated ${candidatesWithScores.length} live candidates`);
                   reasons.push(`Best selector: ${best.selector}`);
-                  reasons.push(`Stability score: ${(best.score.overall * 100).toFixed(0)}%`);
+                  reasons.push(`Stability score: ${stabilityScore}%`);
                   reasons.push(...best.score.details);
 
                   // Prepare result
                   const result: Resolution = {
                     selector: best.selector,
-                    stabilityScore: best.score.overall * 100, // Convert to 0-100 scale
+                    stabilityScore,
                     reasons,
                   };
 
@@ -182,8 +202,8 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                               ...a,
                               lastKnown: {
                                 selector: best.selector,
-                                stabilityScore: best.score.overall * 100,
-                                lastChecked: new Date().toISOString(),
+                                stabilityScore,
+                                timestamp: new Date().toISOString(),
                               },
                             }
                           : a

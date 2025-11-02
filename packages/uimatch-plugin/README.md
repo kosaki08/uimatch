@@ -356,9 +356,9 @@ When used within Claude Code, the output is formatted for AI assistant consumpti
 
 ## Figma Integration
 
-### Figma MCP Server
+**Access Priority**: BYPASS (test mode) > REST API (`FIGMA_ACCESS_TOKEN`) > MCP Server
 
-The plugin requires a Figma MCP server for design access. Configure via `.claude-plugin/mcp.json`:
+Configure MCP via `.claude-plugin/mcp.json`:
 
 ```json
 {
@@ -368,6 +368,8 @@ The plugin requires a Figma MCP server for design access. Configure via `.claude
   }
 }
 ```
+
+REST API mode requires `FIGMA_ACCESS_TOKEN` environment variable and supports all features without MCP infrastructure.
 
 ## Examples
 
