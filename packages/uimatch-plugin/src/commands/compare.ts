@@ -135,12 +135,18 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     const timeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 6000);
     await page.goto(args.story, { waitUntil: 'domcontentloaded', timeout });
 
+    // Detect Storybook iframe (/iframe.html takes precedence over mainFrame)
+    // This ensures probe checks the same frame as captureTarget will use
+    const frames = page.frames();
+    const storybookFrame = frames.find((f) => /\/iframe\.html(\?|$)/.test(f.url()));
+    const targetFrame = storybookFrame ?? page.mainFrame();
+
     // Create probe implementation
     const probe: Probe = {
       async check(selector, opts) {
         const startTime = performance.now();
         try {
-          const locator = page.locator(selector).first();
+          const locator = targetFrame.locator(selector).first();
           const visible = opts?.visible ?? true;
           await locator.waitFor({
             state: visible ? 'visible' : 'attached',
