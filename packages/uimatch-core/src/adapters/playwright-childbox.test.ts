@@ -35,6 +35,7 @@ describe('Playwright childBox capture - with childSelector', () => {
       html,
       selector: '#parent',
       childSelector: '#child',
+      reuseBrowser: true,
     });
 
     expect(result.childBox).toBeDefined();
@@ -49,6 +50,7 @@ describe('Playwright childBox capture - with childSelector', () => {
       html,
       selector: '#parent',
       childSelector: '#nonexistent',
+      reuseBrowser: true,
     });
 
     expect(result.childBox).toBeUndefined();
@@ -61,23 +63,20 @@ describe('Playwright childBox capture - without childSelector', () => {
     await browserPool.getBrowser();
   });
 
-  afterAll(async () => {
-    await browserPool.closeAll();
-  });
-
-  // NOTE: This test passes when run individually but hangs when run after other tests
-  // This is likely due to browser pool resource management issues
-  // TODO: Investigate and fix browser pool cleanup between tests
-  // Workaround: Run this test file with `-t "should work without childSelector"` to test individually
   test('should work without childSelector', async () => {
     const html = `<div id="parent">Content</div>`;
 
     const result = await captureTarget({
       html,
       selector: '#parent',
+      reuseBrowser: true,
     });
 
     expect(result.childBox).toBeUndefined();
     expect(result.implPng).toBeDefined();
   });
+});
+
+afterAll(async () => {
+  await browserPool.closeAll();
 });

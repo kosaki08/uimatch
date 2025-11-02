@@ -38,6 +38,7 @@ describe('captureTarget', () => {
       viewport: { width: 200, height: 200 },
       dpr: 1,
       detectStorybookIframe: false,
+      reuseBrowser: true,
     });
     const res = compareImages({
       figmaPngB64: redBase64(),
@@ -67,6 +68,7 @@ describe('captureTarget', () => {
         viewport: { width: 300, height: 200 },
         dpr: 1,
         detectStorybookIframe: false,
+        reuseBrowser: true,
       });
 
       expect(cap.styles['__self__']).toBeDefined();
