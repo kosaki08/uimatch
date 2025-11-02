@@ -2,7 +2,7 @@
  * UI comparison command
  */
 
-import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-anchors';
+import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
 import { browserPool, captureTarget, compareImages } from 'uimatch-core';
 import { computeDFS } from 'uimatch-scoring';
