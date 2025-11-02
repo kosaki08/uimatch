@@ -22,6 +22,9 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 
 # Install plugin
 /plugin install uimatch
+
+# Install Playwright browsers (required peer dependency)
+bunx playwright install chromium
 ```
 
 ## Usage
@@ -83,11 +86,8 @@ ui-match/
 bun install
 
 # Build packages (in dependency order)
-# 1. Build SPI package first (type definitions)
 cd packages/uimatch-selector-spi && bun run build
-
-# 2. Build selector-anchors (optional plugin)
-cd packages/uimatch-selector-anchors && bun run build
+cd ../uimatch-selector-anchors && bun run build
 
 # Run tests
 bun test
@@ -96,8 +96,6 @@ bun test
 bun run lint
 bun run format
 ```
-
-**Important**: When using selector resolution in production, ensure `@uimatch/selector-anchors` is built before testing. The plugin is loaded dynamically at runtime and requires the built `dist/` directory.
 
 ## Documentation
 

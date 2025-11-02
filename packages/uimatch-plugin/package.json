@@ -20,20 +20,24 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@uimatch/selector-spi": "workspace:*",
-    "uimatch-core": "workspace:*",
-    "uimatch-scoring": "workspace:*",
     "zod": "^4.1.12"
   },
   "peerDependencies": {
-    "@uimatch/selector-anchors": "workspace:*"
+    "@uimatch/selector-anchors": "workspace:*",
+    "playwright": ">=1.49.0"
   },
   "peerDependenciesMeta": {
     "@uimatch/selector-anchors": {
       "optional": true
+    },
+    "playwright": {
+      "optional": false
     }
   },
   "devDependencies": {
-    "tsup": "^8.5.0"
+    "@uimatch/selector-spi": "workspace:*",
+    "tsup": "^8.5.0",
+    "uimatch-core": "workspace:*",
+    "uimatch-scoring": "workspace:*"
   }
 }
