@@ -105,10 +105,10 @@ export async function resolveFromTypeScript(
   const ATTR = timeouts?.attr ?? config.timeouts.astAttr;
   const FULL = timeouts?.full ?? config.timeouts.astFull;
 
-  // Tiered fallback strategy:
-  // 1. Try fast path (FAST ms) - tag, data-testid, id only
-  // 2. Try attribute-only (ATTR ms) - all attributes, no text
-  // 3. Try full parse (FULL ms) - everything including text
+  // Tiered fallback strategy (design budget, not enforced timeout):
+  // 1. Try fast path (FAST ms budget) - tag, data-testid, id only (lightweight)
+  // 2. Try attribute-only (ATTR ms budget) - all attributes, no text
+  // 3. Try full parse (FULL ms budget) - everything including text
   // 4. Fallback to heuristics - regex-based extraction
 
   const reasons: string[] = [];
@@ -128,7 +128,7 @@ export async function resolveFromTypeScript(
     };
   }
 
-  reasons.push('Fast path incomplete or timed out, trying attribute-only');
+  reasons.push('Fast path incomplete, trying attribute-only');
 
   // Level 2: Attribute-only
   const attrResult = await withTimeout(Promise.resolve(attributeOnlyParse(jsxElement)), ATTR);
@@ -145,7 +145,7 @@ export async function resolveFromTypeScript(
     };
   }
 
-  reasons.push('Attribute-only incomplete or timed out, trying full parse');
+  reasons.push('Attribute-only incomplete, trying full parse');
 
   // Level 3: Full parse (original implementation)
   const fullParseResult = await withTimeout(
@@ -182,7 +182,7 @@ export async function resolveFromTypeScript(
     return { ...fullParseResult, reasons };
   }
 
-  reasons.push('Full parse timed out or failed, using heuristics');
+  reasons.push('Full parse incomplete or failed, using heuristics');
 
   // Level 4: Heuristics (last resort)
   const heuristicResult = heuristicCandidates(content, line);
