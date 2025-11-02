@@ -140,6 +140,18 @@ export UIMATCH_SNIPPET_HIGH_CONFIDENCE=0.92
 export UIMATCH_SNIPPET_FUZZY_THRESHOLD=0.55
 ```
 
+**Debug Logging:**
+
+Enable debug logging via the `DEBUG` environment variable:
+
+```bash
+# Enable all uimatch debug logs
+export DEBUG=uimatch:*
+
+# Enable only selector-anchors logs
+export DEBUG=uimatch:selector-anchors
+```
+
 ## Anchors JSON Format
 
 ### Minimal Example
