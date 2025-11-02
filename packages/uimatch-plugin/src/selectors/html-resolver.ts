@@ -163,7 +163,7 @@ function extractTextContent(element: Element): string | undefined {
 
     for (const child of node.childNodes) {
       if ('value' in child && child.nodeName === '#text') {
-        const text = (child.value).trim();
+        const text = child.value.trim();
         if (text) {
           texts.push(text);
         }
