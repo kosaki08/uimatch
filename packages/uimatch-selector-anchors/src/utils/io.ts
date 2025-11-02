@@ -73,3 +73,14 @@ export function createEmptyAnchors(): SelectorsAnchors {
     anchors: [],
   };
 }
+
+/**
+ * Default postWrite implementation for CLI and standard usage
+ * Can be used as context.postWrite hook in ResolveContext
+ *
+ * @param path - Path to anchors file
+ * @param anchors - Updated anchors data
+ */
+export async function defaultPostWrite(path: string, anchors: object): Promise<void> {
+  await saveSelectorsAnchors(path, anchors as SelectorsAnchors);
+}

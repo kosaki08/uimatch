@@ -216,9 +216,8 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                     reasons.push(`Subselector: ${anchor.subselector}`);
                   }
 
-                  // If writeBack is requested, prepare updated anchors structure
-                  // but leave the actual file write to the host (caller)
-                  if (context.writeBack) {
+                  // If writeBack is requested, handle anchor updates
+                  if (context.writeBack && context.anchorsPath) {
                     const updatedAnchors = {
                       ...anchorsData,
                       anchors: anchorsData.anchors.map((a) =>
@@ -235,8 +234,26 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                       ),
                     };
 
-                    result.updatedAnchors = updatedAnchors;
-                    reasons.push('Prepared updated anchors (host will write to file)');
+                    // If postWrite hook is provided, use it to persist changes
+                    const postWriteFn = context.postWrite as
+                      | ((path: string, anchors: object) => Promise<void>)
+                      | undefined;
+                    if (postWriteFn) {
+                      try {
+                        await postWriteFn(context.anchorsPath, updatedAnchors);
+                        reasons.push('Updated anchors persisted via postWrite hook');
+                      } catch (err) {
+                        reasons.push(
+                          `postWrite hook failed: ${err instanceof Error ? err.message : String(err)}`
+                        );
+                        // Still include updatedAnchors for fallback
+                        result.updatedAnchors = updatedAnchors;
+                      }
+                    } else {
+                      // No postWrite hook provided, prepare updatedAnchors for host to handle
+                      result.updatedAnchors = updatedAnchors;
+                      reasons.push('Prepared updated anchors (host will write to file)');
+                    }
                   }
 
                   return result;

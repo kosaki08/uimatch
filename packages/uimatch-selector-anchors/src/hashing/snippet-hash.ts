@@ -25,6 +25,13 @@ export interface SnippetHashOptions {
   algorithm?: 'sha1' | 'sha256' | 'md5';
 
   /**
+   * Number of hex digits to use in the hash string
+   * Higher values reduce collision probability but increase I/O slightly
+   * @default 10
+   */
+  hashDigits?: number;
+
+  /**
    * Timeout for snippet matching (milliseconds)
    * If specified, search will stop when time limit is reached
    * @default undefined (no timeout)
@@ -73,7 +80,7 @@ export async function generateSnippetHash(
   line: number,
   options: SnippetHashOptions = {}
 ): Promise<SnippetHashResult> {
-  const { contextBefore = 3, contextAfter = 3, algorithm = 'sha1' } = options;
+  const { contextBefore = 3, contextAfter = 3, algorithm = 'sha1', hashDigits = 10 } = options;
 
   const absolutePath = resolve(file);
 
@@ -96,9 +103,9 @@ export async function generateSnippetHash(
   const snippetLines = lines.slice(startLine - 1, endLine);
   const snippet = snippetLines.join('\n');
 
-  // Generate hash
+  // Generate hash with configurable digit count (default 10 for better collision resistance)
   const hash = createHash(algorithm).update(snippet, 'utf-8').digest('hex');
-  const hashString = `${algorithm}:${hash.substring(0, 8)}`;
+  const hashString = `${algorithm}:${hash.substring(0, hashDigits)}`;
 
   return {
     hash: hashString,
@@ -184,6 +191,9 @@ function calculateTextSimilarity(text1: string, text2: string): number {
  * This is useful when code has moved but the snippet hash doesn't match exactly
  * due to minor changes.
  *
+ * Uses exponential skip search (±1,2,4,8,...) for O(log R) coarse search,
+ * then refines near best candidates for optimal performance.
+ *
  * @param file - Path to source file
  * @param targetHashOrResult - Expected snippet hash string OR full SnippetHashResult with original snippet
  * @param originalLine - Original line number where snippet was found
@@ -206,7 +216,8 @@ export async function findSnippetMatch(
   const originalSnippet =
     typeof targetHashOrResult === 'object' ? targetHashOrResult.snippet : null;
 
-  const [targetAlgorithm] = targetHash.split(':') as [string, string];
+  const [targetAlgorithm, targetDigest] = targetHash.split(':') as [string, string];
+  const hashDigits = targetDigest.length;
 
   let bestMatch: { line: number; score: number; snippet: string } | null = null;
 
@@ -226,24 +237,43 @@ export async function findSnippetMatch(
     const endLine = Math.min(lines.length, line + contextAfter);
     const snippet = lines.slice(startLine - 1, endLine).join('\n');
     const hash = createHash(targetAlgorithm).update(snippet, 'utf-8').digest('hex');
-    return { hash: `${targetAlgorithm}:${hash.substring(0, 8)}`, snippet };
+    return { hash: `${targetAlgorithm}:${hash.substring(0, hashDigits)}`, snippet };
   };
 
-  for (let offset = 0; offset <= searchRadius; offset++) {
-    // Check timeout before processing each offset
+  // Check original line first (common case: code hasn't moved)
+  try {
+    const result = hashFromLines(originalLine);
+    if (result.hash === targetHash) {
+      return originalLine;
+    }
+    // Store as initial best match for fuzzy matching
+    if (originalSnippet !== null) {
+      const score = calculateTextSimilarity(originalSnippet, result.snippet);
+      if (score >= 0.5) {
+        bestMatch = { line: originalLine, score, snippet: result.snippet };
+      }
+    }
+  } catch {
+    // Continue searching if original line fails
+  }
+
+  // Phase 1: Exponential skip search for coarse exploration
+  // Jump by powers of 2 (±1,2,4,8,16,...) to quickly scan large ranges
+  const testedLines = new Set<number>([originalLine]); // Mark original line as tested
+  let step = 1;
+
+  while (step <= searchRadius) {
+    // Check timeout before each exponential step
     if (deadline && Date.now() > deadline) {
       break;
     }
 
-    const candidates =
-      offset === 0 ? [originalLine] : [originalLine - offset, originalLine + offset];
+    const candidates = [originalLine - step, originalLine + step].filter(
+      (line) => line >= 1 && line <= lines.length && !testedLines.has(line)
+    );
 
     for (const candidateLine of candidates) {
-      // Check timeout for each candidate
-      if (deadline && Date.now() > deadline) {
-        break;
-      }
-      if (candidateLine < 1 || candidateLine > lines.length) continue;
+      testedLines.add(candidateLine);
 
       try {
         const result = hashFromLines(candidateLine);
@@ -257,8 +287,7 @@ export async function findSnippetMatch(
         if (originalSnippet !== null) {
           const score = calculateTextSimilarity(originalSnippet, result.snippet);
 
-          // Track best partial match (at least 50% matching)
-          // When scores are equal, prefer later line numbers (code moved down)
+          // Track best partial match (at least 50% for coarse search)
           if (score >= 0.5) {
             if (
               !bestMatch ||
@@ -278,9 +307,48 @@ export async function findSnippetMatch(
         continue;
       }
     }
+
+    // Double the step size for next iteration
+    step *= 2;
   }
 
-  // Return best match if it's good enough (>= 60% similarity)
-  // This threshold balances finding moved code vs avoiding false matches
-  return bestMatch && bestMatch.score >= 0.6 ? bestMatch.line : null;
+  // Phase 2: Linear refinement around best match
+  // If we found a promising candidate, check nearby lines for even better matches
+  if (bestMatch && bestMatch.score < 0.92) {
+    const refineRadius = 8; // Check ±8 lines around best match
+    const refineStart = Math.max(1, bestMatch.line - refineRadius);
+    const refineEnd = Math.min(lines.length, bestMatch.line + refineRadius);
+
+    for (let line = refineStart; line <= refineEnd; line++) {
+      if (testedLines.has(line)) continue;
+      if (deadline && Date.now() > deadline) break;
+
+      try {
+        const result = hashFromLines(line);
+
+        if (result.hash === targetHash) {
+          return line;
+        }
+
+        if (originalSnippet !== null) {
+          const score = calculateTextSimilarity(originalSnippet, result.snippet);
+          if (score > bestMatch.score + 1e-6) {
+            bestMatch = { line, score, snippet: result.snippet };
+            if (bestMatch.score >= 0.92) {
+              return bestMatch.line;
+            }
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  // Dynamic threshold based on whether we have snippet context:
+  // - With snippetContext: Use 0.55 threshold (more lenient for fuzzy matching)
+  // - Without snippetContext: Require exact match only (no fuzzy fallback)
+  const fuzzyThreshold = originalSnippet !== null ? 0.55 : 1.0;
+
+  return bestMatch && bestMatch.score >= fuzzyThreshold ? bestMatch.line : null;
 }

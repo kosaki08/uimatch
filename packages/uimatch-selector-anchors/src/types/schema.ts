@@ -59,6 +59,13 @@ export const SnippetContextSchema = z.object({
     .enum(['sha1', 'sha256', 'md5'])
     .default('sha1')
     .describe('Hash algorithm used for snippet'),
+  hashDigits: z
+    .number()
+    .int()
+    .min(6)
+    .max(64)
+    .default(10)
+    .describe('Number of hex digits in hash (default 10 for collision resistance)'),
 });
 
 export type SnippetContext = z.infer<typeof SnippetContextSchema>;

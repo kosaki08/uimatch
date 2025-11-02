@@ -31,6 +31,16 @@ export interface ResolveContext {
   writeBack?: boolean;
 
   /**
+   * Optional hook to persist updated anchors after successful resolution
+   * If not provided, the plugin will prepare updatedAnchors in Resolution
+   * and leave the actual file write to the host (caller)
+   *
+   * @param path - Path to anchors file
+   * @param anchors - Updated anchors data
+   */
+  postWrite?: (path: string, anchors: object) => Promise<void>;
+
+  /**
    * Probe for lightweight liveness checks
    */
   probe: Probe;
