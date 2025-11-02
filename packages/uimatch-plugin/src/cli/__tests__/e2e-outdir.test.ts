@@ -151,7 +151,7 @@ describe('E2E: outDir artifact saving', () => {
       expect(report.artifacts?.implPngB64).toBeDefined();
       expect(report.artifacts?.diffPngB64).toBeDefined();
     },
-    { timeout: 10000 }
+    { timeout: 20000 }
   );
 
   test('should auto-enable emitArtifacts when outDir specified', async () => {

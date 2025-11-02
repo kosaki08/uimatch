@@ -160,15 +160,22 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
     // (has a colon with a word before it that's not a known prefix)
     if (process.env.UIMATCH_SELECTOR_STRICT === 'true') {
       // Match only word-colon at the start, not followed by '[' (to exclude attribute selectors like a[href*="https:"])
-      const unknownPrefixCheck = selectorString.match(/^([a-z][\w-]*):(?!\[)/i);
-      if (unknownPrefixCheck) {
-        const [, suspiciousPrefix] = unknownPrefixCheck;
-        throw new Error(
-          `Unknown selector prefix: "${suspiciousPrefix}"\n` +
-            `Supported prefixes: ${knownPrefixes.join(', ')}\n` +
-            `If this is a CSS selector (e.g., "li:nth-child(1)"), ` +
-            `set UIMATCH_SELECTOR_STRICT=false to enable CSS fallback.`
-        );
+      // Also exclude common CSS pseudo-classes/elements to avoid false positives
+      const cssPseudoPattern =
+        /:(?:nth-child|nth-of-type|first-child|last-child|first-of-type|last-of-type|only-child|only-of-type|hover|focus|active|visited|link|disabled|enabled|checked|indeterminate|root|empty|target|lang|not|is|where|has|before|after|first-line|first-letter)/i;
+
+      // Only check for unknown prefix if it's not a CSS pseudo-class/element
+      if (!cssPseudoPattern.test(selectorString)) {
+        const unknownPrefixCheck = selectorString.match(/^([a-z][\w-]*):(?!\[)/i);
+        if (unknownPrefixCheck) {
+          const [, suspiciousPrefix] = unknownPrefixCheck;
+          throw new Error(
+            `Unknown selector prefix: "${suspiciousPrefix}"\n` +
+              `Supported prefixes: ${knownPrefixes.join(', ')}\n` +
+              `If this is a CSS selector (e.g., "li:nth-child(1)"), ` +
+              `set UIMATCH_SELECTOR_STRICT=false to enable CSS fallback.`
+          );
+        }
       }
     }
 
@@ -476,7 +483,15 @@ export class PlaywrightAdapter implements BrowserAdapter {
     if (process.env.UIMATCH_SELECTOR_STRICT === 'true') {
       const knownPrefixes = /^(role|testid|text|xpath|css|dompath):/i;
       const possiblePrefix = /^([a-z]\w+):(.*)$/i;
-      if (!knownPrefixes.test(opts.selector) && possiblePrefix.test(opts.selector)) {
+      // Exclude common CSS pseudo-classes/elements to avoid false positives
+      const cssPseudoPattern =
+        /:(?:nth-child|nth-of-type|first-child|last-child|first-of-type|last-of-type|only-child|only-of-type|hover|focus|active|visited|link|disabled|enabled|checked|indeterminate|root|empty|target|lang|not|is|where|has|before|after|first-line|first-letter)/i;
+
+      if (
+        !knownPrefixes.test(opts.selector) &&
+        possiblePrefix.test(opts.selector) &&
+        !cssPseudoPattern.test(opts.selector)
+      ) {
         const badPrefix = opts.selector.split(':', 1)[0];
         throw new Error(
           `Unknown selector prefix: "${badPrefix}"\nSupported: role, testid, text, xpath, css, dompath`
