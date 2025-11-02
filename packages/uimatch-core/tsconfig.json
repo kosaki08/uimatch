@@ -1,16 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "lib": ["esnext", "dom"],
-    "noEmit": false,
-    "emitDeclarationOnly": false,
-    "allowImportingTsExtensions": false,
-    "moduleResolution": "bundler"
+    "lib": ["esnext", "dom"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
