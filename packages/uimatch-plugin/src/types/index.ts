@@ -3,6 +3,7 @@
  */
 
 import type { ExpectedSpec, QualityGateResult, StyleDiff, TokenMap } from 'uimatch-core';
+import type { StyleSummary } from '../utils/style-score.js';
 
 /**
  * Figma design variable (color, number, or string).
@@ -259,30 +260,6 @@ export interface CompareArgs {
    * @default 'union'
    */
   contentBasis?: 'union' | 'intersection' | 'figma' | 'impl';
-}
-
-/**
- * Category breakdown for style scoring
- */
-export interface CategoryBreakdown {
-  category: string;
-  count: number;
-  avgNormalizedScore: number;
-  weight: number;
-}
-
-/**
- * Style summary metrics
- */
-export interface StyleSummary {
-  styleFidelityScore: number; // 0-100
-  highCount: number;
-  mediumCount: number;
-  lowCount: number;
-  totalDiffs: number;
-  categoryBreakdown: CategoryBreakdown[];
-  coverage: number;
-  autofixableCount: number;
 }
 
 /**
