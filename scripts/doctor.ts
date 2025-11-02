@@ -16,7 +16,7 @@ const log = (ok: boolean, msg: string) => console.log(`${ok ? '✅' : '❌'} ${m
 
 async function checkEnv() {
   console.log('\n[1] Environment');
-  const bun = (process as any).versions?.bun ?? 'unknown';
+  const bun = (process.versions as { bun?: string }).bun ?? 'unknown';
   const node = process.versions?.node ?? 'unknown';
   log(true, `Bun: ${bun} | Node: ${node}`);
 
@@ -57,7 +57,9 @@ async function checkFigmaREST() {
     if (text) console.log(text.slice(0, 500));
     return;
   }
-  const data = (await r.json().catch(() => ({}) as any)) as { images?: Record<string, string> };
+  const data = (await r.json().catch(() => ({}) as Record<string, never>)) as {
+    images?: Record<string, string>;
+  };
   const variants = new Set([nodeId, nodeId.replace(/:/g, '-'), nodeId.replace(/-/g, ':')]);
   let imageUrl: string | undefined;
   for (const k of variants) imageUrl ||= data.images?.[k];
@@ -90,8 +92,9 @@ async function checkPlaywright() {
     await ctx.close();
     await browser.close();
     log(ok, `Chromium launch + element capture ${ok ? 'OK' : 'FAILED'}`);
-  } catch (e: any) {
-    log(false, `Chromium launch failed: ${e?.message ?? e}`);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    log(false, `Chromium launch failed: ${message}`);
   }
 }
 
