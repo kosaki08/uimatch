@@ -108,10 +108,67 @@ function calculateLivenessScore(livenessResult?: ProbeResult): number {
 }
 
 /**
- * Calculate selector specificity score
- * More specific selectors are generally more stable
+ * Parse weight from environment variable with validation
+ * @param name - Environment variable name
+ * @param defaultValue - Default value if not set or invalid
+ * @returns Parsed weight or default
  */
-function calculateSpecificityScore(selector: string): number {
+function getWeightFromEnv(name: string, defaultValue: number): number {
+  const value = process.env[name];
+  if (!value) return defaultValue;
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return defaultValue;
+  }
+  return parsed;
+}
+
+/**
+ * Load weights from environment variables with normalization
+ * Ensures the sum of weights equals 1.0
+ * @returns Normalized weights object
+ */
+function getEnvWeights(): {
+  hintQuality: number;
+  snippetMatch: number;
+  liveness: number;
+  specificity: number;
+} {
+  const weights = {
+    hintQuality: getWeightFromEnv('UIMATCH_STABILITY_HINT_WEIGHT', 0.4),
+    snippetMatch: getWeightFromEnv('UIMATCH_STABILITY_SNIPPET_WEIGHT', 0.2),
+    liveness: getWeightFromEnv('UIMATCH_STABILITY_LIVENESS_WEIGHT', 0.3),
+    specificity: getWeightFromEnv('UIMATCH_STABILITY_SPECIFICITY_WEIGHT', 0.1),
+  };
+
+  // Normalize to sum = 1.0
+  const sum = Object.values(weights).reduce((a, b) => a + b, 0);
+  if (sum === 0) {
+    // All zero, fallback to defaults
+    return {
+      hintQuality: 0.4,
+      snippetMatch: 0.2,
+      liveness: 0.3,
+      specificity: 0.1,
+    };
+  }
+
+  // Normalize each weight
+  return {
+    hintQuality: weights.hintQuality / sum,
+    snippetMatch: weights.snippetMatch / sum,
+    liveness: weights.liveness / sum,
+    specificity: weights.specificity / sum,
+  };
+}
+
+/**
+ * Normalize selector specificity to 0-1 score for stability evaluation
+ * More specific selectors are generally more stable
+ * @remarks This is different from CSS specificity calculation in selector-utils.ts
+ */
+function normalizeSpecificityScore(selector: string): number {
   // data-testid: highest specificity
   if (selector.includes('data-testid')) {
     return 1.0;
@@ -194,12 +251,12 @@ export function calculateStabilityScore(
   },
   options: StabilityScoreOptions = {}
 ): StabilityScore {
-  // Default weights
+  // Load base weights from environment variables (normalized)
+  const envWeights = getEnvWeights();
+
+  // Merge with user-provided weights (options override env)
   const weights = {
-    hintQuality: 0.4,
-    snippetMatch: 0.2,
-    liveness: 0.3,
-    specificity: 0.1,
+    ...envWeights,
     ...options.weights,
   };
 
@@ -207,7 +264,7 @@ export function calculateStabilityScore(
   const hintQuality = calculateHintQualityScore(params.hint);
   const snippetMatch = calculateSnippetMatchScore(params.snippetMatched ?? false);
   const liveness = calculateLivenessScore(params.livenessResult);
-  const specificity = calculateSpecificityScore(params.selector);
+  const specificity = normalizeSpecificityScore(params.selector);
 
   // Calculate weighted overall score
   const overall =

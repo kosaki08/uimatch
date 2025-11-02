@@ -26,7 +26,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     includeAA: false,
     colorDeltaEThreshold: 3.0,
     acceptancePixelDiffRatio: 0.01,
-    acceptanceColorDeltaE: 5.0,
+    acceptanceColorDeltaE: 3.0,
     toleranceSpacing: 0.15,
     toleranceDimension: 0.05,
     toleranceLayoutGap: 0.1,

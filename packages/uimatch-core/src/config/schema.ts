@@ -100,9 +100,9 @@ export const ComparisonConfigSchema = z.object({
 
   /**
    * Acceptance threshold for colorDeltaEAvg (quality gate)
-   * @default 5.0
+   * @default 3.0
    */
-  acceptanceColorDeltaE: z.number().positive().default(5.0),
+  acceptanceColorDeltaE: z.number().positive().default(3.0),
 
   /**
    * Tolerance ratio for spacing properties (padding, margin)
