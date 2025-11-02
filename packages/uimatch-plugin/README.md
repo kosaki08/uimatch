@@ -155,20 +155,17 @@ Manage plugin configuration:
 
 ### Standalone CLI
 
-The plugin also provides a standalone CLI:
+The plugin also provides a standalone CLI for use outside of Claude Code:
 
 ```bash
 # Compare command
-uimatch compare figma=AbCdEf123:456-789 story=http://localhost:6006 selector="#button"
+uimatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
 
 # Loop command
-uimatch loop figma=... story=... selector=... maxIters=5
-
-# Settings commands
-uimatch settings get
-uimatch settings set comparison.acceptancePixelDiffRatio=0.05
-uimatch settings reset
+uimatch loop figma=<fileKey>:<nodeId> story=<url> selector=<css> maxIters=5
 ```
+
+For detailed CLI usage, available options, and advanced features (size handling, content basis modes, auto-ROI, suite testing, etc.), see [**CLI Usage Documentation**](../../docs/cli-usage.md).
 
 ### Programmatic API
 
