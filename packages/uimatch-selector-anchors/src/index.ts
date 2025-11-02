@@ -7,11 +7,11 @@
 import { resolveFromTypeScript } from './ast-resolver.js';
 import { resolveFromHTML } from './html-resolver.js';
 import { loadSelectorsAnchors } from './io.js';
-import { checkLivenessPriority } from './liveness.js';
+import { checkLivenessAll } from './liveness.js';
 import type { SelectorsAnchors } from './schema.js';
 import { findSnippetMatch } from './snippet-hash.js';
 import type { Resolution, ResolveContext, SelectorResolverPlugin } from './spi.js';
-import { calculateStabilityScore } from './stability-score.js';
+import { calculateStabilityScore, findMostStableSelector } from './stability-score.js';
 
 /**
  * Main resolve function implementing SPI contract
@@ -98,30 +98,89 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
               }
             }
 
-            // If we have selectors, check liveness and pick the best one
+            // If we have selectors, check liveness for all and pick the best one
             if (selectors.length > 0) {
-              const livenessResult = await checkLivenessPriority(context.probe, selectors, {
+              // Check liveness for all candidates
+              const livenessResults = await checkLivenessAll(context.probe, selectors, {
                 timeoutMs: 600, // Short timeout for probing
               });
 
-              if (livenessResult && (livenessResult.isValid || livenessResult.isAlive)) {
-                reasons.push(`Liveness check passed for: ${livenessResult.selector}`);
+              // Filter to only alive selectors and calculate stability scores
+              const candidatesWithScores = livenessResults
+                .filter((result) => result.isValid || result.isAlive)
+                .map((livenessResult) => {
+                  const stabilityScore = calculateStabilityScore({
+                    selector: livenessResult.selector,
+                    hint: anchor.hint,
+                    snippetMatched: true,
+                    livenessResult,
+                  });
 
-                // Calculate stability score
-                const stabilityScore = calculateStabilityScore({
-                  selector: livenessResult.selector,
-                  hint: anchor.hint,
-                  snippetMatched: true,
-                  livenessResult,
+                  return {
+                    selector: livenessResult.selector,
+                    score: stabilityScore,
+                    livenessResult,
+                  };
                 });
 
-                reasons.push(`Stability score: ${(stabilityScore.overall * 100).toFixed(0)}%`);
+              if (candidatesWithScores.length > 0) {
+                // Find the most stable selector
+                const best = findMostStableSelector(candidatesWithScores);
 
-                return {
-                  selector: livenessResult.selector,
-                  stabilityScore: stabilityScore.overall * 100, // Convert to 0-100 scale
-                  reasons,
-                };
+                if (best) {
+                  reasons.push(`Evaluated ${candidatesWithScores.length} live candidates`);
+                  reasons.push(`Best selector: ${best.selector}`);
+                  reasons.push(`Stability score: ${(best.score.overall * 100).toFixed(0)}%`);
+                  reasons.push(...best.score.details);
+
+                  // Prepare result
+                  const result: Resolution = {
+                    selector: best.selector,
+                    stabilityScore: best.score.overall * 100, // Convert to 0-100 scale
+                    reasons,
+                  };
+
+                  // Add subselector if present in anchor
+                  if (anchor.subselector) {
+                    result.subselector = anchor.subselector;
+                    reasons.push(`Subselector: ${anchor.subselector}`);
+                  }
+
+                  // Handle writeBack if requested
+                  if (context.writeBack && context.anchorsPath) {
+                    try {
+                      // Update the anchor's lastKnown with the new stable selector
+                      const updatedAnchors = {
+                        ...anchorsData,
+                        anchors: anchorsData.anchors.map((a) =>
+                          a.id === anchor.id
+                            ? {
+                                ...a,
+                                lastKnown: {
+                                  selector: best.selector,
+                                  stabilityScore: best.score.overall * 100,
+                                  lastChecked: new Date().toISOString(),
+                                },
+                              }
+                            : a
+                        ),
+                      };
+
+                      // Import saveSelectorsAnchors
+                      const { saveSelectorsAnchors } = await import('./io.js');
+                      await saveSelectorsAnchors(context.anchorsPath, updatedAnchors);
+
+                      reasons.push(`Updated anchors file: ${context.anchorsPath}`);
+                      result.updatedAnchors = updatedAnchors;
+                    } catch (error) {
+                      reasons.push(
+                        `Failed to write back anchors: ${error instanceof Error ? error.message : String(error)}`
+                      );
+                    }
+                  }
+
+                  return result;
+                }
               } else {
                 reasons.push('Liveness check failed for all candidates');
               }

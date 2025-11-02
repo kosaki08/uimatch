@@ -57,6 +57,10 @@ export const SelectorAnchorSchema = z.object({
   source: SourceLocationSchema.describe('Source code location'),
   hint: SelectorHintSchema.optional().describe('Hints for selector generation'),
   snippetHash: z.string().optional().describe('Hash of surrounding code snippet (±3 lines)'),
+  subselector: z
+    .string()
+    .optional()
+    .describe('Optional subselector for Figma auto-ROI targeting child elements'),
   lastKnown: LastKnownSchema.optional().describe('Last known working selector'),
   meta: MetadataSchema.optional().describe('Additional metadata'),
 });
