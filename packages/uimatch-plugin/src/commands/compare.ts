@@ -311,9 +311,8 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   ) {
     try {
       const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
-      const implSize = readPngSize(cap.implPng);
 
-      if (implSize && cap.box) {
+      if (cap.box) {
         // Use actual captured element dimensions (not viewport)
         const targetWidth = cap.box.width;
         const targetHeight = cap.box.height;
