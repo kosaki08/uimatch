@@ -2,9 +2,9 @@
  * Figma MCP adapter for fetching design data
  */
 
+import type { FigmaMcpConfig } from '#/config/index';
+import type { FigmaRef, FigmaVariable } from '#/types/index';
 import { z } from 'zod';
-import type { FigmaMcpConfig } from '../config/index';
-import type { FigmaRef, FigmaVariable } from '../types/index';
 
 /**
  * MCP tool call structure.

@@ -7,6 +7,7 @@ export default defineConfig({
   clean: true,
   outDir: 'dist',
   shims: true,
+  external: ['#/*'],
   // Replace Bun shebang with Node shebang in CLI for npm distribution
   esbuildPlugins: [
     {

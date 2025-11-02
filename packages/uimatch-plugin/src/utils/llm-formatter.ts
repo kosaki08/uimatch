@@ -3,8 +3,8 @@
  * Transforms comparison results into actionable patch suggestions
  */
 
+import type { CompareResult } from '#/types/index';
 import type { StyleDiff } from 'uimatch-core';
-import type { CompareResult } from '../types/index.js';
 
 /**
  * Confidence level for patch suggestions

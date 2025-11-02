@@ -2,8 +2,8 @@
  * Iterative UI comparison command
  */
 
+import type { CompareArgs, CompareResult } from '#/types/index';
 import { browserPool } from 'uimatch-core';
-import type { CompareArgs, CompareResult } from '../types/index';
 import { uiMatchCompare } from './compare';
 
 /**

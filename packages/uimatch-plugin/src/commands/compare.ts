@@ -2,15 +2,15 @@
  * UI comparison command
  */
 
+import { FigmaRestClient } from '#/adapters/figma-rest';
+import { FigmaMcpClient, parseFigmaRef } from '#/adapters/index';
+import { loadFigmaMcpConfig, loadSkillConfig } from '#/config/index';
+import { buildExpectedSpecFromFigma } from '#/expected/from-figma';
+import type { CompareArgs, CompareResult } from '#/types/index';
 import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
 import { browserPool, captureTarget, compareImages, resolveLocator } from 'uimatch-core';
 import { computeDFS } from 'uimatch-scoring';
-import { FigmaRestClient } from '../adapters/figma-rest';
-import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
-import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
-import { buildExpectedSpecFromFigma } from '../expected/from-figma';
-import type { CompareArgs, CompareResult } from '../types/index';
 import { getSettings } from './settings';
 
 /**

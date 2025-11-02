@@ -4,13 +4,13 @@
  * Safe for commit and distribution with sanitized logging
  */
 
+import { uiMatchCompare } from '#/commands/compare';
+import type { CompareArgs } from '#/types/index';
+import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#/utils/sanitize';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { getQualityGateProfile } from 'uimatch-core';
-import { uiMatchCompare } from '../commands/compare.js';
-import type { CompareArgs } from '../types/index.js';
-import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '../utils/sanitize.js';
 
 export interface ParsedArgs {
   figma?: string;

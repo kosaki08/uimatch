@@ -16,6 +16,9 @@
       "optional": true
     }
   },
+  "imports": {
+    "#/*": "./dist/*.js"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./cli": "./src/cli/index.ts"
