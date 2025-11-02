@@ -7,11 +7,11 @@
 import { uiMatchCompare } from '#plugin/commands/compare';
 import type { CompareArgs } from '#plugin/types/index';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#plugin/utils/sanitize';
+import { silentLogger } from '@uimatch/shared-logging';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { getQualityGateProfile } from 'uimatch-core';
-import { silentLogger } from '@uimatch/shared-logging';
 import { getLogger, initLogger } from './logger.js';
 
 /**
@@ -379,7 +379,7 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
     try {
       config.weights = JSON.parse(String(args.weights)) as CompareArgs['weights'];
     } catch (e) {
-      getLogger().warn(`Failed to parse weights: ${(e as Error)?.message ?? String(e)}`);
+      getOrSilentLogger().warn(`Failed to parse weights: ${(e as Error)?.message ?? String(e)}`);
     }
   }
 
@@ -413,7 +413,7 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
         config.contentBasis = 'intersection';
       }
     } catch (e) {
-      getLogger().warn(
+      getOrSilentLogger().warn(
         `Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`
       );
     }
@@ -423,6 +423,13 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
 }
 
 export async function runCompare(argv: string[]): Promise<void> {
+  // Lazy initialize logger for tests that call runCompare directly without going through CLI entry point
+  try {
+    getLogger();
+  } catch {
+    initLogger(argv); // respects --log-level / --log-format / --log-file flags if present
+  }
+
   const args = parseArgs(argv);
 
   if (!args.figma || !args.story || !args.selector) {
