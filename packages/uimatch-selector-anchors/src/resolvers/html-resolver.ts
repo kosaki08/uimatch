@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import * as parse5 from 'parse5';
-import type { SelectorHint } from './schema.js';
+import type { SelectorHint } from '../types/schema.js';
 
 // parse5 tree adapter types
 type Document = parse5.DefaultTreeAdapterMap['document'];

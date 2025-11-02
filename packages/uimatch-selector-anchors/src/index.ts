@@ -6,14 +6,14 @@
 
 import type { Resolution, ResolveContext, SelectorResolverPlugin } from '@uimatch/selector-spi';
 import { dirname, isAbsolute, resolve as resolvePath } from 'node:path';
-import { resolveFromTypeScript } from './ast-resolver.js';
-import { getConfig } from './config.js';
-import { resolveFromHTML } from './html-resolver.js';
-import { loadSelectorsAnchors } from './io.js';
-import { checkLivenessAll } from './liveness.js';
-import type { SelectorsAnchors } from './schema.js';
-import { findSnippetMatch } from './snippet-hash.js';
-import { calculateStabilityScore, findMostStableSelector } from './stability-score.js';
+import { findSnippetMatch } from './hashing/snippet-hash.js';
+import { calculateStabilityScore, findMostStableSelector } from './hashing/stability-score.js';
+import { resolveFromTypeScript } from './resolvers/ast-resolver.js';
+import { resolveFromHTML } from './resolvers/html-resolver.js';
+import { getConfig } from './types/config.js';
+import type { SelectorsAnchors } from './types/schema.js';
+import { loadSelectorsAnchors } from './utils/io.js';
+import { checkLivenessAll } from './utils/liveness.js';
 
 /**
  * Resolve project path relative to anchors file directory
@@ -306,12 +306,12 @@ export default plugin;
 
 // Named exports for direct usage
 export * from '@uimatch/selector-spi';
-export * from './ast-resolver.js';
-export * from './config.js';
-export * from './html-resolver.js';
-export * from './io.js';
-export * from './liveness.js';
-export * from './schema.js';
-export * from './snippet-hash.js';
-export * from './stability-score.js';
+export * from './hashing/snippet-hash.js';
+export * from './hashing/stability-score.js';
+export * from './resolvers/ast-resolver.js';
+export * from './resolvers/html-resolver.js';
+export * from './types/config.js';
+export * from './types/schema.js';
+export * from './utils/io.js';
+export * from './utils/liveness.js';
 export { resolve };

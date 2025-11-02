@@ -1,6 +1,6 @@
 import type { Probe, ProbeResult } from '@uimatch/selector-spi';
 import { describe, expect, test } from 'bun:test';
-import plugin from './index.js';
+import plugin from '../index.js';
 
 /**
  * Mock Probe for testing

@@ -1,12 +1,12 @@
 import type { ProbeResult } from '@uimatch/selector-spi';
 import { describe, expect, test } from 'bun:test';
-import type { SelectorHint } from './schema.js';
 import {
   calculateStabilityScore,
   compareStabilityScores,
   findMostStableSelector,
   type StabilityScore,
-} from './stability-score.js';
+} from '../hashing/stability-score.js';
+import type { SelectorHint } from '../types/schema.js';
 
 describe('calculateStabilityScore', () => {
   test('calculates score for testid selector', () => {

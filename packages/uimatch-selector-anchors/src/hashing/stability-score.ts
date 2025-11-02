@@ -1,5 +1,5 @@
 import type { ProbeResult } from '@uimatch/selector-spi';
-import type { SelectorHint } from './schema.js';
+import type { SelectorHint } from '../types/schema.js';
 
 /**
  * Stability score for a selector
