@@ -11,6 +11,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { getQualityGateProfile } from 'uimatch-core';
+import { getLogger } from './logger.js';
 
 export interface ParsedArgs {
   figma?: string;
@@ -365,7 +366,7 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
     try {
       config.weights = JSON.parse(String(args.weights)) as CompareArgs['weights'];
     } catch (e) {
-      console.warn(`Failed to parse weights: ${(e as Error)?.message ?? String(e)}`);
+      getLogger().warn(`Failed to parse weights: ${(e as Error)?.message ?? String(e)}`);
     }
   }
 
@@ -399,7 +400,7 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
         config.contentBasis = 'intersection';
       }
     } catch (e) {
-      console.warn(`Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`);
+      getLogger().warn(`Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`);
     }
   }
 

@@ -3,6 +3,7 @@
  */
 
 import { runCompare } from './compare.js';
+import { initLogger } from './logger.js';
 import { runSuite } from './suite.js';
 
 const command = process.argv[2];
@@ -19,11 +20,19 @@ async function main(): Promise<void> {
     console.log('  suite      Run multiple compares from a JSON suite file');
     console.log('  help       Show this help message');
     console.log('');
+    console.log('Global Options:');
+    console.log('  --log-level <level>     Set log level (silent|debug|info|warn|error)');
+    console.log('  --log-format <format>   Set log format (json|pretty|silent)');
+    console.log('  --log-file <path>       Write logs to file');
+    console.log('');
     console.log(
       'Run "uimatch compare" or "uimatch suite" without args to see command-specific options'
     );
     process.exit(0);
   }
+
+  // Initialize logger before running commands
+  initLogger(args);
 
   if (command === 'compare') {
     await runCompare(args);
