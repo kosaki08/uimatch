@@ -25,6 +25,7 @@
     "uimatch:current": "bun run scripts/uimatch-current.ts",
     "uimatch:compare": "bun run packages/uimatch-plugin/src/cli/index.ts compare",
     "uimatch:loop": "bun run scripts/uimatch-loop.ts",
+    "uimatch:suite": "bun run packages/uimatch-plugin/src/cli/index.ts suite",
     "uimatch:settings": "bun run scripts/uimatch-settings.ts"
   },
   "devDependencies": {

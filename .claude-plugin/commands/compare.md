@@ -20,7 +20,9 @@ Use this command when:
 
 ## Prerequisites
 
-- **Figma MCP server** running and accessible via `FIGMA_MCP_URL` environment variable
+- **Figma access** via REST API (recommended) or MCP server:
+  - REST API: Set `FIGMA_ACCESS_TOKEN` environment variable
+  - MCP (fallback): Set `FIGMA_MCP_URL` for Figma MCP server
 - **Target URL** accessible (may require `BASIC_AUTH_USER` and `BASIC_AUTH_PASS` for protected environments)
 - **Figma reference** in one of these formats:
   - `fileKey:nodeId` (e.g., `abc123:1-2`)
@@ -184,15 +186,15 @@ const result = await uiMatchCompare({
 
 ## Error Handling
 
-### Figma MCP Connection Error
+### Figma Connection Error
 
-**Error**: `Figma MCP error: 500`
+**Error**: `Figma API error` or `Figma MCP error: 500`
 
 **Solution**:
 
-1. Check that `FIGMA_MCP_URL` is set correctly
-2. Verify the Figma MCP server is running
-3. Test connection: `curl $FIGMA_MCP_URL/health`
+1. **REST API** (recommended): Verify `FIGMA_ACCESS_TOKEN` is set correctly
+2. **MCP** (fallback): Check that `FIGMA_MCP_URL` is set and server is running
+3. Test MCP connection: `curl $FIGMA_MCP_URL/health`
 
 ### Target URL Not Accessible
 
@@ -290,7 +292,7 @@ The command returns a structured result:
 - **Programmatic API**: `import { uiMatchCompare } from 'uimatch-plugin'`
 - **Artifacts**: Saved to `.uimatch-out/` by default (gitignored)
 - **Logging**: Sanitized by default (no tokens, relative paths, compact Figma refs)
-- Figma API calls via MCP server (not direct REST API)
+- **Figma access**: REST API (recommended) with `FIGMA_ACCESS_TOKEN`, or MCP server fallback
 - Playwright used for browser automation (Chromium headless)
 - Color differences use CIEDE2000 perceptual color distance
 
