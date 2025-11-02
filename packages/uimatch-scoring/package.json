@@ -1,0 +1,28 @@
+{
+  "name": "uimatch-scoring",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Design Fidelity Score (DFS) calculation for uiMatch",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "lint": "eslint src",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "design-fidelity",
+    "scoring",
+    "uimatch"
+  ],
+  "dependencies": {
+    "uimatch-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}

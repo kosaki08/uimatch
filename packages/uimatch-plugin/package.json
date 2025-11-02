@@ -21,6 +21,7 @@
   ],
   "dependencies": {
     "uimatch-core": "workspace:*",
+    "uimatch-scoring": "workspace:*",
     "zod": "^4.1.12"
   }
 }

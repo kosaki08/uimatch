@@ -4,6 +4,7 @@
 
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
 import { captureTarget, compareImages } from 'uimatch-core';
+import { computeDFS } from 'uimatch-scoring';
 import { FigmaRestClient } from '../adapters/figma-rest';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
 import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
@@ -374,64 +375,13 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   const { pass } = qualityGateResult;
 
-  // Variables needed for DFS calculation
-  const effectivePixelDiffRatio = result.pixelDiffRatioContent ?? result.pixelDiffRatio;
-  const hasHighSeverity = styleDiffs.some((d: { severity: string }) => d.severity === 'high');
-
   // Calculate Design Fidelity Score (0-100) with optional weights
-  const weights = {
-    pixel: args.weights?.pixel ?? 1.0,
-    color: args.weights?.color ?? 1.0,
-    spacing: args.weights?.spacing ?? 1.0,
-    radius: args.weights?.radius ?? 1.0,
-    border: args.weights?.border ?? 1.0,
-    shadow: args.weights?.shadow ?? 1.0,
-    typography: args.weights?.typography ?? 1.0,
-  };
-
-  // Base score of 100, with weighted deductions for differences
-  let dfs = 100;
-
-  // Pixel difference penalty (up to -50 points)
-  // 0% diff = 0 penalty, 100% diff = -50 penalty
-  // Use effective ratio (content-only when available) for more accurate scoring
-  dfs -= effectivePixelDiffRatio * 50 * weights.pixel;
-
-  // Color delta E penalty (up to -30 points)
-  // 0 ΔE = 0 penalty, 10+ ΔE = -30 penalty
-  dfs -= Math.min(colorDeltaEAvg / 10, 1) * 30 * weights.color;
-
-  // Size mismatch penalty (up to -15 points)
-  // When dimensions differ and required padding/cropping (adjusted=true),
-  // penalize based on relative area difference to reflect layout discrepancies.
-  // This addresses cases where most pixels match but fundamental layout differs.
-  if (result.dimensions.adjusted) {
-    const figmaDim = result.dimensions.figma;
-    const implDim = result.dimensions.impl;
-    const areaFigma = figmaDim.width * figmaDim.height;
-    const areaImpl = implDim.width * implDim.height;
-    const areaGap = Math.abs(areaFigma - areaImpl) / Math.max(areaFigma, areaImpl); // 0..1
-    // Apply up to 15 points penalty, scaled by area difference (20 max * 0.75 cap)
-    const sizePenalty = Math.min(15, Math.round(areaGap * 20));
-    dfs -= sizePenalty;
-  }
-
-  // High severity style diff penalty (-20 points)
-  // Only applies when expectedSpec provided and high-severity diffs detected
-  if (hasHighSeverity) {
-    const maxWeight = Math.max(
-      weights.color,
-      weights.spacing,
-      weights.typography,
-      weights.border,
-      weights.shadow,
-      weights.radius
-    );
-    dfs -= 20 * maxWeight;
-  }
-
-  // Ensure DFS is in range [0, 100]
-  dfs = Math.max(0, Math.min(100, Math.round(dfs)));
+  const dfsResult = computeDFS({
+    result,
+    styleDiffs,
+    weights: args.weights,
+  });
+  const dfs = dfsResult.score;
 
   // Calculate Style Fidelity Score (SFS) if style diffs exist
   let styleSummary: CompareResult['report']['styleSummary'];
