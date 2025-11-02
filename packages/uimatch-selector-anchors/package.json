@@ -1,0 +1,38 @@
+{
+  "name": "@uimatch/selector-anchors",
+  "version": "0.1.0",
+  "description": "Selector resolution plugin for uiMatch using AST-based anchors",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "clean": "rm -rf dist",
+    "test": "bun test"
+  },
+  "keywords": [
+    "uimatch",
+    "selector",
+    "ast",
+    "anchors"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "parse5": "^7.2.1",
+    "typescript": "^5.7.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.13",
+    "@types/parse5": "^7.0.0"
+  }
+}
