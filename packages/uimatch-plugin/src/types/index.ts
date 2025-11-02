@@ -287,6 +287,13 @@ export interface CompareArgs {
    * @default false
    */
   selectorsWriteBack?: boolean;
+
+  /**
+   * Plugin module ID for selector resolution.
+   * Falls back to UIMATCH_SELECTORS_PLUGIN environment variable if not specified.
+   * @default '@uimatch/selector-anchors'
+   */
+  selectorsPlugin?: string;
 }
 
 /**
