@@ -4,13 +4,14 @@
  * Selector resolution plugin for uiMatch using AST-based anchors
  */
 
+import type { Resolution, ResolveContext, SelectorResolverPlugin } from '@uimatch/selector-spi';
 import { resolveFromTypeScript } from './ast-resolver.js';
+import { getConfig } from './config.js';
 import { resolveFromHTML } from './html-resolver.js';
 import { loadSelectorsAnchors } from './io.js';
 import { checkLivenessAll } from './liveness.js';
 import type { SelectorsAnchors } from './schema.js';
 import { findSnippetMatch } from './snippet-hash.js';
-import type { Resolution, ResolveContext, SelectorResolverPlugin } from './spi.js';
 import { calculateStabilityScore, findMostStableSelector } from './stability-score.js';
 
 /**
@@ -27,6 +28,9 @@ import { calculateStabilityScore, findMostStableSelector } from './stability-sco
  * @returns Resolution result
  */
 async function resolve(context: ResolveContext): Promise<Resolution> {
+  // Get configuration with environment variable overrides
+  const config = getConfig();
+
   try {
     // If no anchors file provided, return initial selector
     if (!context.anchorsPath) {
@@ -102,7 +106,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
             if (selectors.length > 0) {
               // Check liveness for all candidates
               const livenessResults = await checkLivenessAll(context.probe, selectors, {
-                timeoutMs: 600, // Short timeout for probing
+                timeoutMs: config.timeouts.probe, // Configurable timeout from environment
               });
 
               // Filter to only alive selectors and calculate stability scores
@@ -254,12 +258,13 @@ const plugin: SelectorResolverPlugin = {
 export default plugin;
 
 // Named exports for direct usage
+export * from '@uimatch/selector-spi';
 export * from './ast-resolver.js';
+export * from './config.js';
 export * from './html-resolver.js';
 export * from './io.js';
 export * from './liveness.js';
 export * from './schema.js';
 export * from './snippet-hash.js';
-export * from './spi.js';
 export * from './stability-score.js';
 export { resolve };

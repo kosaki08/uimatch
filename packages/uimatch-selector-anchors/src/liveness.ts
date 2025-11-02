@@ -5,7 +5,7 @@
  * The actual browser interaction is provided through the Probe interface.
  */
 
-import type { Probe, ProbeOptions, ProbeResult } from './spi.js';
+import type { Probe, ProbeOptions, ProbeResult } from '@uimatch/selector-spi';
 
 /**
  * Check liveness for multiple selectors in priority order
