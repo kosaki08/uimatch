@@ -159,7 +159,8 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
     // In strict mode, check if selector looks like it might have a typo
     // (has a colon with a word before it that's not a known prefix)
     if (process.env.UIMATCH_SELECTOR_STRICT === 'true') {
-      const unknownPrefixCheck = selectorString.match(/^([a-z]\w+):(.*)$/i);
+      // Match only word-colon at the start, not followed by '[' (to exclude attribute selectors like a[href*="https:"])
+      const unknownPrefixCheck = selectorString.match(/^([a-z][\w-]*):(?!\[)/i);
       if (unknownPrefixCheck) {
         const [, suspiciousPrefix] = unknownPrefixCheck;
         throw new Error(
@@ -525,8 +526,14 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
       if (opts.url) {
         const timeout = Number(process.env.UIMATCH_HTTP_TIMEOUT_MS) || 30_000;
-        const waitUntil =
+        let waitUntil =
           (process.env.UIMATCH_WAIT_UNTIL as 'load' | 'networkidle' | 'domcontentloaded') || 'load';
+
+        // For data: URLs, use 'domcontentloaded' to avoid empty 'load' event issues
+        if (/^data:/i.test(opts.url)) {
+          waitUntil = 'domcontentloaded';
+        }
+
         await page.goto(opts.url, { waitUntil, timeout });
       } else {
         if (!opts.html) {

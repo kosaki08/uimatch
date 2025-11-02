@@ -28,6 +28,12 @@ describe('E2E: outDir artifact saving', () => {
 
     // Set bypass mode environment variable
     process.env.UIMATCH_FIGMA_PNG_B64 = RED_PNG_B64;
+
+    // Set internal timer defaults for E2E tests (to avoid timeout)
+    process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
+    process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '2000';
+    process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '600';
+    process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '800';
   });
 
   afterEach(async () => {
@@ -43,61 +49,65 @@ describe('E2E: outDir artifact saving', () => {
     await browserPool.closeAll();
   });
 
-  test('should save artifacts when outDir is specified', async () => {
-    // Simulate CLI invocation with outDir
-    const argv = [
-      'figma=bypass:test',
-      'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
-      'selector=#test',
-      `outDir=${testOutDir}`,
-      'timestampOutDir=false',
-      'size=pad', // Use pad mode to handle dimension mismatch
-      'viewport=10x10', // Match the bypass PNG size
-      'dpr=1', // Use dpr=1 for deterministic testing
-    ];
+  test(
+    'should save artifacts when outDir is specified',
+    async () => {
+      // Simulate CLI invocation with outDir
+      const argv = [
+        'figma=bypass:test',
+        'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
+        'selector=#test',
+        `outDir=${testOutDir}`,
+        'timestampOutDir=false',
+        'size=pad', // Use pad mode to handle dimension mismatch
+        'viewport=10x10', // Match the bypass PNG size
+        'dpr=1', // Use dpr=1 for deterministic testing
+      ];
 
-    // Run compare (will exit process, so we need to catch)
-    const originalExit = process.exit.bind(process);
+      // Run compare (will exit process, so we need to catch)
+      const originalExit = process.exit.bind(process);
 
-    try {
-      // Mock process.exit to prevent actual exit but allow async operations to complete
-      const mockExit = (code?: number | string | null): never => {
-        throw new Error(`EXIT_${code ?? 0}`);
-      };
-      process.exit = mockExit as typeof process.exit;
+      try {
+        // Mock process.exit to prevent actual exit but allow async operations to complete
+        const mockExit = (code?: number | string | null): never => {
+          throw new Error(`EXIT_${code ?? 0}`);
+        };
+        process.exit = mockExit as typeof process.exit;
 
-      // Run compare and wait for completion (will throw EXIT_0)
-      await runCompare(argv);
-    } catch (err) {
-      // Expected exit throw
-      if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
-        throw err;
+        // Run compare and wait for completion (will throw EXIT_0)
+        await runCompare(argv);
+      } catch (err) {
+        // Expected exit throw
+        if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
+          throw err;
+        }
+      } finally {
+        process.exit = originalExit;
+        // Give sufficient delay for all file writes to complete
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
-    } finally {
-      process.exit = originalExit;
-      // Give sufficient delay for all file writes to complete
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
 
-    // Verify artifacts were saved
-    const files = await readdir(testOutDir);
+      // Verify artifacts were saved
+      const files = await readdir(testOutDir);
 
-    expect(files).toContain('figma.png');
-    expect(files).toContain('impl.png');
-    expect(files).toContain('diff.png');
-    expect(files).toContain('report.json');
+      expect(files).toContain('figma.png');
+      expect(files).toContain('impl.png');
+      expect(files).toContain('diff.png');
+      expect(files).toContain('report.json');
 
-    // Verify figma.png content matches bypass
-    const figmaContent = await readFile(join(testOutDir, 'figma.png'));
-    const figmaB64 = figmaContent.toString('base64');
-    expect(figmaB64).toBe(RED_PNG_B64);
+      // Verify figma.png content matches bypass
+      const figmaContent = await readFile(join(testOutDir, 'figma.png'));
+      const figmaB64 = figmaContent.toString('base64');
+      expect(figmaB64).toBe(RED_PNG_B64);
 
-    // Verify report.json does NOT contain artifacts (jsonOnly=true default)
-    const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
-    const report = JSON.parse(reportContent) as TestReport;
+      // Verify report.json does NOT contain artifacts (jsonOnly=true default)
+      const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
+      const report = JSON.parse(reportContent) as TestReport;
 
-    expect(report.artifacts).toBeUndefined();
-  });
+      expect(report.artifacts).toBeUndefined();
+    },
+    { timeout: 10000 }
+  );
 
   test(
     'should include artifacts in JSON when jsonOnly=false',

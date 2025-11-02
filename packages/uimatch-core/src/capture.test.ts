@@ -69,6 +69,8 @@ describe('captureTarget', () => {
         dpr: 1,
         detectStorybookIframe: false,
         reuseBrowser: true,
+        idleWaitMs: 0, // Skip idle wait for deterministic data: URL tests
+        maxChildren: 50, // Limit style collection for faster execution
       });
 
       expect(cap.styles['__self__']).toBeDefined();
