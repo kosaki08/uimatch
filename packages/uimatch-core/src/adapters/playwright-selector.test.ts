@@ -12,14 +12,16 @@ const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
 // Pre-warm browser once before all tests to avoid startup cost in each test
 beforeAll(async () => {
   process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
-  // Prevent strict violations from multi-match elements in tests
+  // first() で最初の一致に限定（多重一致の診断を避けて時短）
   process.env.UIMATCH_SELECTOR_FIRST = process.env.UIMATCH_SELECTOR_FIRST ?? 'true';
-  // Reduce timeouts to prevent double-timeout scenario (waitFor + diagnostics > test timeout)
-  process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '6000';
-  process.env.UIMATCH_PROBE_TIMEOUT_MS = process.env.UIMATCH_PROBE_TIMEOUT_MS ?? '1200';
-  // Additional timeout configurations to prevent accumulation
-  process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '2000';
-  process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS = process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS ?? '1500';
+  // 各待機の上限を絞る（HTML直書きのE2Eはこれで十分）
+  process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
+  process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS = process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS ?? '1200';
+  process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '3000';
+  process.env.UIMATCH_PROBE_TIMEOUT_MS = process.env.UIMATCH_PROBE_TIMEOUT_MS ?? '600';
+  // 追加：bbox / screenshot の個別上限（ライブラリ側パッチと合わせて有効）
+  process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '800';
+  process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '1000';
   await browserPool.getBrowser();
 });
 
