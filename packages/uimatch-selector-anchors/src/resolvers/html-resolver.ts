@@ -2,6 +2,10 @@ import type { SelectorHint } from '#anchors/types/schema';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import * as parse5 from 'parse5';
+import {
+  buildHintFromAttributes as buildHint,
+  generateSelectorsFromAttributes as generateSelectors,
+} from './selector-utils.js';
 
 // parse5 tree adapter types
 type Document = parse5.DefaultTreeAdapterMap['document'];
@@ -65,15 +69,16 @@ export async function resolveFromHTML(
   // Extract attributes and text content
   const attributes = extractAttributes(targetElement);
   const elementText = extractTextContent(targetElement);
+  const tag = targetElement.nodeName;
 
-  const hint = buildHintFromAttributes(attributes, elementText);
-  const selectors = generateSelectorsFromAttributes(attributes, targetElement, elementText);
+  const hint = buildHint(attributes, elementText);
+  const selectors = generateSelectors(attributes, tag, elementText);
 
   return {
     selectors,
     hint,
     element: {
-      tag: targetElement.nodeName,
+      tag,
       attributes,
       text: elementText,
     },
@@ -184,103 +189,3 @@ function extractTextContent(element: Element): string | undefined {
   return texts.length > 0 ? texts.join(' ') : undefined;
 }
 
-/**
- * Build selector hint from attributes and text content
- */
-function buildHintFromAttributes(
-  attributes: Record<string, string>,
-  elementText?: string
-): SelectorHint {
-  const hint: SelectorHint = {};
-
-  // Determine preferred strategies based on available attributes
-  const prefer: Array<'testid' | 'role' | 'text' | 'css'> = [];
-
-  if (attributes['data-testid']) {
-    prefer.push('testid');
-    hint.testid = attributes['data-testid'];
-  }
-
-  if (attributes['role']) {
-    prefer.push('role');
-    hint.role = attributes['role'];
-  }
-
-  if (attributes['aria-label']) {
-    hint.ariaLabel = attributes['aria-label'];
-  }
-
-  // Add text selector for short text content (1-24 chars)
-  // This improves LLM detection of "human-readable" elements like buttons
-  if (elementText && elementText.length >= 1 && elementText.length <= 24) {
-    hint.expectedText = elementText;
-    if (!hint.testid && !hint.role) {
-      // Prefer text over CSS for elements with readable text
-      prefer.push('text');
-    }
-  }
-
-  if (prefer.length === 0) {
-    // Fallback to CSS if no semantic attributes
-    prefer.push('css');
-  }
-
-  hint.prefer = prefer;
-
-  return hint;
-}
-
-/**
- * Generate selector candidates from attributes and text content
- */
-function generateSelectorsFromAttributes(
-  attributes: Record<string, string>,
-  element: Element,
-  elementText?: string
-): string[] {
-  const selectors: string[] = [];
-
-  // Priority 1: data-testid (most stable for testing)
-  if (attributes['data-testid']) {
-    selectors.push(`[data-testid="${attributes['data-testid']}"]`);
-  }
-
-  // Priority 2: id (unique identifier, high specificity)
-  if (attributes['id']) {
-    selectors.push(`#${attributes['id']}`);
-  }
-
-  // Priority 3: role with aria-label (semantic, accessible)
-  if (attributes['role']) {
-    if (attributes['aria-label']) {
-      selectors.push(`role:${attributes['role']}[name="${attributes['aria-label']}"]`);
-    } else {
-      selectors.push(`role:${attributes['role']}`);
-    }
-  }
-
-  // Priority 4: text selector for short text (1-24 chars)
-  if (elementText && elementText.length >= 1 && elementText.length <= 24) {
-    // Escape special characters in text
-    const escapedText = elementText.replace(/"/g, '\\"');
-    selectors.push(`text:"${escapedText}"`);
-  }
-
-  // Priority 5: class (first class only for stability)
-  if (attributes['class']) {
-    const firstClass = attributes['class'].split(/\s+/)[0];
-    if (firstClass) {
-      selectors.push(`.${firstClass}`);
-    }
-  }
-
-  // Priority 6: tag + unique attribute combination
-  const tag = element.tagName;
-  if (attributes['name']) {
-    selectors.push(`${tag}[name="${attributes['name']}"]`);
-  } else if (attributes['type']) {
-    selectors.push(`${tag}[type="${attributes['type']}"]`);
-  }
-
-  return selectors;
-}
