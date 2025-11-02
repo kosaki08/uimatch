@@ -54,9 +54,9 @@ bun run uimatch:compare -- \
 Selector resolution is **optional and pluggable** via SPI (Service Provider Interface):
 
 - Default plugin (`@uimatch/selector-anchors`) uses AST analysis + liveness checking
-- Plugin is only loaded when `selectors` path is provided (no overhead if unused)
+- Plugin is loaded when either `selectors` path is provided OR `selectorsPlugin`/`UIMATCH_SELECTORS_PLUGIN` is explicitly specified (no overhead if unused)
 - Graceful fallback with warning if plugin unavailable
-- Custom plugins supported via `selectorsPlugin=<package-name>`
+- Custom plugins supported via `selectorsPlugin=<package-name>` or `UIMATCH_SELECTORS_PLUGIN` environment variable
 
 **Workflow:**
 
@@ -79,10 +79,13 @@ Selector resolution is **optional and pluggable** via SPI (Service Provider Inte
 
 ### Environment Variables
 
-Required in `.env`:
+**Figma Access** (priority: BYPASS > REST > MCP):
 
 ```bash
-FIGMA_ACCESS_TOKEN=figd_xxx  # Figma Personal Access Token
+# REST (recommended): Figma Personal Access Token
+FIGMA_ACCESS_TOKEN=figd_xxx
+
+# MCP (fallback): Use figma=current with Figma Desktop + MCP server
 ```
 
 Optional:
@@ -176,7 +179,7 @@ When `selectorsPlugin` is enabled and a plugin successfully resolves the selecto
 {
   "selectorResolution": {
     "chosen": "[data-testid=\"submit-button\"]",
-    "stability": 0.85,
+    "stability": 85,
     "reasons": [
       "Found via AST anchors with snippet hash match",
       "Liveness check passed in 120ms",
@@ -190,17 +193,17 @@ When `selectorsPlugin` is enabled and a plugin successfully resolves the selecto
 **Fields:**
 
 - `chosen` - Resolved CSS selector used for capture
-- `stability` - Stability score (0-1) based on selector type and heuristics
+- `stability` - Stability score (0-100) based on selector type and heuristics, consistent with DFS/SFS/CQI metrics
 - `reasons` - Array of explanation strings for debugging and transparency
 - `plugin` - Plugin package that performed resolution
 
 **Stability Scoring:**
 
-- `1.0` - `data-testid`, `role[name]` with exact text match
-- `0.85` - `role` with partial text match, `aria-label`
-- `0.7` - Class selectors with semantic names
-- `0.5` - nth-child, positional selectors
-- `0.3` - Generic CSS selectors without semantic meaning
+- `100` - `data-testid`, `role[name]` with exact text match
+- `85` - `role` with partial text match, `aria-label`
+- `70` - Class selectors with semantic names
+- `50` - nth-child, positional selectors
+- `30` - Generic CSS selectors without semantic meaning
 
 This information is useful for:
 

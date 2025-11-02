@@ -1,4 +1,4 @@
-export { PlaywrightAdapter, browserPool, captureTarget } from './adapters/index';
+export { PlaywrightAdapter, browserPool, captureTarget, resolveLocator } from './adapters/index';
 export {
   DEFAULT_CONFIG,
   QUALITY_GATE_PROFILES,

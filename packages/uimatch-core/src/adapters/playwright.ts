@@ -132,7 +132,7 @@ const EXTENDED_PROPS = [
  * @returns Playwright Locator
  * @throws Error when prefix is unknown and UIMATCH_SELECTOR_STRICT=true
  */
-function resolveLocator(frame: Frame, selectorString: string): Locator {
+export function resolveLocator(frame: Frame, selectorString: string): Locator {
   // DEBUG logging for troubleshooting
   const DEBUG = process.env.DEBUG?.includes('uimatch:selector');
   if (DEBUG) {

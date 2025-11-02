@@ -1,2 +1,2 @@
 export { browserPool } from './browser-pool';
-export { PlaywrightAdapter, captureTarget } from './playwright';
+export { PlaywrightAdapter, captureTarget, resolveLocator } from './playwright';

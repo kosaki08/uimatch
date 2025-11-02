@@ -4,7 +4,7 @@
 
 import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
-import { browserPool, captureTarget, compareImages } from 'uimatch-core';
+import { browserPool, captureTarget, compareImages, resolveLocator } from 'uimatch-core';
 import { computeDFS } from 'uimatch-scoring';
 import { FigmaRestClient } from '../adapters/figma-rest';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
@@ -146,7 +146,8 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
       async check(selector, opts) {
         const startTime = performance.now();
         try {
-          const locator = targetFrame.locator(selector).first();
+          // Use resolveLocator to support role:/text:/testid: prefixes
+          const locator = resolveLocator(targetFrame, selector).first();
           const visible = opts?.visible ?? true;
           await locator.waitFor({
             state: visible ? 'visible' : 'attached',
