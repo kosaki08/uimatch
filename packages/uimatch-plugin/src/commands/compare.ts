@@ -302,12 +302,14 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   }
 
   // Debug: Display effective mode and parsed reference
-  console.log(
-    '[uimatch] mode:',
-    b64raw ? 'BYPASS' : process.env.FIGMA_ACCESS_TOKEN ? 'REST' : 'MCP',
-    '| figma arg:',
-    args.figma
-  );
+  if (args.verbose) {
+    console.log(
+      '[uimatch] mode:',
+      b64raw ? 'BYPASS' : process.env.FIGMA_ACCESS_TOKEN ? 'REST' : 'MCP',
+      '| figma arg:',
+      args.figma
+    );
+  }
 
   if (b64raw) {
     // Environment variable bypass: Accept base64 PNG directly from Claude
@@ -376,9 +378,11 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     const pngSize = readPngSize(figmaPng);
     if (pngSize && pngSize.width > 0 && pngSize.height > 0) {
       effectiveViewport = { width: pngSize.width, height: pngSize.height };
-      console.log(
-        `[uimatch] Auto-detected viewport from Figma PNG: ${pngSize.width}x${pngSize.height}`
-      );
+      if (args.verbose) {
+        console.log(
+          `[uimatch] Auto-detected viewport from Figma PNG: ${pngSize.width}x${pngSize.height}`
+        );
+      }
     }
   }
 
@@ -425,9 +429,11 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       });
 
       if (pick.nodeId) {
-        console.log(
-          `[uimatch] Child-node mapping: Found Figma child "${pick.debug?.picked}" (${pick.nodeId})`
-        );
+        if (args.verbose) {
+          console.log(
+            `[uimatch] Child-node mapping: Found Figma child "${pick.debug?.picked}" (${pick.nodeId})`
+          );
+        }
         nodeId = pick.nodeId;
         figmaPng = await rest.getFramePng({ fileKey, nodeId, scale: figmaScale });
       }
@@ -465,9 +471,11 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         });
 
         if (roiResult.wasAdjusted) {
-          console.log(
-            `[uimatch] Auto-ROI enabled: Re-fetching Figma PNG for node ${roiResult.nodeId}`
-          );
+          if (args.verbose) {
+            console.log(
+              `[uimatch] Auto-ROI enabled: Re-fetching Figma PNG for node ${roiResult.nodeId}`
+            );
+          }
           nodeId = roiResult.nodeId;
           figmaPng = await rest.getFramePng({ fileKey, nodeId, scale: figmaScale });
           roiMeta = { applied: true, from: originalNodeId, to: nodeId };
@@ -487,7 +495,9 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
         const nodeJson = await rest.getNode({ fileKey, nodeId });
         expectedSpec = buildExpectedSpecFromFigma(nodeJson, args.tokens);
-        console.log('[uimatch] expectedSpec bootstrapped from Figma node (robust subset).');
+        if (args.verbose) {
+          console.log('[uimatch] expectedSpec bootstrapped from Figma node (robust subset).');
+        }
       } catch (e) {
         console.warn('[uimatch] bootstrap failed:', (e as Error)?.message ?? String(e));
       }

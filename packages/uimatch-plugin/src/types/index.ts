@@ -294,6 +294,13 @@ export interface CompareArgs {
    * @default '@uimatch/selector-anchors'
    */
   selectorsPlugin?: string;
+
+  /**
+   * Enable verbose logging (informational messages about mode, URLs, etc.).
+   * When false, only warnings and errors are shown.
+   * @default false (quiet for programmatic use), true (CLI)
+   */
+  verbose?: boolean;
 }
 
 /**
