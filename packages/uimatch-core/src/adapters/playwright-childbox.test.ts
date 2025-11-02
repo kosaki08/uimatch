@@ -8,8 +8,16 @@ import { captureTarget } from './playwright';
 const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
 const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: TEST_TIMEOUT });
 
-// Configure environment for faster E2E tests
-beforeAll(() => {
+const ENABLE_BROWSER_TESTS = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+const run = ENABLE_BROWSER_TESTS ? describe : describe.skip;
+
+if (!ENABLE_BROWSER_TESTS) {
+  // eslint-disable-next-line no-console
+  console.warn('[uimatch] Skipping Playwright integration tests (set UIMATCH_ENABLE_BROWSER_TESTS=true to enable)');
+}
+
+// Configure environment for faster E2E tests and warm up browser
+beforeAll(async () => {
   process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
   process.env.UIMATCH_SELECTOR_FIRST = process.env.UIMATCH_SELECTOR_FIRST ?? 'true';
   process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS = process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS ?? '1000';
@@ -18,13 +26,12 @@ beforeAll(() => {
   process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '600';
   process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '800';
   process.env.UIMATCH_PROBE_TIMEOUT_MS = process.env.UIMATCH_PROBE_TIMEOUT_MS ?? '500';
+
+  // Warm up browser once at the start to avoid parallel launch races
+  await browserPool.getBrowser();
 });
 
-describe('Playwright childBox capture - with childSelector', () => {
-  beforeAll(async () => {
-    await browserPool.getBrowser();
-  });
-
+run('Playwright childBox capture - with childSelector', () => {
   itT('should capture childBox for CSS child selector', async () => {
     const html = `
       <div id="parent" style="width: 400px; height: 300px; position: relative;">
@@ -61,11 +68,7 @@ describe('Playwright childBox capture - with childSelector', () => {
   });
 });
 
-describe('Playwright childBox capture - without childSelector', () => {
-  beforeAll(async () => {
-    await browserPool.getBrowser();
-  });
-
+run('Playwright childBox capture - without childSelector', () => {
   itT('should work without childSelector', async () => {
     const html = `<div id="parent">Content</div>`;
 

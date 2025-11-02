@@ -33,19 +33,34 @@ class BrowserPool {
     const launchOpts = {
       headless: process.env.UIMATCH_HEADLESS !== 'false',
       channel: process.env.UIMATCH_CHROME_CHANNEL as 'chrome' | 'msedge' | undefined,
-      args: process.env.UIMATCH_CHROME_ARGS?.split(' ') ?? [],
+      args: [
+        ...(process.env.UIMATCH_CHROME_ARGS?.split(' ') ?? []),
+        '--disable-gpu',
+        '--no-sandbox',
+      ],
+      timeout: Number(process.env.UIMATCH_LAUNCH_TIMEOUT_MS ?? 30000),
     };
 
-    this.launching = chromium
-      .launch(launchOpts)
-      .then((b) => {
-        this.browser = b;
-        this.disconnectListenerAttached = false;
-        return b;
-      })
-      .finally(() => {
-        this.launching = null;
-      });
+    this.launching = (async () => {
+      try {
+        this.browser = await chromium.launch(launchOpts);
+      } catch (e) {
+        // Fallback to system Chrome if bundled Chromium fails and no channel was specified
+        if (!launchOpts.channel) {
+          this.browser = await chromium.launch({
+            ...launchOpts,
+            channel: 'chrome',
+            args: [...launchOpts.args, '--disable-gpu', '--no-sandbox'],
+          });
+        } else {
+          throw e;
+        }
+      }
+      this.disconnectListenerAttached = false;
+      return this.browser;
+    })().finally(() => {
+      this.launching = null;
+    });
 
     return this.launching;
   }
