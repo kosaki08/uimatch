@@ -1,7 +1,24 @@
 {
   "name": "uimatch-plugin",
   "version": "0.1.0",
-  "main": "./src/index.ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./cli": "./dist/cli/index.js"
+  },
+  "bin": {
+    "uimatch": "./dist/cli/index.js"
+  },
+  "imports": {
+    "#/*": "./dist/*",
+    "#cli/*": "./dist/cli/*"
+  },
+  "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "bun run build"
+  },
   "dependencies": {
     "@uimatch/selector-spi": "workspace:*",
     "uimatch-core": "workspace:*",
@@ -15,22 +32,6 @@
     "@uimatch/selector-anchors": {
       "optional": true
     }
-  },
-  "imports": {
-    "#/*": "./dist/*.js"
-  },
-  "exports": {
-    ".": "./src/index.ts",
-    "./cli": "./src/cli/index.ts"
-  },
-  "bin": {
-    "uimatch": "./src/cli/index.ts"
-  },
-  "type": "module",
-  "types": "./src/index.ts",
-  "scripts": {
-    "build": "tsup",
-    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "tsup": "^8.5.0"

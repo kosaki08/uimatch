@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Service Provider Interface types for uiMatch selector resolution plugins",
   "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

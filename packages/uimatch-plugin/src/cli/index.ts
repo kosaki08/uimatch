@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 /**
  * uiMatch CLI entry point
  */
