@@ -33,9 +33,24 @@
     "packages/uimatch-plugin": {
       "name": "uimatch-plugin",
       "version": "0.1.0",
+      "bin": {
+        "uimatch": "./dist/cli/index.js",
+      },
       "dependencies": {
         "uimatch-core": "workspace:*",
+        "uimatch-scoring": "workspace:*",
         "zod": "^4.1.12",
+      },
+    },
+    "packages/uimatch-scoring": {
+      "name": "uimatch-scoring",
+      "version": "0.1.0",
+      "dependencies": {
+        "uimatch-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5.0.0",
       },
     },
   },
@@ -295,6 +310,8 @@
     "uimatch-core": ["uimatch-core@workspace:packages/uimatch-core"],
 
     "uimatch-plugin": ["uimatch-plugin@workspace:packages/uimatch-plugin"],
+
+    "uimatch-scoring": ["uimatch-scoring@workspace:packages/uimatch-scoring"],
 
     "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
