@@ -104,6 +104,8 @@ export interface ElementMeta {
   testid?: string;
   /** Generated CSS selector for this element */
   cssSelector?: string;
+  /** Text content (innerText) of the element (if present) */
+  text?: string;
 }
 
 /**

@@ -6,8 +6,9 @@
 
 /**
  * Maximum allowed regex pattern length to prevent extremely long patterns
+ * Increased to 500 to accommodate large HTML fragments without performance impact
  */
-const MAX_PATTERN_LENGTH = 300;
+const MAX_PATTERN_LENGTH = 500;
 
 /**
  * Regex to detect potentially dangerous nested quantifiers
@@ -42,7 +43,7 @@ export type SafeRegexResult =
  * Compile a regex pattern with safety validation
  *
  * Protects against:
- * - Excessively long patterns (>300 chars)
+ * - Excessively long patterns (>500 chars)
  * - Deep nested quantifiers that could cause ReDoS
  * - Known catastrophic backtracking patterns (e.g., (a+)+, (.*)*, (\w+)*+)
  * - Invalid regex syntax

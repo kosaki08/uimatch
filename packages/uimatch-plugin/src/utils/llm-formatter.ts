@@ -218,8 +218,11 @@ export function formatForLLM(
  */
 export function generateLLMPrompt(payload: LLMPayload): string {
   const instruction = `Fix the following style differences in the ${payload.component} component.
-Apply minimal changes using CSS format.
-${payload.preferTokens ? 'Prefer design tokens (CSS variables) when available.' : ''}
+
+⚠️ USAGE GUIDELINES:
+- CSS patches should be MINIMAL changes only (no restructuring or refactoring)
+- When token is available, ALWAYS use token (CSS variable) instead of hard-coded value
+${payload.preferTokens ? '- Prefer design tokens (CSS variables) when available.' : ''}
 
 Output format:
 1. Summary of changes

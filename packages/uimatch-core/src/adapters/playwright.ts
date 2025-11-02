@@ -395,6 +395,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
               tabindex,
               cursor,
               elementKind,
+              text: (h.innerText ?? '').trim(),
             };
           };
 

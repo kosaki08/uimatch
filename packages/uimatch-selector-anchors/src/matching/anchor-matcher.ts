@@ -43,13 +43,15 @@ function hasTestId(selector: string, testid: string): boolean {
 /**
  * Check if selector contains role in various formats
  * Handles both [role="value"] and role:value formats
+ * Case-insensitive comparison for robustness
  */
 function hasRole(selector: string, role: string): boolean {
-  const normalized = normalizeSelector(selector);
+  const normalized = normalizeSelector(selector).toLowerCase();
+  const roleLower = role.toLowerCase();
   return (
-    normalized.includes(`role:${role}`) ||
-    normalized.includes(`[role='${role}']`) ||
-    normalized.includes(`role='${role}'`)
+    normalized.includes(`role:${roleLower}`) ||
+    normalized.includes(`[role='${roleLower}']`) ||
+    normalized.includes(`role='${roleLower}'`)
   );
 }
 

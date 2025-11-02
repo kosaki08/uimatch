@@ -301,6 +301,26 @@ export interface CompareArgs {
    * @default false (quiet for programmatic use), true (CLI)
    */
   verbose?: boolean;
+
+  /**
+   * Figma ↔ Implementation text matching configuration.
+   * Validates that text content matches between design and implementation.
+   * @default { enabled: false }
+   */
+  textCheck?: {
+    /** Enable text matching validation (default: false) */
+    enabled?: boolean;
+    /** Scope of text collection: 'self' (element only) or 'descendants' (element + children) (default: 'self') */
+    mode?: 'self' | 'descendants';
+    /** Normalization mode: 'none', 'nfkc', or 'nfkc_ws' (NFKC + whitespace collapse) (default: 'nfkc_ws') */
+    normalize?: 'none' | 'nfkc' | 'nfkc_ws';
+    /** Case-sensitive comparison (default: false) */
+    caseSensitive?: boolean;
+    /** Matching mode: 'exact', 'contains' (Figma ⊆ Impl), or 'ratio' (similarity score) (default: 'ratio') */
+    match?: 'exact' | 'contains' | 'ratio';
+    /** Minimum similarity ratio for 'ratio' mode (default: 0.98) */
+    minRatio?: number;
+  };
 }
 
 /**
@@ -349,6 +369,23 @@ export interface CompareResult {
         from?: string;
         to?: string;
       };
+    };
+
+    /**
+     * Text matching result (when textCheck is enabled)
+     */
+    textMatch?: {
+      enabled: boolean;
+      mode: 'self' | 'descendants';
+      normalize: 'none' | 'nfkc' | 'nfkc_ws';
+      caseSensitive: boolean;
+      match: 'exact' | 'contains' | 'ratio';
+      minRatio: number;
+      figma: { raw: string; normalized: string };
+      impl: { raw: string; normalized: string };
+      equal: boolean;
+      ratio: number;
+      details?: { missing?: string[]; extra?: string[] };
     };
 
     artifacts?: {

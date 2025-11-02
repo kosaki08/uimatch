@@ -9,7 +9,14 @@ import { buildExpectedSpecFromFigma } from '#plugin/expected/from-figma';
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
 import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
-import { browserPool, captureTarget, compareImages, resolveLocator } from 'uimatch-core';
+import {
+  browserPool,
+  captureTarget,
+  compareImages,
+  normalizeTextEx,
+  resolveLocator,
+  textSimilarity,
+} from 'uimatch-core';
 import { computeDFS } from 'uimatch-scoring';
 import { getSettings } from './settings';
 
@@ -623,6 +630,134 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     );
   }
 
+  // === Text Match (optional) ===
+  let textMatchReport:
+    | {
+        enabled: boolean;
+        mode: 'self' | 'descendants';
+        normalize: 'none' | 'nfkc' | 'nfkc_ws';
+        caseSensitive: boolean;
+        match: 'exact' | 'contains' | 'ratio';
+        minRatio: number;
+        figma: { raw: string; normalized: string };
+        impl: { raw: string; normalized: string };
+        equal: boolean;
+        ratio: number;
+        details?: { missing?: string[]; extra?: string[] };
+      }
+    | undefined;
+
+  if (args.textCheck?.enabled) {
+    // 1) Collect DOM text
+    const collectDom = (): string => {
+      const entries = Object.entries(cap.meta ?? {});
+      if (args.textCheck?.mode === 'descendants') {
+        // All descendants' text (prioritize elementKind==='text' to reduce noise)
+        const texts: string[] = [];
+        for (const [k, m] of entries) {
+          if (!m) continue;
+          if (k === '__self__' || (m as { elementKind?: string }).elementKind === 'text') {
+            if (m.text) texts.push(m.text);
+          }
+        }
+        return texts.join(' ');
+      }
+      return cap.meta?.['__self__']?.text ?? '';
+    };
+
+    const implRaw = collectDom();
+
+    // 2) Collect Figma text (REST required)
+    let figmaRaw = '';
+    try {
+      if (process.env.FIGMA_ACCESS_TOKEN && parsed && parsed !== 'current') {
+        const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
+        const nodeJson = await rest.getNode({ fileKey, nodeId });
+        const walk = (n: unknown, out: string[]) => {
+          if (!n || typeof n !== 'object') return;
+          const node = n as {
+            type?: string;
+            characters?: string;
+            visible?: boolean;
+            children?: unknown[];
+          };
+          if (
+            node.type === 'TEXT' &&
+            typeof node.characters === 'string' &&
+            (node.visible ?? true)
+          ) {
+            out.push(node.characters);
+          }
+          const kids = Array.isArray(node.children) ? node.children : [];
+          for (const c of kids) walk(c, out);
+        };
+        const buf: string[] = [];
+        walk(nodeJson, buf);
+        figmaRaw = buf.join(' ');
+      }
+    } catch (e) {
+      if (args.verbose)
+        console.warn('[uimatch] textMatch figma fetch failed:', (e as Error).message);
+    }
+
+    // 3) Normalize & compare
+    const normMode = args.textCheck.normalize ?? 'nfkc_ws';
+    const normOpts = {
+      nfkc: normMode !== 'none',
+      trim: true,
+      collapseWhitespace: normMode === 'nfkc_ws',
+      caseSensitive: args.textCheck.caseSensitive ?? false,
+    };
+    const implNorm = normalizeTextEx(implRaw, normOpts);
+    const figmaNorm = normalizeTextEx(figmaRaw, normOpts);
+
+    let equal = false;
+    let ratio = 0;
+    const mode = args.textCheck.match ?? 'ratio';
+    if (mode === 'exact') {
+      equal = implNorm === figmaNorm;
+      ratio = equal ? 1 : textSimilarity(implNorm, figmaNorm);
+    } else if (mode === 'contains') {
+      equal = !!figmaNorm && implNorm.includes(figmaNorm);
+      ratio = equal ? 1 : textSimilarity(implNorm, figmaNorm);
+    } else {
+      ratio = textSimilarity(implNorm, figmaNorm);
+      equal = ratio >= (args.textCheck.minRatio ?? 0.98);
+    }
+
+    // 4) Details (simple token diff)
+    const toTokens = (s: string) => s.split(/\s+/).filter(Boolean);
+    const miss: string[] = [];
+    const extra: string[] = [];
+    const fa = new Map<string, number>();
+    const fb = new Map<string, number>();
+    for (const t of toTokens(figmaNorm)) fb.set(t, (fb.get(t) || 0) + 1);
+    for (const t of toTokens(implNorm)) fa.set(t, (fa.get(t) || 0) + 1);
+    for (const [t, n] of fb) if ((fa.get(t) || 0) < n) miss.push(t);
+    for (const [t, n] of fa) if ((fb.get(t) || 0) < n) extra.push(t);
+
+    textMatchReport = {
+      enabled: true,
+      mode: args.textCheck.mode ?? 'self',
+      normalize: normMode,
+      caseSensitive: !!args.textCheck.caseSensitive,
+      match: mode,
+      minRatio: args.textCheck.minRatio ?? 0.98,
+      figma: { raw: figmaRaw, normalized: figmaNorm },
+      impl: { raw: implRaw, normalized: implNorm },
+      equal,
+      ratio,
+      details: { missing: miss.length ? miss : undefined, extra: extra.length ? extra : undefined },
+    };
+
+    // Add textMatch to summary
+    if (textMatchReport) {
+      summaryParts.push(
+        `textMatch: ${textMatchReport.equal ? 'ok' : textMatchReport.ratio.toFixed(2)}`
+      );
+    }
+  }
+
   const summary = summaryParts.join(' | ');
 
   // Build report with optional selector resolution info
@@ -642,6 +777,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     meta: {
       figmaAutoRoi: roiMeta,
     },
+    textMatch: textMatchReport,
     artifacts: args.emitArtifacts
       ? {
           figmaPngB64: figmaPng.toString('base64'),

@@ -65,6 +65,13 @@ export interface ParsedArgs {
   selectors?: string;
   selectorsWriteBack?: string;
   selectorsPlugin?: string;
+  // text check options
+  text?: string;
+  textMode?: string;
+  textNormalize?: string;
+  textCase?: string;
+  textMatch?: string;
+  textMinRatio?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -247,6 +254,14 @@ function printUsage(): void {
   console.error('  showSuspicions=<bool>   Display suspicion warnings (default: true)');
   console.error('  showReEval=<bool>       Display re-evaluation recommendations (default: true)');
   console.error('');
+  console.error('Text Match (experimental):');
+  console.error('  text=<bool>             Enable text match (default: false)');
+  console.error('  textMode=<self|descendants>        Text collection scope (default: self)');
+  console.error('  textNormalize=<none|nfkc|nfkc_ws>  Normalization mode (default: nfkc_ws)');
+  console.error('  textCase=<sensitive|insensitive>   Case sensitivity (default: insensitive)');
+  console.error('  textMatch=<exact|contains|ratio>   Matching mode (default: ratio)');
+  console.error('  textMinRatio=<0..1>                Minimum similarity ratio (default: 0.98)');
+  console.error('');
   console.error('Example:');
   console.error(
     '  uimatch compare figma=AbCdEf:1-23 story=http://localhost:6006/iframe.html?id=button--default selector="#storybook-root" size=pad contentBasis=figma profile=component/strict outDir=./out'
@@ -417,6 +432,34 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
         `Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`
       );
     }
+  }
+
+  // Text match options
+  if (
+    (args.text ?? '').length > 0 ||
+    args.textMode ||
+    args.textNormalize ||
+    args.textCase ||
+    args.textMatch ||
+    args.textMinRatio
+  ) {
+    const enabled = parseBool(args.text) ?? true;
+    const mode =
+      args.textMode === 'descendants' ? 'descendants' : ('self' as 'self' | 'descendants');
+    const normalize = ((): 'none' | 'nfkc' | 'nfkc_ws' => {
+      if (args.textNormalize === 'none') return 'none';
+      if (args.textNormalize === 'nfkc') return 'nfkc';
+      return 'nfkc_ws';
+    })();
+    const caseSensitive = args.textCase === 'sensitive';
+    const match = ['exact', 'contains', 'ratio'].includes(args.textMatch ?? '')
+      ? (args.textMatch as 'exact' | 'contains' | 'ratio')
+      : 'ratio';
+    const minRatio =
+      Number.isFinite(Number(args.textMinRatio)) && Number(args.textMinRatio) >= 0
+        ? Number(args.textMinRatio)
+        : 0.98;
+    config.textCheck = { enabled, mode, normalize, caseSensitive, match, minRatio };
   }
 
   return config;
