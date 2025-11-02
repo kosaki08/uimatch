@@ -421,7 +421,9 @@ export class PlaywrightAdapter implements BrowserAdapter {
         if (!opts.html) {
           throw new Error('Either url or html must be provided');
         }
-        await page.setContent(opts.html, { waitUntil: 'load', timeout: 15_000 });
+        // HTML mode: no external resources, use shorter timeout with domcontentloaded
+        const htmlTimeout = Number(process.env.UIMATCH_SET_CONTENT_TIMEOUT_MS ?? 2500);
+        await page.setContent(opts.html, { waitUntil: 'domcontentloaded', timeout: htmlTimeout });
       }
 
       // Detect Storybook iframe (/iframe.html takes precedence)
@@ -467,8 +469,10 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
       const locator = resolveLocator(frame, opts.selector);
 
+      // Allow shorter wait timeout in test environments
+      const selTimeout = Number(process.env.UIMATCH_SELECTOR_WAIT_MS ?? 10_000);
       try {
-        await locator.waitFor({ state: 'visible', timeout: 10_000 });
+        await locator.waitFor({ state: 'visible', timeout: selTimeout });
       } catch {
         // Provide actionable error message with suggestions
         const testIdElements = await frame.locator('[data-testid]').count();

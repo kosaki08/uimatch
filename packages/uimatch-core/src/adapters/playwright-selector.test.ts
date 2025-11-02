@@ -2,14 +2,26 @@
  * Tests for enhanced selector system with prefix support
  */
 
-import { afterAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { browserPool } from './browser-pool';
 import { PlaywrightAdapter } from './playwright';
+
+// E2E tests need more time than the default 5s. Use 15s as default.
+const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
+
+// Pre-warm browser once before all tests to avoid startup cost in each test
+beforeAll(async () => {
+  process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
+  await browserPool.getBrowser();
+});
 
 // Clean up browser pool after all tests
 afterAll(async () => {
   await browserPool.closeAll();
 });
+
+// Helper to apply consistent timeout to all tests
+const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: TEST_TIMEOUT });
 
 describe('PlaywrightAdapter - Enhanced Selectors', () => {
   const testHtml = `
@@ -31,7 +43,7 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     </html>
   `;
 
-  test('CSS selector (no prefix) - backward compatible', async () => {
+  itT('CSS selector (no prefix) - backward compatible', async () => {
     const adapter = new PlaywrightAdapter({ reuseBrowser: true });
     const result = await adapter.captureTarget({
       html: testHtml,
@@ -44,7 +56,7 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('CSS selector with explicit prefix', async () => {
+  itT('CSS selector with explicit prefix', async () => {
     const adapter = new PlaywrightAdapter({ reuseBrowser: true });
     const result = await adapter.captureTarget({
       html: testHtml,
@@ -56,7 +68,7 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('testid: selector', async () => {
+  itT('testid: selector', async () => {
     const adapter = new PlaywrightAdapter({ reuseBrowser: true });
     const result = await adapter.captureTarget({
       html: testHtml,
@@ -70,7 +82,7 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     expect(result.meta?.['__self__']?.testid).toBe('submit-btn');
   });
 
-  test('text: selector with double quotes', async () => {
+  itT('text: selector with double quotes', async () => {
     const adapter = new PlaywrightAdapter({ reuseBrowser: true });
     const result = await adapter.captureTarget({
       html: testHtml,
@@ -82,7 +94,7 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('text: selector with single quotes', async () => {
+  itT('text: selector with single quotes', async () => {
     const adapter = new PlaywrightAdapter({ reuseBrowser: true });
     const result = await adapter.captureTarget({
       html: testHtml,
@@ -94,7 +106,7 @@ describe('PlaywrightAdapter - Enhanced Selectors', () => {
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('text: selector with escape sequences', async () => {
+  itT('text: selector with escape sequences', async () => {
     const htmlWithEscapes = `
       <!DOCTYPE html>
       <html>
@@ -125,7 +137,7 @@ Line 2</p>
     expect(result2.implPng).toBeInstanceOf(Buffer);
   });
 
-  test('role: selector with name', async () => {
+  itT('role: selector with name', async () => {
     const adapter = new PlaywrightAdapter({ reuseBrowser: true });
     const result = await adapter.captureTarget({
       html: testHtml,
@@ -137,7 +149,7 @@ Line 2</p>
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('role: selector with regex name', async () => {
+  itT('role: selector with regex name', async () => {
     const htmlWithLink = `
       <!DOCTYPE html>
       <html>
@@ -158,7 +170,7 @@ Line 2</p>
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('Preserves colon in URL-like selectors', async () => {
+  itT('Preserves colon in URL-like selectors', async () => {
     const htmlWithLink = `
       <!DOCTYPE html>
       <html>
@@ -179,7 +191,7 @@ Line 2</p>
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('CSS pseudo-class: :root selector', async () => {
+  itT('CSS pseudo-class: :root selector', async () => {
     const htmlWithRoot = `
       <!DOCTYPE html>
       <html>
@@ -202,7 +214,7 @@ Line 2</p>
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('CSS pseudo-class: :has() selector', async () => {
+  itT('CSS pseudo-class: :has() selector', async () => {
     const htmlWithHas = `
       <!DOCTYPE html>
       <html>
@@ -227,7 +239,7 @@ Line 2</p>
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('CSS nth-child selector', async () => {
+  itT('CSS nth-child selector', async () => {
     const htmlWithList = `
       <!DOCTYPE html>
       <html>
@@ -253,7 +265,7 @@ Line 2</p>
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('text: selector with [exact] flag on quoted string', async () => {
+  itT('text: selector with [exact] flag on quoted string', async () => {
     const htmlWithText = `
       <!DOCTYPE html>
       <html>
@@ -276,7 +288,7 @@ Line 2</p>
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('role: selector with selected=true', async () => {
+  itT('role: selector with selected=true', async () => {
     const htmlWithTab = `
       <!DOCTYPE html>
       <html>
@@ -300,7 +312,7 @@ Line 2</p>
     expect(result.styles['__self__']).toBeDefined();
   });
 
-  test('role: selector with checked=true', async () => {
+  itT('role: selector with checked=true', async () => {
     const htmlWithCheckbox = `
       <!DOCTYPE html>
       <html>
@@ -324,7 +336,7 @@ Line 2</p>
 });
 
 describe('PlaywrightAdapter - Selector Strict Mode', () => {
-  test('UIMATCH_SELECTOR_STRICT=true throws on unknown prefix', async () => {
+  itT('UIMATCH_SELECTOR_STRICT=true throws on unknown prefix', async () => {
     const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
     process.env.UIMATCH_SELECTOR_STRICT = 'true';
 
@@ -354,7 +366,7 @@ describe('PlaywrightAdapter - Selector Strict Mode', () => {
     }
   });
 
-  test('UIMATCH_SELECTOR_STRICT=true rejects CSS pseudo-classes with word prefix', async () => {
+  itT('UIMATCH_SELECTOR_STRICT=true rejects CSS pseudo-classes with word prefix', async () => {
     const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
     process.env.UIMATCH_SELECTOR_STRICT = 'true';
 
@@ -397,7 +409,7 @@ describe('PlaywrightAdapter - Selector Strict Mode', () => {
     }
   });
 
-  test('UIMATCH_SELECTOR_STRICT=true allows URL attribute selectors', async () => {
+  itT('UIMATCH_SELECTOR_STRICT=true allows URL attribute selectors', async () => {
     const originalStrict = process.env.UIMATCH_SELECTOR_STRICT;
     process.env.UIMATCH_SELECTOR_STRICT = 'true';
 
