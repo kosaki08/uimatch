@@ -55,7 +55,7 @@ export function normLineHeight(value?: string, fontSize = 16): number | undefine
 
   const trimmed = value.trim();
 
-  // Handle "normal" -> 1.2 * fontSize
+  // Handle "normal" → 1.2 * fontSize
   if (trimmed === 'normal') return 1.2 * fontSize;
 
   // Handle unitless (e.g., "1.5")
@@ -251,4 +251,77 @@ export function normalizeText(text: string): string {
     .normalize('NFKC') // Unicode normalization (e.g., half-width → full-width)
     .trim() // Remove leading/trailing whitespace
     .replace(/\s+/g, ' '); // Compress consecutive whitespace
+}
+
+/**
+ * Options for text normalization
+ */
+export interface TextNormalizeOptions {
+  /** Apply NFKC unicode normalization (default: true) */
+  nfkc?: boolean;
+  /** Trim leading/trailing whitespace (default: true) */
+  trim?: boolean;
+  /** Collapse consecutive whitespace to single space (default: true) */
+  collapseWhitespace?: boolean;
+  /** Case-sensitive comparison (default: true, false = case-insensitive) */
+  caseSensitive?: boolean;
+}
+
+/**
+ * Extended text normalization with options
+ * @param text Text to normalize
+ * @param opts Normalization options
+ * @returns Normalized text
+ */
+export function normalizeTextEx(text: string, opts: TextNormalizeOptions = {}): string {
+  let s = String(text ?? '');
+  if (opts.nfkc !== false) s = s.normalize('NFKC');
+  if (opts.trim !== false) s = s.trim();
+  if (opts.collapseWhitespace !== false) s = s.replace(/\s+/g, ' ');
+  if (opts.caseSensitive === false) s = s.toLowerCase();
+  return s;
+}
+
+/**
+ * Lightweight text similarity score (0..1)
+ * Uses hybrid approach: 80% token overlap + 20% character position match
+ * @param a First text
+ * @param b Second text
+ * @returns Similarity score from 0 (completely different) to 1 (identical)
+ */
+export function textSimilarity(a: string, b: string): number {
+  if (a === b) return 1;
+  const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
+  const A = norm(a);
+  const B = norm(b);
+  if (!A && !B) return 1;
+  if (!A || !B) return 0;
+
+  // Character position match (prefix match count / max length)
+  const maxLen = Math.max(A.length, B.length);
+  const posMatches = (() => {
+    const m = Math.min(A.length, B.length);
+    let c = 0;
+    for (let i = 0; i < m; i++) if (A[i] === B[i]) c++;
+    return c / maxLen;
+  })();
+
+  // Token overlap (multiset minimum / max count)
+  const toTokens = (t: string) =>
+    t
+      .toLowerCase()
+      .split(/[\s,.;:(){}[\]<>"'、。？！・]+/)
+      .filter(Boolean);
+  const ta = toTokens(A);
+  const tb = toTokens(B);
+  const ca = new Map<string, number>();
+  const cb = new Map<string, number>();
+  for (const t of ta) ca.set(t, (ca.get(t) || 0) + 1);
+  for (const t of tb) cb.set(t, (cb.get(t) || 0) + 1);
+  let inter = 0;
+  const denom = Math.max(ta.length, tb.length, 1);
+  for (const [t, na] of ca) inter += Math.min(na, cb.get(t) || 0);
+  const tokenScore = inter / denom;
+
+  return tokenScore * 0.8 + posMatches * 0.2;
 }

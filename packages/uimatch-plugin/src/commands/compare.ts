@@ -708,8 +708,8 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       collapseWhitespace: normMode === 'nfkc_ws',
       caseSensitive: args.textCheck.caseSensitive ?? false,
     };
-    const implNorm = normalizeTextEx(implRaw, normOpts);
-    const figmaNorm = normalizeTextEx(figmaRaw, normOpts);
+    const implNorm: string = normalizeTextEx(implRaw, normOpts);
+    const figmaNorm: string = normalizeTextEx(figmaRaw, normOpts);
 
     let equal = false;
     let ratio = 0;
@@ -726,7 +726,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     }
 
     // 4) Details (simple token diff)
-    const toTokens = (s: string) => s.split(/\s+/).filter(Boolean);
+    const toTokens = (s: string): string[] => s.split(/\s+/).filter(Boolean);
     const miss: string[] = [];
     const extra: string[] = [];
     const fa = new Map<string, number>();

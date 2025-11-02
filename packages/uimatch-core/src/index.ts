@@ -63,5 +63,12 @@ export type {
 } from './types/index';
 export { deltaE2000, rgbToLab } from './utils/color';
 export type { Lab } from './utils/color';
-export { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx } from './utils/normalize';
-export type { BoxShadowParsed, RGB } from './utils/normalize';
+export {
+  normLineHeight,
+  normalizeTextEx,
+  parseBoxShadow,
+  parseCssColorToRgb,
+  textSimilarity,
+  toPx,
+} from './utils/normalize';
+export type { BoxShadowParsed, RGB, TextNormalizeOptions } from './utils/normalize';
