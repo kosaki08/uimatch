@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { getConfig } from '../types/config.js';
 
 /**
  * Configuration for snippet hash generation
@@ -221,11 +222,11 @@ export async function findSnippetMatch(
 
   let bestMatch: { line: number; score: number; snippet: string } | null = null;
 
+  // Get configuration with environment variable overrides
+  const config = getConfig();
+
   // Limit search radius for performance (configurable via environment variable)
-  const searchRadius = Math.min(
-    lines.length,
-    Number(process.env.UIMATCH_SNIPPET_MAX_RADIUS ?? 400)
-  );
+  const searchRadius = Math.min(lines.length, config.snippet.maxRadius);
 
   // Set up timeout deadline if specified
   const deadline = options.timeoutMs ? Date.now() + options.timeoutMs : null;
@@ -297,7 +298,7 @@ export async function findSnippetMatch(
               bestMatch = { line: candidateLine, score, snippet: result.snippet };
             }
             // Early exit if we have a very high confidence match
-            if (bestMatch.score >= 0.92) {
+            if (bestMatch.score >= config.snippet.highConfidence) {
               return bestMatch.line;
             }
           }
@@ -314,7 +315,7 @@ export async function findSnippetMatch(
 
   // Phase 2: Linear refinement around best match
   // If we found a promising candidate, check nearby lines for even better matches
-  if (bestMatch && bestMatch.score < 0.92) {
+  if (bestMatch && bestMatch.score < config.snippet.highConfidence) {
     const refineRadius = 8; // Check ±8 lines around best match
     const refineStart = Math.max(1, bestMatch.line - refineRadius);
     const refineEnd = Math.min(lines.length, bestMatch.line + refineRadius);
@@ -334,7 +335,7 @@ export async function findSnippetMatch(
           const score = calculateTextSimilarity(originalSnippet, result.snippet);
           if (score > bestMatch.score + 1e-6) {
             bestMatch = { line, score, snippet: result.snippet };
-            if (bestMatch.score >= 0.92) {
+            if (bestMatch.score >= config.snippet.highConfidence) {
               return bestMatch.line;
             }
           }
@@ -346,9 +347,9 @@ export async function findSnippetMatch(
   }
 
   // Dynamic threshold based on whether we have snippet context:
-  // - With snippetContext: Use 0.55 threshold (more lenient for fuzzy matching)
+  // - With snippetContext: Use configured threshold (more lenient for fuzzy matching)
   // - Without snippetContext: Require exact match only (no fuzzy fallback)
-  const fuzzyThreshold = originalSnippet !== null ? 0.55 : 1.0;
+  const fuzzyThreshold = originalSnippet !== null ? config.snippet.fuzzyThreshold : 1.0;
 
   return bestMatch && bestMatch.score >= fuzzyThreshold ? bestMatch.line : null;
 }
