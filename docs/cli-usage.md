@@ -47,14 +47,14 @@ bun run uimatch:compare -- \
 
 - `selectors=<path>` - Path to selector anchors JSON
 - `selectorsWriteBack=<bool>` - Write resolved selectors back to JSON (default: `false`)
-- `selectorsPlugin=<pkg>` - Plugin package (default: `@uimatch/selector-anchors`)
+- `selectorsPlugin=<pkg>` - Plugin package (defaults to `@uimatch/selector-anchors` when `selectors` is specified)
 
 **Pluggable Architecture:**
 
 Selector resolution is **optional and pluggable** via SPI (Service Provider Interface):
 
 - Default plugin (`@uimatch/selector-anchors`) uses AST analysis + liveness checking
-- Plugins loaded dynamically on-demand (no overhead if unused)
+- Plugin is only loaded when `selectors` path is provided (no overhead if unused)
 - Graceful fallback with warning if plugin unavailable
 - Custom plugins supported via `selectorsPlugin=<package-name>`
 

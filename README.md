@@ -64,14 +64,16 @@ bun run uimatch:settings -- reset
 
 ```
 ui-match/
-├── .claude-plugin/        # Plugin definition
+├── .claude-plugin/             # Plugin definition
 │   ├── plugin.json
-│   ├── commands/          # /uiMatch commands
-│   └── mcp.json           # Figma MCP integration
+│   ├── commands/               # /uiMatch commands
+│   └── mcp.json                # Figma MCP integration
 ├── packages/
-│   ├── uimatch-core/      # Core comparison library
-│   └── uimatch-plugin/    # Plugin integration
-└── docs/specs/            # Specifications
+│   ├── uimatch-selector-spi/   # SPI type definitions (build first)
+│   ├── uimatch-core/           # Core comparison library
+│   ├── uimatch-plugin/         # Plugin integration
+│   └── uimatch-selector-anchors/ # Optional selector resolution plugin
+└── docs/specs/                 # Specifications
 ```
 
 ## Development
@@ -80,6 +82,13 @@ ui-match/
 # Install dependencies
 bun install
 
+# Build packages (in dependency order)
+# 1. Build SPI package first (type definitions)
+cd packages/uimatch-selector-spi && bun run build
+
+# 2. Build selector-anchors (optional plugin)
+cd packages/uimatch-selector-anchors && bun run build
+
 # Run tests
 bun test
 
@@ -87,6 +96,8 @@ bun test
 bun run lint
 bun run format
 ```
+
+**Important**: When using selector resolution in production, ensure `@uimatch/selector-anchors` is built before testing. The plugin is loaded dynamically at runtime and requires the built `dist/` directory.
 
 ## Documentation
 

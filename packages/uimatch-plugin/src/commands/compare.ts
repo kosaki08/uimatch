@@ -198,6 +198,20 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     // Resolve selector using plugin
     const resolved = await plugin.resolve(resolveContext);
 
+    // Handle write-back if plugin provided updated anchors
+    if (resolved.updatedAnchors && args.selectorsPath) {
+      try {
+        const { saveSelectorsAnchors } = await import('@uimatch/selector-anchors');
+        // Type assertion is safe because plugin implementation guarantees the structure
+        await saveSelectorsAnchors(args.selectorsPath, resolved.updatedAnchors as never);
+        console.log(`[uimatch] Updated anchors file: ${args.selectorsPath}`);
+      } catch (err) {
+        console.warn(
+          `[uimatch] Failed to write back anchors: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    }
+
     return {
       selector: resolved.selector || args.selector,
       subselector: resolved.subselector,

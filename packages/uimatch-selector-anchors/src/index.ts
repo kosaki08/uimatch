@@ -150,37 +150,27 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                     reasons.push(`Subselector: ${anchor.subselector}`);
                   }
 
-                  // Handle writeBack if requested
-                  if (context.writeBack && context.anchorsPath) {
-                    try {
-                      // Update the anchor's lastKnown with the new stable selector
-                      const updatedAnchors = {
-                        ...anchorsData,
-                        anchors: anchorsData.anchors.map((a) =>
-                          a.id === anchor.id
-                            ? {
-                                ...a,
-                                lastKnown: {
-                                  selector: best.selector,
-                                  stabilityScore: best.score.overall * 100,
-                                  lastChecked: new Date().toISOString(),
-                                },
-                              }
-                            : a
-                        ),
-                      };
+                  // If writeBack is requested, prepare updated anchors structure
+                  // but leave the actual file write to the host (caller)
+                  if (context.writeBack) {
+                    const updatedAnchors = {
+                      ...anchorsData,
+                      anchors: anchorsData.anchors.map((a) =>
+                        a.id === anchor.id
+                          ? {
+                              ...a,
+                              lastKnown: {
+                                selector: best.selector,
+                                stabilityScore: best.score.overall * 100,
+                                lastChecked: new Date().toISOString(),
+                              },
+                            }
+                          : a
+                      ),
+                    };
 
-                      // Import saveSelectorsAnchors
-                      const { saveSelectorsAnchors } = await import('./io.js');
-                      await saveSelectorsAnchors(context.anchorsPath, updatedAnchors);
-
-                      reasons.push(`Updated anchors file: ${context.anchorsPath}`);
-                      result.updatedAnchors = updatedAnchors;
-                    } catch (error) {
-                      reasons.push(
-                        `Failed to write back anchors: ${error instanceof Error ? error.message : String(error)}`
-                      );
-                    }
+                    result.updatedAnchors = updatedAnchors;
+                    reasons.push('Prepared updated anchors (host will write to file)');
                   }
 
                   return result;
