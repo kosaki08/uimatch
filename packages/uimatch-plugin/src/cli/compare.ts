@@ -287,13 +287,7 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
   if (sizeMode) config.sizeMode = sizeMode;
 
   const align = parseAlignment(args.align);
-  if (align) {
-    config.align = align;
-  } else if (config.sizeMode === 'pad') {
-    // Smart default: when pad mode is used (often for page vs component comparison),
-    // default to top-left alignment to reduce asymmetric padding noise
-    config.align = 'top-left';
-  }
+  if (align) config.align = align;
 
   const padColor = parseHexColor(args.padColor);
   if (padColor) {
@@ -303,13 +297,7 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
   }
 
   const contentBasis = parseContentBasis(args.contentBasis);
-  if (contentBasis) {
-    config.contentBasis = contentBasis;
-  } else if (config.sizeMode === 'pad') {
-    // Smart default: when pad mode is used, default to intersection basis
-    // to focus on overlapping content area and reduce padding-induced noise
-    config.contentBasis = 'intersection';
-  }
+  if (contentBasis) config.contentBasis = contentBasis;
 
   // Parse ignore list (comma-separated CSS properties)
   if (args.ignore) {
