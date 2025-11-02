@@ -33,7 +33,7 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 /uiMatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
 
 # With selector resolution plugin
-/uiMatch compare figma=... story=... selector=... selectorsPath=./anchors.json
+/uiMatch compare figma=... story=... selector=... selectors=./anchors.json
 
 # Iterative comparison loop
 /uiMatch loop figma=... story=... selector=... maxIters=5
@@ -92,6 +92,32 @@ bun run format
 
 - [v0.1 Specification](docs/specs/v0.1.md) - MVP implementation spec
 - [AGENTS.md](AGENTS.md) - AI assistant guidelines
+
+## Selector Resolution Plugin
+
+UIMatch supports pluggable selector resolution for stable element location:
+
+```bash
+# Optional: Install selector resolution plugin
+bun add -D @uimatch/selector-anchors
+
+# Use with anchors JSON
+/uiMatch compare figma=... story=... selector=... selectors=./anchors.json
+
+# Enable writeback to update anchors
+/uiMatch compare ... selectors=./anchors.json selectorsWriteBack=true
+
+# Use custom plugin
+/uiMatch compare ... selectorsPlugin=my-custom-resolver
+```
+
+**Environment variable (alternative to CLI flag):**
+
+```bash
+export UIMATCH_SELECTORS_PLUGIN=@uimatch/selector-anchors
+```
+
+For details, see [CLI Usage](docs/cli-usage.md#selector-resolution).
 
 ## Requirements
 

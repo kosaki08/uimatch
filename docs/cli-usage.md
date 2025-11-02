@@ -47,13 +47,24 @@ bun run uimatch:compare -- \
 
 - `selectors=<path>` - Path to selector anchors JSON
 - `selectorsWriteBack=<bool>` - Write resolved selectors back to JSON (default: `false`)
-  - **Status**: Phase 3 (Bridge implementation)
-  - Currently propagates the writeback flag to the plugin context
-  - Actual file writing will be implemented when plugins return `updatedAnchors`
-  - For now, this flag signals plugins that anchor updates are allowed
 - `selectorsPlugin=<pkg>` - Plugin package (default: `@uimatch/selector-anchors`)
 
-Enables automatic resolution of stable selectors via AST analysis and liveness checking.
+**Pluggable Architecture:**
+
+Selector resolution is **optional and pluggable** via SPI (Service Provider Interface):
+
+- Default plugin (`@uimatch/selector-anchors`) uses AST analysis + liveness checking
+- Plugins loaded dynamically on-demand (no overhead if unused)
+- Graceful fallback with warning if plugin unavailable
+- Custom plugins supported via `selectorsPlugin=<package-name>`
+
+**Workflow:**
+
+1. Provide `selectors=anchors.json` with code location hints
+2. Plugin resolves anchors to live CSS selectors (AST + snippet hash)
+3. Liveness check prioritizes stable attributes (`data-testid` > `role` > `class`)
+4. Returns best selector with stability score and reasoning
+5. Optional: `selectorsWriteBack=true` updates anchors JSON
 
 #### Output & Capture
 
@@ -156,6 +167,46 @@ When `outDir` is specified, generates:
 - **colorDeltaEAvg** - Average color difference (CIEDE2000)
 - **DFS (Design Fidelity Score)** - Weighted style matching score (0-100)
 - **styleFidelityScore (SFS)** - Normalized style score with category breakdown
+
+### Selector Resolution Report
+
+When `selectorsPlugin` is enabled and a plugin successfully resolves the selector, `report.json` includes a `selectorResolution` section:
+
+```json
+{
+  "selectorResolution": {
+    "chosen": "[data-testid=\"submit-button\"]",
+    "stability": 0.85,
+    "reasons": [
+      "Found via AST anchors with snippet hash match",
+      "Liveness check passed in 120ms",
+      "Prioritized testid attribute (highest stability)"
+    ],
+    "plugin": "@uimatch/selector-anchors"
+  }
+}
+```
+
+**Fields:**
+
+- `chosen` - Resolved CSS selector used for capture
+- `stability` - Stability score (0-1) based on selector type and heuristics
+- `reasons` - Array of explanation strings for debugging and transparency
+- `plugin` - Plugin package that performed resolution
+
+**Stability Scoring:**
+
+- `1.0` - `data-testid`, `role[name]` with exact text match
+- `0.85` - `role` with partial text match, `aria-label`
+- `0.7` - Class selectors with semantic names
+- `0.5` - nth-child, positional selectors
+- `0.3` - Generic CSS selectors without semantic meaning
+
+This information is useful for:
+
+- **LLM context**: Understanding how the element was located
+- **Debugging**: Troubleshooting selector resolution failures
+- **Maintenance**: Identifying fragile selectors that may need improvement
 
 ## Suite Command
 
