@@ -121,6 +121,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
           const matchedLine = await findSnippetMatch(resolvedFile, hashOrResult, line, {
             contextBefore: anchor.snippetContext?.contextBefore ?? 3,
             contextAfter: anchor.snippetContext?.contextAfter ?? 3,
+            timeoutMs: config.timeouts.snippetMatch,
           });
 
           if (matchedLine !== null) {

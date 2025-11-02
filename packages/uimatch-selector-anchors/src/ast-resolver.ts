@@ -90,7 +90,7 @@ export async function resolveFromTypeScript(
  * Convert line/col to absolute position in file
  */
 function getPositionFromLineCol(content: string, line: number, col: number): number {
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
   let position = 0;
 
   for (let i = 0; i < line - 1; i++) {

@@ -79,7 +79,7 @@ export async function generateSnippetHash(
 
   // Read file
   const content = await readFile(absolutePath, 'utf-8');
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
 
   // Validate line number
   if (line < 1 || line > lines.length) {
@@ -198,7 +198,7 @@ export async function findSnippetMatch(
 ): Promise<number | null> {
   const absolutePath = resolve(file);
   const content = await readFile(absolutePath, 'utf-8');
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
 
   // Extract hash and optional original snippet
   const targetHash =
