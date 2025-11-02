@@ -29,6 +29,11 @@ export interface ASTResolverResult {
     attributes: Record<string, string>;
     text?: string;
   };
+
+  /**
+   * Detailed reasons explaining resolution outcome
+   */
+  reasons: string[];
 }
 
 /**
@@ -74,19 +79,31 @@ export async function resolveFromTypeScript(
   const targetNode = findNodeAtPosition(sourceFile, position);
 
   if (!targetNode) {
-    return null;
+    return {
+      selectors: [],
+      hint: {},
+      reasons: ['No AST node found at specified position'],
+    };
   }
 
   // Find JSX element
   const jsxElement = findJsxElement(targetNode);
   if (!jsxElement) {
-    return null;
+    return {
+      selectors: [],
+      hint: {},
+      reasons: ['AST node found but not a JSX element (might be plain TS/JS)'],
+    };
   }
 
-  // Use configurable timeouts or environment variables or hardcoded defaults
-  const FAST = timeouts?.fastPath ?? Number(process.env.UIMATCH_AST_FAST_PATH_TIMEOUT_MS ?? 300);
-  const ATTR = timeouts?.attr ?? Number(process.env.UIMATCH_AST_ATTR_TIMEOUT_MS ?? 600);
-  const FULL = timeouts?.full ?? Number(process.env.UIMATCH_AST_FULL_TIMEOUT_MS ?? 900);
+  // Use passed timeouts (which include config + env overrides from index.ts)
+  // Fallback to config defaults if not provided
+  const { getConfig } = await import('../types/config.js');
+  const config = getConfig();
+
+  const FAST = timeouts?.fastPath ?? config.timeouts.astFastPath;
+  const ATTR = timeouts?.attr ?? config.timeouts.astAttr;
+  const FULL = timeouts?.full ?? config.timeouts.astFull;
 
   // Tiered fallback strategy:
   // 1. Try fast path (FAST ms) - tag, data-testid, id only
@@ -107,6 +124,7 @@ export async function resolveFromTypeScript(
       selectors: fastResult.selectors,
       hint: fastResult.hint,
       element: fastResult.element,
+      reasons,
     };
   }
 
@@ -123,6 +141,7 @@ export async function resolveFromTypeScript(
       selectors: attrResult.selectors,
       hint: attrResult.hint,
       element: attrResult.element,
+      reasons,
     };
   }
 
@@ -160,7 +179,7 @@ export async function resolveFromTypeScript(
 
   if (fullParseResult && fullParseResult.selectors.length > 0) {
     reasons.push(`Full parse succeeded (< ${FULL}ms)`);
-    return fullParseResult;
+    return { ...fullParseResult, reasons };
   }
 
   reasons.push('Full parse timed out or failed, using heuristics');
@@ -176,12 +195,13 @@ export async function resolveFromTypeScript(
       selectors: heuristicResult.selectors,
       hint: heuristicResult.hint,
       element: heuristicResult.element,
+      reasons,
     };
   }
 
-  // Complete failure
-  reasons.push('All parsing strategies failed');
-  return null;
+  // Complete failure - return failure reasons even though we return null
+  reasons.push('All parsing strategies failed: no JSX node or selectors found');
+  return { selectors: [], hint: {}, reasons };
 }
 
 /**

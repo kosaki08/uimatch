@@ -35,6 +35,11 @@ export interface HTMLResolverResult {
     attributes: Record<string, string>;
     text?: string;
   };
+
+  /**
+   * Detailed reasons explaining resolution outcome
+   */
+  reasons: string[];
 }
 
 /**
@@ -63,7 +68,11 @@ export async function resolveFromHTML(
   const targetElement = findElementAtPosition(document, line, col + 1);
 
   if (!targetElement) {
-    return null;
+    return {
+      selectors: [],
+      hint: {},
+      reasons: [`No HTML element found at line ${line}, col ${col}`],
+    };
   }
 
   // Extract attributes and text content
@@ -74,6 +83,15 @@ export async function resolveFromHTML(
   const hint = buildHint(attributes, elementText);
   const selectors = generateSelectors(attributes, tag, elementText);
 
+  const reasons: string[] = [
+    `HTML element <${tag}> found`,
+    `Generated ${selectors.length} selector(s)`,
+  ];
+
+  if (Object.keys(attributes).length > 0) {
+    reasons.push(`Extracted ${Object.keys(attributes).length} attribute(s)`);
+  }
+
   return {
     selectors,
     hint,
@@ -82,6 +100,7 @@ export async function resolveFromHTML(
       attributes,
       text: elementText,
     },
+    reasons,
   };
 }
 
@@ -188,4 +207,3 @@ function extractTextContent(element: Element): string | undefined {
 
   return texts.length > 0 ? texts.join(' ') : undefined;
 }
-
