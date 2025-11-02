@@ -3,6 +3,9 @@
   "workspaces": {
     "": {
       "name": "ui-match",
+      "dependencies": {
+        "parse5": "^8.0.0",
+      },
       "devDependencies": {
         "@eslint/js": "^9.38.0",
         "@playwright/test": "^1.56.1",
@@ -42,9 +45,6 @@
         "uimatch-core": "workspace:*",
         "uimatch-scoring": "workspace:*",
         "zod": "^4.1.12",
-      },
-      "devDependencies": {
-        "@types/parse5": "^7.0.0",
       },
     },
     "packages/uimatch-scoring": {
@@ -101,8 +101,6 @@
     "@types/json-schema": ["@types/json-schema@7.0.15", "", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
 
     "@types/node": ["@types/node@22.18.12", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-BICHQ67iqxQGFSzfCFTT7MRQ5XcBjG5aeKh5Ok38UBbPe5fxTyE+aHFxwVrGyr8GNlqFMLKD1D3P2K/1ks8tog=="],
-
-    "@types/parse5": ["@types/parse5@7.0.0", "", { "dependencies": { "parse5": "*" } }, "sha512-f2SeAxumolBmhuR62vNGTsSAvdz/Oj0k682xNrcKJ4dmRnTPODB74j6CPoNPzBPTHsu7Y7W7u93Mgp8Ovo8vWw=="],
 
     "@types/pixelmatch": ["@types/pixelmatch@5.2.6", "", { "dependencies": { "@types/node": "*" } }, "sha512-wC83uexE5KGuUODn6zkm9gMzTwdY5L0chiK+VrKcDfEjzxh1uadlWTvOmAbCpnM9zx/Ww3f8uKlYQVnO/TrqVg=="],
 
