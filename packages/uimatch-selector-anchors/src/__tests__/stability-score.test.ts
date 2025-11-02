@@ -5,8 +5,8 @@ import {
   compareStabilityScores,
   findMostStableSelector,
   type StabilityScore,
-} from '../hashing/stability-score.js';
-import type { SelectorHint } from '../types/schema.js';
+} from '../hashing/stability-score';
+import type { SelectorHint } from '../types/schema';
 
 describe('calculateStabilityScore', () => {
   test('calculates score for testid selector', () => {

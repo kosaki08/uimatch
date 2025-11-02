@@ -24,5 +24,12 @@
     "uimatch": "./src/cli/index.ts"
   },
   "type": "module",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "bun run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  }
 }

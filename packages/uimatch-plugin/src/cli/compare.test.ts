@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import type { ParsedArgs } from './compare.js';
-import { buildCompareConfig } from './compare.js';
+import type { ParsedArgs } from './compare';
+import { buildCompareConfig } from './compare';
 
 describe('buildCompareConfig', () => {
   describe('emitArtifacts auto-enable', () => {

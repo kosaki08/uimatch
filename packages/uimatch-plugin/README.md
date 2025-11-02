@@ -68,7 +68,7 @@ Compare a Figma design with implementation:
 - `figma`: Figma file key and node ID (format: `fileKey:nodeId`)
 - `story`: Implementation URL (Storybook, localhost, or deployed)
 - `selector`: CSS selector for target element
-- `profile`: (Optional) Quality profile (`strict` | `development` | `relaxed`, default from settings)
+- `profile`: (Optional) Quality profile (`component/strict` | `component/dev` | `page-vs-component` | `lenient` | `custom`, default from settings)
 - `thresholds.pixelDiffRatio`: (Optional) Pixel difference ratio (0-1, overrides profile)
 - `thresholds.deltaE`: (Optional) Color ΔE threshold (0-50, overrides profile)
 - `outDir`: (Optional) Output directory for artifacts (screenshots, diffs)
@@ -106,7 +106,7 @@ Iterative comparison with automatic retries:
 
 - Same as `compare` command
 - `maxIters`: Maximum number of iterations (default: 5)
-- `profile`: Quality gate profile (`strict` | `development` | `relaxed`, default: `strict`)
+- `profile`: Quality gate profile (`component/strict` | `component/dev` | `page-vs-component` | `lenient` | `custom`, default: `component/strict`)
 
 **Behavior**:
 
@@ -206,24 +206,13 @@ await setSettings({ comparison: { acceptancePixelDiffRatio: 0.05 } });
 
 ### Quality Gate Profiles
 
-Three built-in quality gate profiles:
-
-| Profile       | Pixel Diff Threshold | Color ΔE Threshold | Use Case                     |
-| ------------- | -------------------- | ------------------ | ---------------------------- |
-| `strict`      | 0.01 (1%)            | 2.0                | Final validation, production |
-| `development` | 0.05 (5%)            | 5.0                | Active development iteration |
-| `relaxed`     | 0.08 (8%)            | 8.0                | Exploratory prototyping      |
-
-**Selecting a Profile**:
-
-```bash
-# Via command parameter
-/uiMatch loop figma=... story=... selector=... profile=development
-
-# Via settings
-/uiMatch settings set comparison.acceptancePixelDiffRatio=0.05
-/uiMatch settings set comparison.acceptanceColorDeltaE=5.0
-```
+| Profile             | pixelDiffRatio | ΔE  | areaGapCritical | contentBasis | Use Case                |
+| ------------------- | -------------- | --- | --------------- | ------------ | ----------------------- |
+| `component/strict`  | 0.01           | 3.0 | 0.15            | union        | DS component validation |
+| `component/dev`     | 0.08           | 5.0 | 0.20            | union        | Dev iteration           |
+| `page-vs-component` | 0.12           | 5.0 | 0.25            | intersection | Padded page comparison  |
+| `lenient`           | 0.15           | 8.0 | 0.30            | union        | PoC/prototype           |
+| `custom`            | (config)       |     |                 |              | From settings file      |
 
 ### Environment Variables
 
@@ -263,22 +252,7 @@ Create `.uimatchrc.json` in your project root:
 
 ## Design Fidelity Score (DFS)
 
-The DFS is a 0-100 score combining pixel and style fidelity:
-
-```
-DFS = (pixelFidelity × 0.6) + (styleFidelity × 0.4)
-
-where:
-  pixelFidelity = 100 × (1 - pixelDiffRatioContent)
-  styleFidelity = 100 × (1 - normalizedColorDelta)
-```
-
-**Interpretation**:
-
-- **95-100**: Pixel-perfect match
-- **85-94**: Minor differences, acceptable for most use cases
-- **75-84**: Noticeable differences, review recommended
-- **Below 75**: Significant differences, requires attention
+0-100 score calculated via deduction model: `100 - (pixel penalty + color penalty + size penalty + style penalty)`. Penalties based on pixel diff ratio, color ΔE, dimension mismatch, and high-severity style diffs.
 
 ## Output Format
 

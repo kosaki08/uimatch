@@ -2,8 +2,8 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:tes
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { browserPool } from '../../../../uimatch-core/src/adapters/browser-pool.js';
-import { runCompare } from '../compare.js';
+import { browserPool } from '../../../../uimatch-core/src/adapters/browser-pool';
+import { runCompare } from '../compare';
 
 // Type definitions for test report
 interface TestReport {
