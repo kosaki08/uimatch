@@ -34,7 +34,7 @@ export function Hero() {
       // Hash line 5 (the div with data-testid)
       const result = await generateSnippetHash(filePath, 5);
 
-      expect(result.hash).toMatch(/^sha1:[0-9a-f]{8}$/);
+      expect(result.hash).toMatch(/^sha1:[0-9a-f]{10}$/);
       expect(result.startLine).toBe(2); // 5 - 3
       expect(result.endLine).toBe(8); // 5 + 3
       expect(result.snippet).toContain('data-testid="hero-root"');

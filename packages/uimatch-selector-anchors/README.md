@@ -49,11 +49,25 @@ console.log(resolution.reasons); // Selection reasoning
 4. Verify liveness via Probe interface
 5. Score stability and return best match
 
-## Status
+## Architecture
 
-**Phase 2**: Package structure complete, basic integration ready.
-**Phase 3**: CLI integration (upcoming).
-**Phase 4**: Full resolution logic (upcoming).
+**Anchor Matching System**
+
+- Multi-criteria scoring (exact match, testid, role, component metadata, snippet hash, stability)
+- Best match selection from multiple anchors
+
+**AST Resolution**
+
+- TypeScript/JSX parsing with fallback strategies
+- Selector extraction with stability scoring
+- Snippet hash generation for code movement detection
+
+**Integration**
+
+- SPI-compliant plugin architecture
+- CLI integration via `--selectors-plugin` flag
+- Probe interface for liveness checking
+- Write-back support for anchor updates
 
 ## License
 

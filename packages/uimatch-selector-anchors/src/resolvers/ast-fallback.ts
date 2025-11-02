@@ -14,6 +14,10 @@
 
 import ts from 'typescript';
 import type { SelectorHint } from '../types/schema.js';
+import {
+  buildHintFromAttributes,
+  generateSelectorsFromAttributes,
+} from './selector-utils.js';
 
 /**
  * Result of a parsing attempt at any level
@@ -168,56 +172,11 @@ export function attributeOnlyParse(element: ts.JsxElement | ts.JsxSelfClosingEle
       }
     }
 
-    // Generate selectors from attributes
-    if (attributes['data-testid']) {
-      selectors.push(`[data-testid="${attributes['data-testid']}"]`);
-    }
+    // Generate selectors and hint using common utilities
+    const generatedSelectors = generateSelectorsFromAttributes(attributes, tag);
+    selectors.push(...generatedSelectors);
 
-    if (attributes['id']) {
-      selectors.push(`#${attributes['id']}`);
-    }
-
-    if (attributes['role']) {
-      if (attributes['aria-label']) {
-        selectors.push(`role:${attributes['role']}[name="${attributes['aria-label']}"]`);
-      } else {
-        selectors.push(`role:${attributes['role']}`);
-      }
-    }
-
-    // First class only for stability
-    if (attributes['className'] || attributes['class']) {
-      const className = attributes['className'] || attributes['class'];
-      const firstClass = className?.split(/\s+/)[0];
-      if (firstClass) {
-        selectors.push(`.${firstClass}`);
-      }
-    }
-
-    // Build hint
-    const prefer: Array<'testid' | 'role' | 'text' | 'css'> = [];
-
-    if (attributes['data-testid']) {
-      prefer.push('testid');
-    }
-    if (attributes['role']) {
-      prefer.push('role');
-    }
-    if (prefer.length === 0) {
-      prefer.push('css');
-    }
-
-    const hint: SelectorHint = { prefer };
-
-    if (attributes['data-testid']) {
-      hint.testid = attributes['data-testid'];
-    }
-    if (attributes['role']) {
-      hint.role = attributes['role'];
-    }
-    if (attributes['aria-label']) {
-      hint.ariaLabel = attributes['aria-label'];
-    }
+    const hint = buildHintFromAttributes(attributes);
 
     reasons.push(`Extracted ${Object.keys(attributes).length} attributes`);
     reasons.push(`Generated ${selectors.length} selectors`);
