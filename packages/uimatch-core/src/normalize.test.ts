@@ -3,7 +3,13 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { normLineHeight, parseBoxShadow, parseCssColorToRgb, toPx } from './utils/normalize';
+import {
+  normLineHeight,
+  normalizeText,
+  parseBoxShadow,
+  parseCssColorToRgb,
+  toPx,
+} from './utils/normalize';
 
 describe('toPx', () => {
   test('converts px values', () => {
@@ -156,5 +162,35 @@ describe('parseBoxShadow', () => {
       blur: 8,
       rgb: { r: 255, g: 0, b: 0 },
     });
+  });
+});
+
+describe('normalizeText', () => {
+  test('applies NFKC normalization', () => {
+    // Half-width katakana → Full-width
+    expect(normalizeText('ｶﾀｶﾅ')).toBe('カタカナ');
+    // Full-width digits → Half-width
+    expect(normalizeText('１２３')).toBe('123');
+  });
+
+  test('trims leading and trailing whitespace', () => {
+    expect(normalizeText('  hello  ')).toBe('hello');
+    expect(normalizeText('\t\nhello\n\t')).toBe('hello');
+  });
+
+  test('compresses consecutive whitespace', () => {
+    expect(normalizeText('hello    world')).toBe('hello world');
+    expect(normalizeText('hello\t\n  \nworld')).toBe('hello world');
+  });
+
+  test('handles combined normalization', () => {
+    expect(normalizeText('  ｶﾀｶﾅ   １２３  ')).toBe('カタカナ 123');
+    expect(normalizeText('\t\nhello\n\n  world\t')).toBe('hello world');
+  });
+
+  test('handles empty and whitespace-only strings', () => {
+    expect(normalizeText('')).toBe('');
+    expect(normalizeText('   ')).toBe('');
+    expect(normalizeText('\t\n\r')).toBe('');
   });
 });

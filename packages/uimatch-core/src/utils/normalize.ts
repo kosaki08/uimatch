@@ -237,3 +237,18 @@ export function parseBoxShadow(shadow?: string): BoxShadowParsed | undefined {
   const rgb = parseCssColorToRgb(match[5]);
   return { blur, rgb };
 }
+
+/**
+ * Normalize text for i18n resilience
+ * - NFKC normalization for unicode compatibility
+ * - Trim leading/trailing whitespace
+ * - Compress consecutive whitespace to single space
+ * @param text Text to normalize
+ * @returns Normalized text
+ */
+export function normalizeText(text: string): string {
+  return text
+    .normalize('NFKC') // Unicode normalization (e.g., half-width → full-width)
+    .trim() // Remove leading/trailing whitespace
+    .replace(/\s+/g, ' '); // Compress consecutive whitespace
+}

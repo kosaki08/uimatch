@@ -307,23 +307,61 @@ const plugin: SelectorResolverPlugin = {
   resolve,
 
   async healthCheck() {
-    // Basic health check - verify TypeScript and parse5 are available
-    try {
-      // Try to import dependencies
-      await import('typescript');
-      await import('parse5');
+    // Enhanced health check - verify dependencies and perform actual parsing
+    const issues: string[] = [];
 
+    try {
+      // Try to import and use TypeScript parser
+      const ts = await import('typescript');
+
+      // Perform actual TypeScript parsing to verify it works
+      const testCode = 'const x: number = 42;';
+      const sourceFile = ts.createSourceFile(
+        'test.ts',
+        testCode,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TS
+      );
+
+      if (!sourceFile || sourceFile.statements.length === 0) {
+        issues.push('TypeScript parser is available but failed to parse test code');
+      }
+    } catch (error) {
+      issues.push(
+        `TypeScript dependency issue: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    try {
+      // Try to import and use parse5 parser
+      const parse5 = await import('parse5');
+
+      // Perform actual HTML parsing to verify it works
+      const testHtml = '<div class="test">Hello</div>';
+      const document = parse5.parse(testHtml);
+
+      if (!document || !document.childNodes || document.childNodes.length === 0) {
+        issues.push('parse5 parser is available but failed to parse test HTML');
+      }
+    } catch (error) {
+      issues.push(
+        `parse5 dependency issue: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    if (issues.length === 0) {
       return {
         healthy: true,
-        message: 'Plugin is healthy and ready to use',
-      };
-    } catch (error) {
-      return {
-        healthy: false,
-        message: 'Plugin dependencies are not available',
-        issues: [error instanceof Error ? error.message : String(error)],
+        message: 'Plugin is healthy and ready to use (dependencies verified with actual parsing)',
       };
     }
+
+    return {
+      healthy: false,
+      message: 'Plugin has dependency or parsing issues',
+      issues,
+    };
   },
 };
 

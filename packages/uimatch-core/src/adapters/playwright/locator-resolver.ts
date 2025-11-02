@@ -3,6 +3,7 @@
  */
 
 import type { Frame, Locator } from 'playwright';
+import { normalizeText } from '../../utils/normalize';
 
 /**
  * Applies `.first()` to the locator if UIMATCH_SELECTOR_FIRST=true.
@@ -256,6 +257,9 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
           .replace(/\\n/g, '\n')
           .replace(/\\t/g, '\t');
 
+        // Apply i18n-resilient normalization (NFKC, trim, whitespace compression)
+        raw = normalizeText(raw);
+
         // XPath string literal helper (handles quotes in text)
         const xpathLiteral = (text: string): string => {
           if (!text.includes("'")) return `'${text}'`;
@@ -280,6 +284,10 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
           .replace(/\\'/g, "'")
           .replace(/\\n/g, '\n')
           .replace(/\\t/g, '\t');
+
+        // Apply i18n-resilient normalization (NFKC, trim, whitespace compression)
+        raw = normalizeText(raw);
+
         if (DEBUG) {
           console.debug('[uimatch:selector] text (quoted):', { raw, exact: true });
         }
@@ -306,11 +314,15 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
         }
       }
 
-      // Default: treat as plain text
+      // Default: treat as plain text (with normalization)
+      const normalizedText = normalizeText(s);
       if (DEBUG) {
-        console.debug('[uimatch:selector] text (plain):', { text: s, exact: exactFlag || false });
+        console.debug('[uimatch:selector] text (plain):', {
+          text: normalizedText,
+          exact: exactFlag || false,
+        });
       }
-      return applyFirstIfNeeded(frame.getByText(s, { exact: exactFlag || false }));
+      return applyFirstIfNeeded(frame.getByText(normalizedText, { exact: exactFlag || false }));
     }
 
     case 'xpath': {
