@@ -203,8 +203,21 @@ export async function findSnippetMatch(
 
   let bestMatch: { line: number; score: number; snippet: string } | null = null;
 
-  // Search in expanding radius from original line
-  const searchRadius = Math.max(50, lines.length);
+  // Limit search radius for performance (configurable via environment variable)
+  const searchRadius = Math.min(
+    lines.length,
+    Number(process.env.UIMATCH_SNIPPET_MAX_RADIUS ?? 400)
+  );
+
+  // Create lightweight hash generator from already-loaded lines array
+  const hashFromLines = (line: number) => {
+    const { contextBefore = 3, contextAfter = 3 } = options;
+    const startLine = Math.max(1, line - contextBefore);
+    const endLine = Math.min(lines.length, line + contextAfter);
+    const snippet = lines.slice(startLine - 1, endLine).join('\n');
+    const hash = createHash(targetAlgorithm).update(snippet, 'utf-8').digest('hex');
+    return { hash: `${targetAlgorithm}:${hash.substring(0, 8)}`, snippet };
+  };
 
   for (let offset = 0; offset <= searchRadius; offset++) {
     const candidates =
@@ -214,10 +227,7 @@ export async function findSnippetMatch(
       if (candidateLine < 1 || candidateLine > lines.length) continue;
 
       try {
-        const result = await generateSnippetHash(file, candidateLine, {
-          ...options,
-          algorithm: targetAlgorithm as 'sha1' | 'sha256' | 'md5',
-        });
+        const result = hashFromLines(candidateLine);
 
         // Check for exact hash match first
         if (result.hash === targetHash) {
@@ -237,6 +247,10 @@ export async function findSnippetMatch(
               (Math.abs(score - bestMatch.score) <= 1e-6 && candidateLine > bestMatch.line)
             ) {
               bestMatch = { line: candidateLine, score, snippet: result.snippet };
+            }
+            // Early exit if we have a very high confidence match
+            if (bestMatch.score >= 0.92) {
+              return bestMatch.line;
             }
           }
         }

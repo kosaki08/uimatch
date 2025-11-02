@@ -35,6 +35,8 @@ export async function checkLivenessPriority(
 /**
  * Check liveness for all selectors and return results
  *
+ * Performs parallel checks to minimize total wait time
+ *
  * @param probe - Probe instance for liveness checking
  * @param selectors - Selectors to check
  * @param options - Check options
@@ -45,12 +47,5 @@ export async function checkLivenessAll(
   selectors: string[],
   options: ProbeOptions = {}
 ): Promise<ProbeResult[]> {
-  const results: ProbeResult[] = [];
-
-  for (const selector of selectors) {
-    const result = await probe.check(selector, options);
-    results.push(result);
-  }
-
-  return results;
+  return Promise.all(selectors.map((selector) => probe.check(selector, options)));
 }

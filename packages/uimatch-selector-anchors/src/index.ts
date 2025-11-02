@@ -15,6 +15,17 @@ import { findSnippetMatch } from './snippet-hash.js';
 import { calculateStabilityScore, findMostStableSelector } from './stability-score.js';
 
 /**
+ * Execute a promise with timeout protection
+ * Returns null if the timeout is reached
+ */
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  return await Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+  ]);
+}
+
+/**
  * Main resolve function implementing SPI contract
  *
  * This function integrates all the components:
@@ -81,24 +92,34 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
           if (matchedLine !== null) {
             reasons.push(`Snippet matched at line ${matchedLine}`);
 
-            // Try AST resolution based on file extension
+            // Try AST resolution based on file extension with timeout protection
             let selectors: string[] = [];
 
             if (file.match(/\.(tsx?|jsx?)$/)) {
-              const astResult = await resolveFromTypeScript(file, matchedLine, col);
+              const astResult = await withTimeout(
+                resolveFromTypeScript(file, matchedLine, col),
+                config.timeouts.astParse
+              );
               if (astResult) {
                 selectors = astResult.selectors;
                 reasons.push(
                   `AST resolution found ${selectors.length} selector candidates from TypeScript/JSX`
                 );
+              } else {
+                reasons.push('AST resolution timed out or failed');
               }
             } else if (file.match(/\.html?$/)) {
-              const htmlResult = await resolveFromHTML(file, matchedLine, col);
+              const htmlResult = await withTimeout(
+                resolveFromHTML(file, matchedLine, col),
+                config.timeouts.htmlParse
+              );
               if (htmlResult) {
                 selectors = htmlResult.selectors;
                 reasons.push(
                   `AST resolution found ${selectors.length} selector candidates from HTML`
                 );
+              } else {
+                reasons.push('HTML resolution timed out or failed');
               }
             }
 
