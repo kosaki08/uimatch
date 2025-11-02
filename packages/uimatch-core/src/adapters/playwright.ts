@@ -260,34 +260,43 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
           return match?.[1];
         };
 
-        const css: string[] = [`[role="${roleName}"]`];
         const selected = getBool('selected');
-        if (selected) css.push(`[aria-selected="${selected}"]`);
         const pressed = getBool('pressed');
-        if (pressed) css.push(`[aria-pressed="${pressed}"]`);
         const expanded = getBool('expanded');
-        if (expanded) css.push(`[aria-expanded="${expanded}"]`);
         const disabled = getBool('disabled');
-        if (disabled) css.push(`[aria-disabled="${disabled}"]`);
-
         const checked = getBool('checked');
+
+        // Build base selector with boolean attributes (excluding checked which needs union)
+        let base = `[role="${roleName}"]`;
+        if (selected) base += `[aria-selected="${selected}"]`;
+        if (pressed) base += `[aria-pressed="${pressed}"]`;
+        if (expanded) base += `[aria-expanded="${expanded}"]`;
+        if (disabled) base += `[aria-disabled="${disabled}"]`;
+
+        let locator: Locator;
         if (checked) {
           // Support both aria-checked and native :checked pseudo-class
+          // Use comma-separated union instead of :is() for better Playwright CSS compatibility
           if (roleName === 'checkbox' || roleName === 'radio') {
-            css.push(
+            const union =
               checked === 'true'
-                ? ':is([aria-checked="true"], :checked)'
-                : ':is([aria-checked="false"], :not(:checked))'
-            );
+                ? `${base}[aria-checked="true"], ${base}:checked`
+                : `${base}[aria-checked="false"], ${base}:not(:checked)`;
+            locator = frame.locator(union);
           } else {
-            css.push(`[aria-checked="${checked}"]`);
+            locator = frame.locator(`${base}[aria-checked="${checked}"]`);
           }
+        } else {
+          locator = frame.locator(base);
         }
 
         if (DEBUG) {
-          console.debug('[uimatch:selector] role (CSS fallback):', { roleName, css });
+          console.debug('[uimatch:selector] role (CSS fallback):', {
+            roleName,
+            selector: checked ? 'union' : base,
+          });
         }
-        return applyFirstIfNeeded(frame.locator(css.join('')));
+        return applyFirstIfNeeded(locator);
       }
 
       // No boolean options: use standard getByRole
