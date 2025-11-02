@@ -2,6 +2,7 @@
  * UI comparison command
  */
 
+import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-anchors';
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
 import { browserPool, captureTarget, compareImages } from 'uimatch-core';
 import { computeDFS } from 'uimatch-scoring';
@@ -9,7 +10,6 @@ import { FigmaRestClient } from '../adapters/figma-rest';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
 import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
 import { buildExpectedSpecFromFigma } from '../expected/from-figma';
-import type { Probe, Resolution, SelectorResolverPlugin } from '../selectors/spi';
 import type { CompareArgs, CompareResult } from '../types/index';
 import { getSettings } from './settings';
 

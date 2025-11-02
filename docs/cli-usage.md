@@ -47,6 +47,10 @@ bun run uimatch:compare -- \
 
 - `selectors=<path>` - Path to selector anchors JSON
 - `selectorsWriteBack=<bool>` - Write resolved selectors back to JSON (default: `false`)
+  - **Status**: Phase 3 (Bridge implementation)
+  - Currently propagates the writeback flag to the plugin context
+  - Actual file writing will be implemented when plugins return `updatedAnchors`
+  - For now, this flag signals plugins that anchor updates are allowed
 - `selectorsPlugin=<pkg>` - Plugin package (default: `@uimatch/selector-anchors`)
 
 Enables automatic resolution of stable selectors via AST analysis and liveness checking.
@@ -79,6 +83,10 @@ UIMATCH_SELECTORS_PLUGIN=@uimatch/selector-anchors
 # Basic authentication for target URLs
 BASIC_AUTH_USER=username
 BASIC_AUTH_PASS=password
+
+# Performance tuning (for development and E2E stability)
+UIMATCH_BBOX_TIMEOUT_MS=30000        # Timeout for element bounding box detection (default: 30000ms)
+UIMATCH_SCREENSHOT_TIMEOUT_MS=30000  # Timeout for screenshot capture (default: 30000ms)
 ```
 
 ### Example: Basic Comparison

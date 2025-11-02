@@ -9,15 +9,8 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 - **Design tokens**: Token mapping for consistent design system
 - **Figma integration**: Direct Figma MCP integration for frame capture
 - **Quality scoring**: Design Fidelity Score (DFS 0-100)
-- **Quality Gate**: Enhanced validation with intelligent detection
-  - **Composite Quality Indicator (CQI)**: Single 0-100 score combining multiple quality dimensions
-  - **Suspicion Detection**: Automatic detection of problematic comparison scenarios
-  - **Re-evaluation Recommendations**: Smart suggestions for better metric accuracy
-  - **Hard Gates**: Area gap and severity violations for immediate failure
-- **Selector Resolution Plugins**: Extensible selector resolution with plugin architecture
-  - **Plugin Interface (SPI)**: Standard contract for selector resolution plugins
-  - **Automatic Fallback**: Safe NOP behavior when plugins are unavailable
-  - **@uimatch/selector-anchors**: Anchor-based selector resolution for stable selectors
+- **Quality Gate**: CQI score (0-100), suspicion detection, and smart re-evaluation recommendations
+- **Selector Resolution**: Extensible plugin architecture for stable selector resolution
 - **Browser reuse**: Automatic browser pooling for faster iteration
 - **Iterative workflow**: Quality gates with automatic retry
 

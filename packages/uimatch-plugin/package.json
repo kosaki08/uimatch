@@ -9,8 +9,13 @@
     "uimatch-scoring": "workspace:*",
     "zod": "^4.1.12"
   },
-  "optionalDependencies": {
+  "peerDependencies": {
     "@uimatch/selector-anchors": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@uimatch/selector-anchors": {
+      "optional": true
+    }
   },
   "exports": {
     ".": "./src/index.ts",
