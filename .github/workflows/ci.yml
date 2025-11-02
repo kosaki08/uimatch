@@ -64,11 +64,11 @@ jobs:
 
       - if: matrix.runtime == 'node'
         name: Build packages
-        run: pnpm build
+        run: pnpm -r build
 
       - if: matrix.runtime == 'node'
         name: Smoke test CLI on Node
-        run: node packages/uimatch-plugin/dist/index.js --help || echo "CLI validation completed"
+        run: node packages/uimatch-plugin/dist/cli/index.js --help || echo "CLI validation completed"
 
   e2e-playwright:
     runs-on: ubuntu-latest

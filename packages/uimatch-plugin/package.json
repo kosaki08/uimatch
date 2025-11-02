@@ -11,12 +11,18 @@
   "bin": {
     "uimatch": "./dist/cli/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "imports": {
     "#plugin/*": "./dist/*"
   },
   "scripts": {
     "build": "tsup",
     "prepublishOnly": "bun run build"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@uimatch/shared-logging": "workspace:*",

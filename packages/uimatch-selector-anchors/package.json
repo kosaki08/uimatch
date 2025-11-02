@@ -29,13 +29,16 @@
     "anchors"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@uimatch/selector-spi": "workspace:*",
     "parse5": "^8.0.0",
-    "typescript": "^5.9.3",
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/bun": "^1.1.13"
+    "@types/bun": "^1.1.13",
+    "typescript": "^5.9.3"
   }
 }
