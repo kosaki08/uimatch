@@ -22,6 +22,12 @@ export interface CaptureOptions {
   selector: string;
 
   /**
+   * Optional: child element inside `selector` to use for Figma child-node mapping.
+   * Supports CSS, dompath, role, testid, and text selectors.
+   */
+  childSelector?: string;
+
+  /**
    * Viewport dimensions.
    * @default { width: 1440, height: 900 }
    */
@@ -119,6 +125,12 @@ export interface CaptureResult {
    * Bounding box of the captured element.
    */
   box: { x: number; y: number; width: number; height: number };
+
+  /**
+   * Bounding box of childSelector relative to page (same coordinate space as box).
+   * Used for Figma child-node auto-selection.
+   */
+  childBox?: { x: number; y: number; width: number; height: number };
 
   /**
    * DOM element metadata keyed by selector.

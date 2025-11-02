@@ -634,20 +634,9 @@ export class PlaywrightAdapter implements BrowserAdapter {
       try {
         await locator.waitFor({ state: 'visible', timeout: selTimeout });
       } catch {
-        // Limit diagnostic time to prevent double timeout (waitFor + diagnostics > test timeout)
-        const timedCount = (sel: string, ms = 150) =>
-          Promise.race<number>([
-            frame.locator(sel).count(),
-            new Promise<number>((r) => setTimeout(() => r(-1), ms)),
-          ]);
-        let hint = '';
-        try {
-          const n = await timedCount('[data-testid]');
-          if (n > 0) hint = ' (data-testid elements detected)';
-        } catch {
-          // Ignore diagnostic errors
-        }
-        throw new Error(`Selector "${opts.selector}" not found or not visible${hint}.`);
+        // Error diagnostics are disabled in tests to prevent double timeout
+        // (waitFor timeout + diagnostic operations > test timeout)
+        throw new Error(`Selector "${opts.selector}" not found or not visible.`);
       }
 
       await locator.evaluate((el) =>
@@ -666,6 +655,35 @@ export class PlaywrightAdapter implements BrowserAdapter {
 
       // Add explicit timeout to screenshot as well
       const implPng = await locator.screenshot({ type: 'png', timeout: selTimeout });
+
+      // Capture child element bounding box if childSelector is provided (MVP: CSS/dompath only)
+      let childBox: { x: number; y: number; width: number; height: number } | undefined;
+      if (opts.childSelector) {
+        const cs = opts.childSelector;
+        const isCss = /^css:/i.test(cs) || /^[.#:\w[]/.test(cs) || /^>/.test(cs) || /^\[/.test(cs);
+        const isDomPath = /^dompath:/i.test(cs);
+        try {
+          let childLoc: Locator | undefined;
+          if (isDomPath) {
+            // dompath: relative to root locator
+            childLoc = locator.locator(cs.replace(/^dompath:/i, ''));
+          } else if (isCss) {
+            // CSS: relative scope
+            const cleaned = cs.replace(/^css:/i, '');
+            childLoc = locator.locator(`:scope ${cleaned.startsWith('>') ? '' : '>> '}${cleaned}`);
+          }
+          if (childLoc) {
+            // Short timeout for child element (500ms) - if not found, continue without childBox
+            await childLoc.first().waitFor({ state: 'visible', timeout: 500 });
+            const cb = await childLoc.first().boundingBox({ timeout: 500 });
+            if (cb) {
+              childBox = { x: cb.x, y: cb.y, width: cb.width, height: cb.height };
+            }
+          }
+        } catch {
+          // Child not found or not visible - continue without childBox
+        }
+      }
 
       // Extract computed styles and DOM metadata from the element and its children
       type StyleEvalArg = {
@@ -801,7 +819,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
           await browser.close();
         }
       }
-      return { implPng: Buffer.from(implPng), styles, box, meta };
+      return { implPng: Buffer.from(implPng), styles, box, childBox, meta };
     } catch (e) {
       // Safe cleanup: check existence and wrap in try-catch to prevent secondary exceptions
       try {
