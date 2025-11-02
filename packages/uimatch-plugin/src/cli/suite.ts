@@ -7,6 +7,7 @@
 import { uiMatchCompare } from '#plugin/commands/compare';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { getLogger } from './logger.js';
 
 type SuiteItem = {
   name: string;
@@ -107,7 +108,6 @@ export async function runSuite(argv: string[]): Promise<void> {
   const suitePath = args.path;
   const outBase = args.outDir ?? '.uimatch-suite';
   const concurrency = Math.max(1, parseInt(args.concurrency ?? '4', 10));
-  const verbose = (args.verbose ?? 'false') === 'true';
 
   const raw = await readFile(suitePath, 'utf8');
   const cfg = JSON.parse(raw) as SuiteConfig;
@@ -126,6 +126,8 @@ export async function runSuite(argv: string[]): Promise<void> {
     highCount?: number;
   };
 
+  const logger = getLogger();
+
   const results = await runWithConcurrency<SuiteItem, SuiteResult>(
     cfg.items.map((i) => mergeItem(cfg.defaults, i)),
     concurrency,
@@ -134,12 +136,11 @@ export async function runSuite(argv: string[]): Promise<void> {
       const itemDir = join(outBase, `${String(index + 1).padStart(3, '0')}-${slugify(itemName)}`);
       await mkdir(itemDir, { recursive: true });
 
-      if (verbose) {
-        console.log(`\n[uiMatch:suite] → #${index + 1} ${itemName}`);
-        console.log(`  figma=${item.figma}`);
-        console.log(`  story=${item.story}`);
-        console.log(`  selector=${item.selector}`);
-      }
+      logger.info(`Suite item #${index + 1}: ${itemName}`, {
+        figma: item.figma,
+        story: item.story,
+        selector: item.selector,
+      });
 
       try {
         const res = await uiMatchCompare({
@@ -181,12 +182,12 @@ export async function runSuite(argv: string[]): Promise<void> {
         const styleDiffsCount = styleDiffsArray.length;
         const highCount = styleDiffsArray.filter((d) => d.severity === 'high').length;
 
-        if (!ok && verbose) {
-          console.warn(
-            `  ✖ FAIL: ${rep.qualityGate?.reasons?.join(' | ') || 'quality gate failed'}`
+        if (!ok) {
+          logger.warn(
+            `Item ${itemName} FAIL: ${rep.qualityGate?.reasons?.join(' | ') || 'quality gate failed'}`
           );
-        } else if (verbose) {
-          console.log('  ✓ PASS');
+        } else {
+          logger.info(`Item ${itemName} PASS`);
         }
 
         const metrics = rep.metrics;
@@ -205,7 +206,7 @@ export async function runSuite(argv: string[]): Promise<void> {
         };
       } catch (e) {
         const errMsg = (e as Error)?.message ?? String(e);
-        if (verbose) console.error('  ✖ ERROR:', errMsg);
+        logger.error(`Item ${itemName} ERROR: ${errMsg}`);
         await writeFile(
           join(itemDir, 'error.txt'),
           `[uiMatch] Error in "${itemName}": ${errMsg}\n`

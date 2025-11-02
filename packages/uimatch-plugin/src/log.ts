@@ -1,5 +1,5 @@
-import pino from 'pino';
 import type { Logger, LogLevel } from '@uimatch/shared-logging';
+import pino from 'pino';
 
 interface LoggerOptions {
   level?: LogLevel;

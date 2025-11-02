@@ -11,7 +11,20 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { getQualityGateProfile } from 'uimatch-core';
-import { getLogger } from './logger.js';
+import { silentLogger } from '@uimatch/shared-logging';
+import { getLogger, initLogger } from './logger.js';
+
+/**
+ * Get logger safely: fallback to silentLogger if not initialized.
+ * This prevents test failures when logger is accessed before initLogger() is called.
+ */
+function getOrSilentLogger() {
+  try {
+    return getLogger();
+  } catch {
+    return silentLogger;
+  }
+}
 
 export interface ParsedArgs {
   figma?: string;
@@ -400,7 +413,9 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
         config.contentBasis = 'intersection';
       }
     } catch (e) {
-      getLogger().warn(`Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`);
+      getLogger().warn(
+        `Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`
+      );
     }
   }
 
@@ -423,27 +438,29 @@ export async function runCompare(argv: string[]): Promise<void> {
     // Use config.verbose as the single source of truth
     const verbose = config.verbose;
 
+    const logger = getLogger();
+
     // Load expectedSpec from file if provided.
     if (args.expected) {
       try {
         const text = await readFile(args.expected, 'utf-8');
         const parsed: unknown = JSON.parse(text);
         config.expectedSpec = parsed as Record<string, Record<string, string>>;
-        if (verbose) console.log(`[uimatch] loaded expectedSpec from ${args.expected}`);
+        logger.info(`Loaded expectedSpec from ${args.expected}`);
       } catch (e) {
-        console.warn(
-          `Failed to read expectedSpec from ${args.expected}:`,
-          (e as Error)?.message ?? e
+        logger.warn(
+          `Failed to read expectedSpec from ${args.expected}: ${(e as Error)?.message ?? String(e)}`
         );
       }
     }
 
     // Log sanitized inputs
-    console.log('[uimatch]', 'mode:', config.sizeMode ?? 'strict');
-    console.log('[uimatch]', 'figma:', verbose ? args.figma : sanitizeFigmaRef(args.figma));
-    console.log('[uimatch]', 'story:', verbose ? args.story : sanitizeUrl(args.story));
-    console.log('[uimatch]', 'selector:', args.selector);
-    console.log('');
+    logger.info('Execution mode', { mode: config.sizeMode ?? 'strict' });
+    logger.info('Figma reference', {
+      figma: verbose ? args.figma : sanitizeFigmaRef(args.figma),
+    });
+    logger.info('Target URL', { story: verbose ? args.story : sanitizeUrl(args.story) });
+    logger.info('Selector', { selector: args.selector });
 
     const result = await uiMatchCompare(config);
 
@@ -462,12 +479,12 @@ export async function runCompare(argv: string[]): Promise<void> {
           const nodeJson = await rest.getNode({ fileKey: ref.fileKey, nodeId: ref.nodeId });
           const expected = buildExpectedSpecFromFigma(nodeJson, undefined);
           await writeFile(saveExpectedPath, JSON.stringify(expected, null, 2), 'utf-8');
-          console.log(`💾 expectedSpec saved → ${relativizePath(saveExpectedPath)}`);
+          logger.info(`expectedSpec saved to ${relativizePath(saveExpectedPath)}`);
         } else {
-          console.warn('Cannot save expectedSpec: missing FIGMA_ACCESS_TOKEN or "current" ref.');
+          logger.warn('Cannot save expectedSpec: missing FIGMA_ACCESS_TOKEN or "current" ref');
         }
       } catch (e) {
-        console.warn('Failed to save expectedSpec:', (e as Error)?.message ?? String(e));
+        logger.warn(`Failed to save expectedSpec: ${(e as Error)?.message ?? String(e)}`);
       }
     }
 
@@ -475,11 +492,13 @@ export async function runCompare(argv: string[]): Promise<void> {
     if (args.outDir) {
       if (!result.report.artifacts) {
         // This should never happen if emitArtifacts auto-enable worked correctly
-        console.warn('⚠️  Warning: outDir specified but artifacts missing in report');
-        console.warn('   Possible causes:');
-        console.warn('   - emitArtifacts was not auto-enabled (check config builder)');
-        console.warn('   - Compare function did not generate artifacts despite emitArtifacts=true');
-        console.warn('   Skipping artifact save to disk.');
+        logger.warn('outDir specified but artifacts missing in report', {
+          possibleCauses: [
+            'emitArtifacts was not auto-enabled (check config builder)',
+            'Compare function did not generate artifacts despite emitArtifacts=true',
+          ],
+        });
+        logger.warn('Skipping artifact save to disk');
       } else {
         // Resolve outDir properly: if absolute, use as-is; if relative, resolve from cwd
         let outDir = isAbsolute(args.outDir) ? args.outDir : resolve(process.cwd(), args.outDir);
@@ -525,8 +544,9 @@ export async function runCompare(argv: string[]): Promise<void> {
 
           // Deprecation warning for patchTarget parameter
           if (args.patchTarget) {
-            console.warn('[uimatch] ⚠️  patchTarget parameter is deprecated and will be removed.');
-            console.warn('          Output format is now CSS-only for maximum compatibility.');
+            logger.warn(
+              'patchTarget parameter is deprecated and will be removed. Output format is now CSS-only for maximum compatibility.'
+            );
           }
 
           const llmPayload = formatForLLM(result, { preferTokens: true });
@@ -564,8 +584,9 @@ export async function runCompare(argv: string[]): Promise<void> {
 
       // Deprecation warning for patchTarget parameter
       if (args.patchTarget) {
-        console.warn('[uimatch] ⚠️  patchTarget parameter is deprecated and will be removed.');
-        console.warn('          Output format is now CSS-only for maximum compatibility.');
+        logger.warn(
+          'patchTarget parameter is deprecated and will be removed. Output format is now CSS-only for maximum compatibility.'
+        );
       }
 
       const llmPayload = formatForLLM(result, { preferTokens: true });
@@ -633,7 +654,7 @@ export async function runCompare(argv: string[]): Promise<void> {
           console.log(`Profile gate (${profile.name}): ✅ PASS`);
         }
       } catch (e) {
-        console.warn(`Failed to evaluate profile gate: ${(e as Error)?.message ?? String(e)}`);
+        logger.warn(`Failed to evaluate profile gate: ${(e as Error)?.message ?? String(e)}`);
       }
     }
 
