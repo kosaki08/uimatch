@@ -3,6 +3,7 @@
  */
 
 import type { SelectorAnchor } from '../types/schema.js';
+import { getAnchorMatchingConfig } from '../types/weights.js';
 
 /**
  * Scoring result for anchor matching
@@ -67,6 +68,10 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
     reasons: [],
   }));
 
+  // Load scoring weights from external configuration
+  const config = getAnchorMatchingConfig();
+  const { weights, thresholds } = config;
+
   // Normalize initial selector once for all comparisons
   const normalizedInitial = normalizeSelector(initialSelector);
 
@@ -79,7 +84,7 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
       const normalizedLast = normalizeSelector(anchor.lastKnown.selector);
 
       if (normalizedLast === normalizedInitial) {
-        result.score += 100;
+        result.score += weights.exactLastKnownMatch;
         result.reasons.push('Exact match with last known selector');
       }
       // 2. Last known selector bidirectional partial match
@@ -87,20 +92,20 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
         normalizedInitial.includes(normalizedLast) ||
         normalizedLast.includes(normalizedInitial)
       ) {
-        result.score += 50;
+        result.score += weights.partialLastKnownMatch;
         result.reasons.push('Partial match with last known selector');
       }
     }
 
     // 3. Hint testid match with format flexibility
     if (anchor.hint?.testid && hasTestId(initialSelector, anchor.hint.testid)) {
-      result.score += 80;
+      result.score += weights.testidHintMatch;
       result.reasons.push('Matches testid hint');
     }
 
     // 4. Hint role match with format flexibility
     if (anchor.hint?.role && hasRole(initialSelector, anchor.hint.role)) {
-      result.score += 70;
+      result.score += weights.roleHintMatch;
       result.reasons.push('Matches role hint');
     }
 
@@ -114,14 +119,14 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
       const selectorNormalized = selectorLower.replace(/[-_]/g, '');
 
       if (selectorNormalized.includes(componentNormalized)) {
-        result.score += 30;
+        result.score += weights.componentMetadataMatch;
         result.reasons.push('Matches component metadata');
       }
     }
 
     // 6. Has snippet hash (better for tracking code movements)
     if (anchor.snippetHash) {
-      result.score += 10;
+      result.score += weights.hasSnippetHash;
       result.reasons.push('Has snippet hash for robust tracking');
     }
 
@@ -132,9 +137,9 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
         const now = new Date();
         const daysSinceUpdate = (now.getTime() - timestamp.getTime()) / (1000 * 60 * 60 * 24);
 
-        // Bonus for recent updates (within 30 days)
-        if (daysSinceUpdate < 30) {
-          result.score += 5;
+        // Bonus for recent updates (configurable threshold)
+        if (daysSinceUpdate < thresholds.recentUpdateDays) {
+          result.score += weights.recentUpdate;
           result.reasons.push('Recently verified selector');
         }
       } catch {
@@ -143,8 +148,11 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
     }
 
     // 8. High stability score from last known
-    if (anchor.lastKnown?.stabilityScore && anchor.lastKnown.stabilityScore >= 80) {
-      result.score += 15;
+    if (
+      anchor.lastKnown?.stabilityScore &&
+      anchor.lastKnown.stabilityScore >= thresholds.highStabilityScore
+    ) {
+      result.score += weights.highStability;
       result.reasons.push('High stability score from previous resolution');
     }
   }

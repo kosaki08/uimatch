@@ -16,6 +16,22 @@ const MAX_PATTERN_LENGTH = 300;
 const DANGEROUS_NESTING = /(\([^()]*){5,}/;
 
 /**
+ * Blacklist of known catastrophic backtracking patterns
+ * These patterns are common ReDoS attack vectors:
+ * - Nested quantifiers: (a+)+, (.+)+, (\w+)*+
+ * - Overlapping quantifiers: (\d+)*\d+, (\w+)*\w*
+ * - Alternation with quantifiers: (a|a)+, (ab|a)+
+ */
+const CATASTROPHIC_PATTERNS = [
+  /\([\w.+*?\\]+\+\)\+/, // (a+)+ or (.+)+
+  /\([\w.+*?\\]+\*\)\*/, // (a*)* or (.*)*
+  /\([\w.+*?\\]+\+\)\*/, // (a+)* or (.+)*
+  /\([\w.+*?\\]+\*\)\+/, // (a*)+ or (.*)+
+  /\([\w.+*?\\]+\)\*\+/, // (a)*+ or (ab)*+
+  /\([\w.+*?\\]+\)\+\+/, // (a)++ or (ab)++
+];
+
+/**
  * Result of safe regex compilation
  */
 export type SafeRegexResult =
@@ -28,6 +44,7 @@ export type SafeRegexResult =
  * Protects against:
  * - Excessively long patterns (>300 chars)
  * - Deep nested quantifiers that could cause ReDoS
+ * - Known catastrophic backtracking patterns (e.g., (a+)+, (.*)*, (\w+)*+)
  * - Invalid regex syntax
  *
  * @param pattern - The regex pattern string
@@ -62,6 +79,17 @@ export function compileSafeRegex(pattern: string, flags?: string): SafeRegexResu
       error: 'Potentially dangerous nested quantifiers detected',
       fallbackToLiteral: true,
     };
+  }
+
+  // Check against catastrophic backtracking patterns blacklist
+  for (const dangerousPattern of CATASTROPHIC_PATTERNS) {
+    if (dangerousPattern.test(pattern)) {
+      return {
+        success: false,
+        error: 'Pattern matches known catastrophic backtracking vulnerability',
+        fallbackToLiteral: true,
+      };
+    }
   }
 
   // Try to compile the regex

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "description": "Scoring weights for anchor matching algorithm",
+  "weights": {
+    "exactLastKnownMatch": 100,
+    "partialLastKnownMatch": 50,
+    "testidHintMatch": 80,
+    "roleHintMatch": 70,
+    "componentMetadataMatch": 30,
+    "hasSnippetHash": 10,
+    "recentUpdate": 5,
+    "highStability": 15
+  },
+  "thresholds": {
+    "recentUpdateDays": 30,
+    "highStabilityScore": 80
+  }
+}

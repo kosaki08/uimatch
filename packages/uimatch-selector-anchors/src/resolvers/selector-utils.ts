@@ -61,6 +61,9 @@ export function buildHintFromAttributes(
 /**
  * Extract role options from attributes
  * Supports both ARIA attributes and boolean HTML attributes
+ *
+ * Extension point: Add fallback name sources (e.g., title attribute)
+ * for improved name-based matching when aria-label is unavailable
  */
 function extractRoleOptions(attributes: Record<string, string>): RoleOptions {
   const options: RoleOptions = {};
@@ -85,9 +88,14 @@ function extractRoleOptions(attributes: Record<string, string>): RoleOptions {
     options.disabled = true;
   }
 
-  // ARIA label as name option
+  // Name option with priority fallback chain:
+  // 1. aria-label (primary, accessibility standard)
+  // 2. title attribute (fallback for tooltips)
+  // Future: aria-labelledby, placeholder, alt for images
   if (attributes['aria-label']) {
     options.name = attributes['aria-label'];
+  } else if (attributes['title']) {
+    options.name = attributes['title'];
   }
 
   return options;
@@ -96,6 +104,10 @@ function extractRoleOptions(attributes: Record<string, string>): RoleOptions {
 /**
  * Generate role selector with options
  * Includes native pseudo-class fallbacks where applicable
+ *
+ * Extension point: CSS attribute selectors can be added as fallbacks
+ * for name-based matching when Playwright role selector fails
+ * Example: [aria-label="..."], [title="..."]
  */
 function generateRoleSelector(role: string, options: RoleOptions): string[] {
   const selectors: string[] = [];
@@ -129,6 +141,13 @@ function generateRoleSelector(role: string, options: RoleOptions): string[] {
   } else {
     selectors.push(`role:${role}`);
   }
+
+  // Extension point: Add CSS attribute fallbacks for name matching
+  // Uncomment when performance/stability issues require attribute-based fallbacks
+  // if (options.name) {
+  //   selectors.push(`[aria-label="${options.name}"]`);
+  //   selectors.push(`[title="${options.name}"]`);
+  // }
 
   return selectors;
 }
