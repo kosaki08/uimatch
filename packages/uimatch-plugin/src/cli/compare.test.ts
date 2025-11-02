@@ -394,7 +394,7 @@ describe('buildCompareConfig', () => {
   });
 
   describe('smart defaults for pad mode', () => {
-    test('should default align to top-left when size=pad and align not specified', () => {
+    test('should not apply smart defaults in buildCompareConfig (now handled in uiMatchCompare)', () => {
       const args: ParsedArgs = {
         figma: 'AbCdEf:1-23',
         story: 'http://localhost:6006',
@@ -405,21 +405,8 @@ describe('buildCompareConfig', () => {
       const config = buildCompareConfig(args);
 
       expect(config.sizeMode).toBe('pad');
-      expect(config.align).toBe('top-left');
-    });
-
-    test('should default contentBasis to intersection when size=pad and contentBasis not specified', () => {
-      const args: ParsedArgs = {
-        figma: 'AbCdEf:1-23',
-        story: 'http://localhost:6006',
-        selector: '#root',
-        size: 'pad',
-      };
-
-      const config = buildCompareConfig(args);
-
-      expect(config.sizeMode).toBe('pad');
-      expect(config.contentBasis).toBe('intersection');
+      expect(config.align).toBeUndefined();
+      expect(config.contentBasis).toBeUndefined();
     });
 
     test('should respect explicit align when size=pad', () => {

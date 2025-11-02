@@ -142,13 +142,6 @@ export async function runSuite(argv: string[]): Promise<void> {
       }
 
       try {
-        const sizeMode = item.size ?? 'pad';
-
-        // Smart defaults: when pad mode is used, prefer intersection + top-left
-        // to reduce noise from asymmetric padding (common in page vs component comparisons)
-        const align = item.align ?? (sizeMode === 'pad' ? 'top-left' : 'center');
-        const contentBasis = item.contentBasis ?? (sizeMode === 'pad' ? 'intersection' : 'union');
-
         const res = await uiMatchCompare({
           figma: item.figma,
           story: item.story,
@@ -159,10 +152,10 @@ export async function runSuite(argv: string[]): Promise<void> {
           figmaAutoRoi: item.figmaAutoRoi,
           detectStorybookIframe:
             item.detectStorybookIframe ?? /\/iframe\.html(\?|$)/.test(item.story),
-          sizeMode,
-          align,
+          sizeMode: item.size,
+          align: item.align,
           padColor: item.padColor ?? 'auto',
-          contentBasis,
+          contentBasis: item.contentBasis,
           thresholds: item.thresholds,
           pixelmatch: item.pixelmatch,
           tokens: item.tokens,

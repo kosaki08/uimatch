@@ -125,6 +125,15 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     includeAA: args.pixelmatch?.includeAA ?? settings.comparison.includeAA,
   };
 
+  // === Smart Defaults for size handling ===
+  // When pad mode is used (often for page vs component comparison), apply intelligent defaults:
+  // - align: 'top-left' - reduces asymmetric padding noise
+  // - contentBasis: 'intersection' - focuses on overlapping content area
+  const effectiveSizeMode = args.sizeMode ?? 'strict';
+  const effectiveAlign = args.align ?? (effectiveSizeMode === 'pad' ? 'top-left' : undefined);
+  const effectiveContentBasis =
+    args.contentBasis ?? (effectiveSizeMode === 'pad' ? 'intersection' : undefined);
+
   // 1) Prepare Figma PNG with fallback priority: env bypass > REST fallback > MCP
   let figmaPng: Buffer;
   let fileKey: string;
@@ -328,11 +337,11 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       ignore: mergedIgnore,
       weights: args.weights,
     },
-    // Size handling options
-    sizeMode: args.sizeMode,
-    align: args.align,
+    // Size handling options (with smart defaults applied)
+    sizeMode: effectiveSizeMode,
+    align: effectiveAlign,
     padColor: args.padColor,
-    contentBasis: args.contentBasis,
+    contentBasis: effectiveContentBasis,
   });
 
   // 3.5) Filter style diffs to show only properties with actual differences
@@ -360,7 +369,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       areaGapCritical: 0.15, // V2 thresholds
       areaGapWarning: 0.05,
     },
-    args.contentBasis ?? 'union'
+    effectiveContentBasis ?? 'union'
   );
 
   const { pass } = qualityGateResult;
