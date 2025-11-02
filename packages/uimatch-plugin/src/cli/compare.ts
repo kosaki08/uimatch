@@ -8,7 +8,7 @@ import { uiMatchCompare } from '#/commands/compare';
 import type { CompareArgs } from '#/types/index';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#/utils/sanitize';
 import { existsSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { getQualityGateProfile } from 'uimatch-core';
 
@@ -60,7 +60,13 @@ function parseArgs(argv: string[]): ParsedArgs {
     const match = arg.match(/^(\w+)=([\s\S]+)$/);
     if (match) {
       const key = match[1] as keyof ParsedArgs;
-      result[key] = match[2] as never;
+      // Special handling for emitArtifacts boolean conversion
+      if (key === 'emitArtifacts') {
+        const val = match[2];
+        result.emitArtifacts = val === 'true' ? true : val === 'false' ? false : undefined;
+      } else {
+        result[key] = match[2] as never;
+      }
     } else if (arg === '--emitArtifacts') {
       result.emitArtifacts = true;
     }
@@ -184,7 +190,9 @@ function printUsage(): void {
   console.error(
     '  figmaAutoRoi=<bool>     Auto-detect best matching child node (true/false, default: false)'
   );
-  console.error('  detectStorybookIframe=<bool>  Use Storybook iframe (true/false, default: true)');
+  console.error(
+    '  detectStorybookIframe=<bool>  Use Storybook iframe (true/false, default: auto-detect from URL)'
+  );
   console.error(
     '  size=<mode>             Size handling mode (strict|pad|crop|scale, default: strict)'
   );
@@ -194,6 +202,9 @@ function printUsage(): void {
   console.error('  padColor=<color>        Padding color (auto|#RRGGBB, default: auto)');
   console.error(
     '  contentBasis=<mode>     Content area basis (union|intersection|figma|impl, default: union)'
+  );
+  console.error(
+    '  emitArtifacts=<bool>    Include base64 artifacts in JSON output (true/false, default: false, auto-enabled by outDir)'
   );
   console.error(
     '  outDir=<path>           Save artifacts to directory (auto-enables emitArtifacts)'
@@ -411,7 +422,7 @@ export async function runCompare(argv: string[]): Promise<void> {
     // Load expectedSpec from file if provided.
     if (args.expected) {
       try {
-        const text = await Bun.file(args.expected).text();
+        const text = await readFile(args.expected, 'utf-8');
         const parsed: unknown = JSON.parse(text);
         config.expectedSpec = parsed as Record<string, Record<string, string>>;
         if (verbose) console.log(`[uimatch] loaded expectedSpec from ${args.expected}`);
@@ -446,7 +457,7 @@ export async function runCompare(argv: string[]): Promise<void> {
           const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
           const nodeJson = await rest.getNode({ fileKey: ref.fileKey, nodeId: ref.nodeId });
           const expected = buildExpectedSpecFromFigma(nodeJson, undefined);
-          await Bun.write(saveExpectedPath, JSON.stringify(expected, null, 2));
+          await writeFile(saveExpectedPath, JSON.stringify(expected, null, 2), 'utf-8');
           console.log(`💾 expectedSpec saved → ${relativizePath(saveExpectedPath)}`);
         } else {
           console.warn('Cannot save expectedSpec: missing FIGMA_ACCESS_TOKEN or "current" ref.');
@@ -483,22 +494,26 @@ export async function runCompare(argv: string[]): Promise<void> {
 
         const { figmaPngB64, implPngB64, diffPngB64 } = result.report.artifacts;
 
-        await Bun.write(join(outDir, 'figma.png'), Buffer.from(figmaPngB64, 'base64'));
-        await Bun.write(join(outDir, 'impl.png'), Buffer.from(implPngB64, 'base64'));
-        await Bun.write(join(outDir, 'diff.png'), Buffer.from(diffPngB64, 'base64'));
+        await writeFile(join(outDir, 'figma.png'), Buffer.from(figmaPngB64, 'base64'));
+        await writeFile(join(outDir, 'impl.png'), Buffer.from(implPngB64, 'base64'));
+        await writeFile(join(outDir, 'diff.png'), Buffer.from(diffPngB64, 'base64'));
 
         // Save overlay if requested
         const saveOverlay = parseBool(args.overlay) ?? false;
         if (saveOverlay) {
           // Generate overlay: impl + red highlights from diff
           // This is a simplified version - full implementation would composite properly
-          await Bun.write(join(outDir, 'overlay.png'), Buffer.from(diffPngB64, 'base64'));
+          await writeFile(join(outDir, 'overlay.png'), Buffer.from(diffPngB64, 'base64'));
         }
 
         // Save report (without base64 by default)
         const jsonOnly = parseBool(args.jsonOnly) ?? true;
         const reportToSave = jsonOnly ? { ...result.report, artifacts: undefined } : result.report;
-        await Bun.write(join(outDir, 'report.json'), JSON.stringify(reportToSave, null, 2));
+        await writeFile(
+          join(outDir, 'report.json'),
+          JSON.stringify(reportToSave, null, 2),
+          'utf-8'
+        );
 
         // Save LLM-formatted output if requested
         if (args.format === 'claude') {
@@ -512,8 +527,16 @@ export async function runCompare(argv: string[]): Promise<void> {
 
           const llmPayload = formatForLLM(result, { preferTokens: true });
 
-          await Bun.write(join(outDir, 'claude.json'), JSON.stringify(llmPayload, null, 2));
-          await Bun.write(join(outDir, 'claude-prompt.txt'), generateLLMPrompt(llmPayload));
+          await writeFile(
+            join(outDir, 'claude.json'),
+            JSON.stringify(llmPayload, null, 2),
+            'utf-8'
+          );
+          await writeFile(
+            join(outDir, 'claude-prompt.txt'),
+            generateLLMPrompt(llmPayload),
+            'utf-8'
+          );
         }
 
         const relativeOut = relativizePath(outDir);
