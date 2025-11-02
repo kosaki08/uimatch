@@ -13,6 +13,11 @@
  */
 export interface ResolveContext {
   /**
+   * URL of the page being tested
+   */
+  url: string;
+
+  /**
    * Initial selector provided by the user (e.g., 'button.submit', '.my-component')
    */
   initialSelector: string;
@@ -21,15 +26,21 @@ export interface ResolveContext {
    * Path to anchors JSON file (if provided)
    * Contains AST/snippet-based selector hints
    */
-  selectorsPath?: string;
+  anchorsPath?: string;
 
   /**
    * Whether to write back resolved selectors to anchors file
    */
-  selectorsWriteBack?: boolean;
+  writeBack?: boolean;
+
+  /**
+   * Probe for lightweight liveness checks
+   */
+  probe: Probe;
 
   /**
    * Project root directory (for resolving relative paths)
+   * @deprecated Use anchorsPath instead
    */
   projectRoot?: string;
 
@@ -37,11 +48,6 @@ export interface ResolveContext {
    * Additional context that may be useful for resolution
    */
   metadata?: {
-    /**
-     * Target URL being tested (for context-aware resolution)
-     */
-    targetUrl?: string;
-
     /**
      * Component identifier or name (if known)
      */
@@ -69,7 +75,8 @@ export interface Resolution {
   subselector?: string;
 
   /**
-   * Stability score (0-100, higher is more stable)
+   * Stability score for the resolved selector (0-100 scale, consistent with DFS/SFS/CQI metrics).
+   * Higher is more stable.
    */
   stabilityScore?: number;
 
@@ -79,15 +86,16 @@ export interface Resolution {
   reasons?: string[];
 
   /**
-   * Plugin identifier that performed the resolution
+   * Updated anchors data structure (caller handles JSON.stringify and formatting).
+   * Only present if writeBack=true and update was performed.
    */
-  plugin?: string;
+  updatedAnchors?: object;
 
   /**
-   * Updated anchors JSON content (only if writeBack was requested)
-   * Returned as string to avoid I/O coupling
+   * Plugin identifier that performed the resolution
+   * @deprecated Use plugin name from SelectorResolverPlugin instead
    */
-  updatedAnchorsJson?: string;
+  plugin?: string;
 
   /**
    * Error message if resolution failed (non-fatal)
@@ -117,16 +125,14 @@ export interface Probe {
  */
 export interface ProbeOptions {
   /**
-   * Timeout in milliseconds
-   * @default 600
+   * Timeout in milliseconds (default: from environment or fallback)
    */
-  timeout?: number;
+  timeoutMs?: number;
 
   /**
-   * Whether to check visibility (if false, only checks existence)
-   * @default true
+   * Whether to check element visibility (default: true)
    */
-  checkVisibility?: boolean;
+  visible?: boolean;
 }
 
 /**
@@ -134,14 +140,14 @@ export interface ProbeOptions {
  */
 export interface ProbeResult {
   /**
-   * Whether the selector is alive (found and visible)
+   * The selector that was checked
    */
-  isAlive: boolean;
+  selector: string;
 
   /**
-   * Element state
+   * Whether the selector is valid (found and optionally visible)
    */
-  state: 'visible' | 'hidden' | 'not_found';
+  isValid: boolean;
 
   /**
    * Error message if check failed
@@ -153,6 +159,11 @@ export interface ProbeResult {
    */
   checkTime: number;
 }
+
+/**
+ * Alias for ProbeResult for compatibility with phase 1 spec
+ */
+export type LivenessResult = ProbeResult;
 
 /**
  * Main plugin interface for selector resolution
@@ -173,11 +184,10 @@ export interface SelectorResolverPlugin {
   /**
    * Resolve a selector using the plugin's strategy
    *
-   * @param context - Resolution context
-   * @param probe - Optional probe for liveness checking
+   * @param context - Resolution context (includes probe for liveness checking)
    * @returns Resolution result
    */
-  resolve(context: ResolveContext, probe?: Probe): Promise<Resolution>;
+  resolve(context: ResolveContext): Promise<Resolution>;
 
   /**
    * Optional: Check if the plugin is available and properly configured

@@ -3,12 +3,13 @@
  */
 
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
-import { captureTarget, compareImages } from 'uimatch-core';
+import { browserPool, captureTarget, compareImages } from 'uimatch-core';
 import { computeDFS } from 'uimatch-scoring';
 import { FigmaRestClient } from '../adapters/figma-rest';
 import { FigmaMcpClient, parseFigmaRef } from '../adapters/index';
 import { loadFigmaMcpConfig, loadSkillConfig } from '../config/index';
 import { buildExpectedSpecFromFigma } from '../expected/from-figma';
+import type { Probe, Resolution, SelectorResolverPlugin } from '../selectors/spi';
 import type { CompareArgs, CompareResult } from '../types/index';
 import { getSettings } from './settings';
 
@@ -84,6 +85,118 @@ function pruneStyleDiffs(
 }
 
 /**
+ * Result of selector resolution with plugin
+ */
+interface ResolveOutput {
+  selector: string;
+  subselector?: string;
+  diagnostic?: Resolution;
+}
+
+/**
+ * Attempt to resolve selector using dynamically loaded plugin.
+ * Falls back to original selector if plugin is unavailable or fails.
+ *
+ * @param args - Comparison arguments
+ * @returns Resolved selector information
+ */
+async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<ResolveOutput> {
+  // Determine plugin ID from environment variable, CLI arg, or default
+  const pluginId =
+    process.env.UIMATCH_SELECTORS_PLUGIN?.trim() ||
+    args.selectorsPlugin ||
+    '@uimatch/selector-anchors';
+
+  // Skip if no plugin specified and no anchors path provided
+  if (!pluginId && !args.selectorsPath) {
+    return { selector: args.selector };
+  }
+
+  // Attempt to dynamically import plugin
+  let pluginModule: unknown;
+  try {
+    pluginModule = await import(pluginId);
+  } catch {
+    console.warn(`[uimatch] selector plugin "${pluginId}" not found. Skip.`);
+    return { selector: args.selector };
+  }
+
+  // Create lightweight Playwright-based probe
+  const browser = await browserPool.getBrowser();
+  const context = await browser.newContext({
+    viewport: args.viewport,
+    deviceScaleFactor: args.dpr ?? 2,
+    httpCredentials: args.basicAuth,
+  });
+  const page = await context.newPage();
+
+  try {
+    // Navigate to target URL with timeout
+    const timeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 6000);
+    await page.goto(args.story, { waitUntil: 'domcontentloaded', timeout });
+
+    // Create probe implementation
+    const probe: Probe = {
+      async check(selector, opts) {
+        const startTime = performance.now();
+        try {
+          const locator = page.locator(selector).first();
+          const visible = opts?.visible ?? true;
+          await locator.waitFor({
+            state: visible ? 'visible' : 'attached',
+            timeout: opts?.timeoutMs ?? 600,
+          });
+          const isVisible = await locator.isVisible().catch(() => false);
+
+          return {
+            selector,
+            isValid: isVisible || !visible,
+            checkTime: performance.now() - startTime,
+          };
+        } catch (err) {
+          return {
+            selector,
+            isValid: false,
+            checkTime: performance.now() - startTime,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+      },
+    };
+
+    // Prepare context for plugin
+    const resolveContext = {
+      url: args.story,
+      initialSelector: args.selector,
+      anchorsPath: args.selectorsPath,
+      writeBack: args.selectorsWriteBack ?? false,
+      probe,
+    };
+
+    // Get plugin instance (handle both default and named exports)
+    const plugin = (
+      typeof pluginModule === 'object' && pluginModule !== null && 'default' in pluginModule
+        ? (pluginModule as { default: unknown }).default
+        : pluginModule
+    ) as SelectorResolverPlugin;
+
+    // Resolve selector using plugin
+    const resolved = await plugin.resolve(resolveContext);
+
+    return {
+      selector: resolved.selector || args.selector,
+      subselector: resolved.subselector,
+      diagnostic: resolved,
+    };
+  } catch (err) {
+    console.warn('[uimatch] selector plugin failed:', err instanceof Error ? err.message : err);
+    return { selector: args.selector };
+  } finally {
+    await context.close();
+  }
+}
+
+/**
  * Compares Figma design with implementation.
  *
  * Two-layer comparison:
@@ -110,17 +223,12 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const cfg = loadSkillConfig();
   const settings = getSettings(); // Read from .uimatchrc.json if exists
 
-  // Selectors anchors processing (MVP: stub for future AST implementation)
-  // TODO: Implement AST-based selector resolution, liveness checking, and stability scoring
-  // if (args.selectorsPath) {
-  //   const anchors = await loadSelectorsAnchors(args.selectorsPath);
-  //   const resolved = await resolveAnchors(anchors, args.story);
-  //   if (resolved.selector) args.selector = resolved.selector;
-  //   if (resolved.subselector) args.subselector = resolved.subselector;
-  //   if (args.selectorsWriteBack && resolved.updated) {
-  //     await saveSelectorsAnchors(args.selectorsPath, resolved.updated);
-  //   }
-  // }
+  // Selector resolution with dynamic plugin (Phase 1: safe NOP fallback)
+  const resolved = await maybeResolveSelectorWithPlugin(args);
+  args.selector = resolved.selector;
+  if (resolved.subselector) {
+    args.subselector = resolved.subselector;
+  }
 
   // Browser DPR (for implementation capture) - no clamping needed
   const dpr = args.dpr ?? cfg.defaultDpr;
@@ -476,31 +584,46 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   const summary = summaryParts.join(' | ');
 
+  // Build report with optional selector resolution info
+  const report: CompareResult['report'] = {
+    metrics: {
+      pixelDiffRatio: result.pixelDiffRatio,
+      pixelDiffRatioContent: result.pixelDiffRatioContent ?? undefined,
+      contentCoverage: result.contentCoverage ?? undefined,
+      contentPixels: result.contentPixels ?? undefined,
+      colorDeltaEAvg,
+      dfs,
+    },
+    dimensions: result.dimensions,
+    styleDiffs,
+    styleSummary,
+    qualityGate: qualityGateResult, // Use the full V2 result
+    meta: {
+      figmaAutoRoi: roiMeta,
+    },
+    artifacts: args.emitArtifacts
+      ? {
+          figmaPngB64: figmaPng.toString('base64'),
+          implPngB64: cap.implPng.toString('base64'),
+          diffPngB64: result.diffPngB64,
+        }
+      : undefined,
+  };
+
+  // Add selector resolution info if plugin was used
+  if (resolved.diagnostic) {
+    (report as typeof report & { selectorResolution?: unknown }).selectorResolution = {
+      chosen: resolved.diagnostic.selector,
+      subselector: resolved.diagnostic.subselector,
+      stability: resolved.diagnostic.stabilityScore,
+      reasons: resolved.diagnostic.reasons,
+      plugin:
+        process.env.UIMATCH_SELECTORS_PLUGIN || args.selectorsPlugin || '@uimatch/selector-anchors',
+    };
+  }
+
   return {
     summary,
-    report: {
-      metrics: {
-        pixelDiffRatio: result.pixelDiffRatio,
-        pixelDiffRatioContent: result.pixelDiffRatioContent ?? undefined,
-        contentCoverage: result.contentCoverage ?? undefined,
-        contentPixels: result.contentPixels ?? undefined,
-        colorDeltaEAvg,
-        dfs,
-      },
-      dimensions: result.dimensions,
-      styleDiffs,
-      styleSummary,
-      qualityGate: qualityGateResult, // Use the full V2 result
-      meta: {
-        figmaAutoRoi: roiMeta,
-      },
-      artifacts: args.emitArtifacts
-        ? {
-            figmaPngB64: figmaPng.toString('base64'),
-            implPngB64: cap.implPng.toString('base64'),
-            diffPngB64: result.diffPngB64,
-          }
-        : undefined,
-    },
+    report,
   };
 }
