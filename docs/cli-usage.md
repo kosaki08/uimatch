@@ -36,6 +36,7 @@ bun run uimatch:compare -- \
 - `align=<mode>` - Alignment for pad/crop: `center|top-left|top|left` (default: `center`)
 - `contentBasis=<mode>` - Content area basis: `union|intersection|figma|impl` (default: `union`)
   - `intersection` - Focus on overlapping area (recommended with `pad`)
+  - **Note**: When `size=pad` is used, the comparison engine automatically sets `contentBasis=intersection` if not explicitly specified
 
 #### Style Comparison
 

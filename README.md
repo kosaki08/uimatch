@@ -56,10 +56,8 @@ bun run build
 # Compare command
 bun run uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button"
 
-# Settings management
-bun run uimatch:settings -- get
-bun run uimatch:settings -- set comparison.acceptancePixelDiffRatio=0.01
-bun run uimatch:settings -- reset
+# Note: CLI does not have a settings subcommand
+# Configure via .uimatchrc.json, programmatic API, or Claude's /uiMatch settings
 ```
 
 ## Configuration

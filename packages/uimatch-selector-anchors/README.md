@@ -14,6 +14,16 @@ This package provides intelligent selector resolution by analyzing source code (
 - **Stability Scoring**: Calculate selector quality (0-100)
 - **SPI Compliance**: Pluggable architecture via SPI interface
 
+## Health Check
+
+The plugin provides a `healthCheck()` method to verify runtime dependencies:
+
+- TypeScript compilation is **required** (returns `healthy=false` if `tsc` fails)
+- `parse5` (HTML parsing) is **optional** by default (warnings are logged but `healthy=true`)
+- When `UIMATCH_HEALTHCHECK_STRICT_HTML=true` is set, `parse5` becomes **required** and `healthy=false` will be returned if unavailable
+
+This allows TypeScript-only projects to use the plugin without HTML parsing capabilities.
+
 ## Usage
 
 ### As a Plugin (Phase 3+)

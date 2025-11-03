@@ -26,11 +26,13 @@ Claude Code plugin and CLI for comparing Figma designs with implementation. Prov
 ### As Standalone CLI
 
 ```bash
-# In your project
-bun add -D uimatch-plugin uimatch-core
+# Global installation (recommended)
+npm install -g uimatch-plugin playwright
+npx playwright install chromium
 
-# Or install globally
-bun add -g uimatch-plugin
+# Or project-local installation
+npm install -D uimatch-plugin playwright
+npx playwright install chromium
 ```
 
 ## Usage
@@ -214,6 +216,8 @@ await setSettings({ comparison: { acceptancePixelDiffRatio: 0.05 } });
 | `page-vs-component` | 0.12           | 5.0 | 0.25            | intersection | Padded page comparison  |
 | `lenient`           | 0.15           | 8.0 | 0.30            | union        | PoC/prototype           |
 | `custom`            | (config)       |     |                 |              | From settings file      |
+
+**Note**: When using `size=pad`, the comparison engine automatically sets `contentBasis=intersection` if not explicitly specified.
 
 **Threshold Layers:**
 

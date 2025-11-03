@@ -13,6 +13,10 @@ Core library for comparing Figma designs with implemented UI. Provides pixel-per
 
 ## Installation
 
+> **Note**: This is an internal package bundled into `uimatch-plugin`. Direct installation is not required for normal usage.
+
+For development or standalone use:
+
 ```bash
 bun add uimatch-core
 ```
