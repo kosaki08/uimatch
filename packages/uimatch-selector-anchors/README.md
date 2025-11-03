@@ -166,6 +166,13 @@ export DEBUG=uimatch:*
 export DEBUG=uimatch:selector-anchors
 ```
 
+## Integration Notes
+
+**Text Matching (uiMatch Plugin)**: テキスト一致確認は `uimatch-plugin` の `/uiMatch compare` で提供されます（`textCheck` オプション）。
+`mode: 'self' | 'descendants'` / `normalize: 'none' | 'nfkc' | 'nfkc_ws'` / `match: 'exact' | 'contains' | 'ratio'` / `minRatio: 0.98`。
+
+**Role Selector Resolution**: `role:button[name="Submit"]` は `getByRole()` を使用。`checked/selected/...` などのブーリアンは CSS フォールバックを採用。
+
 ## Anchors JSON Format
 
 ### Minimal Example

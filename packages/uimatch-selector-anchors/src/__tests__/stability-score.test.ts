@@ -1,5 +1,5 @@
 import type { ProbeResult } from '@uimatch/selector-spi';
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import {
   calculateStabilityScore,
   compareStabilityScores,
@@ -9,6 +9,28 @@ import {
 import type { SelectorHint } from '../types/schema';
 
 describe('calculateStabilityScore', () => {
+  // Isolate tests from environment variables
+  const saved = {
+    H: process.env.UIMATCH_STABILITY_HINT_WEIGHT,
+    S: process.env.UIMATCH_STABILITY_SNIPPET_WEIGHT,
+    L: process.env.UIMATCH_STABILITY_LIVENESS_WEIGHT,
+    P: process.env.UIMATCH_STABILITY_SPECIFICITY_WEIGHT,
+  };
+
+  beforeEach(() => {
+    delete process.env.UIMATCH_STABILITY_HINT_WEIGHT;
+    delete process.env.UIMATCH_STABILITY_SNIPPET_WEIGHT;
+    delete process.env.UIMATCH_STABILITY_LIVENESS_WEIGHT;
+    delete process.env.UIMATCH_STABILITY_SPECIFICITY_WEIGHT;
+  });
+
+  afterEach(() => {
+    process.env.UIMATCH_STABILITY_HINT_WEIGHT = saved.H;
+    process.env.UIMATCH_STABILITY_SNIPPET_WEIGHT = saved.S;
+    process.env.UIMATCH_STABILITY_LIVENESS_WEIGHT = saved.L;
+    process.env.UIMATCH_STABILITY_SPECIFICITY_WEIGHT = saved.P;
+  });
+
   test('calculates score for testid selector', () => {
     const hint: SelectorHint = {
       prefer: ['testid'],
@@ -180,6 +202,69 @@ describe('calculateStabilityScore', () => {
     expect(score.overall).toBe(expectedOverall);
   });
 
+  test('normalizes custom weights that do not sum to 1.0', () => {
+    const hint: SelectorHint = {
+      prefer: ['testid'],
+    };
+
+    // Provide weights that sum to 2.0 (not 1.0)
+    const score: StabilityScore = calculateStabilityScore(
+      {
+        selector: '[data-testid="test"]',
+        hint,
+        snippetMatched: true,
+        livenessResult: {
+          selector: '[data-testid="test"]',
+          isValid: true,
+          isAlive: true,
+          checkTime: 50,
+        },
+      },
+      {
+        weights: {
+          hintQuality: 0.8, // Sum = 2.0
+          snippetMatch: 0.6,
+          liveness: 0.4,
+          specificity: 0.2,
+        },
+      }
+    );
+
+    // After normalization: 0.8/2=0.4, 0.6/2=0.3, 0.4/2=0.2, 0.2/2=0.1
+    // All components are 1.0, so overall = 0.4 + 0.3 + 0.2 + 0.1 = 1.0
+    expect(score.overall).toBeCloseTo(1.0, 5);
+  });
+
+  test('normalizes partial custom weights with env defaults', () => {
+    const hint: SelectorHint = {
+      prefer: ['testid'],
+    };
+
+    // Only override hintQuality, others come from env (default: 0.4, 0.2, 0.3, 0.1)
+    const score: StabilityScore = calculateStabilityScore(
+      {
+        selector: '[data-testid="test"]',
+        hint,
+        snippetMatched: true,
+        livenessResult: {
+          selector: '[data-testid="test"]',
+          isValid: true,
+          isAlive: true,
+          checkTime: 50,
+        },
+      },
+      {
+        weights: {
+          hintQuality: 0.8, // Merged sum: 0.8 + 0.2 + 0.3 + 0.1 = 1.4
+        },
+      }
+    );
+
+    // After normalization: 0.8/1.4≈0.571, 0.2/1.4≈0.143, 0.3/1.4≈0.214, 0.1/1.4≈0.071
+    // All components are 1.0, so overall ≈ 0.571 + 0.143 + 0.214 + 0.071 ≈ 1.0
+    expect(score.overall).toBeCloseTo(1.0, 5);
+  });
+
   test('includes details in result', () => {
     const hint: SelectorHint = {
       prefer: ['role', 'css'],
@@ -196,6 +281,27 @@ describe('calculateStabilityScore', () => {
     expect(score.details.length).toBeGreaterThan(0);
     expect(score.details.some((d) => d.includes('Hint quality'))).toBe(true);
     expect(score.details.some((d) => d.includes('role > css'))).toBe(true);
+  });
+
+  test('recognizes ID in compound selectors', () => {
+    // Test compound selectors with ID (e.g., button#submit, div#container)
+    const compoundSelectors = ['button#submit', 'div#container', 'input#email-field'];
+
+    for (const selector of compoundSelectors) {
+      const score = calculateStabilityScore({ selector });
+      expect(score.breakdown.specificity).toBe(0.6); // Should recognize as ID selector
+    }
+  });
+
+  test('distinguishes simple ID from tag selector', () => {
+    const idSelector = '#submit';
+    const tagSelector = 'button';
+
+    const idScore = calculateStabilityScore({ selector: idSelector });
+    const tagScore = calculateStabilityScore({ selector: tagSelector });
+
+    expect(idScore.breakdown.specificity).toBe(0.6); // ID specificity
+    expect(tagScore.breakdown.specificity).toBe(0.2); // Tag specificity
   });
 });
 

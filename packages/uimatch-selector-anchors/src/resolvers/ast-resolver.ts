@@ -2,6 +2,7 @@ import type { SelectorHint } from '#anchors/types/schema';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import ts from 'typescript';
+import type { ParseLevel } from './ast-fallback.js';
 import {
   buildHintFromAttributes as buildHint,
   generateSelectorsFromAttributes as generateSelectors,
@@ -114,7 +115,11 @@ export async function resolveFromTypeScript(
   const reasons: string[] = [];
 
   // Level 1: Fast path
-  const fastResult = await withTimeout(Promise.resolve(fastPathParse(jsxElement)), FAST);
+  // Defer execution to event loop so timeout can interrupt
+  const fastResult = await withTimeout(
+    new Promise<ParseLevel>((resolve) => setTimeout(() => resolve(fastPathParse(jsxElement)), 0)),
+    FAST
+  );
 
   if (fastResult && fastResult.selectors.length > 0) {
     reasons.push(`Fast path succeeded (< ${FAST}ms)`);
@@ -131,7 +136,13 @@ export async function resolveFromTypeScript(
   reasons.push('Fast path incomplete, trying attribute-only');
 
   // Level 2: Attribute-only
-  const attrResult = await withTimeout(Promise.resolve(attributeOnlyParse(jsxElement)), ATTR);
+  // Defer execution to event loop so timeout can interrupt
+  const attrResult = await withTimeout(
+    new Promise<ParseLevel>((resolve) =>
+      setTimeout(() => resolve(attributeOnlyParse(jsxElement)), 0)
+    ),
+    ATTR
+  );
 
   if (attrResult && attrResult.selectors.length > 0) {
     reasons.push(`Attribute-only succeeded (< ${ATTR}ms)`);
@@ -148,9 +159,16 @@ export async function resolveFromTypeScript(
   reasons.push('Attribute-only incomplete, trying full parse');
 
   // Level 3: Full parse (original implementation)
+  // Defer execution to event loop so timeout can interrupt heavy parsing
+  type FullParseResult = {
+    selectors: string[];
+    hint: SelectorHint;
+    element: { tag?: string; attributes: Record<string, string>; text?: string };
+  };
+
   const fullParseResult = await withTimeout(
-    Promise.resolve(
-      (() => {
+    new Promise<FullParseResult | null>((resolve) =>
+      setTimeout(() => {
         try {
           // Extract attributes and text content
           const attributes = extractJsxAttributes(jsxElement);
@@ -160,7 +178,7 @@ export async function resolveFromTypeScript(
           const hint = buildHint(attributes, elementText);
           const selectors = generateSelectors(attributes, tag, elementText);
 
-          return {
+          resolve({
             selectors,
             hint,
             element: {
@@ -168,11 +186,11 @@ export async function resolveFromTypeScript(
               attributes,
               text: elementText,
             },
-          };
+          });
         } catch {
-          return null;
+          resolve(null);
         }
-      })()
+      }, 0)
     ),
     FULL
   );
