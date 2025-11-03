@@ -541,6 +541,7 @@ bun test --watch
 ## Path Aliases
 
 Internal imports use `#plugin/*`:
+
 - **Build**: esbuild alias (`tsup.config.ts`)
 - **Runtime**: `package.json` imports field
 

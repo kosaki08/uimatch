@@ -51,6 +51,8 @@
         "@uimatch/shared-logging": "workspace:*",
         "pino": "^10.1.0",
         "pino-pretty": "^13.1.2",
+        "pixelmatch": "^6.0.0",
+        "pngjs": "^7.0.0",
         "zod": "^4.1.12",
       },
       "devDependencies": {
