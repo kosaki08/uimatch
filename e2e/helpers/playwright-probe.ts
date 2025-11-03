@@ -4,7 +4,11 @@
  */
 
 import type { Page } from '@playwright/test';
-import type { Probe, ProbeOptions, ProbeResult } from '@uimatch/selector-spi';
+import type {
+  Probe,
+  ProbeOptions,
+  ProbeResult,
+} from '../../packages/uimatch-selector-spi/src/index.js';
 
 /**
  * Create a Probe instance that uses Playwright Page for liveness checking

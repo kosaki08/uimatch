@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import type { ProbeResult } from '@uimatch/selector-spi';
 import {
   checkLivenessAll,
   checkLivenessPriority,
 } from '../packages/uimatch-selector-anchors/src/utils/liveness.js';
+import type { ProbeResult } from '../packages/uimatch-selector-spi/src/index.js';
 import { createPlaywrightProbe } from './helpers/playwright-probe.js';
 
 const HTML_CONTENT = `
