@@ -14,11 +14,11 @@ The selector-anchors plugin uses **snippet hash** to track code locations even a
 
 **Design rationale:**
 
-| Parameter           | Value | Reason                                                                                                                                                                                        |
-| ------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FUZZY_THRESHOLD`   | 0.55  | Minimum 55% similarity required to accept fuzzy match. Balances between accepting legitimate code moves (e.g., refactoring with whitespace changes) vs. false positives (completely different code) |
-| `MAX_RADIUS`        | 400   | Typical file length limit. Beyond 400 lines, code structure usually changes significantly enough that fuzzy matching becomes unreliable                                                      |
-| `HIGH_CONFIDENCE`   | 0.92  | 92%+ similarity triggers early exit to avoid unnecessary searching. Saves ~30-50% search time in common refactoring scenarios while maintaining high accuracy                               |
+| Parameter         | Value | Reason                                                                                                                                                                                              |
+| ----------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FUZZY_THRESHOLD` | 0.55  | Minimum 55% similarity required to accept fuzzy match. Balances between accepting legitimate code moves (e.g., refactoring with whitespace changes) vs. false positives (completely different code) |
+| `MAX_RADIUS`      | 400   | Typical file length limit. Beyond 400 lines, code structure usually changes significantly enough that fuzzy matching becomes unreliable                                                             |
+| `HIGH_CONFIDENCE` | 0.92  | 92%+ similarity triggers early exit to avoid unnecessary searching. Saves ~30-50% search time in common refactoring scenarios while maintaining high accuracy                                       |
 
 **Environment variable overrides:**
 
@@ -38,11 +38,11 @@ export UIMATCH_SNIPPET_HIGH_CONFIDENCE=0.95     # Default: 0.92
 
 When comparing DOM child elements with Figma child nodes (subselector mode), uiMatch uses a weighted scoring algorithm:
 
-| Factor              | Weight | Purpose                                                                  |
-| ------------------- | ------ | ------------------------------------------------------------------------ |
+| Factor              | Weight | Purpose                                                                 |
+| ------------------- | ------ | ----------------------------------------------------------------------- |
 | **Area similarity** | 70%    | Primary metric - total visible size (width × height) relative to parent |
-| **Aspect ratio**    | 20%    | Shape consistency - prevents matching tall elements to wide ones         |
-| **Position**        | 10%    | Spatial relationship - center point (cx, cy) relative to parent          |
+| **Aspect ratio**    | 20%    | Shape consistency - prevents matching tall elements to wide ones        |
+| **Position**        | 10%    | Spatial relationship - center point (cx, cy) relative to parent         |
 
 **Why these weights:**
 

@@ -5,8 +5,6 @@
  * Creates temporary TSX file and anchors.json to simulate real workflow
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
-
 import type { SelectorsAnchors } from '@uimatch/selector-anchors';
 import type { Probe, ProbeResult, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
 import { describe, expect, test } from 'bun:test';
