@@ -117,20 +117,71 @@ Bypass mode uses `UIMATCH_FIGMA_PNG_B64` env var (useful for CI).
 
 ## Local Testing
 
-**Pack (pre-publish check):**
+### Method 1: Pack (recommended for pre-publish verification)
+
+This simulates actual npm distribution and catches dependency issues:
 
 ```bash
-bun run build && cd packages/uimatch-plugin && npm pack
-npm i -g ./uimatch-plugin-*.tgz playwright && npx playwright install chromium
-npx uimatch compare figma=bypass:test story="..." selector="..."
+# Build all packages first
+bun run build
+
+# Create tarballs for all workspace packages
+cd packages/shared-logging && npm pack && cd ../..
+cd packages/uimatch-selector-spi && npm pack && cd ../..
+cd packages/uimatch-core && npm pack && cd ../..
+cd packages/uimatch-scoring && npm pack && cd ../..
+cd packages/uimatch-selector-anchors && npm pack && cd ../..
+cd packages/uimatch-plugin && npm pack && cd ../..
+
+# Test in isolated environment
+mkdir -p /tmp/uimatch-test && cd /tmp/uimatch-test
+npm init -y
+npm install \
+  /path/to/ui-match/packages/shared-logging/uimatch-shared-logging-*.tgz \
+  /path/to/ui-match/packages/uimatch-selector-spi/uimatch-selector-spi-*.tgz \
+  /path/to/ui-match/packages/uimatch-core/uimatch-core-*.tgz \
+  /path/to/ui-match/packages/uimatch-scoring/uimatch-scoring-*.tgz \
+  /path/to/ui-match/packages/uimatch-selector-anchors/uimatch-selector-anchors-*.tgz \
+  /path/to/ui-match/packages/uimatch-plugin/uimatch-plugin-*.tgz \
+  playwright
+
+npx playwright install chromium
+
+# Verify with smoke test
+export UIMATCH_FIGMA_PNG_B64="iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC"
+npx uimatch compare figma=bypass:test \
+  story="data:text/html,<div id='t' style='width:10px;height:10px;background:red'></div>" \
+  selector="#t" dpr=1 size=pad
 ```
 
-**Link (dev iteration):**
+**Important**: All workspace dependencies must be installed simultaneously to resolve `workspace:*` protocol references.
+
+### Method 2: Link (for rapid iteration)
 
 ```bash
-cd packages/uimatch-plugin && bun link
-bun link uimatch-plugin  # in consumer project
+# Register packages globally
+cd packages/shared-logging && bun link && cd ../..
+cd packages/uimatch-selector-spi && bun link && cd ../..
+cd packages/uimatch-core && bun link && cd ../..
+cd packages/uimatch-scoring && bun link && cd ../..
+cd packages/uimatch-selector-anchors && bun link && cd ../..
+cd packages/uimatch-plugin && bun link && cd ../..
+
+# Link in consumer project
+cd /path/to/consumer
+bun link @uimatch/shared-logging
+bun link @uimatch/selector-spi
+bun link uimatch-core
+bun link uimatch-scoring
+bun link @uimatch/selector-anchors
+bun link uimatch-plugin
+
+# Unlink when done
+bun unlink uimatch-plugin  # in consumer
+cd packages/uimatch-plugin && bun unlink  # in source
 ```
+
+**Note**: Links persist across shell restarts but break if source paths move or `node_modules` is regenerated.
 
 ## Development
 
@@ -164,21 +215,56 @@ bun run format
 | ESM resolution failure      | Incorrect module format in distributed package | Test with `npm pack` before publishing                   |
 | CLI not executable          | Shebang or bin path incorrect                  | Verify `bin` in package.json and `#!/usr/bin/env node`   |
 
-### Pre-Publish Checklist
+### Publishing to npm
 
-Before `npm publish`, verify with pack:
+**Workspace protocol resolution**: `workspace:*` dependencies are automatically converted to semver ranges when using `npm publish` from workspace root.
 
 ```bash
-npm pack && npm i -g ./uimatch-plugin-*.tgz
+# 1. Version all packages (consider using Changesets for coordinated releases)
+npm version patch -w @uimatch/shared-logging
+npm version patch -w @uimatch/selector-spi
+npm version patch -w uimatch-core
+npm version patch -w uimatch-scoring
+npm version patch -w @uimatch/selector-anchors
+npm version patch -w uimatch-plugin
+
+# 2. Build all packages
+bun run build
+
+# 3. Publish in dependency order from workspace root
+npm publish -w @uimatch/shared-logging --access public
+npm publish -w @uimatch/selector-spi --access public
+npm publish -w uimatch-core --access public
+npm publish -w uimatch-scoring --access public
+npm publish -w @uimatch/selector-anchors --access public
+npm publish -w uimatch-plugin --access public
+```
+
+**Important**: Always publish from workspace root, not individual package directories. Publishing from subdirectories leaves `workspace:*` unresolved in distributed packages.
+
+### Pre-Publish Checklist
+
+Before publishing, verify distribution integrity:
+
+```bash
+# Test with pack method (see Local Testing section)
+bun run build
+# ... run full pack verification from Local Testing section
+
+# Or quick smoke test from repo root
+npm pack -w uimatch-plugin
+npm i -g ./packages/uimatch-plugin/uimatch-plugin-*.tgz
 npx uimatch compare figma=bypass:test story="..." selector="..."
 ```
 
 **Critical checks:**
 
-- Runtime dependencies in `dependencies` (not `devDependencies`)
-- ESM/CJS module resolution works
-- CLI executable and shebang correct
-- No secrets in package (check with `npm pack --dry-run`)
+- ✅ Runtime dependencies in `dependencies` (not `devDependencies`)
+- ✅ ESM/CJS module resolution works (test with Node.js directly)
+- ✅ CLI executable with correct shebang (`#!/usr/bin/env node`)
+- ✅ No secrets in package (`npm pack --dry-run` to review contents)
+- ✅ All workspace dependencies resolved (publish from root, not subdirs)
+- ✅ Playwright peer dependency documented in README
 
 ## Documentation
 
