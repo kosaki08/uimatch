@@ -163,7 +163,8 @@ Role selectors support `name`, `level`, `pressed`, `selected`, `checked`, `expan
 - `UIMATCH_WAIT_UNTIL` - Wait strategy (`load`, `networkidle`, `domcontentloaded`)
 - `UIMATCH_SELECTOR_STRICT` - Reject unknown prefixes (default: `false`)
 - `UIMATCH_SELECTOR_FIRST` - Return first match (default: `false`)
-- `DEBUG=uimatch:selector` - Log selector resolution
+- `DEBUG=uimatch:*` / `DEBUG=uimatch:selector` - Debug logging
+- `UIMATCH_LOG_LEVEL` - `silent` | `error` | `warn` | `info` | `debug`
 - `BASIC_AUTH_USER`, `BASIC_AUTH_PASS` - Basic authentication
 
 ## API Reference
@@ -441,6 +442,10 @@ import type {
   BrowserAdapter,
 } from 'uimatch-core';
 ```
+
+## Distribution
+
+Not published independently (`private: true`). Bundled into `uimatch-plugin`.
 
 ## License
 

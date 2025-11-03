@@ -72,6 +72,7 @@ Compare a Figma design with implementation:
 - `thresholds.pixelDiffRatio`: (Optional) Pixel difference ratio (0-1, overrides profile)
 - `thresholds.deltaE`: (Optional) Color ΔE threshold (0-50, overrides profile)
 - `outDir`: (Optional) Output directory for artifacts (screenshots, diffs)
+- `textCheck`: (Optional) Text content validation (see Text Matching section below)
 
 **Output**:
 
@@ -339,6 +340,22 @@ When used within Claude Code, the output is formatted for AI assistant consumpti
 - Re-run comparison to verify improvements
 ```
 
+## Text Matching
+
+The `textCheck` option validates text content between Figma and implementation.
+
+**Workflow**: Layout/background → TEXT color (fill→`color`) → textCheck
+
+```typescript
+textCheck: {
+  enabled: true,
+  mode: 'self',         // 'self' | 'descendants'
+  normalize: 'nfkc_ws', // 'none' | 'nfkc' | 'nfkc_ws'
+  match: 'ratio',       // 'exact' | 'contains' | 'ratio'
+  minRatio: 0.98
+}
+```
+
 ## Figma Integration
 
 **Access Priority**: BYPASS (test mode) > REST API (`FIGMA_ACCESS_TOKEN`) > MCP Server
@@ -520,6 +537,12 @@ bun test commands/compare.test.ts
 # Watch mode
 bun test --watch
 ```
+
+## Path Aliases
+
+Internal imports use `#plugin/*`:
+- **Build**: esbuild alias (`tsup.config.ts`)
+- **Runtime**: `package.json` imports field
 
 ## Type Definitions
 

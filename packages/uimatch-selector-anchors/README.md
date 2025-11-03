@@ -295,6 +295,8 @@ For complete schema details, see [`schema.ts`](./src/types/schema.ts).
 - Probe interface for liveness checking
 - Write-back support for anchor updates
 
+**Path Aliases**: `#anchors/*` resolved via esbuild (build) and `imports` field (runtime)
+
 ## License
 
 MIT
