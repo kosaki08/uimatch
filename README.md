@@ -12,17 +12,21 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 - **Selector Resolution**: Extensible plugin architecture for stable selector resolution
 - **Browser reuse**: Automatic browser pooling for faster iteration
 
+## Requirements
+
+- **Runtime**: Node.js >=22.11.0 (npm package) or Bun (development)
+- **Browser**: Playwright Chromium (peer dependency, install once)
+
 ## Installation
 
 ```bash
-# Add marketplace
-/plugin marketplace add <org>/uimatch
-
-# Install plugin
+# Claude Code plugin
 /plugin install uimatch
-
-# Install Playwright browsers (required peer dependency)
 bunx playwright install chromium
+
+# Or as global CLI
+npm install -g uimatch-plugin playwright
+npx playwright install chromium
 ```
 
 ## Usage
@@ -77,15 +81,65 @@ Create `.uimatchrc.json` in your project root:
 - `UIMATCH_HEADLESS` - Control browser headless mode (default: `true`)
 - `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` - Basic auth credentials for target URLs
 
+## Quick Verification
+
+Smoke test without Figma/Storybook (expects `DFS: X.XX`):
+
+```bash
+bun run build
+node packages/uimatch-plugin/dist/cli/index.js compare \
+  figma=bypass:test \
+  story="data:text/html,<div style='width:10px;height:10px;background:red'></div>" \
+  selector="div" dpr=1 size=pad
+```
+
+Bypass mode uses `UIMATCH_FIGMA_PNG_B64` env var (useful for CI).
+
+## CI Integration
+
+**GitHub Actions example:**
+
+```yaml
+- name: Install Playwright
+  run: npx playwright install chromium --with-deps
+- name: Smoke test
+  run: npx uimatch compare figma=bypass:test story="..." selector="..."
+  env:
+    UIMATCH_FIGMA_PNG_B64: ${{ secrets.TEST_PNG_B64 }}
+```
+
+**Important:**
+
+- Use `--with-deps` for system dependencies
+- Cache Playwright browsers for faster runs
+- Set `UIMATCH_HEADLESS=true` (default) for CI
+- Bypass mode avoids Figma API rate limits
+
+## Local Testing
+
+**Pack (pre-publish check):**
+
+```bash
+bun run build && cd packages/uimatch-plugin && npm pack
+npm i -g ./uimatch-plugin-*.tgz playwright && npx playwright install chromium
+npx uimatch compare figma=bypass:test story="..." selector="..."
+```
+
+**Link (dev iteration):**
+
+```bash
+cd packages/uimatch-plugin && bun link
+bun link uimatch-plugin  # in consumer project
+```
+
 ## Development
 
 ```bash
 # Install dependencies
 bun install
 
-# Build packages
-cd packages/uimatch-selector-spi && bun run build
-cd ../uimatch-selector-anchors && bun run build
+# Build all packages (required before testing)
+bun run build
 
 # Run tests
 bun test
@@ -95,10 +149,36 @@ bun run lint
 bun run format
 ```
 
-**Requirements:**
+## Troubleshooting
 
-- Development: Bun (required for monorepo workspace)
-- Distribution: Node.js >=22.11.0
+### Common Issues
+
+| Issue                       | Cause                                          | Solution                                                 |
+| --------------------------- | ---------------------------------------------- | -------------------------------------------------------- |
+| Browser not found           | Playwright Chromium not installed              | `npx playwright install chromium`                        |
+| Module 'typescript' missing | Runtime dep in devDependencies                 | `npm i -g typescript` or move to dependencies            |
+| Storybook wrong URL         | Canvas URL instead of iframe                   | Use `iframe.html?id=...` not `?path=/story/...`          |
+| Link broken                 | `node_modules` regenerated or path moved       | `bun unlink && bun link` or use pack method              |
+| Bypass mode fails           | `UIMATCH_FIGMA_PNG_B64` not set                | Export base64-encoded PNG (10x10 red square for testing) |
+| Runtime dependency missing  | Package installed with wrong dependency type   | Check `package.json`: runtime deps → `dependencies`      |
+| ESM resolution failure      | Incorrect module format in distributed package | Test with `npm pack` before publishing                   |
+| CLI not executable          | Shebang or bin path incorrect                  | Verify `bin` in package.json and `#!/usr/bin/env node`   |
+
+### Pre-Publish Checklist
+
+Before `npm publish`, verify with pack:
+
+```bash
+npm pack && npm i -g ./uimatch-plugin-*.tgz
+npx uimatch compare figma=bypass:test story="..." selector="..."
+```
+
+**Critical checks:**
+
+- Runtime dependencies in `dependencies` (not `devDependencies`)
+- ESM/CJS module resolution works
+- CLI executable and shebang correct
+- No secrets in package (check with `npm pack --dry-run`)
 
 ## Documentation
 
