@@ -184,8 +184,8 @@ function normalizeSpecificityScore(selector: string): number {
     return 0.7;
   }
 
-  // ID selector: moderate specificity
-  if (selector.startsWith('#')) {
+  // ID selector: moderate specificity (includes compound selectors like button#id)
+  if (selector.startsWith('#') || /#[_a-zA-Z][\w-]*/.test(selector)) {
     return 0.6;
   }
 
@@ -255,10 +255,22 @@ export function calculateStabilityScore(
   const envWeights = getEnvWeights();
 
   // Merge with user-provided weights (options override env)
-  const weights = {
+  const mergedWeights = {
     ...envWeights,
     ...options.weights,
   };
+
+  // Re-normalize after merging to ensure sum = 1.0
+  const sum = Object.values(mergedWeights).reduce((a, b) => a + b, 0);
+  const weights =
+    sum === 0
+      ? envWeights // Fallback to env weights if all zero
+      : {
+          hintQuality: mergedWeights.hintQuality / sum,
+          snippetMatch: mergedWeights.snippetMatch / sum,
+          liveness: mergedWeights.liveness / sum,
+          specificity: mergedWeights.specificity / sum,
+        };
 
   // Calculate component scores
   const hintQuality = calculateHintQualityScore(params.hint);

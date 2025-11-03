@@ -4,6 +4,36 @@ import { resolve } from 'node:path';
 import { getConfig } from '../types/config.js';
 
 /**
+ * File content cache for snippet matching performance
+ * Keyed by absolute file path, values are line arrays
+ */
+const fileContentCache = new Map<string, string[]>();
+
+/**
+ * Clear the file content cache (useful for testing or memory management)
+ */
+export function clearFileCache(): void {
+  fileContentCache.clear();
+}
+
+/**
+ * Read file and split into lines, with caching
+ * @param absolutePath - Absolute path to file
+ * @returns Array of lines
+ */
+async function getCachedFileLines(absolutePath: string): Promise<string[]> {
+  const cached = fileContentCache.get(absolutePath);
+  if (cached) {
+    return cached;
+  }
+
+  const content = await readFile(absolutePath, 'utf-8');
+  const lines = content.split(/\r?\n/);
+  fileContentCache.set(absolutePath, lines);
+  return lines;
+}
+
+/**
  * Configuration for snippet hash generation
  */
 export interface SnippetHashOptions {
@@ -85,9 +115,8 @@ export async function generateSnippetHash(
 
   const absolutePath = resolve(file);
 
-  // Read file
-  const content = await readFile(absolutePath, 'utf-8');
-  const lines = content.split(/\r?\n/);
+  // Read file with caching
+  const lines = await getCachedFileLines(absolutePath);
 
   // Validate line number
   if (line < 1 || line > lines.length) {
@@ -208,8 +237,8 @@ export async function findSnippetMatch(
   options: SnippetHashOptions = {}
 ): Promise<number | null> {
   const absolutePath = resolve(file);
-  const content = await readFile(absolutePath, 'utf-8');
-  const lines = content.split(/\r?\n/);
+  // Read file with caching for better performance with multiple anchors
+  const lines = await getCachedFileLines(absolutePath);
 
   // Extract hash and optional original snippet
   const targetHash =

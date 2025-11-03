@@ -2,17 +2,21 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { findSnippetMatch, generateSnippetHash } from '../hashing/snippet-hash';
+import { clearFileCache, findSnippetMatch, generateSnippetHash } from '../hashing/snippet-hash';
 
 describe('Snippet Hash', () => {
   let tempDir: string;
 
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'uimatch-snippet-test-'));
+    // Clear file cache before each test to prevent stale data
+    clearFileCache();
   });
 
   afterEach(async () => {
     await rm(tempDir, { recursive: true, force: true });
+    // Clear cache after each test to free memory
+    clearFileCache();
   });
 
   describe('generateSnippetHash', () => {
@@ -165,6 +169,7 @@ export function Hero() {
 
       // Modify code (function moved down by 2 lines)
       await writeFile(filePath, modifiedCode);
+      clearFileCache(); // Clear cache after file modification
 
       // Find should locate best matching position
       // Note: Line 4's snippet (lines 2-7) has highest similarity to original (lines 1-5)
@@ -192,6 +197,7 @@ export function Hero() {
 
       // Replace with completely different code
       await writeFile(filePath, completelyDifferentCode);
+      clearFileCache(); // Clear cache after file modification
 
       // Should not find match
       const found = await findSnippetMatch(filePath, result, 2);
@@ -217,6 +223,7 @@ export function Hero() {
 
       // Modify slightly
       await writeFile(filePath, slightlyModifiedCode);
+      clearFileCache(); // Clear cache after file modification
 
       // Should find approximate match (>60% similarity)
       // Note: All lines have equal similarity scores, so the algorithm prefers the last line (4)

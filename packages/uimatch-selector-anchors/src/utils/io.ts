@@ -1,6 +1,6 @@
 import type { SelectorsAnchors } from '#anchors/types/schema';
 import { SelectorsAnchorsSchema } from '#anchors/types/schema';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 /**
@@ -37,7 +37,8 @@ export async function loadSelectorsAnchors(path: string): Promise<SelectorsAncho
 }
 
 /**
- * Save selector anchors to JSON file
+ * Save selector anchors to JSON file with atomic write
+ * Uses temporary file + rename for crash safety
  *
  * @param path - Absolute or relative path to save the anchors JSON file
  * @param data - Anchors data to save
@@ -57,9 +58,14 @@ export async function saveSelectorsAnchors(path: string, data: SelectorsAnchors)
   const dir = dirname(absolutePath);
   await mkdir(dir, { recursive: true });
 
-  // Write with formatting
+  // Write to temporary file first (atomic write pattern)
+  const tempPath = `${absolutePath}.tmp`;
   const json = JSON.stringify(result.data, null, 2);
-  await writeFile(absolutePath, json, 'utf-8');
+  await writeFile(tempPath, json, 'utf-8');
+
+  // Atomic rename (POSIX atomic operation)
+  // If process crashes before rename, temp file is left but original is intact
+  await rename(tempPath, absolutePath);
 }
 
 /**
