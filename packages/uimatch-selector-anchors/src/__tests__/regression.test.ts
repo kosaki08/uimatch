@@ -14,6 +14,7 @@ describe('Regression Tests', () => {
       const anchors: SelectorAnchor[] = [
         {
           id: 'anchor1',
+          source: { file: 'test.ts', line: 1, col: 0 },
           hint: { prefer: ['css'] },
           lastKnown: {
             selector: '[href="#foo"]',
@@ -36,6 +37,7 @@ describe('Regression Tests', () => {
       const anchors: SelectorAnchor[] = [
         {
           id: 'anchor1',
+          source: { file: 'test.ts', line: 1, col: 0 },
           hint: { prefer: ['css'] },
           lastKnown: {
             selector: '#real-id',
@@ -58,6 +60,7 @@ describe('Regression Tests', () => {
       const anchors: SelectorAnchor[] = [
         {
           id: 'anchor1',
+          source: { file: 'test.ts', line: 1, col: 0 },
           hint: { testid: 'submit-button', prefer: ['testid'] },
         },
       ];
@@ -74,6 +77,7 @@ describe('Regression Tests', () => {
       const anchors: SelectorAnchor[] = [
         {
           id: 'anchor1',
+          source: { file: 'test.ts', line: 1, col: 0 },
           hint: { role: 'button', prefer: ['role'] },
         },
       ];
@@ -90,6 +94,7 @@ describe('Regression Tests', () => {
       const anchors: SelectorAnchor[] = [
         {
           id: 'anchor1',
+          source: { file: 'test.ts', line: 1, col: 0 },
           hint: { prefer: ['css'] },
           meta: { component: 'SubmitButton' },
         },
