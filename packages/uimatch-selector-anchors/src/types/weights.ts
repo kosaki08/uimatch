@@ -2,8 +2,6 @@
  * Anchor matching weights configuration
  */
 
-import weightsData from './weights.json';
-
 /**
  * Scoring weights for anchor matching algorithm
  */
@@ -35,8 +33,24 @@ export interface AnchorMatchingConfig {
 }
 
 /**
- * Get default anchor matching weights from configuration file
+ * Get default anchor matching weights.
+ * Values are embedded directly to avoid distribution issues with JSON assets.
  */
 export function getAnchorMatchingConfig(): AnchorMatchingConfig {
-  return weightsData as AnchorMatchingConfig;
+  return {
+    weights: {
+      exactLastKnownMatch: 100,
+      partialLastKnownMatch: 50,
+      testidHintMatch: 80,
+      roleHintMatch: 70,
+      componentMetadataMatch: 30,
+      hasSnippetHash: 10,
+      recentUpdate: 5,
+      highStability: 15,
+    },
+    thresholds: {
+      recentUpdateDays: 30,
+      highStabilityScore: 80,
+    },
+  };
 }

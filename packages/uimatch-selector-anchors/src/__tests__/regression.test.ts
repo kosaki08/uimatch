@@ -119,8 +119,6 @@ describe('Regression Tests', () => {
         // Set test value
         process.env.UIMATCH_SNIPPET_MAX_RADIUS = '100';
 
-        // Force config reload by re-importing
-        delete require.cache[require.resolve('../types/config')];
         const { getConfig } = await import('../types/config.js');
 
         const config = getConfig();
@@ -141,7 +139,6 @@ describe('Regression Tests', () => {
       try {
         process.env.UIMATCH_SNIPPET_HIGH_CONFIDENCE = '0.95';
 
-        delete require.cache[require.resolve('../types/config')];
         const { getConfig } = await import('../types/config.js');
 
         const config = getConfig();
@@ -161,7 +158,6 @@ describe('Regression Tests', () => {
       try {
         process.env.UIMATCH_SNIPPET_FUZZY_THRESHOLD = '0.60';
 
-        delete require.cache[require.resolve('../types/config')];
         const { getConfig } = await import('../types/config.js');
 
         const config = getConfig();
@@ -181,7 +177,6 @@ describe('Regression Tests', () => {
       try {
         process.env.UIMATCH_SNIPPET_FUZZY_THRESHOLD = '1.5'; // Invalid: > 1.0
 
-        delete require.cache[require.resolve('../types/config')];
         const { getConfig, DEFAULT_SNIPPET_CONFIG } = await import('../types/config.js');
 
         const config = getConfig();
@@ -204,7 +199,6 @@ describe('Regression Tests', () => {
       try {
         process.env.UIMATCH_AST_FAST_PATH_TIMEOUT_MS = '500';
 
-        delete require.cache[require.resolve('../types/config')];
         const { getConfig } = await import('../types/config.js');
 
         const config = getConfig();

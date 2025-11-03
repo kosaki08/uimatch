@@ -51,7 +51,7 @@ describe('compileSafeRegex', () => {
 
   describe('length validation', () => {
     it('should reject patterns exceeding maximum length', () => {
-      const longPattern = 'a'.repeat(301);
+      const longPattern = 'a'.repeat(501);
       const result = compileSafeRegex(longPattern);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -61,7 +61,7 @@ describe('compileSafeRegex', () => {
     });
 
     it('should accept patterns at the maximum length boundary', () => {
-      const maxLengthPattern = 'a'.repeat(300);
+      const maxLengthPattern = 'a'.repeat(500);
       const result = compileSafeRegex(maxLengthPattern);
       expect(result.success).toBe(true);
     });
