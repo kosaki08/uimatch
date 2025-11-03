@@ -29,7 +29,7 @@ export function createPlaywrightProbe(page: Page): Probe {
 
         // If visibility check is required, also check if visible
         if (checkVisibility) {
-          const isVisible = await locator.isVisible({ timeout: 100 });
+          const isVisible: boolean = await locator.isVisible({ timeout: 100 });
 
           return {
             selector,
@@ -46,13 +46,13 @@ export function createPlaywrightProbe(page: Page): Probe {
           isAlive: true, // backward compatibility
           checkTime: Date.now() - startTime,
         };
-      } catch (error) {
+      } catch (err: unknown) {
         // Element not found or timeout
         return {
           selector,
           isValid: false,
           isAlive: false, // backward compatibility
-          error: error instanceof Error ? error.message : String(error),
+          error: err instanceof Error ? err.message : String(err),
           checkTime: Date.now() - startTime,
         };
       }

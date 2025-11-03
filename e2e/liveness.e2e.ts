@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { ProbeResult } from '@uimatch/selector-spi';
 import {
   checkLivenessAll,
   checkLivenessPriority,
@@ -22,7 +23,7 @@ test.describe('Probe Check (SPI)', () => {
   test('detects visible element', async ({ page }) => {
     await page.setContent(HTML_CONTENT);
     const probe = createPlaywrightProbe(page);
-    const result = await probe.check('[data-testid="visible-element"]');
+    const result: ProbeResult = await probe.check('[data-testid="visible-element"]');
 
     expect(result.isValid).toBe(true);
     expect(result.isAlive).toBe(true); // backward compatibility
@@ -34,7 +35,7 @@ test.describe('Probe Check (SPI)', () => {
   test('detects hidden element', async ({ page }) => {
     await page.setContent(HTML_CONTENT);
     const probe = createPlaywrightProbe(page);
-    const result = await probe.check('[data-testid="hidden-element"]');
+    const result: ProbeResult = await probe.check('[data-testid="hidden-element"]');
 
     expect(result.isValid).toBe(false);
     expect(result.isAlive).toBe(false); // backward compatibility
@@ -44,7 +45,7 @@ test.describe('Probe Check (SPI)', () => {
   test('detects non-existent element', async ({ page }) => {
     await page.setContent(HTML_CONTENT);
     const probe = createPlaywrightProbe(page);
-    const result = await probe.check('[data-testid="non-existent"]');
+    const result: ProbeResult = await probe.check('[data-testid="non-existent"]');
 
     expect(result.isValid).toBe(false);
     expect(result.isAlive).toBe(false); // backward compatibility
@@ -70,7 +71,7 @@ test.describe('Probe Check (SPI)', () => {
     const probe = createPlaywrightProbe(page);
 
     // Don't check visibility - just existence
-    const result = await probe.check('[data-testid="hidden-element"]', {
+    const result: ProbeResult = await probe.check('[data-testid="hidden-element"]', {
       visible: false,
     });
 
@@ -83,7 +84,7 @@ test.describe('Probe Check (SPI)', () => {
     const probe = createPlaywrightProbe(page);
     const startTime = Date.now();
 
-    const result = await probe.check('[data-testid="never-appears"]', {
+    const result: ProbeResult = await probe.check('[data-testid="never-appears"]', {
       timeoutMs: 100,
     });
 
@@ -109,7 +110,7 @@ test.describe('Probe Check (SPI)', () => {
     }, 100);
 
     // Wait for selector to appear
-    const result = await probe.check('[data-testid="delayed-element"]', {
+    const result: ProbeResult = await probe.check('[data-testid="delayed-element"]', {
       timeoutMs: 1000,
     });
 
@@ -120,7 +121,7 @@ test.describe('Probe Check (SPI)', () => {
   test('returns error message on invalid selector', async ({ page }) => {
     await page.setContent(HTML_CONTENT);
     const probe = createPlaywrightProbe(page);
-    const result = await probe.check('>>>invalid<<<');
+    const result: ProbeResult = await probe.check('>>>invalid<<<');
 
     expect(result.isValid).toBe(false);
     expect(result.isAlive).toBe(false);
@@ -139,7 +140,7 @@ test.describe('checkLivenessPriority (SPI)', () => {
       '#test-button',
     ];
 
-    const result = await checkLivenessPriority(probe, selectors);
+    const result: ProbeResult | null = await checkLivenessPriority(probe, selectors);
 
     expect(result).not.toBeNull();
     expect(result?.selector).toBe('[data-testid="visible-element"]');
@@ -156,7 +157,7 @@ test.describe('checkLivenessPriority (SPI)', () => {
       '[data-testid="non-existent-3"]',
     ];
 
-    const result = await checkLivenessPriority(probe, selectors);
+    const result: ProbeResult | null = await checkLivenessPriority(probe, selectors);
 
     expect(result).toBeNull();
   });
@@ -170,7 +171,7 @@ test.describe('checkLivenessPriority (SPI)', () => {
       '#test-button',
     ];
 
-    const result = await checkLivenessPriority(probe, selectors, {
+    const result: ProbeResult | null = await checkLivenessPriority(probe, selectors, {
       visible: true,
     });
 
@@ -189,7 +190,7 @@ test.describe('checkLivenessPriority (SPI)', () => {
       '#test-button',
     ];
 
-    const result = await checkLivenessPriority(probe, selectors, {
+    const result: ProbeResult | null = await checkLivenessPriority(probe, selectors, {
       visible: false,
     });
 
