@@ -10,7 +10,6 @@ import { findSnippetMatch } from './hashing/snippet-hash.js';
 import { calculateStabilityScore, findMostStableSelector } from './hashing/stability-score.js';
 import { selectBestAnchor } from './matching/anchor-matcher.js';
 import { resolveFromTypeScript } from './resolvers/ast-resolver.js';
-import { resolveFromHTML } from './resolvers/html-resolver.js';
 import { getConfig } from './types/config.js';
 import type { SelectorsAnchors } from './types/schema.js';
 import { loadSelectorsAnchors } from './utils/io.js';
@@ -157,6 +156,8 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                 reasons.push('AST resolution failed completely (all fallback levels exhausted)');
               }
             } else if (file.match(/\.html?$/)) {
+              // Lazy import HTML resolver to avoid parse5 dependency at module load time
+              const { resolveFromHTML } = await import('./resolvers/html-resolver.js');
               const htmlResult = await withTimeout(
                 resolveFromHTML(resolvedFile, matchedLine, col),
                 config.timeouts.htmlParse

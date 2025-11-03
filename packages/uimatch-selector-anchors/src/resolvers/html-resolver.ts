@@ -1,17 +1,51 @@
 import type { SelectorHint } from '#anchors/types/schema';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import * as parse5 from 'parse5';
 import {
   buildHintFromAttributes as buildHint,
   generateSelectorsFromAttributes as generateSelectors,
 } from './selector-utils.js';
 
-// parse5 tree adapter types
-type Document = parse5.DefaultTreeAdapterMap['document'];
-type Element = parse5.DefaultTreeAdapterMap['element'];
-type Node = parse5.DefaultTreeAdapterMap['node'];
-type ParentNode = parse5.DefaultTreeAdapterMap['parentNode'];
+// Minimal type definitions to avoid top-level parse5 import
+// These types mirror parse5's structure without importing the actual library
+interface SourceCodeLocation {
+  startLine: number;
+  startCol: number;
+  endLine: number;
+  endCol: number;
+}
+
+interface Attribute {
+  name: string;
+  value: string;
+}
+
+interface TextNode {
+  nodeName: '#text';
+  value: string;
+  childNodes?: never;
+}
+
+interface Element {
+  nodeName: string;
+  tagName?: string;
+  attrs?: Attribute[];
+  childNodes?: Node[];
+  sourceCodeLocation?: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+    startTag?: SourceCodeLocation;
+  };
+}
+
+interface Document {
+  childNodes: Node[];
+}
+
+type Node = Element | TextNode;
+type ParentNode = Document | Element;
 
 /**
  * Result of resolving a selector from HTML
@@ -57,6 +91,9 @@ export async function resolveFromHTML(
 ): Promise<HTMLResolverResult | null> {
   const absolutePath = resolve(file);
   const content = await readFile(absolutePath, 'utf-8');
+
+  // Lazy import parse5 to avoid top-level dependency resolution
+  const parse5 = await import('parse5');
 
   // Parse HTML with source location info
   const document: Document = parse5.parse(content, {
@@ -145,7 +182,7 @@ function findElementAtPosition(node: ParentNode, line: number, col1: number): El
 
     if (isInElement && 'childNodes' in child) {
       // Recursively check children first (prefer most specific element)
-      const childResult = findElementAtPosition(child as ParentNode, line, col1);
+      const childResult = findElementAtPosition(child, line, col1);
       if (childResult) {
         return childResult;
       }
@@ -196,13 +233,13 @@ function extractTextContent(element: Element): string | undefined {
           texts.push(text);
         }
       } else if ('childNodes' in child) {
-        collectText(child as ParentNode);
+        collectText(child);
       }
     }
   }
 
   if ('childNodes' in element) {
-    collectText(element as ParentNode);
+    collectText(element);
   }
 
   return texts.length > 0 ? texts.join(' ') : undefined;
