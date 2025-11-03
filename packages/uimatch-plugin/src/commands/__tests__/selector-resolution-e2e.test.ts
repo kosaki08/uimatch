@@ -115,8 +115,9 @@ export function Button() {
 
       // Verify updatedAnchors includes updated data
       expect(result.updatedAnchors).toBeDefined();
-      expect(result.updatedAnchors?.version).toBe('1.0.0');
-      expect(result.updatedAnchors?.anchors).toHaveLength(1);
+      const ua = result.updatedAnchors as SelectorsAnchors | undefined;
+      expect(ua?.version).toBe('1.0.0');
+      expect(ua?.anchors).toHaveLength(1);
 
       // Verify anchor was updated with AST data
       if (result.updatedAnchors) {
@@ -322,7 +323,8 @@ export function MultiButton() {
 
       expect(result.updatedAnchors).toBeDefined();
       // Both anchors should be preserved
-      expect(result.updatedAnchors?.anchors).toHaveLength(2);
+      const ua2 = result.updatedAnchors as SelectorsAnchors | undefined;
+      expect(ua2?.anchors).toHaveLength(2);
 
       // Only matched anchor should have updated timestamp
       if (result.updatedAnchors) {
