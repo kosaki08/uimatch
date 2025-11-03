@@ -1,13 +1,33 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { getConfig } from '../types/config.js';
 
 /**
- * File content cache for snippet matching performance
- * Keyed by absolute file path, values are line arrays
+ * Cache entry containing file lines, mtime, and timestamp
  */
-const fileContentCache = new Map<string, string[]>();
+interface CacheEntry {
+  /** File lines */
+  lines: string[];
+  /** File modification time (milliseconds) for invalidation */
+  mtimeMs: number;
+  /** Cache entry timestamp for TTL expiration */
+  ts: number;
+}
+
+/**
+ * File content cache for snippet matching performance
+ * Keyed by absolute file path, values include lines, mtime, and cache timestamp
+ */
+const fileContentCache = new Map<string, CacheEntry>();
+
+/**
+ * Cache time-to-live in milliseconds (0 = infinite)
+ * Set via UIMATCH_SNIPPET_CACHE_TTL_MS environment variable
+ * 0 (default): infinite cache lifetime
+ * >0: cache expires after specified milliseconds
+ */
+const TTL = Number(process.env.UIMATCH_SNIPPET_CACHE_TTL_MS ?? 0);
 
 /**
  * Clear the file content cache (useful for testing or memory management)
@@ -17,19 +37,35 @@ export function clearFileCache(): void {
 }
 
 /**
- * Read file and split into lines, with caching
+ * Read file and split into lines, with caching and automatic invalidation
+ * Cache is invalidated when:
+ * - File mtime changes (detected via fs.stat)
+ * - TTL expires (if configured)
+ *
  * @param absolutePath - Absolute path to file
  * @returns Array of lines
  */
 async function getCachedFileLines(absolutePath: string): Promise<string[]> {
+  const now = Date.now();
+  const fileStat = await stat(absolutePath);
   const cached = fileContentCache.get(absolutePath);
-  if (cached) {
-    return cached;
+
+  // Cache hit conditions:
+  // 1. Entry exists
+  // 2. mtime matches (file not modified)
+  // 3. TTL not expired (or TTL disabled)
+  if (cached && cached.mtimeMs === fileStat.mtimeMs && (!TTL || now - cached.ts <= TTL)) {
+    return cached.lines;
   }
 
+  // Cache miss: read file and store with metadata
   const content = await readFile(absolutePath, 'utf-8');
   const lines = content.split(/\r?\n/);
-  fileContentCache.set(absolutePath, lines);
+  fileContentCache.set(absolutePath, {
+    lines,
+    mtimeMs: fileStat.mtimeMs,
+    ts: now,
+  });
   return lines;
 }
 

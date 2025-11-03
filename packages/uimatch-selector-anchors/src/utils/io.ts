@@ -1,6 +1,6 @@
 import type { SelectorsAnchors } from '#anchors/types/schema';
 import { SelectorsAnchorsSchema } from '#anchors/types/schema';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 /**
@@ -65,7 +65,20 @@ export async function saveSelectorsAnchors(path: string, data: SelectorsAnchors)
 
   // Atomic rename (POSIX atomic operation)
   // If process crashes before rename, temp file is left but original is intact
-  await rename(tempPath, absolutePath);
+  // Windows compatibility: rename may fail with EEXIST/EPERM if target exists
+  try {
+    await rename(tempPath, absolutePath);
+  } catch (error: unknown) {
+    const err = error as NodeJS.ErrnoException;
+    // Windows fallback: remove existing file first, then rename
+    // Not perfectly atomic but practical for most use cases
+    if (err.code === 'EEXIST' || err.code === 'EPERM') {
+      await rm(absolutePath, { force: true });
+      await rename(tempPath, absolutePath);
+    } else {
+      throw error;
+    }
+  }
 }
 
 /**

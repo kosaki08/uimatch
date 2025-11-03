@@ -120,9 +120,16 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
       const componentNormalized = componentLower.replace(/[-_]/g, '');
       const selectorNormalized = selectorLower.replace(/[-_]/g, '');
 
-      if (selectorNormalized.includes(componentNormalized)) {
-        result.score += weights.componentMetadataMatch;
-        result.reasons.push('Matches component metadata');
+      // Only apply bonus if component name is long enough (≥3 chars)
+      // Short names like "ui", "app", etc. cause false positives
+      if (componentNormalized.length >= 3) {
+        // Use word boundary matching to reduce false positives
+        // e.g., "button" matches ".primary-button" but not ".but"
+        const wordBoundaryPattern = new RegExp(`\\b${componentNormalized}\\b`);
+        if (wordBoundaryPattern.test(selectorNormalized)) {
+          result.score += weights.componentMetadataMatch;
+          result.reasons.push('Matches component metadata');
+        }
       }
     }
 

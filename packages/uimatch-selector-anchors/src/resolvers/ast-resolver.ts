@@ -9,6 +9,20 @@ import {
 } from './selector-utils.js';
 
 /**
+ * Active AST parse operations tracker for concurrency control
+ * Prevents accumulation of timed-out heavy parsing tasks
+ * Using object wrapper to allow mutable counter without triggering prefer-const
+ */
+const parseTracker = { active: 0 };
+
+/**
+ * Maximum concurrent AST parse operations allowed
+ * Configurable via UIMATCH_AST_MAX_CONCURRENCY environment variable
+ * Default: 4 concurrent parses
+ */
+const PARSE_CONCURRENCY = Number(process.env.UIMATCH_AST_MAX_CONCURRENCY ?? 4);
+
+/**
  * Result of resolving a selector from AST
  */
 export interface ASTResolverResult {
@@ -160,66 +174,81 @@ export async function resolveFromTypeScript(
 
   // Level 3: Full parse (original implementation)
   // Defer execution to event loop so timeout can interrupt heavy parsing
+
+  // Concurrency limiter: wait if too many parses are active
+  // Prevents accumulation of heavy tasks when timeouts fire but parsing continues
+  while (parseTracker.active >= PARSE_CONCURRENCY) {
+    await new Promise((r) => setTimeout(r, 5));
+  }
+
+  parseTracker.active++;
+
   type FullParseResult = {
     selectors: string[];
     hint: SelectorHint;
     element: { tag?: string; attributes: Record<string, string>; text?: string };
   };
 
-  const fullParseResult = await withTimeout(
-    new Promise<FullParseResult | null>((resolve) =>
-      setTimeout(() => {
-        try {
-          // Extract attributes and text content
-          const attributes = extractJsxAttributes(jsxElement);
-          const elementText = extractTextContent(jsxElement);
-          const tag = getJsxTagName(jsxElement);
+  let fullParseResult: FullParseResult | null = null;
+  try {
+    fullParseResult = await withTimeout(
+      new Promise<FullParseResult | null>((resolve) =>
+        setTimeout(() => {
+          try {
+            // Extract attributes and text content
+            const attributes = extractJsxAttributes(jsxElement);
+            const elementText = extractTextContent(jsxElement);
+            const tag = getJsxTagName(jsxElement);
 
-          const hint = buildHint(attributes, elementText);
-          const selectors = generateSelectors(attributes, tag, elementText);
+            const hint = buildHint(attributes, elementText);
+            const selectors = generateSelectors(attributes, tag, elementText);
 
-          resolve({
-            selectors,
-            hint,
-            element: {
-              tag,
-              attributes,
-              text: elementText,
-            },
-          });
-        } catch {
-          resolve(null);
-        }
-      }, 0)
-    ),
-    FULL
-  );
+            resolve({
+              selectors,
+              hint,
+              element: {
+                tag,
+                attributes,
+                text: elementText,
+              },
+            });
+          } catch {
+            resolve(null);
+          }
+        }, 0)
+      ),
+      FULL
+    );
 
-  if (fullParseResult && fullParseResult.selectors.length > 0) {
-    reasons.push(`Full parse succeeded (< ${FULL}ms)`);
-    return { ...fullParseResult, reasons };
+    if (fullParseResult && fullParseResult.selectors.length > 0) {
+      reasons.push(`Full parse succeeded (< ${FULL}ms)`);
+      return { ...fullParseResult, reasons };
+    }
+
+    reasons.push('Full parse incomplete or failed, using heuristics');
+
+    // Level 4: Heuristics (last resort)
+    const heuristicResult = heuristicCandidates(content, line);
+
+    if (heuristicResult.selectors.length > 0) {
+      reasons.push('Heuristics generated candidates');
+      reasons.push(...heuristicResult.reasons);
+
+      return {
+        selectors: heuristicResult.selectors,
+        hint: heuristicResult.hint,
+        element: heuristicResult.element,
+        reasons,
+      };
+    }
+
+    // Complete failure - return failure reasons even though we return null
+    reasons.push('All parsing strategies failed: no JSX node or selectors found');
+    return { selectors: [], hint: {}, reasons };
+  } finally {
+    // Always decrement counter to prevent leaks
+    parseTracker.active--;
   }
-
-  reasons.push('Full parse incomplete or failed, using heuristics');
-
-  // Level 4: Heuristics (last resort)
-  const heuristicResult = heuristicCandidates(content, line);
-
-  if (heuristicResult.selectors.length > 0) {
-    reasons.push('Heuristics generated candidates');
-    reasons.push(...heuristicResult.reasons);
-
-    return {
-      selectors: heuristicResult.selectors,
-      hint: heuristicResult.hint,
-      element: heuristicResult.element,
-      reasons,
-    };
-  }
-
-  // Complete failure - return failure reasons even though we return null
-  reasons.push('All parsing strategies failed: no JSX node or selectors found');
-  return { selectors: [], hint: {}, reasons };
 }
 
 /**
