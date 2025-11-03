@@ -1,50 +1,16 @@
 import type { SelectorHint } from '#anchors/types/schema';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import type { DefaultTreeAdapterMap } from 'parse5';
 import {
   buildHintFromAttributes as buildHint,
   generateSelectorsFromAttributes as generateSelectors,
 } from './selector-utils.js';
 
-// Minimal type definitions to avoid top-level parse5 import
-// These types mirror parse5's structure without importing the actual library
-interface SourceCodeLocation {
-  startLine: number;
-  startCol: number;
-  endLine: number;
-  endCol: number;
-}
-
-interface Attribute {
-  name: string;
-  value: string;
-}
-
-interface TextNode {
-  nodeName: '#text';
-  value: string;
-  childNodes?: never;
-}
-
-interface Element {
-  nodeName: string;
-  tagName?: string;
-  attrs?: Attribute[];
-  childNodes?: Node[];
-  sourceCodeLocation?: {
-    startLine: number;
-    startCol: number;
-    endLine: number;
-    endCol: number;
-    startTag?: SourceCodeLocation;
-  };
-}
-
-interface Document {
-  childNodes: Node[];
-}
-
-type Node = Element | TextNode;
+// Type aliases for parse5's default tree adapter types
+type Document = DefaultTreeAdapterMap['document'];
+type Element = DefaultTreeAdapterMap['element'];
+type Node = DefaultTreeAdapterMap['node'];
 type ParentNode = Document | Element;
 
 /**
@@ -96,7 +62,7 @@ export async function resolveFromHTML(
   const parse5 = await import('parse5');
 
   // Parse HTML with source location info
-  const document: Document = parse5.parse(content, {
+  const document = parse5.parse(content, {
     sourceCodeLocationInfo: true,
   });
 
@@ -222,7 +188,7 @@ function extractTextContent(element: Element): string | undefined {
   const texts: string[] = [];
 
   function collectText(node: ParentNode): void {
-    if (!('childNodes' in node)) {
+    if (!('childNodes' in node) || !node.childNodes) {
       return;
     }
 
