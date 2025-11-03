@@ -312,60 +312,81 @@ const plugin: SelectorResolverPlugin = {
   resolve,
 
   async healthCheck() {
-    // Enhanced health check - verify dependencies and perform actual parsing
     const issues: string[] = [];
 
+    // 1) TypeScript is required (if this passes, core functionality works)
+    let tsOk = false;
     try {
-      // Try to import and use TypeScript parser
       const ts = await import('typescript');
-
-      // Perform actual TypeScript parsing to verify it works
-      const testCode = 'const x: number = 42;';
-      const sourceFile = ts.createSourceFile(
+      const src = 'const x: number = 42;';
+      const sf = ts.createSourceFile(
         'test.ts',
-        testCode,
+        src,
         ts.ScriptTarget.Latest,
         true,
         ts.ScriptKind.TS
       );
-
-      if (!sourceFile || sourceFile.statements.length === 0) {
+      tsOk = !!sf && sf.statements.length > 0;
+      if (!tsOk) {
         issues.push('TypeScript parser is available but failed to parse test code');
       }
-    } catch (error) {
-      issues.push(
-        `TypeScript dependency issue: ${error instanceof Error ? error.message : String(error)}`
-      );
+    } catch (e) {
+      issues.push(`TypeScript dependency issue: ${e instanceof Error ? e.message : String(e)}`);
     }
 
+    // 2) parse5 is optional (only needed for HTML path)
+    //    Also absorb module shape differences
+    let p5Warn = false;
     try {
-      // Try to import and use parse5 parser
-      const parse5 = await import('parse5');
+      const mod: unknown = await import('parse5');
 
-      // Perform actual HTML parsing to verify it works
-      const testHtml = '<div class="test">Hello</div>';
-      const document = parse5.parse(testHtml);
+      // Type guard helper
+      const hasProperty = (obj: unknown, prop: string): boolean =>
+        typeof obj === 'object' && obj !== null && prop in obj;
 
-      if (!document || !document.childNodes || document.childNodes.length === 0) {
-        issues.push('parse5 parser is available but failed to parse test HTML');
+      const parse =
+        hasProperty(mod, 'parse') && typeof (mod as Record<string, unknown>).parse === 'function'
+          ? (mod as Record<string, unknown>).parse
+          : hasProperty(mod, 'default') &&
+              typeof (mod as Record<string, unknown>).default === 'function'
+            ? (mod as Record<string, unknown>).default
+            : hasProperty(mod, 'default') &&
+                hasProperty((mod as Record<string, unknown>).default, 'parse') &&
+                typeof ((mod as Record<string, unknown>).default as Record<string, unknown>)
+                  .parse === 'function'
+              ? ((mod as Record<string, unknown>).default as Record<string, unknown>).parse
+              : null;
+
+      if (!parse) {
+        p5Warn = true;
+        issues.push('parse5 present but parse() function not found (module shape mismatch).');
+      } else {
+        const doc: unknown = (parse as (html: string) => unknown)('<div class="test">Hello</div>');
+        const ok = hasProperty(doc, 'childNodes');
+        if (!ok) {
+          p5Warn = true;
+          issues.push('parse5 parsed document but structure looks unexpected');
+        }
       }
-    } catch (error) {
-      issues.push(
-        `parse5 dependency issue: ${error instanceof Error ? error.message : String(error)}`
-      );
+    } catch (e) {
+      p5Warn = true;
+      // This is "optional". We keep the info but don't fail healthy.
+      issues.push(`parse5 optional check failed: ${e instanceof Error ? e.message : String(e)}`);
     }
 
-    if (issues.length === 0) {
-      return {
-        healthy: true,
-        message: 'Plugin is healthy and ready to use (dependencies verified with actual parsing)',
-      };
-    }
+    // 3) Decision policy:
+    //    - TypeScript OK → healthy = true
+    //    - parse5 is treated as a warning (included in issues but not reflected in healthy)
+    //    - For strict enforcement, use environment variable
+    const strictHtml = process.env.UIMATCH_HEALTHCHECK_STRICT_HTML === 'true';
+    const healthy = tsOk && (!strictHtml || !p5Warn);
 
     return {
-      healthy: false,
-      message: 'Plugin has dependency or parsing issues',
-      issues,
+      healthy,
+      message: healthy
+        ? 'Plugin is healthy and ready to use'
+        : 'Plugin has dependency or parsing issues',
+      issues: issues.length ? issues : undefined,
     };
   },
 };
