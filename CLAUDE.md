@@ -11,11 +11,11 @@ This file contains **Claude Code** specific instructions.
 
 ### Tool Usage
 
-- Use the `TodoWrite` tool proactively to track multi-step tasks
-- Use `Read` tool before editing files
-- Prefer specialized tools (`Read`, `Edit`, `Write`) over bash commands for file operations
-- Run `bun run format` after making code changes
-- Run `bun run lint` before committing
+- Use `TodoWrite` for multi-step tasks
+- Read files before editing
+- Use specialized tools over bash for file operations
+- **Package manager**: Bun only (never npm/pnpm/yarn)
+- Run `bun run format` and `bun run lint` before committing
 
 ### Commit Workflow
 

@@ -14,23 +14,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.x
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: Build all packages
+        run: bun run build
+
+      - name: Run tests
+        run: bun test
+
+      # Setup Node.js only for npm publishing
+      - name: Setup Node.js for publishing
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build all packages
-        run: pnpm -r build
-
       - name: Pack packages for validation
-        run: pnpm -r pack --pack-destination ./artifacts
+        working-directory: packages/uimatch-core
+        run: npm pack --pack-destination ../../artifacts
 
       - name: Upload packed artifacts
         uses: actions/upload-artifact@v4
@@ -38,7 +48,8 @@ jobs:
           name: npm-packs
           path: artifacts
 
-      - name: Publish packages to npm
-        run: pnpm -r publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # - name: Publish packages to npm
+      #   working-directory: packages/uimatch-core
+      #   run: npm publish --provenance --access public
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

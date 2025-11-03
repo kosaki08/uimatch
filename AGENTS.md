@@ -225,9 +225,10 @@ src/
 
 ## CI & Reproducibility
 
-- Phase 0 tests must run < 200ms per spec on average; avoid I/O when possible
-- In CI, install browsers explicitly (Playwright) and pin versions for reproducibility
-- Cache dependencies and Playwright browsers; generate fixtures in a pretest step
+- Phase 0 tests: < 200ms per spec; avoid I/O when possible
+- Playwright browsers: install with `--with-deps` and cache
+- **Package manager**: Bun only (lock: `bun.lock`; others gitignored)
+- **CI**: Bun for all operations except `npm publish` in release workflow
 
 ## Versioning & Release
 
@@ -240,9 +241,9 @@ src/
 
 ### Required
 
-- **Runtime**: Bun (recommended) or Node.js >=22.11.0
-- **Package manager**: Bun
-- **Editor**: VS Code (recommended with extensions)
+- **Runtime**: Bun 1.x
+- **Package manager**: Bun (`packageManager` field enforced)
+- **Editor**: VS Code (recommended)
 
 ### VS Code Extensions
 
