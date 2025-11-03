@@ -6,13 +6,25 @@ export default defineConfig({
   dts: true,
   clean: true,
   outDir: 'dist',
-  shims: true,
+  // Disable default shims to inject createRequire for dynamic require support
+  shims: false,
+  platform: 'node',
   // Bundle internal dependencies for easy distribution
   noExternal: ['uimatch-core', 'uimatch-scoring', '@uimatch/selector-spi'],
   // External dependencies that should not be bundled
-  external: ['playwright', 'chromium-bidi'],
-  // Add Node shebang for CLI distribution (works with both Node and Bun)
-  banner: { js: '#!/usr/bin/env node' },
+  external: [
+    'playwright',
+    'chromium-bidi',
+    // Dependencies with native modules or dynamic requires
+    'pngjs',
+    'pixelmatch',
+  ],
+  // Inject createRequire for ESM compatibility with CJS dynamic requires (pngjs, etc.)
+  banner: {
+    js: `#!/usr/bin/env node
+import { createRequire as __createRequire } from 'module';
+const require = __createRequire(import.meta.url);`,
+  },
   // Configure esbuild to replace #plugin/* with relative paths for runtime compatibility
   esbuildOptions(options) {
     options.alias = options.alias || {};

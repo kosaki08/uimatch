@@ -1,2 +1,2 @@
-export { silentLogger } from './types';
-export type { LogLevel, Logger } from './types';
+export { silentLogger } from './types.js';
+export type { LogLevel, Logger } from './types.js';
