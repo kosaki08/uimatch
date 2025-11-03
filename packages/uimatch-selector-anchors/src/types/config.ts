@@ -13,9 +13,6 @@ const DEFAULT_TIMEOUTS = {
   /** Timeout for liveness probe checks */
   PROBE_TIMEOUT: 600,
 
-  /** Timeout for AST parsing operations (increased to 300ms for real-world codebases) */
-  AST_PARSE_TIMEOUT: 300,
-
   /** Timeout for HTML parsing operations (increased to 300ms for real-world codebases) */
   HTML_PARSE_TIMEOUT: 300,
 
@@ -52,7 +49,6 @@ const DEFAULT_SNIPPET_CONFIG = {
  */
 const ENV_VARS = {
   PROBE_TIMEOUT: 'UIMATCH_PROBE_TIMEOUT_MS',
-  AST_PARSE_TIMEOUT: 'UIMATCH_AST_PARSE_TIMEOUT_MS',
   HTML_PARSE_TIMEOUT: 'UIMATCH_HTML_PARSE_TIMEOUT_MS',
   SNIPPET_MATCH_TIMEOUT: 'UIMATCH_SNIPPET_MATCH_TIMEOUT_MS',
   AST_FAST_PATH_TIMEOUT: 'UIMATCH_AST_FAST_PATH_TIMEOUT_MS',
@@ -106,7 +102,6 @@ export function getConfig() {
   return {
     timeouts: {
       probe: parseTimeout(ENV_VARS.PROBE_TIMEOUT, DEFAULT_TIMEOUTS.PROBE_TIMEOUT),
-      astParse: parseTimeout(ENV_VARS.AST_PARSE_TIMEOUT, DEFAULT_TIMEOUTS.AST_PARSE_TIMEOUT),
       htmlParse: parseTimeout(ENV_VARS.HTML_PARSE_TIMEOUT, DEFAULT_TIMEOUTS.HTML_PARSE_TIMEOUT),
       snippetMatch: parseTimeout(
         ENV_VARS.SNIPPET_MATCH_TIMEOUT,

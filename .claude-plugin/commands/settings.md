@@ -44,7 +44,7 @@ console.log(JSON.stringify(config, null, 2));
 ```json
 {
   "thresholds": {
-    "pixelDiffRatio": 0.03,
+    "pixelDiffRatio": 0.01,
     "deltaE": 3.0
   },
   "ignore": [],
@@ -119,7 +119,7 @@ Current uiMatch Configuration:
 ─────────────────────────────────
 
 Thresholds:
-  Pixel difference ratio: 3% (0.03)
+  Pixel difference ratio: 1% (0.01)
   Color delta E: 3.0
 
 Ignored properties: (none)
@@ -268,7 +268,7 @@ export default {
 Acceptance criteria for comparison quality gates:
 
 - `pixelDiffRatio` (0-1): Maximum acceptable pixel difference ratio
-  - Default: 0.03 (3%)
+  - Default: 0.01 (1%)
   - Recommended: 0.01-0.05
 
 - `deltaE` (0-100): Maximum acceptable color difference (CIEDE2000)
@@ -352,7 +352,7 @@ const answers = await prompt([
     type: 'number',
     name: 'pixelDiffRatio',
     message: 'Pixel difference threshold (0-1):',
-    default: 0.03,
+    default: 0.01,
   },
   {
     type: 'number',

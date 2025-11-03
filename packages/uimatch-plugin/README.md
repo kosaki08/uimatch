@@ -147,7 +147,7 @@ Manage plugin configuration:
 {
   comparison: {
     pixelmatchThreshold: number; // 0-1, default: 0.1
-    acceptancePixelDiffRatio: number; // 0-1, default: 0.03
+    acceptancePixelDiffRatio: number; // 0-1, default: 0.01
     acceptanceColorDeltaE: number; // 0-50, default: 3.0
     includeAA: boolean; // default: false
   },
@@ -181,7 +181,7 @@ const result = await runCompare({
   figma: 'AbCdEf123:456-789',
   story: 'http://localhost:6006',
   selector: '#button',
-  pixelThreshold: 0.03,
+  pixelThreshold: 0.01,
   colorThreshold: 3.0,
 });
 
@@ -251,7 +251,7 @@ Create `.uimatchrc.json` in your project root:
 {
   "comparison": {
     "pixelmatchThreshold": 0.1,
-    "acceptancePixelDiffRatio": 0.03,
+    "acceptancePixelDiffRatio": 0.01,
     "acceptanceColorDeltaE": 3.0,
     "includeAA": false
   },

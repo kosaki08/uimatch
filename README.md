@@ -54,7 +54,7 @@ bun run uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/
 
 # Settings management
 bun run uimatch:settings -- get
-bun run uimatch:settings -- set comparison.acceptancePixelDiffRatio=0.03
+bun run uimatch:settings -- set comparison.acceptancePixelDiffRatio=0.01
 bun run uimatch:settings -- reset
 ```
 
@@ -66,7 +66,7 @@ Create `.uimatchrc.json` in your project root:
 {
   "comparison": {
     "pixelmatchThreshold": 0.1,
-    "acceptancePixelDiffRatio": 0.03,
+    "acceptancePixelDiffRatio": 0.01,
     "acceptanceColorDeltaE": 3.0
   }
 }

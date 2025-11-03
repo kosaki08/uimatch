@@ -116,17 +116,22 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
       const componentLower = anchor.meta.component.toLowerCase();
       const selectorLower = initialSelector.toLowerCase();
 
-      // Normalize both for comparison (remove hyphens and underscores)
-      const componentNormalized = componentLower.replace(/[-_]/g, '');
-      const selectorNormalized = selectorLower.replace(/[-_]/g, '');
-
       // Only apply bonus if component name is long enough (≥3 chars)
       // Short names like "ui", "app", etc. cause false positives
-      if (componentNormalized.length >= 3) {
-        // Use word boundary matching to reduce false positives
-        // e.g., "button" matches ".primary-button" but not ".but"
-        const wordBoundaryPattern = new RegExp(`\\b${componentNormalized}\\b`);
-        if (wordBoundaryPattern.test(selectorNormalized)) {
+      if (componentLower.length >= 3) {
+        // Use substring matching for hyphenated component names
+        // e.g., "submitbutton" matches ".submit-button" (both normalized to "submitbutton")
+        // Also handle suffix matching: ".primary-button" → "button" (checks boundaries in original)
+
+        // Check if component name appears in the ORIGINAL (non-normalized) selector
+        // This preserves hyphens/underscores as natural word boundaries
+        const componentPattern = new RegExp(
+          // Convert "button" → "b[-_]?u[-_]?t[-_]?t[-_]?o[-_]?n"
+          componentLower.split('').join('[-_]?'),
+          'i'
+        );
+
+        if (componentPattern.test(selectorLower)) {
           result.score += weights.componentMetadataMatch;
           result.reasons.push('Matches component metadata');
         }

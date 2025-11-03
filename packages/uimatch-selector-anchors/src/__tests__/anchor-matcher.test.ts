@@ -224,5 +224,44 @@ describe('Anchor Matcher', () => {
       expect(result).not.toBeNull();
       expect(result?.anchor.id).toBe('anchor-1');
     });
+
+    test('matches component metadata with hyphenated names', () => {
+      const anchors: SelectorAnchor[] = [
+        {
+          id: 'anchor-1',
+          source: { file: 'test.tsx', line: 10, col: 0 },
+          meta: { component: 'SubmitButton' },
+        },
+        {
+          id: 'anchor-2',
+          source: { file: 'test.tsx', line: 20, col: 0 },
+          meta: { component: 'CancelButton' },
+        },
+      ];
+
+      // Test hyphenated CSS selector matching normalized component name
+      const results = matchAnchors(anchors, '.submit-button');
+
+      expect(results[0]?.anchor.id).toBe('anchor-1');
+      expect(results[0]?.reasons).toContain('Matches component metadata');
+    });
+
+    test('component metadata matching respects word boundaries', () => {
+      const anchors: SelectorAnchor[] = [
+        {
+          id: 'anchor-1',
+          source: { file: 'test.tsx', line: 10, col: 0 },
+          meta: { component: 'Button' },
+        },
+      ];
+
+      // Should NOT match "but" in the middle of "attribute"
+      const results1 = matchAnchors(anchors, '[data-attribute="value"]');
+      expect(results1[0]?.reasons).not.toContain('Matches component metadata');
+
+      // Should match "button" at word boundary
+      const results2 = matchAnchors(anchors, '.primary-button');
+      expect(results2[0]?.reasons).toContain('Matches component metadata');
+    });
   });
 });

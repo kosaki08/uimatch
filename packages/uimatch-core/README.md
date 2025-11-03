@@ -292,7 +292,7 @@ console.log(DEFAULT_CONFIG);
 // {
 //   comparison: {
 //     pixelmatchThreshold: 0.1,
-//     acceptancePixelDiffRatio: 0.03,
+//     acceptancePixelDiffRatio: 0.01,
 //     acceptanceColorDeltaE: 3.0,
 //     includeAA: false,
 //   },

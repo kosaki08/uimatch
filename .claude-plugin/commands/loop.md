@@ -21,7 +21,7 @@ Use this command when:
 ## Prerequisites
 
 - Same as `/uiMatch compare`
-- **Quality thresholds** defined (defaults: `pixelDiffRatio ≤ 0.03`, `deltaE ≤ 3.0`, no high-severity diffs)
+- **Quality thresholds** defined (defaults: `pixelDiffRatio ≤ 0.01`, `deltaE ≤ 3.0`, no high-severity diffs)
 - **Editable implementation** (user can make changes between iterations)
 
 ## Execution Steps
@@ -38,7 +38,7 @@ Use this command when:
 
    const maxIters = 5;
    const thresholds = {
-     pixelDiffRatio: 0.03,
+     pixelDiffRatio: 0.01,
      deltaE: 3.0,
    };
 
@@ -170,7 +170,7 @@ results.forEach(r => {
 
 Default quality gates (all must pass):
 
-1. **Pixel difference ratio** ≤ 3% (0.03)
+1. **Pixel difference ratio** ≤ 1% (0.01)
 2. **Color delta E average** ≤ 3.0
 3. **No high-severity style diffs**
 
@@ -229,7 +229,7 @@ Top issues:
 2. [medium] font-size: ...
 
 Quality gate status:
-✅ Pixel diff: 2.34% (threshold: 3%)
+✅ Pixel diff: 0.8% (threshold: 1%)
 ✅ Color diff: 1.20 ΔE (threshold: 3.0)
 ❌ High severity issues: 1 (must be 0)
 
