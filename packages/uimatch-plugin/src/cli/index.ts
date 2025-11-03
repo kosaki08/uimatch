@@ -2,6 +2,18 @@
  * uiMatch CLI entry point
  */
 
+// P0 Guard: Top-level exception handlers to prevent silent crashes
+process.on('uncaughtException', (error: Error) => {
+  console.error('Fatal error (uncaught exception):', error?.message ?? error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason: unknown) => {
+  const error = reason as Error | undefined;
+  console.error('Fatal error (unhandled promise rejection):', error?.message ?? reason);
+  process.exit(1);
+});
+
 import { runCompare } from './compare.js';
 import { initLogger } from './logger.js';
 import { runSuite } from './suite.js';

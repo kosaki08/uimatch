@@ -90,3 +90,92 @@ jobs:
             packages/uimatch-core/fixtures/
             test-results/
           retention-days: 7
+
+  # P0 Guard: Package distribution validation
+  package-distribution-smoke:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build packages
+        run: bun run build
+
+      - name: Pack selector-anchors
+        working-directory: packages/uimatch-selector-anchors
+        run: npm pack --pack-destination ../../dist-packages
+
+      - name: Create temp project directory
+        run: mkdir -p /tmp/uimatch-smoke
+
+      - name: Node.js distribution smoke test
+        working-directory: /tmp/uimatch-smoke
+        run: |
+          set -eux
+          npm init -y > /dev/null
+
+          # Install packed package
+          PACKAGE_PATH="${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-0.1.0.tgz"
+          npm install "$PACKAGE_PATH"
+
+          # Verify package structure and exports
+          node --input-type=module -e "
+            const m = await import('@uimatch/selector-anchors');
+
+            // Check healthCheck exists and works
+            if (!m?.default?.healthCheck) {
+              console.error('Missing healthCheck in exports');
+              process.exit(1);
+            }
+
+            const health = await m.default.healthCheck();
+            console.log('Health check result:', JSON.stringify(health, null, 2));
+
+            if (!health?.healthy) {
+              console.error('Health check failed:', health);
+              process.exit(1);
+            }
+
+            // Check resolve function exists
+            if (typeof m.default.resolve !== 'function') {
+              console.error('Missing resolve function in exports');
+              process.exit(1);
+            }
+
+            console.log('✅ Distribution smoke test passed');
+          "
+
+      - name: Verify runtime dependencies
+        working-directory: /tmp/uimatch-smoke
+        run: |
+          # Check that TypeScript is available (should be in dependencies now)
+          node --input-type=module -e "
+            try {
+              await import('typescript');
+              console.log('✅ TypeScript dependency resolved');
+            } catch (e) {
+              console.error('❌ TypeScript not available at runtime:', e.message);
+              process.exit(1);
+            }
+          "
+
+      - name: Upload packed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: distribution-packages
+          path: dist-packages/*.tgz
+          retention-days: 7
