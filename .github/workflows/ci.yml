@@ -123,9 +123,13 @@ jobs:
 
       - name: Pack selector-anchors with resolved dependencies
         run: |
-          # Use bun's package manager to create a tarball with resolved workspace dependencies
+          # Resolve workspace:* to actual versions
+          cp packages/uimatch-selector-anchors/package.json packages/uimatch-selector-anchors/package.json.bak
+          node scripts/resolve-workspace-deps.js packages/uimatch-selector-anchors
           cd packages/uimatch-selector-anchors
-          bun pm pack --destination ../../dist-packages
+          npm pack --pack-destination=../../dist-packages
+          cd ../..
+          mv packages/uimatch-selector-anchors/package.json.bak packages/uimatch-selector-anchors/package.json
 
       - name: Create temp project directory
         run: mkdir -p /tmp/uimatch-smoke
@@ -214,12 +218,23 @@ jobs:
       - name: Pack all workspace packages with resolved dependencies
         run: |
           mkdir -p dist-packages
-          cd packages/shared-logging && bun pm pack --destination ../../dist-packages
-          cd ../uimatch-selector-spi && bun pm pack --destination ../../dist-packages
-          cd ../uimatch-core && bun pm pack --destination ../../dist-packages
-          cd ../uimatch-scoring && bun pm pack --destination ../../dist-packages
-          cd ../uimatch-selector-anchors && bun pm pack --destination ../../dist-packages
-          cd ../uimatch-plugin && bun pm pack --destination ../../dist-packages
+
+          # Function to pack a package with resolved dependencies
+          pack_package() {
+            local pkg_dir=$1
+            cp "${pkg_dir}/package.json" "${pkg_dir}/package.json.bak"
+            node scripts/resolve-workspace-deps.js "${pkg_dir}"
+            (cd "${pkg_dir}" && npm pack --pack-destination=../../dist-packages)
+            mv "${pkg_dir}/package.json.bak" "${pkg_dir}/package.json"
+          }
+
+          # Pack packages in dependency order
+          pack_package "packages/shared-logging"
+          pack_package "packages/uimatch-selector-spi"
+          pack_package "packages/uimatch-core"
+          pack_package "packages/uimatch-scoring"
+          pack_package "packages/uimatch-selector-anchors"
+          pack_package "packages/uimatch-plugin"
 
       - name: Create isolated test environment
         run: mkdir -p /tmp/uimatch-cli-smoke
