@@ -18,7 +18,7 @@ import { getLogger, initLogger } from './logger.js';
  * Get logger safely: fallback to silentLogger if not initialized.
  * This prevents test failures when logger is accessed before initLogger() is called.
  */
-function getOrSilentLogger() {
+function getOrSilentLogger(): typeof silentLogger {
   try {
     return getLogger();
   } catch {

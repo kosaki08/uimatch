@@ -140,12 +140,15 @@ test.describe('checkLivenessPriority (SPI)', () => {
       '#test-button',
     ];
 
-    const result: ProbeResult | null = await checkLivenessPriority(probe, selectors);
+    const result = await checkLivenessPriority(probe, selectors);
 
     expect(result).not.toBeNull();
-    expect(result?.selector).toBe('[data-testid="visible-element"]');
-    expect(result?.isValid).toBe(true);
-    expect(result?.isAlive).toBe(true); // backward compatibility
+    if (!result) {
+      throw new Error('Expected result to be non-null');
+    }
+    expect(result.selector).toBe('[data-testid="visible-element"]');
+    expect(result.isValid).toBe(true);
+    expect(result.isAlive).toBe(true); // backward compatibility
   });
 
   test('returns null when no selectors are alive', async ({ page }) => {
@@ -157,7 +160,7 @@ test.describe('checkLivenessPriority (SPI)', () => {
       '[data-testid="non-existent-3"]',
     ];
 
-    const result: ProbeResult | null = await checkLivenessPriority(probe, selectors);
+    const result = await checkLivenessPriority(probe, selectors);
 
     expect(result).toBeNull();
   });
@@ -171,14 +174,17 @@ test.describe('checkLivenessPriority (SPI)', () => {
       '#test-button',
     ];
 
-    const result: ProbeResult | null = await checkLivenessPriority(probe, selectors, {
+    const result = await checkLivenessPriority(probe, selectors, {
       visible: true,
     });
 
     expect(result).not.toBeNull();
-    expect(result?.selector).toBe('#test-button'); // Skips hidden element
-    expect(result?.isValid).toBe(true);
-    expect(result?.isAlive).toBe(true);
+    if (!result) {
+      throw new Error('Expected result to be non-null');
+    }
+    expect(result.selector).toBe('#test-button'); // Skips hidden element
+    expect(result.isValid).toBe(true);
+    expect(result.isAlive).toBe(true);
   });
 
   test('includes hidden elements when not checking visibility', async ({ page }) => {
@@ -190,14 +196,17 @@ test.describe('checkLivenessPriority (SPI)', () => {
       '#test-button',
     ];
 
-    const result: ProbeResult | null = await checkLivenessPriority(probe, selectors, {
+    const result = await checkLivenessPriority(probe, selectors, {
       visible: false,
     });
 
     expect(result).not.toBeNull();
-    expect(result?.selector).toBe('[data-testid="hidden-element"]'); // Finds hidden element
-    expect(result?.isValid).toBe(true);
-    expect(result?.isAlive).toBe(true);
+    if (!result) {
+      throw new Error('Expected result to be non-null');
+    }
+    expect(result.selector).toBe('[data-testid="hidden-element"]'); // Finds hidden element
+    expect(result.isValid).toBe(true);
+    expect(result.isAlive).toBe(true);
   });
 });
 
@@ -217,22 +226,30 @@ test.describe('checkLivenessAll (SPI)', () => {
     expect(results).toHaveLength(4);
 
     const visibleResult = results[0];
-    if (!visibleResult) throw new Error('Missing result 0');
+    if (!visibleResult) {
+      throw new Error('Missing result 0');
+    }
     expect(visibleResult.isValid).toBe(true);
     expect(visibleResult.isAlive).toBe(true); // backward compatibility
 
     const hiddenResult = results[1];
-    if (!hiddenResult) throw new Error('Missing result 1');
+    if (!hiddenResult) {
+      throw new Error('Missing result 1');
+    }
     expect(hiddenResult.isValid).toBe(false);
     expect(hiddenResult.isAlive).toBe(false); // backward compatibility
 
     const notFoundResult = results[2];
-    if (!notFoundResult) throw new Error('Missing result 2');
+    if (!notFoundResult) {
+      throw new Error('Missing result 2');
+    }
     expect(notFoundResult.isValid).toBe(false);
     expect(notFoundResult.isAlive).toBe(false); // backward compatibility
 
     const buttonResult = results[3];
-    if (!buttonResult) throw new Error('Missing result 3');
+    if (!buttonResult) {
+      throw new Error('Missing result 3');
+    }
     expect(buttonResult.isValid).toBe(true);
     expect(buttonResult.isAlive).toBe(true); // backward compatibility
   });
@@ -247,11 +264,15 @@ test.describe('checkLivenessAll (SPI)', () => {
     expect(results).toHaveLength(2);
 
     const result0 = results[0];
-    if (!result0) throw new Error('Missing result 0');
+    if (!result0) {
+      throw new Error('Missing result 0');
+    }
     expect(result0.checkTime).toBeGreaterThan(0);
 
     const result1 = results[1];
-    if (!result1) throw new Error('Missing result 1');
+    if (!result1) {
+      throw new Error('Missing result 1');
+    }
     expect(result1.checkTime).toBeGreaterThan(0);
   });
 });
