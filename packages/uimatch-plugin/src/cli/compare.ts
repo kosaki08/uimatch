@@ -81,10 +81,11 @@ function parseArgs(argv: string[]): ParsedArgs {
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    if (!a) continue;
 
     // key=value (existing format)
     const kv = a.match(/^(\w+)=([\s\S]+)$/);
-    if (kv) {
+    if (kv && kv[1] && kv[2]) {
       const key = kv[1] as keyof ParsedArgs;
       if (key === 'emitArtifacts') {
         const val = kv[2];
@@ -97,14 +98,14 @@ function parseArgs(argv: string[]): ParsedArgs {
 
     // --no-flag
     const nof = a.match(/^--no-([a-z][\w-]*)$/i);
-    if (nof) {
+    if (nof && nof[1]) {
       (out as Record<string, unknown>)[toCamel(nof[1])] = false;
       continue;
     }
 
     // --long=value
     const leq = a.match(/^--([a-z][\w-]*)=(.*)$/i);
-    if (leq) {
+    if (leq && leq[1] !== undefined && leq[2] !== undefined) {
       (out as Record<string, unknown>)[toCamel(leq[1])] = leq[2];
       continue;
     }
@@ -124,7 +125,10 @@ function parseArgs(argv: string[]): ParsedArgs {
   }
 
   // Backward compatibility: --emitArtifacts
-  if ((out as Record<string, unknown>).emitArtifacts === undefined && argv.includes('--emitArtifacts')) {
+  if (
+    (out as Record<string, unknown>).emitArtifacts === undefined &&
+    argv.includes('--emitArtifacts')
+  ) {
     out.emitArtifacts = true;
   }
 
@@ -592,9 +596,7 @@ export async function runCompare(argv: string[]): Promise<void> {
         // On CI, default to timestampOutDir=false for deterministic paths
         const isCI = process.env.CI === 'true';
         const timestampEnabled =
-          args.timestampOutDir !== undefined
-            ? (parseBool(args.timestampOutDir) ?? true)
-            : !isCI;
+          args.timestampOutDir !== undefined ? (parseBool(args.timestampOutDir) ?? true) : !isCI;
         if (timestampEnabled && existsSync(outDir)) {
           const ts = new Date();
           const pad = (n: number) => String(n).padStart(2, '0');
