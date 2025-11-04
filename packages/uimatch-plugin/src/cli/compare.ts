@@ -75,25 +75,60 @@ export interface ParsedArgs {
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
-  const result: ParsedArgs = {};
+  const out: ParsedArgs = {};
+  const toCamel = (s: string): string =>
+    s.replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
 
-  for (const arg of argv) {
-    const match = arg.match(/^(\w+)=([\s\S]+)$/);
-    if (match) {
-      const key = match[1] as keyof ParsedArgs;
-      // Special handling for emitArtifacts boolean conversion
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+
+    // key=value (existing format)
+    const kv = a.match(/^(\w+)=([\s\S]+)$/);
+    if (kv) {
+      const key = kv[1] as keyof ParsedArgs;
       if (key === 'emitArtifacts') {
-        const val = match[2];
-        result.emitArtifacts = val === 'true' ? true : val === 'false' ? false : undefined;
+        const val = kv[2];
+        out.emitArtifacts = val === 'true' ? true : val === 'false' ? false : undefined;
       } else {
-        result[key] = match[2] as never;
+        out[key] = kv[2] as never;
       }
-    } else if (arg === '--emitArtifacts') {
-      result.emitArtifacts = true;
+      continue;
+    }
+
+    // --no-flag
+    const nof = a.match(/^--no-([a-z][\w-]*)$/i);
+    if (nof) {
+      (out as Record<string, unknown>)[toCamel(nof[1])] = false;
+      continue;
+    }
+
+    // --long=value
+    const leq = a.match(/^--([a-z][\w-]*)=(.*)$/i);
+    if (leq) {
+      (out as Record<string, unknown>)[toCamel(leq[1])] = leq[2];
+      continue;
+    }
+
+    // --long [value?]
+    if (a.startsWith('--')) {
+      const key = toCamel(a.slice(2));
+      const next = argv[i + 1];
+      if (next && !next.startsWith('-')) {
+        (out as Record<string, unknown>)[key] = next;
+        i++;
+      } else {
+        (out as Record<string, unknown>)[key] = true;
+      }
+      continue;
     }
   }
 
-  return result;
+  // Backward compatibility: --emitArtifacts
+  if ((out as Record<string, unknown>).emitArtifacts === undefined && argv.includes('--emitArtifacts')) {
+    out.emitArtifacts = true;
+  }
+
+  return out;
 }
 
 /**
@@ -554,8 +589,12 @@ export async function runCompare(argv: string[]): Promise<void> {
         let outDir = isAbsolute(args.outDir) ? args.outDir : resolve(process.cwd(), args.outDir);
 
         // Add timestamp to avoid collisions if directory already exists
+        // On CI, default to timestampOutDir=false for deterministic paths
+        const isCI = process.env.CI === 'true';
         const timestampEnabled =
-          args.timestampOutDir !== undefined ? (parseBool(args.timestampOutDir) ?? true) : true;
+          args.timestampOutDir !== undefined
+            ? (parseBool(args.timestampOutDir) ?? true)
+            : !isCI;
         if (timestampEnabled && existsSync(outDir)) {
           const ts = new Date();
           const pad = (n: number) => String(n).padStart(2, '0');
