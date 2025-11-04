@@ -60,10 +60,6 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/) specificatio
 <type>: <subject>
 
 <body>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **Types:**
@@ -85,10 +81,6 @@ feat: add Figma API integration for design fetch
 
 Implement FigmaClient class to fetch design frames and
 variables via Figma REST API with rate limiting support.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ```
@@ -96,10 +88,6 @@ fix: resolve screenshot timing issue in Playwright
 
 Wait for fonts to load before capturing screenshots
 to prevent rendering inconsistencies.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### Branch Naming
