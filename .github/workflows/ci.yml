@@ -118,6 +118,9 @@ jobs:
       - name: Build packages
         run: bun run build
 
+      - name: Create distribution directory
+        run: mkdir -p dist-packages
+
       - name: Pack selector-anchors
         working-directory: packages/uimatch-selector-anchors
         run: npm pack --pack-destination ../../dist-packages
@@ -131,9 +134,8 @@ jobs:
           set -eux
           npm init -y > /dev/null
 
-          # Install packed package
-          PACKAGE_PATH="${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-0.1.0.tgz"
-          npm install "$PACKAGE_PATH"
+          # Install packed package (use wildcard to match actual generated filename)
+          npm install ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz
 
           # Verify package structure and exports
           node --input-type=module -e "
