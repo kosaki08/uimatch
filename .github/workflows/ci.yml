@@ -124,14 +124,17 @@ jobs:
       - name: Create distribution directory
         run: mkdir -p dist-packages
 
-      - name: Pack selector-anchors with resolved dependencies
+      - name: Pack selector-spi & selector-anchors with resolved dependencies
         run: |
           # Resolve workspace:* to actual versions
+          cp packages/uimatch-selector-spi/package.json packages/uimatch-selector-spi/package.json.bak
+          node scripts/resolve-workspace-deps.js packages/uimatch-selector-spi
+          (cd packages/uimatch-selector-spi && npm pack --pack-destination=../../dist-packages)
+          mv packages/uimatch-selector-spi/package.json.bak packages/uimatch-selector-spi/package.json
+
           cp packages/uimatch-selector-anchors/package.json packages/uimatch-selector-anchors/package.json.bak
           node scripts/resolve-workspace-deps.js packages/uimatch-selector-anchors
-          cd packages/uimatch-selector-anchors
-          npm pack --pack-destination=../../dist-packages
-          cd ../..
+          (cd packages/uimatch-selector-anchors && npm pack --pack-destination=../../dist-packages)
           mv packages/uimatch-selector-anchors/package.json.bak packages/uimatch-selector-anchors/package.json
 
       - name: Create temp project directory
@@ -143,8 +146,10 @@ jobs:
           set -eux
           npm init -y > /dev/null
 
-          # Install packed package (use wildcard to match actual generated filename)
-          npm install ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz
+          # Install packed packages (use wildcards to match actual generated filenames)
+          npm install \
+            ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-spi-*.tgz \
+            ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz
 
           # Verify package structure and exports
           node --input-type=module -e "
