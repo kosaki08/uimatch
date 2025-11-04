@@ -82,7 +82,7 @@ jobs:
           UIMATCH_SELECTOR_WAIT_MS: '3000'
           UIMATCH_BBOX_TIMEOUT_MS: '800'
           UIMATCH_SCREENSHOT_TIMEOUT_MS: '1000'
-        run: bun test --timeout 30000 --filter 'Playwright|E2E|browser'
+        run: bun test --timeout 30000 packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts packages/uimatch-plugin/src/cli/__tests__/e2e-outdir.test.ts packages/uimatch-plugin/src/commands/__tests__/selector-resolution-e2e.test.ts
 
       - name: Upload test artifacts on failure
         if: failure()
@@ -121,9 +121,11 @@ jobs:
       - name: Create distribution directory
         run: mkdir -p dist-packages
 
-      - name: Pack selector-anchors
-        working-directory: packages/uimatch-selector-anchors
-        run: npm pack --pack-destination ../../dist-packages
+      - name: Pack selector-anchors with resolved dependencies
+        run: |
+          # Use bun's package manager to create a tarball with resolved workspace dependencies
+          cd packages/uimatch-selector-anchors
+          bun pm pack --destination ../../dist-packages
 
       - name: Create temp project directory
         run: mkdir -p /tmp/uimatch-smoke
@@ -209,15 +211,15 @@ jobs:
       - name: Build all packages
         run: bun run build
 
-      - name: Pack all workspace packages
+      - name: Pack all workspace packages with resolved dependencies
         run: |
           mkdir -p dist-packages
-          cd packages/shared-logging && npm pack --pack-destination ../../dist-packages
-          cd ../uimatch-selector-spi && npm pack --pack-destination ../../dist-packages
-          cd ../uimatch-core && npm pack --pack-destination ../../dist-packages
-          cd ../uimatch-scoring && npm pack --pack-destination ../../dist-packages
-          cd ../uimatch-selector-anchors && npm pack --pack-destination ../../dist-packages
-          cd ../uimatch-plugin && npm pack --pack-destination ../../dist-packages
+          cd packages/shared-logging && bun pm pack --destination ../../dist-packages
+          cd ../uimatch-selector-spi && bun pm pack --destination ../../dist-packages
+          cd ../uimatch-core && bun pm pack --destination ../../dist-packages
+          cd ../uimatch-scoring && bun pm pack --destination ../../dist-packages
+          cd ../uimatch-selector-anchors && bun pm pack --destination ../../dist-packages
+          cd ../uimatch-plugin && bun pm pack --destination ../../dist-packages
 
       - name: Create isolated test environment
         run: mkdir -p /tmp/uimatch-cli-smoke
