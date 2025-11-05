@@ -1,7 +1,7 @@
-import type { SelectorsAnchors } from '#anchors/types/schema';
-import { SelectorsAnchorsSchema } from '#anchors/types/schema';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import type { SelectorsAnchors } from '../types/schema.js';
+import { SelectorsAnchorsSchema } from '../types/schema.js';
 
 /**
  * Load selector anchors from JSON file

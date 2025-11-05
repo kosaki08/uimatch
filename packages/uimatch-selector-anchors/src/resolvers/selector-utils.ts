@@ -1,4 +1,4 @@
-import type { SelectorHint } from '#anchors/types/schema';
+import type { SelectorHint } from '../types/schema.js';
 
 /**
  * Role options that can be combined with native pseudo-classes

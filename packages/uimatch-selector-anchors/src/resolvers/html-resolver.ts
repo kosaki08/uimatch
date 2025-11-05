@@ -1,7 +1,7 @@
-import type { SelectorHint } from '#anchors/types/schema';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { DefaultTreeAdapterMap } from 'parse5';
+import type { SelectorHint } from '../types/schema.js';
 import {
   buildHintFromAttributes as buildHint,
   generateSelectorsFromAttributes as generateSelectors,
