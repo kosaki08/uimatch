@@ -30,14 +30,6 @@ docs: update API documentation
 test: add content basis test cases
 ```
 
-Always include the footer:
-
-```
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
 ## Code Standards
 
 - **No `any` type**: Use `unknown` or proper types
