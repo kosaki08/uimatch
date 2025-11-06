@@ -5,7 +5,7 @@
  */
 
 import { readFile, stat, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { generateSnippetHash } from '../hashing/snippet-hash.js';
 import type { SelectorAnchor, SelectorsAnchors } from '../types/schema.js';
@@ -72,8 +72,24 @@ function parseArgs(args: string[]): ParseResult {
   }
 
   // Validate required options
-  if (!options.file || !options.line || options.column === undefined || !options.id) {
-    console.error('Error: Missing required arguments');
+  const missing = [
+    !options.file && '--file',
+    !options.line && '--line',
+    options.column === undefined && '--column',
+    !options.id && '--id',
+  ].filter(Boolean) as string[];
+
+  if (missing.length) {
+    console.error(`Error: Missing required arguments: ${missing.join(', ')}`);
+    printUsage();
+    return {};
+  }
+
+  // Validate numeric constraints
+  const lineNum = options.line ?? 0;
+  const colNum = options.column ?? 0;
+  if (lineNum < 1 || colNum < 0) {
+    console.error('Error: --line must be >= 1 and --column must be >= 0');
     printUsage();
     return {};
   }
@@ -175,11 +191,14 @@ async function addAnchor(options: AddAnchorOptions): Promise<void> {
     process.exit(1);
   }
 
+  // Normalize path: store path relative to anchors.json directory
+  const storedPath = relative(dirname(outputPath), absoluteFilePath) || file;
+
   // Create new anchor
   const newAnchor: SelectorAnchor = {
     id,
     source: {
-      file: file, // Store relative path as provided
+      file: storedPath,
       line,
       col: column,
     },

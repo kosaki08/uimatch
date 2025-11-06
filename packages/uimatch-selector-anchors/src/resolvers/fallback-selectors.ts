@@ -36,61 +36,67 @@ export function generateFallbackSelectors(
   const effectiveClasses = fallbacks.classList ?? hints?.classList;
   const effectiveTag = fallbacks.tag ?? hints?.tag;
 
-  // Strategy 1: Role-based selectors
+  // Strategy 1: Role-based selectors (specific to abstract)
   if (effectiveRole) {
-    // Simple role selector
-    selectorSet.add(`[role="${effectiveRole}"]`);
-    reasons.push(`Using role="${effectiveRole}"`);
+    const roleSel = `[role="${effectiveRole}"]`;
 
-    // Role + text combination (most specific)
-    if (effectiveText) {
-      selectorSet.add(`[role="${effectiveRole}"]:has-text("${escapeText(effectiveText)}")`);
-      reasons.push(`Combining role with text content`);
-    }
-
-    // Role + classes
+    // Role + classes + text (most specific)
     if (effectiveClasses && effectiveClasses.length > 0) {
-      const classSelector = effectiveClasses.map((c) => `.${c}`).join('');
-      selectorSet.add(`[role="${effectiveRole}"]${classSelector}`);
-      reasons.push(`Combining role with CSS classes`);
+      const cls = effectiveClasses.map((c) => `.${c}`).join('');
+      if (effectiveText) {
+        selectorSet.add(`${roleSel}${cls}:has-text("${escapeText(effectiveText)}")`);
+        reasons.push('Combining role, classes and text');
+      }
+      selectorSet.add(`${roleSel}${cls}`);
+      reasons.push('Combining role with CSS classes');
     }
+
+    // Role + text
+    if (effectiveText) {
+      selectorSet.add(`${roleSel}:has-text("${escapeText(effectiveText)}")`);
+      reasons.push('Combining role with text content');
+    }
+
+    // Simple role selector
+    selectorSet.add(roleSel);
+    reasons.push(`Using role="${effectiveRole}"`);
   }
 
-  // Strategy 2: Text-based selectors
+  // Strategy 2: Text-based selectors (specific to abstract)
   if (effectiveText) {
     const escapedText = escapeText(effectiveText);
 
-    // Text-only (least specific, but works if text is unique)
-    selectorSet.add(`:has-text("${escapedText}")`);
-    reasons.push('Using text content');
+    // Tag + classes + text (most specific)
+    if (effectiveTag && effectiveClasses && effectiveClasses.length > 0) {
+      const cls = effectiveClasses.map((c) => `.${c}`).join('');
+      selectorSet.add(`${effectiveTag}${cls}:has-text("${escapedText}")`);
+      reasons.push('Combining tag, classes, and text');
+    }
 
     // Tag + text
     if (effectiveTag) {
       selectorSet.add(`${effectiveTag}:has-text("${escapedText}")`);
       reasons.push('Combining tag with text content');
-
-      // Tag + classes + text (most specific without role)
-      if (effectiveClasses && effectiveClasses.length > 0) {
-        const classSelector = effectiveClasses.map((c) => `.${c}`).join('');
-        selectorSet.add(`${effectiveTag}${classSelector}:has-text("${escapedText}")`);
-        reasons.push('Combining tag, classes, and text');
-      }
     }
+
+    // Text-only (least specific)
+    selectorSet.add(`:has-text("${escapedText}")`);
+    reasons.push('Using text content');
   }
 
-  // Strategy 3: Class-based selectors
+  // Strategy 3: Class-based selectors (specific to abstract)
   if (effectiveClasses && effectiveClasses.length > 0) {
     const classSelector = effectiveClasses.map((c) => `.${c}`).join('');
 
-    // Classes only
-    selectorSet.add(classSelector);
-    reasons.push(`Using CSS classes: ${effectiveClasses.join(', ')}`);
-
-    // Tag + classes
+    // Tag + classes (more specific)
     if (effectiveTag) {
       selectorSet.add(`${effectiveTag}${classSelector}`);
       reasons.push('Combining tag with CSS classes');
     }
+
+    // Classes only
+    selectorSet.add(classSelector);
+    reasons.push(`Using CSS classes: ${effectiveClasses.join(', ')}`);
   }
 
   // Strategy 4: Landmark-based context selectors
