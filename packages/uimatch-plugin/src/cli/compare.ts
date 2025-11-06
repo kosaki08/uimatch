@@ -334,8 +334,8 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
     selector: args.selector,
     // Auto-enable emitArtifacts when outDir is specified
     emitArtifacts: Boolean(args.emitArtifacts || args.outDir),
-    // Enable verbose logging by default in CLI (explicit false disables)
-    verbose: parseBool(args.verbose) ?? true,
+    // Default to compact output (use --verbose for full details)
+    verbose: parseBool(args.verbose) ?? false,
   };
 
   // Child selector for Figma child-node mapping

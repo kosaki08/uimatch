@@ -45,14 +45,15 @@ function readPngSize(buffer: Buffer): { width: number; height: number } | null {
 }
 
 /**
- * Filter style diffs to show only properties with meaningful differences.
- * Removes properties that:
- * - Have no expected value (not defined in expectedSpec)
- * - Have no delta (couldn't be compared or matched exactly)
- * - Match the expected value (no actual difference)
+ * V2: Strict report.json compression with delta=0 exclusion and meta/hints reduction
+ * - Excludes delta===0 (perfect match)
+ * - Categorical properties: only keeps mismatches (actual!==expected)
+ * - patchHints: high severity only (unless verbose=true)
+ * - meta: minimal { tag, cssSelector } (unless verbose=true)
  *
  * @param diffs - Style differences from compareImages
- * @returns Filtered diffs containing only properties with actual differences
+ * @param verbose - Show full patchHints and meta details
+ * @returns Filtered diffs containing only non-zero differences with optimized hints/meta
  */
 function pruneStyleDiffs(
   diffs: Array<{
@@ -73,21 +74,61 @@ function pruneStyleDiffs(
       suggestedValue: string;
       severity: 'low' | 'medium' | 'high';
     }>;
-  }>
+    meta?: {
+      tag: string;
+      id?: string;
+      class?: string;
+      testid?: string;
+      cssSelector?: string;
+      height?: number;
+    };
+  }>,
+  verbose: boolean
 ): typeof diffs {
+  // Helper: Keep property only if it has a non-zero difference
+  const keepProp = (p: { actual?: string; expected?: string; delta?: number; unit?: string }) => {
+    if (!p) return false;
+    // Categorical (e.g. display): keep only mismatches
+    if (p.unit === 'categorical') {
+      return (
+        p.delta === 1 ||
+        (p.actual !== undefined && p.expected !== undefined && p.actual !== p.expected)
+      );
+    }
+    // Numeric (px/ΔE): keep only non-zero delta
+    if (typeof p.delta === 'number') {
+      return Math.abs(p.delta) > 0;
+    }
+    // Fallback: keep if values differ
+    return p.actual !== undefined && p.expected !== undefined && p.actual !== p.expected;
+  };
+
   return diffs
-    .map((d) => ({
-      ...d,
-      properties: Object.fromEntries(
-        Object.entries(d.properties).filter(([, value]) => {
-          // Keep property if it has an expected value OR a delta
-          // This shows both:
-          // 1. Properties that could be compared (have delta)
-          // 2. Properties with expected values (even if couldn't calculate delta due to units, tokens, etc.)
-          return value?.expected !== undefined || value?.delta !== undefined;
-        })
-      ),
-    }))
+    .map((d) => {
+      // Filter properties with non-zero differences
+      const prunedProps = Object.fromEntries(
+        Object.entries(d.properties).filter(([, v]) => keepProp(v))
+      );
+
+      // patchHints: high only (verbose shows all)
+      const prunedHints = (d.patchHints ?? []).filter((h) =>
+        verbose ? true : h.severity === 'high'
+      );
+
+      // meta: minimal {tag, cssSelector} (verbose shows all)
+      const slimMeta = !d.meta
+        ? undefined
+        : verbose
+          ? d.meta
+          : { tag: d.meta.tag, cssSelector: d.meta.cssSelector };
+
+      return {
+        ...d,
+        properties: prunedProps,
+        patchHints: prunedHints,
+        meta: slimMeta,
+      };
+    })
     .filter((d) => Object.keys(d.properties).length > 0); // Remove selectors with no differences
 }
 
@@ -547,15 +588,15 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     contentBasis: effectiveContentBasis,
   });
 
-  // 3.5) Filter style diffs to show only properties with actual differences
-  // This reduces noise by removing properties that couldn't be compared or matched exactly
-  if (result.styleDiffs) {
-    result.styleDiffs = pruneStyleDiffs(result.styleDiffs);
-  }
+  // 3.5) V2: Strict pruning with delta=0 exclusion and meta/hints compression
+  // - Excludes delta===0 (perfect match)
+  // - patchHints: high only (unless verbose=true)
+  // - meta: minimal { tag, cssSelector } (unless verbose=true)
+  let styleDiffs = result.styleDiffs ?? [];
+  styleDiffs = pruneStyleDiffs(styleDiffs, args.verbose ?? false);
 
-  // 4) Calculate metrics and quality gate
+  // 4) Calculate metrics and quality gate (using pruned styleDiffs)
   const colorDeltaEAvg = result.colorDeltaEAvg ?? 0;
-  const styleDiffs = result.styleDiffs ?? [];
 
   // Quality gate evaluation using settings
   const tPix = args.thresholds?.pixelDiffRatio ?? settings.comparison.acceptancePixelDiffRatio;

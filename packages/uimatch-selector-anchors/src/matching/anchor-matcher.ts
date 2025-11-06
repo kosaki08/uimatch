@@ -128,8 +128,7 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
       // Short names like "ui", "app", etc. cause false positives
       if (componentLower.length >= 3) {
         // Convert PascalCase → kebab-case for matching
-        const toKebab = (str: string) =>
-          str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+        const toKebab = (str: string) => str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 
         const componentKebab = toKebab(componentLower);
 
