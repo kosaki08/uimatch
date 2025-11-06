@@ -42,6 +42,16 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 }
 
 /**
+ * Check if liveness result indicates the selector is alive
+ * Supports both isAlive and isValid property names
+ */
+function isLive(result: unknown): boolean {
+  if (!result || typeof result !== 'object') return false;
+  const r = result as { isAlive?: boolean; isValid?: boolean };
+  return Boolean(r.isAlive ?? r.isValid);
+}
+
+/**
  * Main resolve function implementing SPI contract
  *
  * This function integrates all the components:
@@ -110,10 +120,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
           timeoutMs: config.timeouts.probe,
         });
 
-        if (
-          livenessResults.length > 0 &&
-          (livenessResults[0]?.isValid || livenessResults[0]?.isAlive)
-        ) {
+        if (livenessResults.length > 0 && isLive(livenessResults[0])) {
           reasons.push('Cached selector is still alive');
           return {
             selector: anchor.resolvedCss,
@@ -205,7 +212,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
 
               // Filter to only alive selectors and calculate stability scores
               const candidatesWithScores = livenessResults
-                .filter((result) => result.isValid || result.isAlive)
+                .filter(isLive)
                 .map((livenessResult) => {
                   const stabilityScore = calculateStabilityScore({
                     selector: livenessResult.selector,
@@ -313,9 +320,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                       { timeoutMs: config.timeouts.probe }
                     );
 
-                    const fallbackCandidates = fallbackLiveness
-                      .filter((r) => r.isValid || r.isAlive)
-                      .map((r) => {
+                    const fallbackCandidates = fallbackLiveness.filter(isLive).map((r) => {
                         const score = calculateStabilityScore({
                           selector: r.selector,
                           hint: anchor.hint,

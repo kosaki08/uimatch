@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { matchAnchors, selectBestAnchor } from '../matching/anchor-matcher';
+import { matchAnchors, selectBestAnchor, type AnchorScore } from '../matching/anchor-matcher';
 import type { SelectorAnchor } from '../types/schema';
 
 describe('Anchor Matcher', () => {
@@ -18,11 +18,17 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results = matchAnchors(anchors, '[data-testid="submit"]');
+      const results: AnchorScore[] = matchAnchors(anchors, '[data-testid="submit"]');
 
-      expect(results[0]?.anchor.id).toBe('anchor-1');
-      expect(results[0]?.score).toBeGreaterThan(results[1]?.score ?? 0);
-      expect(results[0]?.reasons).toContain('Exact match with last known selector');
+      expect(results).toHaveLength(2);
+      const firstResult: AnchorScore | undefined = results[0];
+      const secondResult: AnchorScore | undefined = results[1];
+      expect(firstResult).toBeDefined();
+      if (firstResult && secondResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.score).toBeGreaterThan(secondResult.score);
+        expect(firstResult.reasons).toContain('Exact match with last known selector');
+      }
     });
 
     test('scores testid hint match high', () => {
@@ -39,10 +45,14 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results = matchAnchors(anchors, '[data-testid="submit-btn"]');
+      const results: AnchorScore[] = matchAnchors(anchors, '[data-testid="submit-btn"]');
 
-      expect(results[0]?.anchor.id).toBe('anchor-1');
-      expect(results[0]?.reasons).toContain('Matches testid hint');
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('Matches testid hint');
+      }
     });
 
     test('scores role hint match', () => {
@@ -59,10 +69,14 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results = matchAnchors(anchors, '[role="button"]');
+      const results: AnchorScore[] = matchAnchors(anchors, '[role="button"]');
 
-      expect(results[0]?.anchor.id).toBe('anchor-1');
-      expect(results[0]?.reasons).toContain('Matches role hint');
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('Matches role hint');
+      }
     });
 
     test('scores component metadata match', () => {
@@ -79,10 +93,14 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results = matchAnchors(anchors, '.submit-button');
+      const results: AnchorScore[] = matchAnchors(anchors, '.submit-button');
 
-      expect(results[0]?.anchor.id).toBe('anchor-1');
-      expect(results[0]?.reasons).toContain('Matches component metadata');
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('Matches component metadata');
+      }
     });
 
     test('gives bonus for snippet hash', () => {
@@ -98,10 +116,14 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results = matchAnchors(anchors, '.some-selector');
+      const results: AnchorScore[] = matchAnchors(anchors, '.some-selector');
 
-      expect(results[0]?.anchor.id).toBe('anchor-1');
-      expect(results[0]?.reasons).toContain('Has snippet hash for robust tracking');
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('Has snippet hash for robust tracking');
+      }
     });
 
     test('gives bonus for recent timestamp', () => {
@@ -121,10 +143,14 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results = matchAnchors(anchors, '.some-selector');
+      const results: AnchorScore[] = matchAnchors(anchors, '.some-selector');
 
-      expect(results[0]?.anchor.id).toBe('anchor-1');
-      expect(results[0]?.reasons).toContain('Recently verified selector');
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('Recently verified selector');
+      }
     });
 
     test('gives bonus for high stability score', () => {
@@ -141,10 +167,14 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results = matchAnchors(anchors, '.some-selector');
+      const results: AnchorScore[] = matchAnchors(anchors, '.some-selector');
 
-      expect(results[0]?.anchor.id).toBe('anchor-1');
-      expect(results[0]?.reasons).toContain('High stability score from previous resolution');
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('High stability score from previous resolution');
+      }
     });
 
     test('combines multiple scoring factors', () => {
@@ -166,11 +196,15 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results = matchAnchors(anchors, '[data-testid="submit"]');
+      const results: AnchorScore[] = matchAnchors(anchors, '[data-testid="submit"]');
 
-      expect(results[0]?.anchor.id).toBe('anchor-high');
-      expect(results[0]?.score).toBeGreaterThan(100); // Should have multiple bonuses
-      expect(results[0]?.reasons.length).toBeGreaterThan(2);
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-high');
+        expect(firstResult.score).toBeGreaterThan(100); // Should have multiple bonuses
+        expect(firstResult.reasons.length).toBeGreaterThan(2);
+      }
     });
   });
 
@@ -188,14 +222,16 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const result = selectBestAnchor(anchors, '[data-testid="submit"]');
+      const result: AnchorScore | null = selectBestAnchor(anchors, '[data-testid="submit"]');
 
       expect(result).not.toBeNull();
-      expect(result?.anchor.id).toBe('anchor-1');
+      if (result) {
+        expect(result.anchor.id).toBe('anchor-1');
+      }
     });
 
     test('returns null for empty anchors', () => {
-      const result = selectBestAnchor([], '.some-selector');
+      const result: AnchorScore | null = selectBestAnchor([], '.some-selector');
       expect(result).toBeNull();
     });
 
@@ -207,7 +243,7 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const result = selectBestAnchor(anchors, '.some-selector', 50);
+      const result: AnchorScore | null = selectBestAnchor(anchors, '.some-selector', 50);
       expect(result).toBeNull();
     });
 
@@ -220,9 +256,11 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const result = selectBestAnchor(anchors, '[data-testid="submit"]', 50);
+      const result: AnchorScore | null = selectBestAnchor(anchors, '[data-testid="submit"]', 50);
       expect(result).not.toBeNull();
-      expect(result?.anchor.id).toBe('anchor-1');
+      if (result) {
+        expect(result.anchor.id).toBe('anchor-1');
+      }
     });
 
     test('matches component metadata with hyphenated names', () => {
@@ -240,10 +278,14 @@ describe('Anchor Matcher', () => {
       ];
 
       // Test hyphenated CSS selector matching normalized component name
-      const results = matchAnchors(anchors, '.submit-button');
+      const results: AnchorScore[] = matchAnchors(anchors, '.submit-button');
 
-      expect(results[0]?.anchor.id).toBe('anchor-1');
-      expect(results[0]?.reasons).toContain('Matches component metadata');
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('Matches component metadata');
+      }
     });
 
     test('component metadata matching respects word boundaries', () => {
@@ -256,12 +298,19 @@ describe('Anchor Matcher', () => {
       ];
 
       // Should NOT match "but" in the middle of "attribute"
-      const results1 = matchAnchors(anchors, '[data-attribute="value"]');
-      expect(results1[0]?.reasons).not.toContain('Matches component metadata');
+      const results1: AnchorScore[] = matchAnchors(anchors, '[data-attribute="value"]');
+      const firstResult1: AnchorScore | undefined = results1[0];
+      if (firstResult1) {
+        expect(firstResult1.reasons).not.toContain('Matches component metadata');
+      }
 
       // Should match "button" at word boundary
-      const results2 = matchAnchors(anchors, '.primary-button');
-      expect(results2[0]?.reasons).toContain('Matches component metadata');
+      const results2: AnchorScore[] = matchAnchors(anchors, '.primary-button');
+      const firstResult2: AnchorScore | undefined = results2[0];
+      expect(firstResult2).toBeDefined();
+      if (firstResult2) {
+        expect(firstResult2.reasons).toContain('Matches component metadata');
+      }
     });
   });
 });

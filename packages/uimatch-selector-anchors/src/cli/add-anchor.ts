@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
  * CLI tool for adding anchors to anchors.json
- * Usage: uimatch anchors add --file <file> --line <line> --column <column> --id <id> [--output <output>]
+ * Usage: uimatch-anchors --file <file> --line <line> --column <column> --id <id> [--output <output>]
  */
 
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { generateSnippetHash } from '../hashing/snippet-hash.js';
 import type { SelectorAnchor, SelectorsAnchors } from '../types/schema.js';
 import { SelectorsAnchorsSchema } from '../types/schema.js';
@@ -19,10 +20,21 @@ interface AddAnchorOptions {
   force?: boolean;
 }
 
+interface ParseResult {
+  options?: AddAnchorOptions;
+  isHelp?: boolean;
+}
+
 /**
  * Parse command line arguments
  */
-function parseArgs(args: string[]): AddAnchorOptions | null {
+function parseArgs(args: string[]): ParseResult {
+  // Check for help first
+  if (args.includes('--help') || args.includes('-h')) {
+    printUsage();
+    return { isHelp: true };
+  }
+
   const options: Partial<AddAnchorOptions> = {};
 
   for (let i = 0; i < args.length; i++) {
@@ -56,10 +68,6 @@ function parseArgs(args: string[]): AddAnchorOptions | null {
       case '-f':
         options.force = true;
         break;
-      case '--help':
-      case '-h':
-        printUsage();
-        return null;
     }
   }
 
@@ -67,10 +75,10 @@ function parseArgs(args: string[]): AddAnchorOptions | null {
   if (!options.file || !options.line || options.column === undefined || !options.id) {
     console.error('Error: Missing required arguments');
     printUsage();
-    return null;
+    return {};
   }
 
-  return options as AddAnchorOptions;
+  return { options: options as AddAnchorOptions };
 }
 
 /**
@@ -78,7 +86,7 @@ function parseArgs(args: string[]): AddAnchorOptions | null {
  */
 function printUsage(): void {
   console.log(`
-Usage: uimatch anchors add [options]
+Usage: uimatch-anchors [options]
 
 Add a new anchor to anchors.json based on source code location
 
@@ -93,13 +101,13 @@ Options:
 
 Examples:
   # Add a new anchor
-  uimatch anchors add --file src/Button.tsx --line 10 --column 2 --id button-root
+  uimatch-anchors --file src/Button.tsx --line 10 --column 2 --id button-root
 
   # Overwrite existing anchor
-  uimatch anchors add --file src/Button.tsx --line 10 --column 2 --id button-root --force
+  uimatch-anchors --file src/Button.tsx --line 10 --column 2 --id button-root --force
 
   # Specify custom output file
-  uimatch anchors add --file src/Button.tsx --line 10 --column 2 --id button-root --output custom.json
+  uimatch-anchors --file src/Button.tsx --line 10 --column 2 --id button-root --output custom.json
   `);
 }
 
@@ -216,14 +224,20 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  const options = parseArgs(args);
+  const result = parseArgs(args);
 
-  if (!options) {
+  // Exit with 0 for help
+  if (result.isHelp) {
+    process.exit(0);
+  }
+
+  // Exit with 1 for parse errors
+  if (!result.options) {
     process.exit(1);
   }
 
   try {
-    await addAnchor(options);
+    await addAnchor(result.options);
   } catch (error) {
     console.error(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
@@ -231,7 +245,7 @@ async function main(): Promise<void> {
 }
 
 // Run main if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]!).href) {
   main();
 }
 

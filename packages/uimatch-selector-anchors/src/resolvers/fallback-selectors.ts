@@ -27,7 +27,7 @@ export function generateFallbackSelectors(
   fallbacks: Fallbacks,
   hints?: Hints
 ): FallbackSelectorResult {
-  const selectors: string[] = [];
+  const selectorSet = new Set<string>();
   const reasons: string[] = [];
 
   // Merge fallbacks with hints (fallbacks take precedence)
@@ -39,19 +39,19 @@ export function generateFallbackSelectors(
   // Strategy 1: Role-based selectors
   if (effectiveRole) {
     // Simple role selector
-    selectors.push(`[role="${effectiveRole}"]`);
+    selectorSet.add(`[role="${effectiveRole}"]`);
     reasons.push(`Using role="${effectiveRole}"`);
 
     // Role + text combination (most specific)
     if (effectiveText) {
-      selectors.push(`[role="${effectiveRole}"]:has-text("${escapeText(effectiveText)}")`);
+      selectorSet.add(`[role="${effectiveRole}"]:has-text("${escapeText(effectiveText)}")`);
       reasons.push(`Combining role with text content`);
     }
 
     // Role + classes
     if (effectiveClasses && effectiveClasses.length > 0) {
       const classSelector = effectiveClasses.map((c) => `.${c}`).join('');
-      selectors.push(`[role="${effectiveRole}"]${classSelector}`);
+      selectorSet.add(`[role="${effectiveRole}"]${classSelector}`);
       reasons.push(`Combining role with CSS classes`);
     }
   }
@@ -61,18 +61,18 @@ export function generateFallbackSelectors(
     const escapedText = escapeText(effectiveText);
 
     // Text-only (least specific, but works if text is unique)
-    selectors.push(`:has-text("${escapedText}")`);
+    selectorSet.add(`:has-text("${escapedText}")`);
     reasons.push('Using text content');
 
     // Tag + text
     if (effectiveTag) {
-      selectors.push(`${effectiveTag}:has-text("${escapedText}")`);
+      selectorSet.add(`${effectiveTag}:has-text("${escapedText}")`);
       reasons.push('Combining tag with text content');
 
       // Tag + classes + text (most specific without role)
       if (effectiveClasses && effectiveClasses.length > 0) {
         const classSelector = effectiveClasses.map((c) => `.${c}`).join('');
-        selectors.push(`${effectiveTag}${classSelector}:has-text("${escapedText}")`);
+        selectorSet.add(`${effectiveTag}${classSelector}:has-text("${escapedText}")`);
         reasons.push('Combining tag, classes, and text');
       }
     }
@@ -83,12 +83,12 @@ export function generateFallbackSelectors(
     const classSelector = effectiveClasses.map((c) => `.${c}`).join('');
 
     // Classes only
-    selectors.push(classSelector);
+    selectorSet.add(classSelector);
     reasons.push(`Using CSS classes: ${effectiveClasses.join(', ')}`);
 
     // Tag + classes
     if (effectiveTag) {
-      selectors.push(`${effectiveTag}${classSelector}`);
+      selectorSet.add(`${effectiveTag}${classSelector}`);
       reasons.push('Combining tag with CSS classes');
     }
   }
@@ -101,23 +101,31 @@ export function generateFallbackSelectors(
     for (const landmark of landmarks) {
       // Landmark > role
       if (effectiveRole) {
-        selectors.push(`${landmark} [role="${effectiveRole}"]`);
+        selectorSet.add(`${landmark} [role="${effectiveRole}"]`);
       }
 
       // Landmark > tag.classes
       if (effectiveTag && effectiveClasses && effectiveClasses.length > 0) {
         const classSelector = effectiveClasses.map((c) => `.${c}`).join('');
-        selectors.push(`${landmark} ${effectiveTag}${classSelector}`);
+        selectorSet.add(`${landmark} ${effectiveTag}${classSelector}`);
       }
 
       // Landmark > classes
       if (effectiveClasses && effectiveClasses.length > 0 && !effectiveTag) {
         const classSelector = effectiveClasses.map((c) => `.${c}`).join('');
-        selectors.push(`${landmark} ${classSelector}`);
+        selectorSet.add(`${landmark} ${classSelector}`);
       }
     }
 
     reasons.push('Generated landmark-based context selectors');
+  }
+
+  // Apply deduplication and limit
+  const MAX_FALLBACK_CANDIDATES = 12;
+  const selectors = Array.from(selectorSet).slice(0, MAX_FALLBACK_CANDIDATES);
+
+  if (selectorSet.size > MAX_FALLBACK_CANDIDATES) {
+    reasons.push(`Capped fallback candidates to ${MAX_FALLBACK_CANDIDATES}`);
   }
 
   if (selectors.length === 0) {

@@ -45,6 +45,26 @@ This allows TypeScript-only projects to use the plugin without HTML parsing capa
 
 ## Usage
 
+### CLI Tool
+
+The package provides a command-line tool for adding anchors to `anchors.json`:
+
+```bash
+# Add a new anchor
+npx uimatch-anchors --file src/components/Button.tsx --line 10 --column 2 --id button-root
+
+# Overwrite existing anchor
+npx uimatch-anchors --file src/components/Button.tsx --line 10 --column 2 --id button-root --force
+
+# Custom output file
+npx uimatch-anchors --file src/components/Button.tsx --line 10 --column 2 --id button-root --output custom.json
+
+# Show help
+npx uimatch-anchors --help
+```
+
+**Note**: The CLI automatically generates snippet hashes from the specified source code location. Once anchors are created, you should commit `anchors.json` to your repository for team collaboration.
+
 ### As a Plugin (Phase 3+)
 
 ```bash
