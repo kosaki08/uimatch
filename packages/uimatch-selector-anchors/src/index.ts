@@ -101,6 +101,30 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
       reasons.push(`Selected anchor: ${anchor.id} (score: ${bestMatch.score})`);
       reasons.push(...bestMatch.reasons);
 
+      // Check if we have a cached resolvedCss selector
+      if (anchor.resolvedCss) {
+        reasons.push(`Using cached resolvedCss: ${anchor.resolvedCss}`);
+
+        // Verify the cached selector is still alive
+        const livenessResults = await checkLivenessAll(context.probe, [anchor.resolvedCss], {
+          timeoutMs: config.timeouts.probe,
+        });
+
+        if (
+          livenessResults.length > 0 &&
+          (livenessResults[0]?.isValid || livenessResults[0]?.isAlive)
+        ) {
+          reasons.push('Cached selector is still alive');
+          return {
+            selector: anchor.resolvedCss,
+            stabilityScore: anchor.lastKnown?.stabilityScore,
+            reasons,
+          };
+        } else {
+          reasons.push('Cached selector is no longer alive, re-resolving from source');
+        }
+      }
+
       // Try to resolve from source file if snippet hash exists
       if (anchor.snippetHash && anchor.source) {
         const { file, line, col } = anchor.source;
@@ -229,6 +253,8 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                         a.id === anchor.id
                           ? {
                               ...a,
+                              resolvedCss: best.selector,
+                              lastSeen: new Date().toISOString(),
                               lastKnown: {
                                 selector: best.selector,
                                 stabilityScore,
@@ -265,6 +291,106 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                 }
               } else {
                 reasons.push('Liveness check failed for all candidates');
+
+                // Fallback strategies
+                if (anchor.fallbacks || anchor.hints) {
+                  reasons.push('Primary selectors failed, trying fallback strategies');
+                  const { generateFallbackSelectors } = await import(
+                    './resolvers/fallback-selectors.js'
+                  );
+
+                  const fallbackResult = generateFallbackSelectors(
+                    anchor.fallbacks ?? {},
+                    anchor.hints ?? {}
+                  );
+
+                  if (fallbackResult.selectors.length > 0) {
+                    reasons.push(...fallbackResult.reasons);
+
+                    const fallbackLiveness = await checkLivenessAll(
+                      context.probe,
+                      fallbackResult.selectors,
+                      { timeoutMs: config.timeouts.probe }
+                    );
+
+                    const fallbackCandidates = fallbackLiveness
+                      .filter((r) => r.isValid || r.isAlive)
+                      .map((r) => {
+                        const score = calculateStabilityScore({
+                          selector: r.selector,
+                          hint: anchor.hint,
+                          snippetMatched: false,
+                          livenessResult: r,
+                        });
+                        return { selector: r.selector, score, livenessResult: r };
+                      });
+
+                    if (fallbackCandidates.length > 0) {
+                      const bestFallback = findMostStableSelector(fallbackCandidates);
+                      if (bestFallback) {
+                        const stabilityScore = Math.round(bestFallback.score.overall * 100);
+                        reasons.push(
+                          `Fallback strategy succeeded with ${fallbackCandidates.length} candidates`
+                        );
+                        reasons.push(`Best fallback selector: ${bestFallback.selector}`);
+                        reasons.push(`Stability score: ${stabilityScore}%`);
+                        reasons.push(...bestFallback.score.details);
+
+                        const result: Resolution = {
+                          selector: bestFallback.selector,
+                          stabilityScore,
+                          reasons,
+                        };
+                        if (anchor.subselector) result.subselector = anchor.subselector;
+
+                        if (context.writeBack && context.anchorsPath) {
+                          const updatedAnchors = {
+                            ...anchorsData,
+                            anchors: anchorsData.anchors.map((a) =>
+                              a.id === anchor.id
+                                ? {
+                                    ...a,
+                                    resolvedCss: bestFallback.selector,
+                                    lastSeen: new Date().toISOString(),
+                                    lastKnown: {
+                                      selector: bestFallback.selector,
+                                      stabilityScore,
+                                      timestamp: new Date().toISOString(),
+                                    },
+                                  }
+                                : a
+                            ),
+                          };
+
+                          const postWriteFn = context.postWrite as
+                            | undefined
+                            | ((p: string, a: object) => Promise<void>);
+                          if (postWriteFn) {
+                            try {
+                              await postWriteFn(context.anchorsPath, updatedAnchors);
+                              reasons.push(
+                                'Updated anchors persisted via postWrite hook (fallback)'
+                              );
+                            } catch (err) {
+                              reasons.push(
+                                `postWrite hook failed: ${err instanceof Error ? err.message : String(err)}`
+                              );
+                              result.updatedAnchors = updatedAnchors;
+                            }
+                          } else {
+                            result.updatedAnchors = updatedAnchors;
+                            reasons.push(
+                              'Prepared updated anchors (host will write to file) (fallback)'
+                            );
+                          }
+                        }
+                        return result;
+                      }
+                    } else {
+                      reasons.push('Fallback strategies failed to find live elements');
+                    }
+                  }
+                }
               }
             }
           } else {
@@ -400,6 +526,7 @@ export * from './hashing/snippet-hash.js';
 export * from './hashing/stability-score.js';
 export * from './matching/anchor-matcher.js';
 export * from './resolvers/ast-resolver.js';
+export * from './resolvers/fallback-selectors.js';
 export * from './resolvers/html-resolver.js';
 export * from './types/config.js';
 export * from './types/schema.js';

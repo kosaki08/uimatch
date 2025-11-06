@@ -11,6 +11,9 @@
       "default": "./dist/index.js"
     }
   },
+  "bin": {
+    "uimatch-anchors": "./dist/cli/add-anchor.js"
+  },
   "files": [
     "dist",
     "README.md",

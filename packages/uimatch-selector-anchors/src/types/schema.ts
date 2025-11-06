@@ -71,12 +71,41 @@ export const SnippetContextSchema = z.object({
 export type SnippetContext = z.infer<typeof SnippetContextSchema>;
 
 /**
+ * Fallbacks schema - additional strategies for selector resolution
+ */
+export const FallbacksSchema = z.object({
+  text: z.string().optional().describe('Text content to use as fallback'),
+  role: z.string().optional().describe('ARIA role to use as fallback'),
+  classList: z.array(z.string()).optional().describe('CSS classes to use as fallback'),
+  tag: z.string().optional().describe('HTML tag name to use as fallback'),
+});
+
+export type Fallbacks = z.infer<typeof FallbacksSchema>;
+
+/**
+ * Hints schema - additional hints extracted from source
+ */
+export const HintsSchema = z
+  .object({
+    tag: z.string().optional(),
+    role: z.string().optional(),
+    text: z.string().optional(),
+    classList: z.array(z.string()).optional(),
+  })
+  .partial();
+
+export type Hints = z.infer<typeof HintsSchema>;
+
+/**
  * Selector anchor schema - represents a single anchor point
  */
 export const SelectorAnchorSchema = z.object({
   id: z.string().describe('Unique identifier for this anchor'),
   source: SourceLocationSchema.describe('Source code location'),
   hint: SelectorHintSchema.optional().describe('Hints for selector generation'),
+  hints: HintsSchema.optional().describe(
+    'Additional hints extracted from source (tag, classList, aria, role, etc.)'
+  ),
   snippetHash: z.string().optional().describe('Hash of surrounding code snippet (±N lines)'),
   snippet: z.string().optional().describe('Original snippet text used to build the hash'),
   snippetContext: SnippetContextSchema.optional().describe('Snippet extraction configuration'),
@@ -84,7 +113,23 @@ export const SelectorAnchorSchema = z.object({
     .string()
     .optional()
     .describe('Optional subselector for Figma auto-ROI targeting child elements'),
-  lastKnown: LastKnownSchema.optional().describe('Last known working selector'),
+  fallbacks: FallbacksSchema.optional().describe(
+    'Fallback strategies (role/text) for selector resolution'
+  ),
+  resolvedCss: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Last resolved CSS selector (write-back cache)'),
+  lastSeen: z
+    .string()
+    .datetime()
+    .nullable()
+    .optional()
+    .describe('Last time this selector was successfully resolved'),
+  lastKnown: LastKnownSchema.optional().describe(
+    'Last known working selector (deprecated: use resolvedCss/lastSeen)'
+  ),
   meta: MetadataSchema.optional().describe('Additional metadata'),
 });
 
