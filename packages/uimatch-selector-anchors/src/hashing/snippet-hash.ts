@@ -62,6 +62,9 @@ async function getCachedFileLines(absolutePath: string): Promise<string[]> {
   // 2. mtime matches (file not modified)
   // 3. TTL not expired (or TTL disabled)
   if (cached && cached.mtimeMs === fileStat.mtimeMs && (!TTL || now - cached.ts <= TTL)) {
+    // Touch: update entry order for LRU behavior (delete and re-insert)
+    fileContentCache.delete(absolutePath);
+    fileContentCache.set(absolutePath, { ...cached, ts: now });
     return cached.lines;
   }
 

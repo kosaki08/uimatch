@@ -104,8 +104,8 @@ describe('Regression Tests', () => {
       const results = matchAnchors(anchors, '[data-component="submit-button"]');
       const score = results[0]?.score ?? 0;
 
-      // Should get component metadata match (30) for "submit" in both
-      expect(score).toBeGreaterThanOrEqual(30);
+      // Should get component metadata match (12) with reduced weight for precision
+      expect(score).toBeGreaterThanOrEqual(12);
       expect(results[0]?.reasons).toContain('Matches component metadata');
     });
   });

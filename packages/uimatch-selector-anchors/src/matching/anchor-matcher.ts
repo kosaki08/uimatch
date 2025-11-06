@@ -33,8 +33,8 @@ function normalizeSelector(selector: string): string {
  */
 function hasTestId(selector: string, testid: string): boolean {
   const s = normalizeSelector(selector);
-  // testid:foo (exact match)
-  const m1 = s.match(/^testid:([^ [\]]+)$/);
+  // testid:foo (exact match) - allows general symbols except whitespace and brackets
+  const m1 = s.match(/^testid:([^\s[\]]+)$/);
   if (m1?.[1] === testid) return true;
   // [data-testid="foo"] / [data-testid='foo'] (exact match)
   const re = /\[data-testid=(?:"([^"]+)"|'([^']+)')\]/g;
@@ -127,14 +127,25 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
       // Only apply bonus if component name is long enough (≥3 chars)
       // Short names like "ui", "app", etc. cause false positives
       if (componentLower.length >= 3) {
-        // Use substring matching for hyphenated component names
-        // e.g., "submitbutton" matches ".submit-button" (both normalized to "submitbutton")
-        // Also handle suffix matching: ".primary-button" → "button" (checks boundaries in original)
+        // Convert PascalCase → kebab-case for matching
+        const toKebab = (str: string) =>
+          str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 
-        // PascalCase → kebab-case normalization with word boundary match
-        const kebab = componentLower.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-        const boundary = new RegExp(`(?:^|[^a-z0-9])${kebab}(?:[^a-z0-9]|$)`, 'i');
-        if (boundary.test(selectorLower)) {
+        const componentKebab = toKebab(componentLower);
+
+        // Try two matching strategies:
+        // 1. Normalized match (remove hyphens): "SubmitButton" matches ".submit-button"
+        const selectorNormalized = selectorLower.replace(/-/g, '');
+        const componentNormalized = componentKebab.replace(/-/g, '');
+        const boundaryNormalized = new RegExp(
+          `(?:^|[^a-z0-9])${componentNormalized}(?:[^a-z0-9]|$)`,
+          'i'
+        );
+
+        // 2. Direct kebab match with boundary: "Button" matches ".primary-button"
+        const boundaryKebab = new RegExp(`(?:^|[^a-z0-9])${componentKebab}(?:[^a-z0-9]|$)`, 'i');
+
+        if (boundaryNormalized.test(selectorNormalized) || boundaryKebab.test(selectorLower)) {
           result.score += weights.componentMetadataMatch;
           result.reasons.push('Matches component metadata');
         }
