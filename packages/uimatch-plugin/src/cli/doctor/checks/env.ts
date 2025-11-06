@@ -45,8 +45,8 @@ export const checkRuntime: DoctorCheck = async () => {
 export const checkEngines: DoctorCheck = async (ctx) => {
   const t0 = Date.now();
   try {
+    const { readFileSync, existsSync } = await import('node:fs');
     const packageJsonPath = `${ctx.cwd}/package.json`;
-    const { readFileSync, existsSync } = await import('fs');
 
     if (!existsSync(packageJsonPath)) {
       return {
