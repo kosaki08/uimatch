@@ -4,11 +4,11 @@
  */
 
 import type { CompareResult } from '#plugin/types/index';
-import { DEFAULT_TOLERANCES } from '#plugin/utils/style-score';
+import { scoreIssue, dedupKey, type Issue, type ScoredIssue } from '#plugin/utils/scoring';
 import type { StyleDiff } from 'uimatch-core';
 
 /**
- * Confidence level for patch suggestions
+ * Confidence level for patch suggestions (compatibility with existing code)
  */
 export type PatchConfidence = 'high' | 'medium' | 'low';
 
@@ -25,6 +25,7 @@ export interface StyleIssue {
   suggest: string;
   confidence: PatchConfidence;
   note: string;
+  violation_ratio?: number; // New: violation ratio (0-1, higher = worse)
 }
 
 /**
@@ -52,30 +53,6 @@ export interface LLMPayload {
 }
 
 /**
- * Determine confidence level based on property metadata
- */
-function determineConfidence(
-  property: string,
-  propData: StyleDiff['properties'][string],
-  normalizedScore: number
-): PatchConfidence {
-  // High confidence: token-based colors or very small deviations
-  if (propData.expectedToken) {
-    return 'high';
-  }
-
-  if (normalizedScore < 0.2) {
-    return 'high';
-  }
-
-  if (normalizedScore < 0.5) {
-    return 'medium';
-  }
-
-  return 'low';
-}
-
-/**
  * Generate CSS patch suggestion for a property
  */
 function generateSuggestion(property: string, propData: StyleDiff['properties'][string]): string {
@@ -87,81 +64,37 @@ function generateSuggestion(property: string, propData: StyleDiff['properties'][
 }
 
 /**
- * Calculate tolerance for a given property based on expected value and unit
+ * Convert scored issue to StyleIssue format with token info
  */
-function toleranceFor(
-  property: string,
-  expected: string | undefined,
-  unit: 'px' | 'ΔE' | 'categorical'
-): number | undefined {
-  if (!expected) return undefined;
-
-  // Color properties (strict match: ends with 'color')
-  if (/(^|-)color$/.test(property)) {
-    return DEFAULT_TOLERANCES.deltaE;
-  }
-
-  // box-shadow: handle both color (ΔE) and blur (px)
-  if (property === 'box-shadow') {
-    if (unit === 'ΔE') {
-      return DEFAULT_TOLERANCES.deltaE + DEFAULT_TOLERANCES.shadowColorExtraDE;
-    }
-    if (unit === 'px') {
-      const v = parseFloat(expected);
-      return Number.isNaN(v) ? 1 : Math.max(1, v * DEFAULT_TOLERANCES.shadowBlur);
-    }
-  }
-
-  // px-based tolerances (priority order matters)
-  if (unit === 'px') {
-    const v = parseFloat(expected);
-    if (Number.isNaN(v)) return undefined;
-
-    // Check border-width BEFORE general width|height
-    if (/border.*width/.test(property)) {
-      return Math.max(1, v * DEFAULT_TOLERANCES.borderWidth);
-    }
-    if (/gap/.test(property)) {
-      return Math.max(1, v * DEFAULT_TOLERANCES.layoutGap);
-    }
-    if (/padding|margin/.test(property)) {
-      return Math.max(1, v * DEFAULT_TOLERANCES.spacing);
-    }
-    if (/radius/.test(property)) {
-      return Math.max(1, v * DEFAULT_TOLERANCES.radius);
-    }
-    if (/width|height/.test(property)) {
-      return Math.max(1, v * DEFAULT_TOLERANCES.dimension);
-    }
-    if (property.includes('blur') || property.includes('shadow')) {
-      return Math.max(1, v * DEFAULT_TOLERANCES.shadowBlur);
-    }
-  }
-
-  return undefined;
-}
-
-/**
- * Generate note/rationale for the diff
- */
-function generateNote(
-  property: string,
-  propData: StyleDiff['properties'][string],
-  tolerance?: number
-): string {
-  const parts: string[] = [];
-
-  if (propData.unit === 'px' && tolerance !== undefined) {
-    parts.push(`tol=±${tolerance.toFixed(1)}px`);
-  } else if (propData.unit === 'ΔE' && tolerance !== undefined) {
-    parts.push(`tol=±${tolerance.toFixed(1)}ΔE`);
-  }
-
+function toStyleIssue(scored: ScoredIssue, propData: StyleDiff['properties'][string]): StyleIssue {
+  // Add token info to note if available
+  let note = scored.note;
   if (propData.expectedToken) {
-    parts.push(`token: ${propData.expectedToken}`);
+    note = `${note}, token: ${propData.expectedToken}`;
   }
 
-  return parts.join(', ');
+  // Map confidence (0-1, higher=better) to PatchConfidence
+  let confidence: PatchConfidence;
+  if (propData.expectedToken || scored.confidence >= 0.8) {
+    confidence = 'high';
+  } else if (scored.confidence >= 0.5) {
+    confidence = 'medium';
+  } else {
+    confidence = 'low';
+  }
+
+  return {
+    prop: scored.prop,
+    actual: String(scored.actual),
+    expected: String(scored.expected),
+    delta: scored.delta,
+    unit: scored.unit,
+    severity: scored.severity,
+    suggest: generateSuggestion(scored.prop, propData),
+    confidence,
+    note,
+    violation_ratio: scored.violation_ratio,
+  };
 }
 
 /**
@@ -234,32 +167,20 @@ export function formatForLLM(
         );
       })
       .map(([property, propData]) => {
-        // propData is now guaranteed to have all required fields
-        const tol = toleranceFor(property, propData.expected, propData.unit as 'px' | 'ΔE' | 'categorical');
-
-        // Calculate normalized score (0-1) using actual tolerances
-        let normalizedScore = 0.5;
-        if (propData.unit === 'px') {
-          const delta = Math.abs(Number(propData.delta));
-          const tolerance = tol ?? 1.0; // Fallback to 1px if no tolerance found
-          normalizedScore = delta / tolerance;
-        } else if (propData.unit === 'ΔE') {
-          const delta = Math.abs(Number(propData.delta));
-          const tolerance = tol ?? DEFAULT_TOLERANCES.deltaE;
-          normalizedScore = delta / tolerance;
-        }
-
-        return {
+        // Create Issue for scoring
+        const issue: Issue = {
           prop: property,
-          actual: propData.actual,
           expected: propData.expected,
-          delta: propData.delta,
-          unit: propData.unit as StyleIssue['unit'],
-          severity: diff.severity,
-          suggest: generateSuggestion(property, propData),
-          confidence: determineConfidence(property, propData, normalizedScore),
-          note: generateNote(property, propData, tol),
+          actual: propData.actual,
+          unit: propData.unit as 'px' | 'ΔE' | 'categorical',
+          delta: typeof propData.delta === 'number' ? propData.delta : undefined,
         };
+
+        // Score the issue using new scoring system
+        const scored = scoreIssue(issue);
+
+        // Convert to StyleIssue with token info
+        return toStyleIssue(scored, propData);
       });
 
     // Normalize selector (trim and collapse whitespace)
@@ -270,23 +191,27 @@ export function formatForLLM(
 
   // Convert grouped map to array with deduplication and sorting
   const diffs: ComponentDiff[] = Array.from(grouped.entries()).map(([selector, issues]) => {
-    // Deduplicate by property + expected + actual
+    // Deduplicate by normalized property + expected + actual (using dedupKey)
     const seen = new Set<string>();
     const dedupedIssues = issues.filter((issue) => {
-      const key = `${issue.prop}|${issue.expected}|${issue.actual}`;
+      const key = dedupKey({
+        prop: issue.prop,
+        expected: issue.expected,
+        actual: issue.actual,
+        unit: issue.unit,
+      });
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    // Sort by severity (high → medium → low), then by normalizedScore (descending)
+    // Sort by severity (high → medium → low), then by |delta| (descending)
     const severityOrder = { high: 0, medium: 1, low: 2 };
     dedupedIssues.sort((a, b) => {
       const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
       if (severityDiff !== 0) return severityDiff;
 
-      // For same severity, sort by normalized score (higher delta first)
-      // Since we don't have normalizedScore in the issue object, use delta as proxy
+      // For same severity, sort by delta (higher delta first)
       const deltaA = typeof a.delta === 'number' ? Math.abs(a.delta) : 0;
       const deltaB = typeof b.delta === 'number' ? Math.abs(b.delta) : 0;
       return deltaB - deltaA;
