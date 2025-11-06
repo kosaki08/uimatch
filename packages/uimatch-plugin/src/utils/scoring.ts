@@ -26,8 +26,8 @@ export interface ScoredIssue extends Issue {
 }
 
 const DEFAULTS = {
-  scaleFactorByUnit: { px: 5, 'ΔE': 10, categorical: 1 } as Record<Unit, number>,
-  toleranceFloor: { px: 1.0, 'ΔE': 0.5, categorical: 0 } as Record<Unit, number>,
+  scaleFactorByUnit: { px: 5, ΔE: 10, categorical: 1 } as Record<Unit, number>,
+  toleranceFloor: { px: 1.0, ΔE: 0.5, categorical: 0 } as Record<Unit, number>,
   // px-based property-specific tolerance ratios (expected value * ratio)
   pxRatiosByProp: {
     gap: 0.1,
@@ -61,7 +61,9 @@ function clamp01(x: number): number {
 
 function toNumberPx(v: number | string): number {
   if (typeof v === 'number') return v;
-  const m = String(v).trim().match(/^(-?\d+(?:\.\d+)?)(px)?$/i);
+  const m = String(v)
+    .trim()
+    .match(/^(-?\d+(?:\.\d+)?)(px)?$/i);
   return m && m[1] ? parseFloat(m[1]) : Number.NaN;
 }
 

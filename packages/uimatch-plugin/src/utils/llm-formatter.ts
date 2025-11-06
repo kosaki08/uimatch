@@ -4,7 +4,7 @@
  */
 
 import type { CompareResult } from '#plugin/types/index';
-import { scoreIssue, dedupKey, type Issue, type ScoredIssue } from '#plugin/utils/scoring';
+import { dedupKey, scoreIssue, type Issue, type ScoredIssue } from '#plugin/utils/scoring';
 import type { StyleDiff } from 'uimatch-core';
 
 /**
