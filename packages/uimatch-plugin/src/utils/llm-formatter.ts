@@ -4,6 +4,7 @@
  */
 
 import type { CompareResult } from '#plugin/types/index';
+import { DEFAULT_TOLERANCES } from '#plugin/utils/style-score';
 import type { StyleDiff } from 'uimatch-core';
 
 /**
@@ -86,6 +87,48 @@ function generateSuggestion(property: string, propData: StyleDiff['properties'][
 }
 
 /**
+ * Calculate tolerance for a given property based on expected value
+ */
+function toleranceFor(property: string, expected: string | undefined): number | undefined {
+  if (!expected) return undefined;
+
+  // ΔE tolerances for color properties
+  if (/color/.test(property)) {
+    return DEFAULT_TOLERANCES.deltaE;
+  }
+  if (property === 'box-shadow') {
+    // box-shadow includes both blur and color, use ΔE with extra tolerance
+    return DEFAULT_TOLERANCES.deltaE + DEFAULT_TOLERANCES.shadowColorExtraDE;
+  }
+
+  // px-based tolerances
+  const v = parseFloat(expected);
+  if (Number.isNaN(v)) return undefined;
+
+  // Property-specific ratio-based tolerances
+  if (/gap/.test(property)) {
+    return Math.max(1, v * DEFAULT_TOLERANCES.layoutGap);
+  }
+  if (/padding|margin/.test(property)) {
+    return Math.max(1, v * DEFAULT_TOLERANCES.spacing);
+  }
+  if (/width|height/.test(property)) {
+    return Math.max(1, v * DEFAULT_TOLERANCES.dimension);
+  }
+  if (/radius/.test(property)) {
+    return Math.max(1, v * DEFAULT_TOLERANCES.radius);
+  }
+  if (/border.*width/.test(property)) {
+    return Math.max(1, v * DEFAULT_TOLERANCES.borderWidth);
+  }
+  if (property.includes('blur') || property.includes('shadow')) {
+    return Math.max(1, v * DEFAULT_TOLERANCES.shadowBlur);
+  }
+
+  return undefined;
+}
+
+/**
  * Generate note/rationale for the diff
  */
 function generateNote(
@@ -159,7 +202,10 @@ export function formatForLLM(
     low: report.styleSummary?.lowCount ?? 0,
   };
 
-  const diffs: ComponentDiff[] = report.styleDiffs.map((diff) => {
+  // Group issues by selector (deduplicate) and apply tolerance-based scoring
+  const grouped = new Map<string, StyleIssue[]>();
+
+  for (const diff of report.styleDiffs) {
     // Type guard for complete property data
     type CompletePropertyData = Required<StyleDiff['properties'][string]>;
 
@@ -176,14 +222,18 @@ export function formatForLLM(
       })
       .map(([property, propData]) => {
         // propData is now guaranteed to have all required fields
-        // Estimate normalized score (0-1) for confidence determination
+        const tol = toleranceFor(property, propData.expected);
+
+        // Calculate normalized score (0-1) using actual tolerances
         let normalizedScore = 0.5;
         if (propData.unit === 'px') {
-          const expected = parseFloat(propData.expected) || 0;
           const delta = Math.abs(Number(propData.delta));
-          normalizedScore = expected > 0 ? delta / (expected * 0.15) : 1; // 15% tolerance
+          const tolerance = tol ?? 1.0; // Fallback to 1px if no tolerance found
+          normalizedScore = delta / tolerance;
         } else if (propData.unit === 'ΔE') {
-          normalizedScore = Math.abs(Number(propData.delta)) / 3.0; // ΔE threshold
+          const delta = Math.abs(Number(propData.delta));
+          const tolerance = tol ?? DEFAULT_TOLERANCES.deltaE;
+          normalizedScore = delta / tolerance;
         }
 
         return {
@@ -195,15 +245,21 @@ export function formatForLLM(
           severity: diff.severity,
           suggest: generateSuggestion(property, propData),
           confidence: determineConfidence(property, propData, normalizedScore),
-          note: generateNote(property, propData),
+          note: generateNote(property, propData, tol),
         };
       });
 
-    return {
-      selector: diff.selector,
-      issues,
-    };
-  });
+    // Normalize selector (trim and collapse whitespace)
+    const key = diff.selector.trim().replace(/\s+/g, ' ');
+    const existing = grouped.get(key) ?? [];
+    grouped.set(key, [...existing, ...issues]);
+  }
+
+  // Convert grouped map to array
+  const diffs: ComponentDiff[] = Array.from(grouped.entries()).map(([selector, issues]) => ({
+    selector,
+    issues,
+  }));
 
   return {
     component: componentName,

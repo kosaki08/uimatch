@@ -447,7 +447,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     detectStorybookIframe: args.detectStorybookIframe,
     fontPreloads: args.fontPreload,
     idleWaitMs: settings.capture.defaultIdleWaitMs,
-    reuseBrowser: args.reuseBrowser,
+    reuseBrowser: args.reuseBrowser ?? true, // Default to true for better performance
     basicAuth:
       args.basicAuth ??
       (process.env.BASIC_AUTH_USER && process.env.BASIC_AUTH_PASS

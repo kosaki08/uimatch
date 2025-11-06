@@ -17,6 +17,7 @@ bun add @uimatch/selector-anchors @uimatch/selector-spi
 **Requirements:**
 
 - **Node.js**: `>=20.19` or `>=22.12`
+- **TypeScript**: This package includes TypeScript as a runtime dependency for AST-based selector resolution
 - **Module System**: ESM only (CommonJS is not supported)
   - Dynamic import is supported: `import('@uimatch/selector-anchors')`
   - `require()` will not work
