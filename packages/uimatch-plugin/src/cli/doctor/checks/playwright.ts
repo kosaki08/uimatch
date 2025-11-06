@@ -2,11 +2,9 @@
  * Playwright checks - browser availability and basic launch test
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import type { DoctorCheck } from '../types.js';
 
-export const checkPlaywrightInstalled: DoctorCheck = async (ctx) => {
+export const checkPlaywrightInstalled: DoctorCheck = async () => {
   const t0 = Date.now();
   try {
     // Check if playwright is installed
@@ -21,7 +19,7 @@ export const checkPlaywrightInstalled: DoctorCheck = async (ctx) => {
       details: 'Playwright package is installed',
       category: 'playwright',
     };
-  } catch (e) {
+  } catch {
     return {
       id: 'playwright:installed',
       title: 'Playwright package',
@@ -34,7 +32,7 @@ export const checkPlaywrightInstalled: DoctorCheck = async (ctx) => {
   }
 };
 
-export const checkChromiumBrowser: DoctorCheck = async (ctx) => {
+export const checkChromiumBrowser: DoctorCheck = async () => {
   const t0 = Date.now();
   try {
     const { chromium } = await import('playwright');
@@ -70,7 +68,7 @@ export const checkChromiumBrowser: DoctorCheck = async (ctx) => {
   }
 };
 
-export const checkPlaywrightBasicCapture: DoctorCheck = async (ctx) => {
+export const checkPlaywrightBasicCapture: DoctorCheck = async () => {
   const t0 = Date.now();
   try {
     const { chromium } = await import('playwright');
