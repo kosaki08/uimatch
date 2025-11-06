@@ -4,6 +4,15 @@
 
 import type { DoctorFormat, DoctorReport } from './types.js';
 
+function xmlEscape(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 function getStatusIcon(status: string): string {
   switch (status) {
     case 'pass':
@@ -183,15 +192,15 @@ export function formatJUnit(report: DoctorReport): string {
     const time = checks.reduce((sum, c) => sum + c.durationMs, 0) / 1000;
 
     lines.push(
-      `  <testsuite name="${category}" tests="${checks.length}" failures="${failures}" errors="${errors}" skipped="${skipped}" time="${time.toFixed(3)}">`
+      `  <testsuite name="${xmlEscape(category)}" tests="${checks.length}" failures="${failures}" errors="${errors}" skipped="${skipped}" time="${time.toFixed(3)}">`
     );
 
     for (const check of checks) {
       const time = check.durationMs / 1000;
-      lines.push(`    <testcase name="${check.title}" time="${time.toFixed(3)}">`);
+      lines.push(`    <testcase name="${xmlEscape(check.title)}" time="${time.toFixed(3)}">`);
 
       if (check.status === 'fail') {
-        lines.push(`      <failure message="${check.title}">`);
+        lines.push(`      <failure message="${xmlEscape(check.title)}">`);
         if (check.details) {
           lines.push(`        <![CDATA[${check.details}]]>`);
         }

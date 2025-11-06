@@ -12,7 +12,7 @@
   "scripts": {
     "postinstall": "bunx playwright install chromium",
     "ci:postinstall": "bunx playwright install --with-deps chromium",
-    "doctor": "bun scripts/doctor.ts",
+    "doctor": "bun run packages/uimatch-plugin/src/cli/index.ts doctor",
     "pretest": "bun ./packages/uimatch-core/scripts/generate-fixtures.ts",
     "test": "UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
     "test:e2e": "npx playwright test e2e/",

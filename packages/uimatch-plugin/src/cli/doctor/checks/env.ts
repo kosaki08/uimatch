@@ -2,11 +2,10 @@
  * Environment checks - Node/Bun runtime, OS, memory, CPU
  */
 
-/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await, @typescript-eslint/no-unused-vars */
-
+import os from 'node:os';
 import type { DoctorCheck } from '../types.js';
 
-export const checkRuntime: DoctorCheck = async (ctx) => {
+export const checkRuntime: DoctorCheck = async () => {
   const t0 = Date.now();
   try {
     const bunVersion = (process.versions as { bun?: string }).bun;
@@ -17,11 +16,11 @@ export const checkRuntime: DoctorCheck = async (ctx) => {
       `Runtime: ${runtime}`,
       `Platform: ${process.platform}`,
       `Arch: ${process.arch}`,
-      `CPUs: ${require('os').cpus().length}`,
-      `Memory: ${Math.round(require('os').totalmem() / 1024 / 1024 / 1024)}GB`,
+      `CPUs: ${os.cpus()?.length ?? 0}`,
+      `Memory: ${Math.round(os.totalmem() / 1024 / 1024 / 1024)}GB`,
     ].join('\n');
 
-    return {
+    return await Promise.resolve({
       id: 'env:runtime',
       title: 'Runtime environment',
       status: 'pass',
@@ -29,9 +28,9 @@ export const checkRuntime: DoctorCheck = async (ctx) => {
       durationMs: Date.now() - t0,
       details,
       category: 'env',
-    };
+    });
   } catch (e) {
-    return {
+    return await Promise.resolve({
       id: 'env:runtime',
       title: 'Runtime environment',
       status: 'fail',
@@ -39,7 +38,7 @@ export const checkRuntime: DoctorCheck = async (ctx) => {
       durationMs: Date.now() - t0,
       details: String(e),
       category: 'env',
-    };
+    });
   }
 };
 
@@ -61,7 +60,9 @@ export const checkEngines: DoctorCheck = async (ctx) => {
       };
     }
 
-    const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as {
+      engines?: { node?: string };
+    };
     if (!pkg.engines) {
       return {
         id: 'env:engines',
@@ -77,14 +78,14 @@ export const checkEngines: DoctorCheck = async (ctx) => {
     const nodeVersion = process.versions.node;
     const requiredNode = pkg.engines.node;
 
-    if (requiredNode) {
+    if (requiredNode && typeof requiredNode === 'string') {
       // Simple version comparison without semver dependency
       // Just check major version for basic compliance
       const firstPart = nodeVersion.split('.')[0];
       if (firstPart) {
         const currentMajor = parseInt(firstPart, 10);
         const requiredMajorMatch = requiredNode.match(/(\d+)/);
-        if (requiredMajorMatch && requiredMajorMatch[1]) {
+        if (requiredMajorMatch?.[1]) {
           const requiredMajor = parseInt(requiredMajorMatch[1], 10);
           if (currentMajor < requiredMajor) {
             return {
@@ -107,7 +108,7 @@ export const checkEngines: DoctorCheck = async (ctx) => {
       status: 'pass',
       severity: 'low',
       durationMs: Date.now() - t0,
-      details: `Node ${nodeVersion} satisfies ${requiredNode || 'any'}`,
+      details: `Node ${nodeVersion} satisfies ${requiredNode ?? 'any'}`,
       category: 'env',
     };
   } catch (e) {
@@ -123,7 +124,7 @@ export const checkEngines: DoctorCheck = async (ctx) => {
   }
 };
 
-export const checkEnvVars: DoctorCheck = async (ctx) => {
+export const checkEnvVars: DoctorCheck = async () => {
   const t0 = Date.now();
   try {
     const checks = [
@@ -139,7 +140,7 @@ export const checkEnvVars: DoctorCheck = async (ctx) => {
 
     const missingRequired = checks.filter((c) => c.required && !process.env[c.key]);
 
-    return {
+    return await Promise.resolve({
       id: 'env:vars',
       title: 'Environment variables',
       status: missingRequired.length > 0 ? 'fail' : 'pass',
@@ -147,9 +148,9 @@ export const checkEnvVars: DoctorCheck = async (ctx) => {
       durationMs: Date.now() - t0,
       details: results.join('\n'),
       category: 'env',
-    };
+    });
   } catch (e) {
-    return {
+    return await Promise.resolve({
       id: 'env:vars',
       title: 'Environment variables',
       status: 'fail',
@@ -157,7 +158,7 @@ export const checkEnvVars: DoctorCheck = async (ctx) => {
       durationMs: Date.now() - t0,
       details: String(e),
       category: 'env',
-    };
+    });
   }
 };
 

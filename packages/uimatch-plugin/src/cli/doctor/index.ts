@@ -2,11 +2,10 @@
  * Main doctor command implementation
  */
 
-/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-
-import { mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { hostname } from 'os';
-import path from 'path';
+import { execSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { hostname } from 'node:os';
+import path from 'node:path';
 import { getSelectedChecks } from './checks/index.js';
 import { formatReport } from './format.js';
 import type { DoctorCheckResult, DoctorOptions, DoctorReport } from './types.js';
@@ -97,8 +96,10 @@ function getRunId(): string {
 
   // Get short SHA if in git repo
   try {
-    const { execSync } = require('child_process');
-    const sha = execSync('git rev-parse --short HEAD 2>/dev/null', { encoding: 'utf-8' }).trim();
+    const sha = execSync('git rev-parse --short HEAD', {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
     return `${timestamp}_${host}_${sha}`;
   } catch {
     return `${timestamp}_${host}`;
@@ -136,8 +137,28 @@ export async function runDoctor(args: string[]): Promise<void> {
   const format = options.format || (options.ci ? 'json' : 'table');
   const logger = options.ci ? () => {} : console.log;
 
-  // Get checks to run
-  const selectedChecks = getSelectedChecks(options.select);
+  // Get checks to run based on flags
+  const ALL_CATEGORIES: DoctorOptions['select'] = [
+    'env',
+    'playwright',
+    'figma',
+    'anchors',
+    'config',
+    'cache',
+    'git',
+    'fs',
+    'external',
+  ];
+
+  const selectCategories = options.select
+    ? options.select
+    : options.deep
+      ? ALL_CATEGORIES
+      : options.quick
+        ? (['env', 'playwright'] as DoctorOptions['select'])
+        : undefined; // Default: env + playwright (handled by getSelectedChecks)
+
+  const selectedChecks = getSelectedChecks(selectCategories);
   const allResults: DoctorCheckResult[] = [];
 
   if (!options.ci) {
@@ -180,17 +201,23 @@ export async function runDoctor(args: string[]): Promise<void> {
   }
 
   // Create report
-  const packageJson = JSON.parse(readFileSync(path.join(cwd, 'package.json'), 'utf-8'));
+  const packageJson = JSON.parse(readFileSync(path.join(cwd, 'package.json'), 'utf-8')) as {
+    workspaces?: unknown;
+    version?: string;
+  };
   const version = packageJson.workspaces
-    ? JSON.parse(readFileSync(path.join(cwd, 'packages/uimatch-plugin/package.json'), 'utf-8'))
-        .version
+    ? (
+        JSON.parse(
+          readFileSync(path.join(cwd, 'packages/uimatch-plugin/package.json'), 'utf-8')
+        ) as { version?: string }
+      ).version
     : packageJson.version;
 
   const report: DoctorReport = {
     reportVersion: '1.0.0',
     generator: {
       name: 'uimatch-cli',
-      version,
+      version: version ?? '0.0.0',
     },
     timestamp: new Date().toISOString(),
     summary: {
@@ -226,6 +253,31 @@ export async function runDoctor(args: string[]): Promise<void> {
 
     if (!options.ci) {
       console.log(`\nReport saved to: ${reportPath}`);
+    }
+
+    // Rotate old reports if --keep is set
+    if (options.keep && options.keep > 0) {
+      try {
+        const { readdirSync, statSync, rmSync } = await import('node:fs');
+        const dirs = readdirSync(baseDir, { withFileTypes: true })
+          .filter((d) => d.isDirectory())
+          .map((d) => ({
+            name: d.name,
+            mtime: statSync(path.join(baseDir, d.name)).mtimeMs,
+          }))
+          .sort((a, b) => b.mtime - a.mtime); // Sort by newest first
+
+        const toDelete = dirs.slice(options.keep);
+        for (const d of toDelete) {
+          rmSync(path.join(baseDir, d.name), { recursive: true, force: true });
+        }
+
+        if (!options.ci && toDelete.length > 0) {
+          console.log(`Cleaned up ${toDelete.length} old report(s)`);
+        }
+      } catch {
+        // Best-effort cleanup, don't fail if it doesn't work
+      }
     }
   }
 
