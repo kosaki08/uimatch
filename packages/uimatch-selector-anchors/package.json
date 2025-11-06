@@ -12,7 +12,13 @@
     }
   },
   "files": [
-    "dist"
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "!dist/**/*.test.*",
+    "!dist/__tests__",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc --project tsconfig.json",
@@ -26,16 +32,28 @@
     "anchors"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20.19 || >=22.12"
+  },
   "publishConfig": {
     "access": "public"
   },
+  "sideEffects": false,
   "dependencies": {
-    "@uimatch/selector-spi": "workspace:*",
     "parse5": "^8.0.0",
-    "typescript": "^5.9.3",
     "zod": "^4.1.12"
   },
+  "peerDependencies": {
+    "@uimatch/selector-spi": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@uimatch/selector-spi": {
+      "optional": false
+    }
+  },
   "devDependencies": {
-    "@types/bun": "^1.1.13"
+    "@types/bun": "^1.1.13",
+    "@uimatch/selector-spi": "0.1.0",
+    "typescript": "^5.9.3"
   }
 }
