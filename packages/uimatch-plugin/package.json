@@ -24,6 +24,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=20.19 || >=22.12"
+  },
   "dependencies": {
     "@uimatch/shared-logging": "workspace:*",
     "pino": "^10.1.0",

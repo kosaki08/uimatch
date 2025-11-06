@@ -87,42 +87,55 @@ function generateSuggestion(property: string, propData: StyleDiff['properties'][
 }
 
 /**
- * Calculate tolerance for a given property based on expected value
+ * Calculate tolerance for a given property based on expected value and unit
  */
-function toleranceFor(property: string, expected: string | undefined): number | undefined {
+function toleranceFor(
+  property: string,
+  expected: string | undefined,
+  unit: 'px' | 'ΔE' | 'categorical'
+): number | undefined {
   if (!expected) return undefined;
 
-  // ΔE tolerances for color properties
-  if (/color/.test(property)) {
+  // Color properties (strict match: ends with 'color')
+  if (/(^|-)color$/.test(property)) {
     return DEFAULT_TOLERANCES.deltaE;
   }
+
+  // box-shadow: handle both color (ΔE) and blur (px)
   if (property === 'box-shadow') {
-    // box-shadow includes both blur and color, use ΔE with extra tolerance
-    return DEFAULT_TOLERANCES.deltaE + DEFAULT_TOLERANCES.shadowColorExtraDE;
+    if (unit === 'ΔE') {
+      return DEFAULT_TOLERANCES.deltaE + DEFAULT_TOLERANCES.shadowColorExtraDE;
+    }
+    if (unit === 'px') {
+      const v = parseFloat(expected);
+      return Number.isNaN(v) ? 1 : Math.max(1, v * DEFAULT_TOLERANCES.shadowBlur);
+    }
   }
 
-  // px-based tolerances
-  const v = parseFloat(expected);
-  if (Number.isNaN(v)) return undefined;
+  // px-based tolerances (priority order matters)
+  if (unit === 'px') {
+    const v = parseFloat(expected);
+    if (Number.isNaN(v)) return undefined;
 
-  // Property-specific ratio-based tolerances
-  if (/gap/.test(property)) {
-    return Math.max(1, v * DEFAULT_TOLERANCES.layoutGap);
-  }
-  if (/padding|margin/.test(property)) {
-    return Math.max(1, v * DEFAULT_TOLERANCES.spacing);
-  }
-  if (/width|height/.test(property)) {
-    return Math.max(1, v * DEFAULT_TOLERANCES.dimension);
-  }
-  if (/radius/.test(property)) {
-    return Math.max(1, v * DEFAULT_TOLERANCES.radius);
-  }
-  if (/border.*width/.test(property)) {
-    return Math.max(1, v * DEFAULT_TOLERANCES.borderWidth);
-  }
-  if (property.includes('blur') || property.includes('shadow')) {
-    return Math.max(1, v * DEFAULT_TOLERANCES.shadowBlur);
+    // Check border-width BEFORE general width|height
+    if (/border.*width/.test(property)) {
+      return Math.max(1, v * DEFAULT_TOLERANCES.borderWidth);
+    }
+    if (/gap/.test(property)) {
+      return Math.max(1, v * DEFAULT_TOLERANCES.layoutGap);
+    }
+    if (/padding|margin/.test(property)) {
+      return Math.max(1, v * DEFAULT_TOLERANCES.spacing);
+    }
+    if (/radius/.test(property)) {
+      return Math.max(1, v * DEFAULT_TOLERANCES.radius);
+    }
+    if (/width|height/.test(property)) {
+      return Math.max(1, v * DEFAULT_TOLERANCES.dimension);
+    }
+    if (property.includes('blur') || property.includes('shadow')) {
+      return Math.max(1, v * DEFAULT_TOLERANCES.shadowBlur);
+    }
   }
 
   return undefined;
@@ -222,7 +235,7 @@ export function formatForLLM(
       })
       .map(([property, propData]) => {
         // propData is now guaranteed to have all required fields
-        const tol = toleranceFor(property, propData.expected);
+        const tol = toleranceFor(property, propData.expected, propData.unit as 'px' | 'ΔE' | 'categorical');
 
         // Calculate normalized score (0-1) using actual tolerances
         let normalizedScore = 0.5;
@@ -255,11 +268,35 @@ export function formatForLLM(
     grouped.set(key, [...existing, ...issues]);
   }
 
-  // Convert grouped map to array
-  const diffs: ComponentDiff[] = Array.from(grouped.entries()).map(([selector, issues]) => ({
-    selector,
-    issues,
-  }));
+  // Convert grouped map to array with deduplication and sorting
+  const diffs: ComponentDiff[] = Array.from(grouped.entries()).map(([selector, issues]) => {
+    // Deduplicate by property + expected + actual
+    const seen = new Set<string>();
+    const dedupedIssues = issues.filter((issue) => {
+      const key = `${issue.prop}|${issue.expected}|${issue.actual}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Sort by severity (high → medium → low), then by normalizedScore (descending)
+    const severityOrder = { high: 0, medium: 1, low: 2 };
+    dedupedIssues.sort((a, b) => {
+      const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
+      if (severityDiff !== 0) return severityDiff;
+
+      // For same severity, sort by normalized score (higher delta first)
+      // Since we don't have normalizedScore in the issue object, use delta as proxy
+      const deltaA = typeof a.delta === 'number' ? Math.abs(a.delta) : 0;
+      const deltaB = typeof b.delta === 'number' ? Math.abs(b.delta) : 0;
+      return deltaB - deltaA;
+    });
+
+    return {
+      selector,
+      issues: dedupedIssues,
+    };
+  });
 
   return {
     component: componentName,
