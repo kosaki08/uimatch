@@ -17,7 +17,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.json && npm run postbuild",
+    "postbuild": "rm -rf dist/__tests__ dist/**/*.test.* dist/**/safe-regex.test.*",
     "clean": "rm -rf dist",
     "test": "bun test"
   },
