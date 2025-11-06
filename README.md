@@ -269,7 +269,7 @@ npx uimatch compare figma=bypass:test story="..." selector="..."
 - [CLI Usage](docs/cli-usage.md) - Detailed command-line usage and options
 - [Advanced Configuration](docs/advanced-config.md) - Design notes, internal algorithms, tuning parameters
 - [v0.1 Specification](docs/specs/v0.1.md) - MVP implementation spec
-- [AGENTS.md](AGENTS.md) - AI assistant guidelines
+- [AI Assistant Guidelines](docs/ai-assistant/index.md) - Development guidelines for AI assistants
 
 ## Project Structure
 

@@ -2,6 +2,25 @@
 
 Selector resolution plugin for uiMatch using AST-based anchors.
 
+## Installation
+
+**This package requires both `@uimatch/selector-anchors` and `@uimatch/selector-spi` to be installed:**
+
+```bash
+npm install @uimatch/selector-anchors @uimatch/selector-spi
+# or
+pnpm add @uimatch/selector-anchors @uimatch/selector-spi
+# or
+bun add @uimatch/selector-anchors @uimatch/selector-spi
+```
+
+**Requirements:**
+
+- **Node.js**: `>=20.19` or `>=22.12`
+- **Module System**: ESM only (CommonJS is not supported)
+  - Dynamic import is supported: `import('@uimatch/selector-anchors')`
+  - `require()` will not work
+
 ## Overview
 
 This package provides intelligent selector resolution by analyzing source code (TypeScript/JSX/HTML) and maintaining anchor points that survive code refactoring and line number changes.

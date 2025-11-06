@@ -26,6 +26,19 @@ export default [
     },
   },
   {
+    files: [
+      'packages/uimatch-selector-anchors/**/*.test.ts',
+      'packages/uimatch-selector-anchors/src/__tests__/**/*.ts',
+      'packages/uimatch-selector-anchors/src/*/__tests__/**/*.ts',
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: path.join(__dirname, 'packages/uimatch-selector-anchors/tsconfig.test.json'),
+        tsconfigRootDir: __dirname,
+      },
+    },
+  },
+  {
     ignores: [
       'node_modules/**',
       'dist/**',

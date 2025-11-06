@@ -1,6 +1,6 @@
 # Contributing to uiMatch
 
-Quick reference for contributors. See [AGENTS.md](./AGENTS.md) for detailed project rules.
+Quick reference for contributors. See [AI Assistant Guidelines](docs/ai-assistant/index.md) for detailed project rules.
 
 ## Setup
 
@@ -40,10 +40,9 @@ test: add content basis test cases
 
 ## Key Files
 
-- `AGENTS.md` - AI assistant rules
-- `CLAUDE.md` - Claude Code specific instructions
+- `docs/ai-assistant/` - AI assistant guidelines
 - `docs/specs/v0.1.md` - MVP specification
 
 ## Questions?
 
-See [AGENTS.md](./AGENTS.md) for detailed guidelines or open an issue.
+See [AI Assistant Guidelines](docs/ai-assistant/index.md) for detailed guidelines or open an issue.

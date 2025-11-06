@@ -24,8 +24,6 @@ ui-match/
 │   ├── contributing/      # Contribution guidelines
 │   ├── architecture/      # Architecture documentation
 │   └── ai-assistant/      # AI assistant guidelines
-├── AGENTS.md              # AI assistant guidelines (references docs/)
-├── CLAUDE.md              # Claude Code specific instructions (references docs/)
 └── README.md              # Project overview
 ```
 

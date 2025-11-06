@@ -5,7 +5,7 @@
     "lib": ["ES2022"],
     "moduleResolution": "nodenext",
     "resolveJsonModule": true,
-    "allowJs": true,
+    "allowJs": false,
     "checkJs": false,
     "outDir": "./dist",
     "rootDir": "./src",

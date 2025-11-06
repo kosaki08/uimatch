@@ -12,11 +12,7 @@
     }
   },
   "files": [
-    "dist/**/*.js",
-    "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map",
-    "!dist/**/*.test.*",
-    "!dist/__tests__",
+    "dist",
     "README.md",
     "LICENSE"
   ],
