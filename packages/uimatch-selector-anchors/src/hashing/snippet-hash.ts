@@ -22,12 +22,19 @@ interface CacheEntry {
 const fileContentCache = new Map<string, CacheEntry>();
 
 /**
- * Cache time-to-live in milliseconds (0 = infinite)
+ * Cache time-to-live in milliseconds (default 5 minutes)
  * Set via UIMATCH_SNIPPET_CACHE_TTL_MS environment variable
- * 0 (default): infinite cache lifetime
+ * Default: 300000ms (5 minutes)
  * >0: cache expires after specified milliseconds
  */
-const TTL = Number(process.env.UIMATCH_SNIPPET_CACHE_TTL_MS ?? 0);
+const TTL = Number(process.env.UIMATCH_SNIPPET_CACHE_TTL_MS ?? 300000);
+
+/**
+ * Maximum cache entries before LRU eviction
+ * Set via UIMATCH_SNIPPET_CACHE_MAX environment variable
+ * Default: 200 entries
+ */
+const MAX_CACHE_ENTRIES = Number(process.env.UIMATCH_SNIPPET_CACHE_MAX ?? 200);
 
 /**
  * Clear the file content cache (useful for testing or memory management)
@@ -66,6 +73,11 @@ async function getCachedFileLines(absolutePath: string): Promise<string[]> {
     mtimeMs: fileStat.mtimeMs,
     ts: now,
   });
+  // LRU-style eviction: remove oldest entry if cache is full
+  if (fileContentCache.size > MAX_CACHE_ENTRIES) {
+    const oldest = fileContentCache.keys().next().value;
+    if (oldest) fileContentCache.delete(oldest);
+  }
   return lines;
 }
 

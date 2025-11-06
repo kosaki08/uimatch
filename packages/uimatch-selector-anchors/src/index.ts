@@ -260,11 +260,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                               ...a,
                               resolvedCss: best.selector,
                               lastSeen: new Date().toISOString(),
-                              lastKnown: {
-                                selector: best.selector,
-                                stabilityScore,
-                                timestamp: new Date().toISOString(),
-                              },
+                              // Note: write-back now only updates resolvedCss/lastSeen
                             }
                           : a
                       ),
@@ -355,11 +351,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                                     ...a,
                                     resolvedCss: bestFallback.selector,
                                     lastSeen: new Date().toISOString(),
-                                    lastKnown: {
-                                      selector: bestFallback.selector,
-                                      stabilityScore,
-                                      timestamp: new Date().toISOString(),
-                                    },
+                                    // Note: write-back now only updates resolvedCss/lastSeen (fallback path)
                                   }
                                 : a
                             ),

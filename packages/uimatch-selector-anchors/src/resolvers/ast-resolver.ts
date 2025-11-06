@@ -190,11 +190,16 @@ export async function resolveFromTypeScript(
   };
 
   let fullParseResult: FullParseResult | null = null;
+  let cancelledFull = false;
+  const fullTimer = setTimeout(() => {
+    cancelledFull = true;
+  }, FULL);
   try {
     fullParseResult = await withTimeout(
       new Promise<FullParseResult | null>((resolve) =>
         setTimeout(() => {
           try {
+            if (cancelledFull) return resolve(null);
             // Extract attributes and text content
             const attributes = extractJsxAttributes(jsxElement);
             const elementText = extractTextContent(jsxElement);
@@ -219,6 +224,7 @@ export async function resolveFromTypeScript(
       ),
       FULL
     );
+    clearTimeout(fullTimer);
 
     if (fullParseResult && fullParseResult.selectors.length > 0) {
       reasons.push(`Full parse succeeded (< ${FULL}ms)`);

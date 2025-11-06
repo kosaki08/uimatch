@@ -43,7 +43,7 @@ export function getAnchorMatchingConfig(): AnchorMatchingConfig {
       partialLastKnownMatch: 50,
       testidHintMatch: 80,
       roleHintMatch: 70,
-      componentMetadataMatch: 30,
+      componentMetadataMatch: 12,
       hasSnippetHash: 10,
       recentUpdate: 5,
       highStability: 15,

@@ -32,12 +32,16 @@ function normalizeSelector(selector: string): string {
  * Handles both [data-testid="value"] and testid:value formats
  */
 function hasTestId(selector: string, testid: string): boolean {
-  const normalized = normalizeSelector(selector);
-  return (
-    normalized.includes(`testid:${testid}`) ||
-    normalized.includes(`[data-testid='${testid}']`) ||
-    normalized.includes(`data-testid='${testid}'`)
-  );
+  const s = normalizeSelector(selector);
+  // testid:foo (exact match)
+  const m1 = s.match(/^testid:([^ [\]]+)$/);
+  if (m1?.[1] === testid) return true;
+  // [data-testid="foo"] / [data-testid='foo'] (exact match)
+  const re = /\[data-testid=(?:"([^"]+)"|'([^']+)')\]/g;
+  for (let m; (m = re.exec(s)); ) {
+    if ((m[1] ?? m[2]) === testid) return true;
+  }
+  return false;
 }
 
 /**
@@ -46,13 +50,17 @@ function hasTestId(selector: string, testid: string): boolean {
  * Case-insensitive comparison for robustness
  */
 function hasRole(selector: string, role: string): boolean {
-  const normalized = normalizeSelector(selector).toLowerCase();
-  const roleLower = role.toLowerCase();
-  return (
-    normalized.includes(`role:${roleLower}`) ||
-    normalized.includes(`[role='${roleLower}']`) ||
-    normalized.includes(`role='${roleLower}'`)
-  );
+  const s = normalizeSelector(selector).toLowerCase();
+  const r = role.toLowerCase();
+  // role:button[...] (exact match of role prefix)
+  const p = s.match(/^role:([a-z0-9_-]+)/);
+  if (p?.[1] === r) return true;
+  // [role="button"] / [role='button'] only (no partial match)
+  const re = /\[role=(?:"([^"]+)"|'([^']+)')\]/g;
+  for (let m; (m = re.exec(s)); ) {
+    if ((m[1] ?? m[2]) === r) return true;
+  }
+  return false;
 }
 
 /**
@@ -123,15 +131,10 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
         // e.g., "submitbutton" matches ".submit-button" (both normalized to "submitbutton")
         // Also handle suffix matching: ".primary-button" → "button" (checks boundaries in original)
 
-        // Check if component name appears in the ORIGINAL (non-normalized) selector
-        // This preserves hyphens/underscores as natural word boundaries
-        const componentPattern = new RegExp(
-          // Convert "button" → "b[-_]?u[-_]?t[-_]?t[-_]?o[-_]?n"
-          componentLower.split('').join('[-_]?'),
-          'i'
-        );
-
-        if (componentPattern.test(selectorLower)) {
+        // PascalCase → kebab-case normalization with word boundary match
+        const kebab = componentLower.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+        const boundary = new RegExp(`(?:^|[^a-z0-9])${kebab}(?:[^a-z0-9]|$)`, 'i');
+        if (boundary.test(selectorLower)) {
           result.score += weights.componentMetadataMatch;
           result.reasons.push('Matches component metadata');
         }
