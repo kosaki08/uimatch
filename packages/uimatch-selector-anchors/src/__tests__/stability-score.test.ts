@@ -5,8 +5,8 @@ import {
   compareStabilityScores,
   findMostStableSelector,
   type StabilityScore,
-} from '../hashing/stability-score';
-import type { SelectorHint } from '../types/schema';
+} from '../hashing/stability-score.js';
+import type { SelectorHint } from '../types/schema.js';
 
 describe('calculateStabilityScore', () => {
   // Isolate tests from environment variables

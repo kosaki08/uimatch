@@ -117,7 +117,7 @@ Examples:
 async function loadOrCreateAnchors(outputPath: string): Promise<SelectorsAnchors> {
   try {
     const content = await readFile(outputPath, 'utf-8');
-    const parsed = JSON.parse(content);
+    const parsed: unknown = JSON.parse(content);
     return SelectorsAnchorsSchema.parse(parsed);
   } catch {
     // File doesn't exist or invalid, return empty anchors
@@ -245,8 +245,9 @@ async function main(): Promise<void> {
 }
 
 // Run main if executed directly
-if (import.meta.url === pathToFileURL(process.argv[1]!).href) {
-  main();
+const scriptPath = process.argv[1];
+if (scriptPath && import.meta.url === pathToFileURL(scriptPath).href) {
+  void main();
 }
 
 export { addAnchor };

@@ -211,22 +211,20 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
               });
 
               // Filter to only alive selectors and calculate stability scores
-              const candidatesWithScores = livenessResults
-                .filter(isLive)
-                .map((livenessResult) => {
-                  const stabilityScore = calculateStabilityScore({
-                    selector: livenessResult.selector,
-                    hint: anchor.hint,
-                    snippetMatched: true,
-                    livenessResult,
-                  });
-
-                  return {
-                    selector: livenessResult.selector,
-                    score: stabilityScore,
-                    livenessResult,
-                  };
+              const candidatesWithScores = livenessResults.filter(isLive).map((livenessResult) => {
+                const stabilityScore = calculateStabilityScore({
+                  selector: livenessResult.selector,
+                  hint: anchor.hint,
+                  snippetMatched: true,
+                  livenessResult,
                 });
+
+                return {
+                  selector: livenessResult.selector,
+                  score: stabilityScore,
+                  livenessResult,
+                };
+              });
 
               if (candidatesWithScores.length > 0) {
                 // Find the most stable selector
@@ -321,14 +319,14 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                     );
 
                     const fallbackCandidates = fallbackLiveness.filter(isLive).map((r) => {
-                        const score = calculateStabilityScore({
-                          selector: r.selector,
-                          hint: anchor.hint,
-                          snippetMatched: false,
-                          livenessResult: r,
-                        });
-                        return { selector: r.selector, score, livenessResult: r };
+                      const score = calculateStabilityScore({
+                        selector: r.selector,
+                        hint: anchor.hint,
+                        snippetMatched: false,
+                        livenessResult: r,
                       });
+                      return { selector: r.selector, score, livenessResult: r };
+                    });
 
                     if (fallbackCandidates.length > 0) {
                       const bestFallback = findMostStableSelector(fallbackCandidates);

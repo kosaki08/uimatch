@@ -5,7 +5,7 @@
 import type { Probe, ProbeResult } from '@uimatch/selector-spi';
 import { describe, expect, test } from 'bun:test';
 import { resolve as resolvePath } from 'node:path';
-import plugin from '../index';
+import plugin from '../index.js';
 
 /**
  * Mock Probe for integration testing

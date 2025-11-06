@@ -5,8 +5,8 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { matchAnchors } from '../matching/anchor-matcher';
-import type { SelectorAnchor } from '../types/schema';
+import { matchAnchors } from '../matching/anchor-matcher.js';
+import type { SelectorAnchor } from '../types/schema.js';
 
 describe('Regression Tests', () => {
   describe('ID scoring (no false positives)', () => {

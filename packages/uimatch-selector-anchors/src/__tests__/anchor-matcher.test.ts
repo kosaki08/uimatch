@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { matchAnchors, selectBestAnchor, type AnchorScore } from '../matching/anchor-matcher';
-import type { SelectorAnchor } from '../types/schema';
+import { matchAnchors, selectBestAnchor, type AnchorScore } from '../matching/anchor-matcher.js';
+import type { SelectorAnchor } from '../types/schema.js';
 
 describe('Anchor Matcher', () => {
   describe('matchAnchors', () => {
