@@ -54,8 +54,9 @@ describe('Regression Tests', () => {
         },
       ];
 
-      // Use a selector that clearly contains the component name
-      const results = matchAnchors(anchors, '[data-component="submit-button"]');
+      // Use a selector that contains the component name as CSS class/ID (not in attribute value)
+      // This tests the tokenized matching without relying on attribute values
+      const results = matchAnchors(anchors, '.submit-button');
       const score = results[0]?.score ?? 0;
 
       // Should get component metadata match (12) with reduced weight for precision

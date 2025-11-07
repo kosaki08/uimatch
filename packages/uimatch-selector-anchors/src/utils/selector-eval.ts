@@ -70,6 +70,8 @@ const ALLOWED_UNARY_OPERATORS = new Set(['-', '+', '!']);
 
 /**
  * Allowed member access patterns (whitelist)
+ * Limited to: Math functions, string properties, array properties
+ * No computed access or prototype chains allowed
  */
 const ALLOWED_MEMBERS = new Set([
   // Math functions
@@ -79,7 +81,7 @@ const ALLOWED_MEMBERS = new Set([
   'Math.round',
   'Math.min',
   'Math.max',
-  // String methods (safe subset)
+  // String/Array properties (safe subset)
   'length',
   'toLowerCase',
   'toUpperCase',
@@ -87,9 +89,6 @@ const ALLOWED_MEMBERS = new Set([
   'includes',
   'startsWith',
   'endsWith',
-  // Array methods (safe subset)
-  'length',
-  'includes',
   'some',
   'every',
 ]);

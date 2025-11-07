@@ -66,33 +66,31 @@ function hasRole(selector: string, role: string): boolean {
 /**
  * Tokenize a CSS selector into meaningful components
  * Extracts: IDs (#id), classes (.class), attributes ([attr]), tags (tag)
+ * Note: Attribute values are excluded to prevent false positives
  * @param selector - CSS selector to tokenize
  * @returns Array of normalized tokens
  */
 function tokenizeSelector(selector: string): string[] {
   const tokens: string[] = [];
 
+  // Remove attribute selectors entirely to avoid including attribute values
+  // e.g., [href="#foo"] won't pollute tokens with "foo"
+  const selectorWithoutAttrs = selector.replace(/\[[^\]]*\]/g, '');
+
   // Extract IDs: #myId -> myid
-  const idMatches = selector.matchAll(/#([a-zA-Z0-9_-]+)/g);
+  const idMatches = selectorWithoutAttrs.matchAll(/#([a-zA-Z0-9_-]+)/g);
   for (const match of idMatches) {
     if (match[1]) tokens.push(match[1].toLowerCase());
   }
 
   // Extract classes: .myClass -> myclass
-  const classMatches = selector.matchAll(/\.([a-zA-Z0-9_-]+)/g);
+  const classMatches = selectorWithoutAttrs.matchAll(/\.([a-zA-Z0-9_-]+)/g);
   for (const match of classMatches) {
     if (match[1]) tokens.push(match[1].toLowerCase());
   }
 
-  // Extract attributes: [data-testid="value"] -> datatestid, value
-  const attrMatches = selector.matchAll(/\[([a-zA-Z0-9_-]+)(?:=["']?([^"'\]]+)["']?)?\]/g);
-  for (const match of attrMatches) {
-    if (match[1]) tokens.push(match[1].replace(/-/g, '').toLowerCase());
-    if (match[2]) tokens.push(match[2].toLowerCase());
-  }
-
   // Extract tag names: button -> button
-  const tagMatches = selector.matchAll(/\b([a-z][a-z0-9]*)\b/gi);
+  const tagMatches = selectorWithoutAttrs.matchAll(/\b([a-z][a-z0-9]*)\b/gi);
   for (const match of tagMatches) {
     const tag = match[1];
     if (!tag) continue;
