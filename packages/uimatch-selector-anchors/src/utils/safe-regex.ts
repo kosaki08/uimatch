@@ -5,6 +5,7 @@
  */
 
 import safe from 'safe-regex2';
+import { extractErrorMessage } from './error.js';
 import type { RE2Constructor } from './re2.types.js';
 import { extractRE2Constructor } from './re2.types.js';
 
@@ -107,10 +108,9 @@ export async function compileSafeRegex(pattern: string, flags?: string): Promise
 
       return { success: true, regex };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
       return {
         success: false,
-        error: `RE2 compilation failed: ${message}`,
+        error: `RE2 compilation failed: ${extractErrorMessage(err)}`,
         fallbackToLiteral: true,
       };
     }
@@ -121,10 +121,9 @@ export async function compileSafeRegex(pattern: string, flags?: string): Promise
     const regex = new RegExp(pattern, flags);
     return { success: true, regex };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
     return {
       success: false,
-      error: `Invalid regex syntax: ${message}`,
+      error: `Invalid regex syntax: ${extractErrorMessage(err)}`,
       fallbackToLiteral: true,
     };
   }

@@ -10,6 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { generateSnippetHash } from '../hashing/snippet-hash.js';
 import type { SelectorAnchor, SelectorsAnchors } from '../types/schema.js';
 import { SelectorsAnchorsSchema } from '../types/schema.js';
+import { extractErrorMessage } from '../utils/error.js';
 
 /**
  * Write line to stdout (for normal CLI output)
@@ -164,8 +165,9 @@ async function loadOrCreateAnchors(outputPath: string): Promise<SelectorsAnchors
 async function addAnchor(options: AddAnchorOptions): Promise<void> {
   const { file, line, column, id, output = './anchors.json', force = false } = options;
 
-  // Resolve file path
+  // Resolve paths once
   const absoluteFilePath = resolve(file);
+  const outputPath = resolve(output);
 
   // Check if file exists
   try {
@@ -187,14 +189,11 @@ async function addAnchor(options: AddAnchorOptions): Promise<void> {
       hashDigits: 10,
     });
   } catch (error) {
-    errln(
-      `Error generating snippet hash: ${error instanceof Error ? error.message : String(error)}`
-    );
+    errln(`Error generating snippet hash: ${extractErrorMessage(error)}`);
     process.exit(1);
   }
 
   // Load existing anchors
-  const outputPath = resolve(output);
   const anchorsData = await loadOrCreateAnchors(outputPath);
 
   // Check if ID already exists

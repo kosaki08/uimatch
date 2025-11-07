@@ -15,6 +15,7 @@ import { resolveFromTypeScript } from '../resolvers/ast-resolver.js';
 import { getConfig } from '../types/config.js';
 import type { SelectorsAnchors } from '../types/schema.js';
 import { withTimeout } from '../utils/async.js';
+import { extractErrorMessage } from '../utils/error.js';
 import { loadSelectorsAnchors } from '../utils/io.js';
 import { checkLivenessAll } from '../utils/liveness.js';
 
@@ -302,9 +303,7 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
                         await postWriteFn(context.anchorsPath, updatedAnchors);
                         reasons.push('Updated anchors persisted via postWrite hook');
                       } catch (err) {
-                        reasons.push(
-                          `postWrite hook failed: ${err instanceof Error ? err.message : String(err)}`
-                        );
+                        reasons.push(`postWrite hook failed: ${extractErrorMessage(err)}`);
                         // Still include updatedAnchors for fallback
                         result.updatedAnchors = updatedAnchors;
                       }
@@ -398,9 +397,7 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
                                 'Updated anchors persisted via postWrite hook (fallback)'
                               );
                             } catch (err) {
-                              reasons.push(
-                                `postWrite hook failed: ${err instanceof Error ? err.message : String(err)}`
-                              );
+                              reasons.push(`postWrite hook failed: ${extractErrorMessage(err)}`);
                               result.updatedAnchors = updatedAnchors;
                             }
                           } else {
