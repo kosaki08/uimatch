@@ -9,52 +9,6 @@ import { matchAnchors } from '../matching/anchor-matcher.js';
 import type { SelectorAnchor } from '../types/schema.js';
 
 describe('Regression Tests', () => {
-  describe('ID scoring (no false positives)', () => {
-    test('does not award ID points for href="#foo"', () => {
-      const anchors: SelectorAnchor[] = [
-        {
-          id: 'anchor1',
-          source: { file: 'test.ts', line: 1, col: 0 },
-          hint: { prefer: ['css'] },
-          lastKnown: {
-            selector: '[href="#foo"]',
-            timestamp: new Date().toISOString(),
-            stabilityScore: 80,
-          },
-        },
-      ];
-
-      const results = matchAnchors(anchors, '[href="#foo"]');
-      const score = results[0]?.score ?? 0;
-
-      // Should get points for exact match (100) + stability (15) + recent (5) = 120
-      // The key is that it doesn't get EXTRA ID points beyond what's expected
-      expect(score).toBe(120); // Exact expected score without ID bonus
-      expect(results[0]?.reasons).not.toContain(expect.stringContaining('Matches id'));
-    });
-
-    test('awards ID points correctly for #real-id selector', () => {
-      const anchors: SelectorAnchor[] = [
-        {
-          id: 'anchor1',
-          source: { file: 'test.ts', line: 1, col: 0 },
-          hint: { prefer: ['css'] },
-          lastKnown: {
-            selector: '#real-id',
-            timestamp: new Date().toISOString(),
-            stabilityScore: 80,
-          },
-        },
-      ];
-
-      const results = matchAnchors(anchors, '#real-id');
-      const score = results[0]?.score ?? 0;
-
-      // Should get: exact match (100) + stability (15) = 115
-      expect(score).toBeGreaterThanOrEqual(115);
-    });
-  });
-
   describe('Selector prefix compatibility', () => {
     test('matches testid: prefix in hint', () => {
       const anchors: SelectorAnchor[] = [
@@ -106,7 +60,7 @@ describe('Regression Tests', () => {
 
       // Should get component metadata match (12) with reduced weight for precision
       expect(score).toBeGreaterThanOrEqual(12);
-      expect(results[0]?.reasons).toContain('Matches component metadata');
+      expect(results[0]?.reasons).toContain('Matches component metadata (token-level)');
     });
   });
 

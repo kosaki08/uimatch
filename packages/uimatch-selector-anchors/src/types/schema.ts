@@ -28,17 +28,6 @@ export const SelectorHintSchema = z.object({
 export type SelectorHint = z.infer<typeof SelectorHintSchema>;
 
 /**
- * Last known selector state schema
- */
-export const LastKnownSchema = z.object({
-  selector: z.string().describe('Last known working selector'),
-  timestamp: z.string().datetime().optional().describe('When this selector was last verified'),
-  stabilityScore: z.number().min(0).max(100).optional().describe('Stability score (0-100)'),
-});
-
-export type LastKnown = z.infer<typeof LastKnownSchema>;
-
-/**
  * Metadata schema for additional anchor information
  */
 export const MetadataSchema = z.object({
@@ -127,9 +116,6 @@ export const SelectorAnchorSchema = z.object({
     .nullable()
     .optional()
     .describe('Last time this selector was successfully resolved'),
-  lastKnown: LastKnownSchema.optional().describe(
-    'Last known working selector (deprecated: use resolvedCss/lastSeen)'
-  ),
   meta: MetadataSchema.optional().describe('Additional metadata'),
 });
 

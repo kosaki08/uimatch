@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "tsc --project tsconfig.json",
-    "clean": "rm -rf dist",
+    "clean": "rimraf dist",
     "test": "bun test",
     "lint": "eslint src",
     "format": "prettier --write \"src/**/*.ts\""
@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "rimraf": "^6.0.1"
   }
 }

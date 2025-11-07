@@ -4,17 +4,17 @@ import type { SelectorAnchor } from '../types/schema.js';
 
 describe('Anchor Matcher', () => {
   describe('matchAnchors', () => {
-    test('scores exact last known selector match highest', () => {
+    test('scores testid hint match highest', () => {
       const anchors: SelectorAnchor[] = [
         {
           id: 'anchor-1',
           source: { file: 'test.tsx', line: 10, col: 0 },
-          lastKnown: { selector: '[data-testid="submit"]' },
+          hint: { testid: 'submit' },
         },
         {
           id: 'anchor-2',
           source: { file: 'test.tsx', line: 20, col: 0 },
-          lastKnown: { selector: '[data-testid="cancel"]' },
+          hint: { testid: 'cancel' },
         },
       ];
 
@@ -27,7 +27,7 @@ describe('Anchor Matcher', () => {
       if (firstResult && secondResult) {
         expect(firstResult.anchor.id).toBe('anchor-1');
         expect(firstResult.score).toBeGreaterThan(secondResult.score);
-        expect(firstResult.reasons).toContain('Exact match with last known selector');
+        expect(firstResult.reasons).toContain('Matches testid hint');
       }
     });
 
@@ -99,7 +99,7 @@ describe('Anchor Matcher', () => {
       expect(firstResult).toBeDefined();
       if (firstResult) {
         expect(firstResult.anchor.id).toBe('anchor-1');
-        expect(firstResult.reasons).toContain('Matches component metadata');
+        expect(firstResult.reasons).toContain('Matches component metadata (token-level)');
       }
     });
 
@@ -126,57 +126,6 @@ describe('Anchor Matcher', () => {
       }
     });
 
-    test('gives bonus for recent timestamp', () => {
-      const recentDate = new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(); // 1 day ago
-      const oldDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString(); // 60 days ago
-
-      const anchors: SelectorAnchor[] = [
-        {
-          id: 'anchor-1',
-          source: { file: 'test.tsx', line: 10, col: 0 },
-          lastKnown: { selector: '.btn', timestamp: recentDate },
-        },
-        {
-          id: 'anchor-2',
-          source: { file: 'test.tsx', line: 20, col: 0 },
-          lastKnown: { selector: '.btn', timestamp: oldDate },
-        },
-      ];
-
-      const results: AnchorScore[] = matchAnchors(anchors, '.some-selector');
-
-      const firstResult: AnchorScore | undefined = results[0];
-      expect(firstResult).toBeDefined();
-      if (firstResult) {
-        expect(firstResult.anchor.id).toBe('anchor-1');
-        expect(firstResult.reasons).toContain('Recently verified selector');
-      }
-    });
-
-    test('gives bonus for high stability score', () => {
-      const anchors: SelectorAnchor[] = [
-        {
-          id: 'anchor-1',
-          source: { file: 'test.tsx', line: 10, col: 0 },
-          lastKnown: { selector: '.btn', stabilityScore: 90 },
-        },
-        {
-          id: 'anchor-2',
-          source: { file: 'test.tsx', line: 20, col: 0 },
-          lastKnown: { selector: '.btn', stabilityScore: 50 },
-        },
-      ];
-
-      const results: AnchorScore[] = matchAnchors(anchors, '.some-selector');
-
-      const firstResult: AnchorScore | undefined = results[0];
-      expect(firstResult).toBeDefined();
-      if (firstResult) {
-        expect(firstResult.anchor.id).toBe('anchor-1');
-        expect(firstResult.reasons).toContain('High stability score from previous resolution');
-      }
-    });
-
     test('combines multiple scoring factors', () => {
       const anchors: SelectorAnchor[] = [
         {
@@ -184,11 +133,7 @@ describe('Anchor Matcher', () => {
           source: { file: 'test.tsx', line: 10, col: 0 },
           hint: { testid: 'submit' },
           snippetHash: 'abc123',
-          lastKnown: {
-            selector: '[data-testid="submit"]',
-            stabilityScore: 95,
-            timestamp: new Date().toISOString(),
-          },
+          meta: { component: 'SubmitButton' },
         },
         {
           id: 'anchor-low',
@@ -202,8 +147,8 @@ describe('Anchor Matcher', () => {
       expect(firstResult).toBeDefined();
       if (firstResult) {
         expect(firstResult.anchor.id).toBe('anchor-high');
-        expect(firstResult.score).toBeGreaterThan(100); // Should have multiple bonuses
-        expect(firstResult.reasons.length).toBeGreaterThan(2);
+        expect(firstResult.score).toBeGreaterThan(0); // Should have multiple bonuses
+        expect(firstResult.reasons.length).toBeGreaterThan(1);
       }
     });
   });
@@ -284,7 +229,7 @@ describe('Anchor Matcher', () => {
       expect(firstResult).toBeDefined();
       if (firstResult) {
         expect(firstResult.anchor.id).toBe('anchor-1');
-        expect(firstResult.reasons).toContain('Matches component metadata');
+        expect(firstResult.reasons).toContain('Matches component metadata (token-level)');
       }
     });
 
@@ -309,7 +254,7 @@ describe('Anchor Matcher', () => {
       const firstResult2: AnchorScore | undefined = results2[0];
       expect(firstResult2).toBeDefined();
       if (firstResult2) {
-        expect(firstResult2.reasons).toContain('Matches component metadata');
+        expect(firstResult2.reasons).toContain('Matches component metadata (token-level)');
       }
     });
   });

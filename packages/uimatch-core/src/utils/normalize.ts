@@ -129,10 +129,73 @@ function hslToRgb(h: number, s: number, l: number): RGB {
  * @param color CSS color value
  * @returns RGB object, or undefined if parsing fails
  */
+/**
+ * CSS named colors (subset of 140 standard colors)
+ * Full spec: https://www.w3.org/TR/css-color-3/#html4
+ */
+const CSS_NAMED_COLORS: Record<string, RGB> = {
+  // Basic colors (16 HTML4 colors)
+  black: { r: 0, g: 0, b: 0 },
+  white: { r: 255, g: 255, b: 255 },
+  red: { r: 255, g: 0, b: 0 },
+  lime: { r: 0, g: 255, b: 0 },
+  blue: { r: 0, g: 0, b: 255 },
+  yellow: { r: 255, g: 255, b: 0 },
+  cyan: { r: 0, g: 255, b: 255 },
+  magenta: { r: 255, g: 0, b: 255 },
+  silver: { r: 192, g: 192, b: 192 },
+  gray: { r: 128, g: 128, b: 128 },
+  maroon: { r: 128, g: 0, b: 0 },
+  olive: { r: 128, g: 128, b: 0 },
+  green: { r: 0, g: 128, b: 0 },
+  purple: { r: 128, g: 0, b: 128 },
+  teal: { r: 0, g: 128, b: 128 },
+  navy: { r: 0, g: 0, b: 128 },
+
+  // Extended colors (commonly used)
+  orange: { r: 255, g: 165, b: 0 },
+  pink: { r: 255, g: 192, b: 203 },
+  brown: { r: 165, g: 42, b: 42 },
+  gold: { r: 255, g: 215, b: 0 },
+  indigo: { r: 75, g: 0, b: 130 },
+  violet: { r: 238, g: 130, b: 238 },
+
+  // Grays
+  darkgray: { r: 169, g: 169, b: 169 },
+  darkgrey: { r: 169, g: 169, b: 169 }, // UK spelling
+  lightgray: { r: 211, g: 211, b: 211 },
+  lightgrey: { r: 211, g: 211, b: 211 }, // UK spelling
+  grey: { r: 128, g: 128, b: 128 }, // UK spelling
+
+  // Common UI colors
+  transparent: { r: 0, g: 0, b: 0, a: 0 },
+
+  // Blues
+  lightblue: { r: 173, g: 216, b: 230 },
+  darkblue: { r: 0, g: 0, b: 139 },
+  skyblue: { r: 135, g: 206, b: 235 },
+
+  // Greens
+  lightgreen: { r: 144, g: 238, b: 144 },
+  darkgreen: { r: 0, g: 100, b: 0 },
+
+  // Reds
+  lightcoral: { r: 240, g: 128, b: 128 },
+  darkred: { r: 139, g: 0, b: 0 },
+
+  // Add more colors as needed...
+  // Full list available at: https://www.w3.org/TR/css-color-3/#svg-color
+};
+
 export function parseCssColorToRgb(color?: string): RGB | undefined {
   if (!color) return undefined;
 
-  const trimmed = color.trim();
+  const trimmed = color.trim().toLowerCase();
+
+  // Check for CSS named colors first
+  if (CSS_NAMED_COLORS[trimmed]) {
+    return CSS_NAMED_COLORS[trimmed];
+  }
 
   // Hex color (#RGB, #RRGGBB, #RRGGBBAA)
   if (trimmed.startsWith('#')) {
@@ -212,30 +275,120 @@ export function parseCssColorToRgb(color?: string): RGB | undefined {
 export function parseBoxShadow(shadow?: string): BoxShadowParsed | undefined {
   if (!shadow || shadow === 'none') return undefined;
 
-  const trimmed = shadow.trim();
+  // Normalize whitespace and handle multiple shadows
+  const trimmed = shadow.trim().replace(/\s+/g, ' ');
 
-  // Simple regex to extract blur and color from first shadow (supports inset)
-  // Format: [inset] <offset-x> <offset-y> <blur-radius> <spread-radius>? <color>
-  // We only care about blur-radius and color for MVP
-  const match = trimmed.match(
-    /^(?:inset\s+)?([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)(?:\s+([+-]?\d+(?:\.\d+)?px))?\s+(.+)$/
-  );
+  // Extract first shadow only (multi-shadow support would require full tokenizer)
+  // Split on comma not inside function calls (rgba/hsl/var)
+  const firstShadow = extractFirstShadow(trimmed);
+  if (!firstShadow) return undefined;
 
-  if (!match) {
-    // Try without spread radius
-    const matchNoSpread = trimmed.match(
-      /^(?:inset\s+)?([+-]?\d+(?:\.\d+)?px)\s+([+-]?\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)\s+(.+)$/
-    );
-    if (!matchNoSpread) return undefined;
+  // Parse shadow components with flexible ordering
+  const parsed = parseShadowComponents(firstShadow);
+  if (!parsed) return undefined;
 
-    const blur = toPx(matchNoSpread[3]) ?? 0;
-    const rgb = parseCssColorToRgb(matchNoSpread[4]);
-    return { blur, rgb };
+  return {
+    blur: parsed.blur,
+    rgb: parsed.color,
+  };
+}
+
+/**
+ * Extract first shadow from potentially multi-shadow declaration
+ * Handles: "0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.2)"
+ */
+function extractFirstShadow(shadow: string): string | undefined {
+  let depth = 0;
+  const start = 0;
+
+  for (let i = 0; i < shadow.length; i++) {
+    const char = shadow[i];
+
+    if (char === '(') depth++;
+    else if (char === ')') depth--;
+    else if (char === ',' && depth === 0) {
+      return shadow.substring(start, i).trim();
+    }
   }
 
-  const blur = toPx(match[3]) ?? 0;
-  const rgb = parseCssColorToRgb(match[5]);
-  return { blur, rgb };
+  return shadow.trim();
+}
+
+/**
+ * Parse shadow components with flexible ordering
+ * Format: [inset]? <offset-x> <offset-y> <blur>? <spread>? <color>?
+ * Color can appear at start or end
+ */
+function parseShadowComponents(
+  shadow: string
+): { blur: number; color: RGB | undefined } | undefined {
+  const tokens = tokenizeShadow(shadow);
+  if (!tokens) return undefined;
+
+  const { lengths, color } = tokens;
+
+  // We need at least offset-x, offset-y (2 lengths)
+  if (lengths.length < 2) return undefined;
+
+  // blur is the 3rd length value (if present)
+  const blur: number = lengths.length >= 3 ? (lengths[2] ?? 0) : 0;
+
+  // spread is the 4th length value (if present, we ignore it)
+
+  return { blur, color };
+}
+
+/**
+ * Tokenize shadow into length values and color
+ * Handles rgba(), hsl(), var(), hex, and named colors
+ */
+function tokenizeShadow(shadow: string): { lengths: number[]; color: RGB | undefined } | null {
+  const normalized = shadow.replace(/\s+/g, ' ').trim();
+
+  // Remove 'inset' keyword if present
+  const withoutInset = normalized.replace(/^inset\s+/, '');
+
+  // Extract color (rgba/hsl/var/hex at start or end)
+  const colorPatterns = [
+    /^(rgba?\([^)]+\))\s*/, // rgba(x,x,x,x) at start
+    /^(hsla?\([^)]+\))\s*/, // hsl(x,x%,x%) at start
+    /^(var\([^)]+\))\s*/, // var(--color) at start
+    /^(#[0-9a-fA-F]{3,8})\s*/, // #rgb or #rrggbb at start
+    /\s+(rgba?\([^)]+\))$/, // rgba at end
+    /\s+(hsla?\([^)]+\))$/, // hsl at end
+    /\s+(var\([^)]+\))$/, // var at end
+    /\s+(#[0-9a-fA-F]{3,8})$/, // hex at end
+  ];
+
+  let colorStr: string | undefined;
+  let withoutColor = withoutInset;
+
+  for (const pattern of colorPatterns) {
+    const match = withoutColor.match(pattern);
+    if (match) {
+      colorStr = match[1];
+      withoutColor = withoutColor.replace(pattern, ' ').trim();
+      break;
+    }
+  }
+
+  // Extract length values (offset-x, offset-y, blur, spread)
+  const lengthMatches = withoutColor.matchAll(/([+-]?\d+(?:\.\d+)?)(px|em|rem|%)?/g);
+  const lengths: number[] = [];
+
+  for (const match of lengthMatches) {
+    const numStr = match[1];
+    if (numStr) {
+      const value = parseFloat(numStr);
+      if (!isNaN(value)) {
+        lengths.push(value); // Assume px for simplicity
+      }
+    }
+  }
+
+  const color = colorStr ? parseCssColorToRgb(colorStr) : undefined;
+
+  return { lengths, color };
 }
 
 /**

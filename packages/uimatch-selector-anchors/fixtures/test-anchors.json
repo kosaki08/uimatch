@@ -14,11 +14,8 @@
         "role": "button"
       },
       "snippetHash": "abc123def456",
-      "lastKnown": {
-        "selector": "[data-testid=\"submit-btn\"]",
-        "stabilityScore": 95,
-        "timestamp": "2024-11-02T10:00:00.000Z"
-      },
+      "resolvedCss": "[data-testid=\"submit-btn\"]",
+      "lastSeen": "2024-11-02T10:00:00.000Z",
       "meta": {
         "component": "SubmitButton",
         "description": "Primary submit button"
@@ -35,10 +32,8 @@
         "prefer": ["testid"],
         "testid": "cancel-btn"
       },
-      "lastKnown": {
-        "selector": "[data-testid=\"cancel-btn\"]",
-        "stabilityScore": 85
-      },
+      "resolvedCss": "[data-testid=\"cancel-btn\"]",
+      "lastSeen": "2024-11-02T09:00:00.000Z",
       "meta": {
         "component": "CancelButton"
       }

@@ -21,8 +21,8 @@
   ],
   "scripts": {
     "build": "tsc --project tsconfig.json && npm run postbuild",
-    "postbuild": "rm -rf dist/__tests__ dist/**/*.test.* dist/**/safe-regex.test.*",
-    "clean": "rm -rf dist",
+    "postbuild": "rimraf dist/__tests__ dist/**/*.test.* dist/**/safe-regex.test.*",
+    "clean": "rimraf dist",
     "test": "bun test"
   },
   "keywords": [
@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.1.13",
-    "@uimatch/selector-spi": "0.1.0"
+    "@uimatch/selector-spi": "0.1.0",
+    "rimraf": "^6.0.1"
   }
 }

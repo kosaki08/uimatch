@@ -64,6 +64,68 @@ function hasRole(selector: string, role: string): boolean {
 }
 
 /**
+ * Tokenize a CSS selector into meaningful components
+ * Extracts: IDs (#id), classes (.class), attributes ([attr]), tags (tag)
+ * @param selector - CSS selector to tokenize
+ * @returns Array of normalized tokens
+ */
+function tokenizeSelector(selector: string): string[] {
+  const tokens: string[] = [];
+
+  // Extract IDs: #myId -> myid
+  const idMatches = selector.matchAll(/#([a-zA-Z0-9_-]+)/g);
+  for (const match of idMatches) {
+    if (match[1]) tokens.push(match[1].toLowerCase());
+  }
+
+  // Extract classes: .myClass -> myclass
+  const classMatches = selector.matchAll(/\.([a-zA-Z0-9_-]+)/g);
+  for (const match of classMatches) {
+    if (match[1]) tokens.push(match[1].toLowerCase());
+  }
+
+  // Extract attributes: [data-testid="value"] -> datatestid, value
+  const attrMatches = selector.matchAll(/\[([a-zA-Z0-9_-]+)(?:=["']?([^"'\]]+)["']?)?\]/g);
+  for (const match of attrMatches) {
+    if (match[1]) tokens.push(match[1].replace(/-/g, '').toLowerCase());
+    if (match[2]) tokens.push(match[2].toLowerCase());
+  }
+
+  // Extract tag names: button -> button
+  const tagMatches = selector.matchAll(/\b([a-z][a-z0-9]*)\b/gi);
+  for (const match of tagMatches) {
+    const tag = match[1];
+    if (!tag) continue;
+    const tagLower = tag.toLowerCase();
+    // Filter out common pseudo-classes/functions to avoid noise
+    if (!['not', 'has', 'is', 'where', 'nth', 'first', 'last'].includes(tagLower)) {
+      tokens.push(tagLower);
+    }
+  }
+
+  return [...new Set(tokens)]; // Remove duplicates
+}
+
+/**
+ * Check if component name matches any selector token
+ * Uses token-level matching to reduce false positives
+ * @param selector - CSS selector to check
+ * @param componentName - Component name (PascalCase/camelCase)
+ * @returns true if component name matches a selector token
+ */
+function matchesComponentTokenized(selector: string, componentName: string): boolean {
+  const tokens = tokenizeSelector(selector);
+
+  // Convert component name to kebab-case and normalized forms
+  const toKebab = (str: string) => str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+  const kebab = toKebab(componentName);
+  const normalized = kebab.replace(/-/g, '');
+
+  // Check for exact token match (kebab-case or normalized)
+  return tokens.includes(kebab) || tokens.includes(normalized);
+}
+
+/**
  * Match anchors against initial selector hint
  * Returns anchors sorted by relevance score (highest first)
  *
@@ -80,107 +142,43 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
 
   // Load scoring weights from external configuration
   const config = getAnchorMatchingConfig();
-  const { weights, thresholds } = config;
-
-  // Normalize initial selector once for all comparisons
-  const normalizedInitial = normalizeSelector(initialSelector);
+  const { weights } = config;
 
   // Score each anchor based on various criteria
   for (const result of results) {
     const { anchor } = result;
 
-    // 1. Last known selector exact match (highest priority)
-    if (anchor.lastKnown?.selector) {
-      const normalizedLast = normalizeSelector(anchor.lastKnown.selector);
-
-      if (normalizedLast === normalizedInitial) {
-        result.score += weights.exactLastKnownMatch;
-        result.reasons.push('Exact match with last known selector');
-      }
-      // 2. Last known selector bidirectional partial match
-      else if (
-        normalizedInitial.includes(normalizedLast) ||
-        normalizedLast.includes(normalizedInitial)
-      ) {
-        result.score += weights.partialLastKnownMatch;
-        result.reasons.push('Partial match with last known selector');
-      }
-    }
-
-    // 3. Hint testid match with format flexibility
+    // 1. Hint testid match with format flexibility
     if (anchor.hint?.testid && hasTestId(initialSelector, anchor.hint.testid)) {
       result.score += weights.testidHintMatch;
       result.reasons.push('Matches testid hint');
     }
 
-    // 4. Hint role match with format flexibility
+    // 2. Hint role match with format flexibility
     if (anchor.hint?.role && hasRole(initialSelector, anchor.hint.role)) {
       result.score += weights.roleHintMatch;
       result.reasons.push('Matches role hint');
     }
 
-    // 5. Component metadata match
+    // 3. Component metadata match (token-level to reduce false positives)
     if (anchor.meta?.component) {
-      const componentLower = anchor.meta.component.toLowerCase();
-      const selectorLower = initialSelector.toLowerCase();
+      const componentName = anchor.meta.component;
 
       // Only apply bonus if component name is long enough (≥3 chars)
       // Short names like "ui", "app", etc. cause false positives
-      if (componentLower.length >= 3) {
-        // Convert PascalCase → kebab-case for matching
-        const toKebab = (str: string) => str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-
-        const componentKebab = toKebab(componentLower);
-
-        // Try two matching strategies:
-        // 1. Normalized match (remove hyphens): "SubmitButton" matches ".submit-button"
-        const selectorNormalized = selectorLower.replace(/-/g, '');
-        const componentNormalized = componentKebab.replace(/-/g, '');
-        const boundaryNormalized = new RegExp(
-          `(?:^|[^a-z0-9])${componentNormalized}(?:[^a-z0-9]|$)`,
-          'i'
-        );
-
-        // 2. Direct kebab match with boundary: "Button" matches ".primary-button"
-        const boundaryKebab = new RegExp(`(?:^|[^a-z0-9])${componentKebab}(?:[^a-z0-9]|$)`, 'i');
-
-        if (boundaryNormalized.test(selectorNormalized) || boundaryKebab.test(selectorLower)) {
+      if (componentName.length >= 3) {
+        // Use token-level matching for higher precision
+        if (matchesComponentTokenized(initialSelector, componentName)) {
           result.score += weights.componentMetadataMatch;
-          result.reasons.push('Matches component metadata');
+          result.reasons.push('Matches component metadata (token-level)');
         }
       }
     }
 
-    // 6. Has snippet hash (better for tracking code movements)
+    // 4. Has snippet hash (better for tracking code movements)
     if (anchor.snippetHash) {
       result.score += weights.hasSnippetHash;
       result.reasons.push('Has snippet hash for robust tracking');
-    }
-
-    // 7. Has recent last known selector
-    if (anchor.lastKnown?.timestamp) {
-      try {
-        const timestamp = new Date(anchor.lastKnown.timestamp);
-        const now = new Date();
-        const daysSinceUpdate = (now.getTime() - timestamp.getTime()) / (1000 * 60 * 60 * 24);
-
-        // Bonus for recent updates (configurable threshold)
-        if (daysSinceUpdate < thresholds.recentUpdateDays) {
-          result.score += weights.recentUpdate;
-          result.reasons.push('Recently verified selector');
-        }
-      } catch {
-        // Invalid timestamp, skip scoring
-      }
-    }
-
-    // 8. High stability score from last known
-    if (
-      anchor.lastKnown?.stabilityScore &&
-      anchor.lastKnown.stabilityScore >= thresholds.highStabilityScore
-    ) {
-      result.score += weights.highStability;
-      result.reasons.push('High stability score from previous resolution');
     }
   }
 

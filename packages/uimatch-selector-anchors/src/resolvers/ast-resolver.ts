@@ -200,12 +200,20 @@ export async function resolveFromTypeScript(
         setTimeout(() => {
           try {
             if (cancelledFull) return resolve(null);
-            // Extract attributes and text content
+
+            // Extract attributes (fast operation)
             const attributes = extractJsxAttributes(jsxElement);
+            if (cancelledFull) return resolve(null); // Early exit after attribute extraction
+
+            // Extract text content (potentially expensive for large components)
             const elementText = extractTextContent(jsxElement);
+            if (cancelledFull) return resolve(null); // Early exit after text extraction
+
             const tag = getJsxTagName(jsxElement);
 
             const hint = buildHint(attributes, elementText);
+            if (cancelledFull) return resolve(null); // Early exit after hint building
+
             const selectors = generateSelectors(attributes, tag, elementText);
 
             resolve({

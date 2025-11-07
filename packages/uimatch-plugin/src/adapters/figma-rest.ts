@@ -1,4 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
+import { getLoggerSafe } from '#plugin/cli/logger.js';
 
 /**
  * Node metadata extracted from Figma REST API
@@ -280,7 +281,8 @@ export class FigmaRestClient {
       return { nodeId: picked?.id ?? null, debug: { picked: picked?.name } };
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(`[figma-child-node] Failed to find child: ${errMsg}`);
+
+      getLoggerSafe().warn(`[figma-child-node] Failed to find child: ${errMsg}`);
       return { nodeId: null };
     }
   }
@@ -318,9 +320,9 @@ export class FigmaRestClient {
       const bestChild = this.findBestMatchingChild(node, params.targetWidth, params.targetHeight);
 
       if (bestChild) {
-        console.log(
+        getLoggerSafe().info(
           `[figma-auto-roi] Adjusted from ${parentMeta.name} (${parentMeta.width}x${parentMeta.height}) ` +
-            `to child ${bestChild.name} (${bestChild.width}x${bestChild.height})`
+            `to child ${bestChild.name} (${bestChild.width}x${bestChild.height})`,
         );
         return { nodeId: bestChild.id, wasAdjusted: true, originalNodeId: params.nodeId };
       }
@@ -328,7 +330,8 @@ export class FigmaRestClient {
       return { nodeId: params.nodeId, wasAdjusted: false, originalNodeId: params.nodeId };
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(`[figma-auto-roi] Failed to auto-detect ROI: ${errMsg}`);
+
+      getLoggerSafe().warn(`[figma-auto-roi] Failed to auto-detect ROI: ${errMsg}`);
       return { nodeId: params.nodeId, wasAdjusted: false, originalNodeId: params.nodeId };
     }
   }

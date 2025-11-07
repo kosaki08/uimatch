@@ -124,7 +124,7 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
           reasons.push('Cached selector is still alive');
           return {
             selector: anchor.resolvedCss,
-            stabilityScore: anchor.lastKnown?.stabilityScore,
+            stabilityScore: undefined,
             reasons,
           };
         } else {
@@ -396,16 +396,6 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
             `Snippet resolution error: ${error instanceof Error ? error.message : String(error)}`
           );
         }
-      }
-
-      // Fallback to last known selector if available
-      if (anchor.lastKnown?.selector) {
-        reasons.push(`Using last known selector: ${anchor.lastKnown.selector}`);
-        return {
-          selector: anchor.lastKnown.selector,
-          stabilityScore: anchor.lastKnown.stabilityScore,
-          reasons,
-        };
       }
     }
 

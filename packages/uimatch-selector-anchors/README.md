@@ -275,11 +275,8 @@ Full-featured anchors.json with hints, snippet hash, and metadata:
         "hashDigits": 10
       },
       "subselector": "button[data-testid='button-primary']",
-      "lastKnown": {
-        "selector": "button[data-testid='button-primary']",
-        "timestamp": "2024-01-15T10:30:00Z",
-        "stabilityScore": 95
-      },
+      "resolvedCss": "button[data-testid='button-primary']",
+      "lastSeen": "2024-01-15T10:30:00Z",
       "meta": {
         "component": "Button",
         "description": "Primary action button in header",
@@ -320,7 +317,8 @@ Full-featured anchors.json with hints, snippet hash, and metadata:
 - `snippetHash`: Auto-generated hash for code movement detection (fuzzy matching when line numbers change)
 - `snippetContext`: Controls snippet extraction window (default: ±3 lines, sha1, 10 digits)
 - `subselector`: Optional child element selector for Figma auto-ROI targeting
-- `lastKnown`: Cached successful selector with timestamp and stability score
+- `resolvedCss`: Last resolved CSS selector (write-back cache for fast lookup)
+- `lastSeen`: Timestamp when the selector was last successfully resolved
 - `meta`: Human-readable metadata for organization and debugging
 
 For complete schema details, see [`schema.ts`](./src/types/schema.ts).

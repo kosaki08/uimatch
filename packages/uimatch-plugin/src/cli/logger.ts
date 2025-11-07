@@ -2,7 +2,7 @@
  * Global logger instance for CLI.
  * Initialized lazily based on CLI options and environment variables.
  */
-import type { Logger, LogLevel } from '@uimatch/shared-logging';
+import { type Logger, type LogLevel, silentLogger } from '@uimatch/shared-logging';
 import { createLogger } from '../log.js';
 
 let globalLogger: Logger | undefined;
@@ -56,4 +56,15 @@ export function getLogger(): Logger {
  */
 export function resetLogger(): void {
   globalLogger = undefined;
+}
+
+/**
+ * Get the global logger instance with safe fallback.
+ * Returns silentLogger if logger has not been initialized (e.g., when used outside CLI context).
+ */
+export function getLoggerSafe(): Logger {
+  if (!globalLogger) {
+    return silentLogger;
+  }
+  return globalLogger;
 }
