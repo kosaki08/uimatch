@@ -54,7 +54,6 @@ describe('Selector resolution plugin integration', () => {
         }
       });
     });
-
   });
 
   describe('Configuration bridging', () => {

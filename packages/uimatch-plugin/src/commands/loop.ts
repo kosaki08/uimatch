@@ -4,8 +4,8 @@
 
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
 import { browserPool } from 'uimatch-core';
-import { uiMatchCompare } from './compare';
 import { outln } from '../cli/print.js';
+import { uiMatchCompare } from './compare';
 
 /**
  * Loop-specific arguments extending CompareArgs

@@ -124,9 +124,7 @@ export function displaySettings(config: AppConfig): void {
   outln(
     `  Acceptance pixel diff ratio: ${(config.comparison.acceptancePixelDiffRatio * 100).toFixed(2)}%`
   );
-  outln(
-    `  Acceptance color delta E: ${config.comparison.acceptanceColorDeltaE.toFixed(1)} ΔE`
-  );
+  outln(`  Acceptance color delta E: ${config.comparison.acceptanceColorDeltaE.toFixed(1)} ΔE`);
 
   // Capture settings
   process.stdout.write('\n🖥️  Capture Settings:');
