@@ -207,7 +207,10 @@ export function attributeOnlyParse(element: ts.JsxElement | ts.JsxSelfClosingEle
  * @param line - Target line number
  * @returns Best-effort selector candidates
  */
-export function heuristicCandidates(sourceContent: string, line: number): ParseLevel {
+export async function heuristicCandidates(
+  sourceContent: string,
+  line: number
+): Promise<ParseLevel> {
   const reasons: string[] = ['Heuristics: generating candidates from source text'];
   const selectors: string[] = [];
   const attributes: Record<string, string> = {};
@@ -218,7 +221,7 @@ export function heuristicCandidates(sourceContent: string, line: number): ParseL
     const contextLines = lines.slice(Math.max(0, line - 3), line + 3).join('\n');
 
     // Try to extract data-testid
-    const testidResult = compileSafeRegex('data-testid=["\'](([^"\'])+)["\']');
+    const testidResult = await compileSafeRegex('data-testid=["\'](([^"\'])+)["\']');
     if (testidResult.success) {
       const testidMatch = contextLines.match(testidResult.regex);
       if (testidMatch?.[1]) {
@@ -240,7 +243,7 @@ export function heuristicCandidates(sourceContent: string, line: number): ParseL
     }
 
     // Try to extract id
-    const idResult = compileSafeRegex('\\bid=["\'](([^"\'])+)["\']');
+    const idResult = await compileSafeRegex('\\bid=["\'](([^"\'])+)["\']');
     if (idResult.success) {
       const idMatch = contextLines.match(idResult.regex);
       if (idMatch?.[1]) {
@@ -261,7 +264,7 @@ export function heuristicCandidates(sourceContent: string, line: number): ParseL
     }
 
     // Try to extract role
-    const roleResult = compileSafeRegex('\\brole=["\'](([^"\'])+)["\']');
+    const roleResult = await compileSafeRegex('\\brole=["\'](([^"\'])+)["\']');
     if (roleResult.success) {
       const roleMatch = contextLines.match(roleResult.regex);
       if (roleMatch?.[1]) {
@@ -282,7 +285,7 @@ export function heuristicCandidates(sourceContent: string, line: number): ParseL
     }
 
     // Try to extract text content (between > and <)
-    const textResult = compileSafeRegex('>([^<]{1,24})<');
+    const textResult = await compileSafeRegex('>([^<]{1,24})<');
     if (textResult.success) {
       const textMatch = targetLine.match(textResult.regex);
       if (textMatch?.[1]) {
@@ -299,7 +302,7 @@ export function heuristicCandidates(sourceContent: string, line: number): ParseL
 
     // If we found nothing, try common tag patterns
     if (selectors.length === 0) {
-      const tagResult = compileSafeRegex('<(\\w+)\\b');
+      const tagResult = await compileSafeRegex('<(\\w+)\\b');
       if (tagResult.success) {
         const tagMatch = targetLine.match(tagResult.regex);
         if (tagMatch) {

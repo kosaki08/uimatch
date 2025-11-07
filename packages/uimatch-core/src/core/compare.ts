@@ -321,13 +321,16 @@ function countDiffPixelsInRect(
     for (let x = contentRect.x1; x < contentRect.x2; x++) {
       const idx = (canvasWidth * y + x) * 4;
 
-      // pixelmatch marks diff pixels with red color (255, 0, 0)
-      // Check if this pixel is marked as different
-      const r = diffPng.data[idx];
-      const g = diffPng.data[idx + 1];
-      const b = diffPng.data[idx + 2];
+      // pixelmatch marks diff pixels with non-black colors:
+      // - red (255, 0, 0) for primary diffs
+      // - yellow for AA (anti-aliasing) pixels
+      // - other colors for alternative diff modes
+      // Check if any RGB channel is non-zero to detect all diff types
+      const r = diffPng.data[idx] ?? 0;
+      const g = diffPng.data[idx + 1] ?? 0;
+      const b = diffPng.data[idx + 2] ?? 0;
 
-      if (r === 255 && g === 0 && b === 0) {
+      if ((r | g | b) !== 0) {
         diffCount++;
       }
     }

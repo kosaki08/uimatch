@@ -242,7 +242,7 @@ export async function resolveFromTypeScript(
     reasons.push('Full parse incomplete or failed, using heuristics');
 
     // Level 4: Heuristics (last resort)
-    const heuristicResult = heuristicCandidates(content, line);
+    const heuristicResult = await heuristicCandidates(content, line);
 
     if (heuristicResult.selectors.length > 0) {
       reasons.push('Heuristics generated candidates');

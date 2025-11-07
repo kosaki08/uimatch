@@ -42,8 +42,12 @@
   "dependencies": {
     "jsep": "^1.4.0",
     "parse5": "^8.0.0",
+    "safe-regex2": "^5.0.0",
     "typescript": "^5.9.3",
     "zod": "^4.1.12"
+  },
+  "optionalDependencies": {
+    "re2": "^1.21.4"
   },
   "peerDependencies": {
     "@uimatch/selector-spi": ">=0.1.0"
