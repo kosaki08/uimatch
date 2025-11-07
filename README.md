@@ -1,5 +1,7 @@
 # uiMatch
 
+**TL;DR**: uiMatch automates Figma-to-implementation comparison with Playwright, calculating pixel-level color differences (ΔE), dimensional accuracy, spacing, typography, and layout discrepancies. Reports are generated with numerical scores, annotated screenshots, and CI integration support.
+
 Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design. Distributed as a Claude Code plugin.
 
 ## Features
@@ -14,50 +16,84 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 
 ## Requirements
 
-- **Runtime**: Node.js >=22.11.0 (npm package) or Bun (development)
+- **Runtime**: Node.js 20.19+ / 22.12+ (ESM only) or Bun 1.x
 - **Browser**: Playwright Chromium (peer dependency, install once)
 
 ## Installation
 
 ```bash
-# Claude Code plugin
-/plugin install uimatch
-bunx playwright install chromium
-
-# Or as global CLI
+# As npm package (recommended)
 npm install -g uimatch-plugin playwright
 npx playwright install chromium
+
+# Or with Bun
+bun add -g uimatch-plugin playwright
+bunx playwright install chromium
 ```
 
+## Quickstart
+
+1. **Install dependencies**
+   ```bash
+   npm install -g uimatch-plugin playwright
+   npx playwright install chromium
+   ```
+
+2. **Set Figma token** (get from [Figma Settings](https://www.figma.com/developers/api#access-tokens))
+   ```bash
+   export FIGMA_ACCESS_TOKEN="figd_..."
+   ```
+
+3. **Create config** (`.uimatchrc.json`)
+   ```json
+   {
+     "comparison": {
+       "pixelmatchThreshold": 0.1,
+       "acceptancePixelDiffRatio": 0.01,
+       "acceptanceColorDeltaE": 3.0
+     }
+   }
+   ```
+
+4. **Run comparison**
+   ```bash
+   npx uimatch compare \
+     figma=<fileKey>:<nodeId> \
+     story=http://localhost:6006/?path=/story/button \
+     selector="#root button"
+   ```
+
+5. **Check reports** in `./uimatch-reports/`
+
 ## Usage
+
+### CLI
+
+```bash
+# Compare Figma design with implementation
+npx uimatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
+
+# With selector anchors plugin
+npx uimatch compare figma=... story=... selector=... selectors=./anchors.json
+
+# Verify installation (smoke test)
+npx uimatch doctor
+
+# Development (from repository)
+bun run uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button"
+```
 
 ### Claude Code Plugin
 
 ```bash
-# Compare Figma design with implementation
+# Compare command
 /uiMatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
-
-# With selector resolution plugin
-/uiMatch compare figma=... story=... selector=... selectors=./anchors.json
 
 # Iterative comparison loop
 /uiMatch loop figma=... story=... selector=... maxIters=5
 
 # Configure settings
 /uiMatch settings
-```
-
-### CLI (Direct)
-
-```bash
-# Build the project first
-bun run build
-
-# Compare command
-bun run uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button"
-
-# Note: CLI does not have a settings subcommand
-# Configure via .uimatchrc.json, programmatic API, or Claude's /uiMatch settings
 ```
 
 ## Configuration
@@ -95,23 +131,52 @@ Bypass mode uses `UIMATCH_FIGMA_PNG_B64` env var (useful for CI).
 
 ## CI Integration
 
-**GitHub Actions example:**
+**Minimal GitHub Actions example:**
 
 ```yaml
-- name: Install Playwright
-  run: npx playwright install chromium --with-deps
-- name: Smoke test
-  run: npx uimatch compare figma=bypass:test story="..." selector="..."
-  env:
-    UIMATCH_FIGMA_PNG_B64: ${{ secrets.TEST_PNG_B64 }}
+name: uiMatch QA
+on: [pull_request]
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: |
+          npm install -g uimatch-plugin playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run comparison
+        env:
+          FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_TOKEN }}
+          UIMATCH_HEADLESS: true
+        run: |
+          npx uimatch compare \
+            figma=${{ secrets.FIGMA_FILE }}:${{ secrets.FIGMA_NODE }} \
+            story=https://your-storybook.com/?path=/story/button \
+            selector="#root button"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uimatch-reports
+          path: uimatch-reports/
 ```
 
-**Important:**
+**Tips:**
 
 - Use `--with-deps` for system dependencies
-- Cache Playwright browsers for faster runs
+- Cache Playwright browsers with `actions/cache@v4`
 - Set `UIMATCH_HEADLESS=true` (default) for CI
-- Bypass mode avoids Figma API rate limits
+- Use bypass mode (`figma=bypass:test` + `UIMATCH_FIGMA_PNG_B64`) to avoid API rate limits
 
 ## Local Testing
 
