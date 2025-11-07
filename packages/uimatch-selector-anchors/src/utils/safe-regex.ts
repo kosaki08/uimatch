@@ -5,6 +5,8 @@
  */
 
 import safe from 'safe-regex2';
+import type { RE2Constructor } from './re2.types.js';
+import { extractRE2Constructor } from './re2.types.js';
 
 /**
  * Maximum allowed regex pattern length to prevent extremely long patterns
@@ -21,8 +23,7 @@ const MAX_INPUT_LENGTH = 10000;
  * RE2 engine instance (loaded lazily if available)
  * RE2 provides linear-time regex execution, preventing ReDoS attacks
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-redundant-type-constituents
-let RE2: any | null = null;
+let RE2: RE2Constructor | null = null;
 let RE2_LOAD_ATTEMPTED = false;
 
 /**
@@ -34,11 +35,11 @@ async function loadRE2(): Promise<void> {
   RE2_LOAD_ATTEMPTED = true;
 
   try {
-    // Dynamic import with type assertion to avoid type errors for optional dependency
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-    const re2Module = await import('re2' as any);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    RE2 = re2Module.default ?? re2Module.RE2;
+    // Dynamic import of optional dependency
+    // Using type guard to safely extract constructor
+    // Type assertion needed because re2 may not be installed (optional dependency)
+    const re2Module: unknown = await import('re2' as never);
+    RE2 = extractRE2Constructor(re2Module);
   } catch {
     // RE2 not available - will use safe-regex2 validation + standard RegExp
   }
@@ -77,10 +78,7 @@ export type SafeRegexResult =
  * }
  * ```
  */
-export async function compileSafeRegex(
-  pattern: string,
-  flags?: string
-): Promise<SafeRegexResult> {
+export async function compileSafeRegex(pattern: string, flags?: string): Promise<SafeRegexResult> {
   // Check pattern length
   if (pattern.length > MAX_PATTERN_LENGTH) {
     return {
@@ -105,9 +103,8 @@ export async function compileSafeRegex(
   // Try to compile with RE2 if available (linear-time guarantee)
   if (RE2) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
       const regex = new RE2(pattern, flags);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
       return { success: true, regex };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
