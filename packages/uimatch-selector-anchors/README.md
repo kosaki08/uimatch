@@ -269,6 +269,35 @@ export DEBUG=uimatch:selector-anchors
 
 ## Anchors JSON Format
 
+### JSON Schema Support
+
+Enable IDE autocompletion and validation by adding the `$schema` property to your `anchors.json`:
+
+```json
+{
+  "$schema": "https://unpkg.com/@uimatch/selector-anchors@latest/dist/schema/anchors.schema.json",
+  "version": "1.0.0",
+  "anchors": []
+}
+```
+
+**VS Code/IntelliJ IDEA/WebStorm** will automatically provide:
+
+- ✅ Autocomplete for all anchor properties
+- ✅ Inline documentation for each field
+- ✅ Real-time validation errors
+- ✅ Schema-driven snippets
+
+**Local Schema (Alternative):**
+
+```json
+{
+  "$schema": "./node_modules/@uimatch/selector-anchors/dist/schema/anchors.schema.json",
+  "version": "1.0.0",
+  "anchors": []
+}
+```
+
 ### Minimal Example
 
 The simplest anchors.json with required fields only:

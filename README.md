@@ -4,6 +4,64 @@
 
 Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design. Distributed as a Claude Code plugin.
 
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        uiMatch Workflow                         │
+└─────────────────────────────────────────────────────────────────┘
+
+  Figma Design           Implementation         Selector Engine
+  ────────────           ──────────────         ───────────────
+       │                       │                       │
+       │ FIGMA_ACCESS_TOKEN    │ Storybook/URL         │ Optional
+       │                       │                       │
+       ▼                       ▼                       ▼
+  ┌─────────┐           ┌──────────┐          ┌──────────────┐
+  │ Figma   │           │ Playwright│          │  Anchors     │
+  │ API     │◄──────────┤ Browser  │◄─────────┤  Plugin      │
+  └────┬────┘           └────┬─────┘          │ (AST-based)  │
+       │                     │                 └──────────────┘
+       │  PNG Frame          │  Screenshot              │
+       │                     │  + CSS props             │
+       ▼                     ▼                          │
+  ┌─────────────────────────────────────────┐          │
+  │         uimatch-core Engine             │          │
+  │  ┌───────────────────────────────────┐  │          │
+  │  │ Size Handler (strict/pad/crop)    │  │          │
+  │  │ Content Basis (union/intersection)│  │          │
+  │  └───────────────────────────────────┘  │          │
+  │  ┌───────────────────────────────────┐  │          │
+  │  │ Pixelmatch (content-aware)        │  │          │
+  │  │ Color ΔE2000 (perceptual)         │  │          │
+  │  └───────────────────────────────────┘  │          │
+  │  ┌───────────────────────────────────┐  │          │
+  │  │ Quality Gate V2                   │  │          │
+  │  │ • pixelDiffRatioContent < 1%      │◄─┼──────────┘
+  │  │ • areaGapRatio < 5%               │  │ Stable selectors
+  │  │ • CQI (content quality index)     │  │ reduce drift
+  │  └───────────────────────────────────┘  │
+  └──────────────────┬──────────────────────┘
+                     │
+                     │ JSON + Screenshots
+                     ▼
+            ┌─────────────────┐
+            │  DFS Score       │  Design Fidelity Score (0-100)
+            │  Reports         │  Pass/Fail + Annotated Images
+            └─────────────────┘
+                     │
+                     │
+                     ▼
+            [ CI/CD Integration ]
+```
+
+**Key Components:**
+
+- **uimatch-plugin**: CLI entry point (`npx uimatch compare`)
+- **uimatch-core**: Comparison engine (pixelmatch, color ΔE, scoring)
+- **@uimatch/selector-anchors**: Optional plugin for stable selector resolution
+- **Quality Gate V2**: Content-aware pass/fail criteria (recommended)
+
 ## Features
 
 - **Pixel-perfect comparison**: Visual diff with pixelmatch
@@ -33,41 +91,57 @@ bunx playwright install chromium
 
 ## Quickstart
 
-1. **Install dependencies**
+### 10-Minute Setup
 
-   ```bash
-   npm install -g uimatch-plugin playwright
-   npx playwright install chromium
-   ```
+**Option A: CLI-only** (fastest)
 
-2. **Set Figma token** (get from [Figma Settings](https://www.figma.com/developers/api#access-tokens))
+```bash
+# Install and verify
+npm install -g uimatch-plugin playwright
+npx playwright install chromium
+export FIGMA_ACCESS_TOKEN="figd_..."
 
-   ```bash
-   export FIGMA_ACCESS_TOKEN="figd_..."
-   ```
+# Run comparison
+npx uimatch compare \
+  figma=<fileKey>:<nodeId> \
+  story=http://localhost:6006/?path=/story/button \
+  selector="#root button"
 
-3. **Create config** (`.uimatchrc.json`)
+# Check ./uimatch-reports/
+```
 
-   ```json
-   {
-     "comparison": {
-       "pixelmatchThreshold": 0.1,
-       "acceptancePixelDiffRatio": 0.01,
-       "acceptanceColorDeltaE": 3.0
-     }
-   }
-   ```
+**Option B: With Anchors** (stable selectors)
 
-4. **Run comparison**
+```bash
+# Install with selector plugin
+npm install -g uimatch-plugin @uimatch/selector-anchors playwright
+npx playwright install chromium
 
-   ```bash
-   npx uimatch compare \
-     figma=<fileKey>:<nodeId> \
-     story=http://localhost:6006/?path=/story/button \
-     selector="#root button"
-   ```
+# Create anchors.json (see examples/anchors-stabilization.md)
+npx uimatch-anchors --file src/Button.tsx --line 10 --id btn-primary
 
-5. **Check reports** in `./uimatch-reports/`
+# Run with anchors
+npx uimatch compare \
+  figma=... story=... selector=... \
+  selectors=./anchors.json
+```
+
+### Common Patterns
+
+```bash
+# Component vs Component (strict pixel-perfect)
+npx uimatch compare figma=... story=... selector=... size=strict
+
+# Page vs Component (pad + contentBasis to reduce noise)
+npx uimatch compare figma=... story=... selector=... \
+  size=pad contentBasis=intersection
+
+# Loop mode (iterate until DFS > 95)
+npx uimatch loop figma=... story=... selector=... \
+  maxIters=5 targetDFS=95
+```
+
+**See also**: [Examples](docs/examples/) | [Common Options](#common-options)
 
 ## Usage
 
@@ -286,18 +360,45 @@ View reports with Coverage Gutters (VS Code), Codecov, or Coveralls.
 
 ## Troubleshooting
 
+### Doctor Command
+
+Run `npx uimatch doctor` to diagnose installation issues:
+
+```bash
+$ npx uimatch doctor
+
+✅ Environment Check
+   Node.js: v22.12.0 (✓ >= 20.19.0)
+   npm: 10.9.0
+   Platform: darwin (arm64)
+
+✅ Playwright Installation
+   @playwright/test: 1.49.1
+   Chromium: installed (1148)
+
+✅ Figma Configuration
+   FIGMA_ACCESS_TOKEN: ✓ Set (figd_***)
+
+⚠️  Optional Dependencies
+   TypeScript: not found (required for anchors plugin AST resolution)
+   → npm install -g typescript
+
+✅ System Ready
+   All critical checks passed. Optional: install TypeScript for anchors.
+```
+
 ### Common Issues
 
-| Issue                       | Cause                                          | Solution                                                 |
-| --------------------------- | ---------------------------------------------- | -------------------------------------------------------- |
-| Browser not found           | Playwright Chromium not installed              | `npx playwright install chromium`                        |
-| Module 'typescript' missing | Runtime dep in devDependencies                 | `npm i -g typescript` or move to dependencies            |
-| Storybook wrong URL         | Canvas URL instead of iframe                   | Use `iframe.html?id=...` not `?path=/story/...`          |
-| Link broken                 | `node_modules` regenerated or path moved       | `bun unlink && bun link` or use pack method              |
-| Bypass mode fails           | `UIMATCH_FIGMA_PNG_B64` not set                | Export base64-encoded PNG (10x10 red square for testing) |
-| Runtime dependency missing  | Package installed with wrong dependency type   | Check `package.json`: runtime deps → `dependencies`      |
-| ESM resolution failure      | Incorrect module format in distributed package | Test with `npm pack` before publishing                   |
-| CLI not executable          | Shebang or bin path incorrect                  | Verify `bin` in package.json and `#!/usr/bin/env node`   |
+| Issue                      | Symptom                                        | Solution                                                 |
+| -------------------------- | ---------------------------------------------- | -------------------------------------------------------- |
+| Browser not found          | ❌ Playwright: Chromium not installed          | `npx playwright install chromium`                        |
+| Figma token missing        | ❌ FIGMA_ACCESS_TOKEN not set                  | `export FIGMA_ACCESS_TOKEN="figd_..."`                   |
+| TypeScript missing         | ⚠️ TypeScript: not found                       | `npm install -g typescript` (for anchors plugin)         |
+| Storybook wrong URL        | Canvas URL instead of iframe                   | Use `iframe.html?id=...` not `?path=/story/...`          |
+| Bypass mode fails          | `UIMATCH_FIGMA_PNG_B64` not set                | Export base64-encoded PNG (10x10 red square for testing) |
+| Runtime dependency missing | Package installed with wrong dependency type   | Check `package.json`: runtime deps → `dependencies`      |
+| ESM resolution failure     | Incorrect module format in distributed package | Test with `npm pack` before publishing                   |
+| CLI not executable         | Shebang or bin path incorrect                  | Verify `bin` in package.json and `#!/usr/bin/env node`   |
 
 ### Publishing to npm
 
@@ -350,12 +451,38 @@ npx uimatch compare figma=bypass:test story="..." selector="..."
 - ✅ All workspace dependencies resolved (publish from root, not subdirs)
 - ✅ Playwright peer dependency documented in README
 
+## Common Options
+
+| Option             | Values                           | Use Case                                   |
+| ------------------ | -------------------------------- | ------------------------------------------ |
+| `size`             | `strict/pad/crop/scale`          | Size handling strategy                     |
+| `contentBasis`     | `union/intersection/figma/story` | Content-aware comparison basis             |
+| `qualityGateMode`  | `v2/v1/off`                      | Quality gate version (v2 recommended)      |
+| `selectors`        | `path/to/anchors.json`           | Use selector anchors plugin                |
+| `selectorsPlugin`  | `@uimatch/selector-anchors`      | Custom selector resolution plugin          |
+| `targetDFS`        | `95`                             | Loop mode target DFS (0-100)               |
+| `pixelDiffRatioV2` | `0.01`                           | Quality gate v2 threshold (1% recommended) |
+
+**Full options**: Run `npx uimatch compare --help`
+
 ## Documentation
 
-- [CLI Usage](docs/cli-usage.md) - Detailed command-line usage and options
-- [Advanced Configuration](docs/advanced-config.md) - Design notes, internal algorithms, tuning parameters
+### Quick Start
+
+- [Examples](docs/examples/) - Common patterns and workflows
+- [CLI Usage](docs/cli-usage.md) - Detailed command reference
+
+### Core Concepts
+
+- [Quality Gate V2](docs/concepts/quality-gate-v2.md) - pixelDiffRatioContent, area gap, CQI
+- [Size Handling](docs/concepts/size-handling.md) - strict/pad/crop/scale strategies
+- [Selector Resolution](docs/concepts/selector-resolution.md) - Stability scoring and anchors
+
+### Advanced
+
+- [Advanced Configuration](docs/advanced-config.md) - Internal algorithms and tuning
 - [v0.1 Specification](docs/specs/v0.1.md) - MVP implementation spec
-- [AI Assistant Guidelines](docs/ai-assistant/index.md) - Development guidelines for AI assistants
+- [AI Assistant Guidelines](docs/ai-assistant/index.md) - Development guidelines
 
 ## Project Structure
 
