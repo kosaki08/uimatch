@@ -607,9 +607,34 @@ export async function runCompare(argv: string[]): Promise<void> {
         // Save overlay if requested
         const saveOverlay = parseBool(args.overlay) ?? false;
         if (saveOverlay) {
-          // Generate overlay: impl + red highlights from diff
-          // This is a simplified version - full implementation would composite properly
-          await writeFile(join(outDir, 'overlay.png'), Buffer.from(diffPngB64, 'base64'));
+          // Generate overlay: impl.png with diff.png red highlights composited
+          const { PNG } = await import('pngjs');
+          const implBuf = Buffer.from(implPngB64, 'base64');
+          const diffBuf = Buffer.from(diffPngB64, 'base64');
+          const implPng = PNG.sync.read(implBuf);
+          const diffPng = PNG.sync.read(diffBuf);
+
+          // Composite red pixels from diff onto impl with semi-transparency
+          for (let y = 0; y < implPng.height && y < diffPng.height; y++) {
+            for (let x = 0; x < implPng.width && x < diffPng.width; x++) {
+              const idx = (implPng.width * y + x) << 2;
+              // pixelmatch uses red (R=255, G=0, B=0) for diff pixels
+              if (
+                diffPng.data[idx] === 255 &&
+                diffPng.data[idx + 1] === 0 &&
+                diffPng.data[idx + 2] === 0
+              ) {
+                // Apply semi-transparent red highlight
+                implPng.data[idx] = 255; // R
+                implPng.data[idx + 1] = 0; // G
+                implPng.data[idx + 2] = 0; // B
+                implPng.data[idx + 3] = 200; // A (semi-transparent)
+              }
+            }
+          }
+
+          const overlayBuf = PNG.sync.write(implPng);
+          await writeFile(join(outDir, 'overlay.png'), overlayBuf);
         }
 
         // Save report (without base64 by default)

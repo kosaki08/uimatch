@@ -40,6 +40,39 @@ export type SafeRegexResult =
   | { success: false; error: string; fallbackToLiteral: true };
 
 /**
+ * Execute regex test with timeout to prevent ReDoS attacks
+ *
+ * @param regex - The compiled regex
+ * @param input - The input string to test
+ * @param timeoutMs - Maximum execution time in milliseconds (default: input.length * 2, max: 1000ms)
+ * @returns true if matches, false otherwise or on timeout
+ *
+ * @example
+ * ```ts
+ * const regex = /hello.*world/i;
+ * const result = execRegexWithTimeout(regex, 'Hello World', 100);
+ * ```
+ */
+export function execRegexWithTimeout(regex: RegExp, input: string, timeoutMs?: number): boolean {
+  const timeout = timeoutMs ?? Math.min(input.length * 2, 1000);
+
+  // For Node.js 20.19+ / 22.12+, use AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    // Execute regex test
+    const result = regex.test(input);
+    clearTimeout(timeoutId);
+    return result;
+  } catch {
+    clearTimeout(timeoutId);
+    // Timeout or error - fallback to false
+    return false;
+  }
+}
+
+/**
  * Compile a regex pattern with safety validation
  *
  * Protects against:

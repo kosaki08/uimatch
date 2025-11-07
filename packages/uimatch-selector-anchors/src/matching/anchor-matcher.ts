@@ -89,14 +89,30 @@ function tokenizeSelector(selector: string): string[] {
     if (match[1]) tokens.push(match[1].toLowerCase());
   }
 
-  // Extract tag names: button -> button
+  // Extract tag names: button -> button (excluding generic HTML tags to reduce false positives)
   const tagMatches = selectorWithoutAttrs.matchAll(/\b([a-z][a-z0-9]*)\b/gi);
+  const PSEUDO_CLASSES = ['not', 'has', 'is', 'where', 'nth', 'first', 'last'];
+  const GENERIC_TAGS = [
+    'div',
+    'span',
+    'p',
+    'li',
+    'ul',
+    'ol',
+    'section',
+    'article',
+    'main',
+    'nav',
+    'header',
+    'footer',
+  ];
+
   for (const match of tagMatches) {
     const tag = match[1];
     if (!tag) continue;
     const tagLower = tag.toLowerCase();
-    // Filter out common pseudo-classes/functions to avoid noise
-    if (!['not', 'has', 'is', 'where', 'nth', 'first', 'last'].includes(tagLower)) {
+    // Filter out pseudo-classes and generic HTML tags
+    if (!PSEUDO_CLASSES.includes(tagLower) && !GENERIC_TAGS.includes(tagLower)) {
       tokens.push(tagLower);
     }
   }

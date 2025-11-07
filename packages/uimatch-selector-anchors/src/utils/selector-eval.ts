@@ -39,6 +39,12 @@ const MAX_INPUT_LENGTH = 1000;
 const MAX_EXPRESSION_DEPTH = 20;
 
 /**
+ * Maximum total AST nodes to prevent DoS attacks
+ * Limits not just depth but also breadth of expressions
+ */
+const MAX_AST_NODES = 200;
+
+/**
  * Allowed operators (whitelist)
  */
 const ALLOWED_OPERATORS = new Set([
@@ -169,7 +175,15 @@ function detectReDoS(input: string): void {
 /**
  * Validate AST node recursively
  */
-function validateASTNode(node: Expression, depth = 0): void {
+function validateASTNode(node: Expression, depth = 0, nodeCount = { count: 0 }): void {
+  // Track total node count to prevent DoS via large expressions
+  nodeCount.count++;
+  if (nodeCount.count > MAX_AST_NODES) {
+    throw new ExpressionValidationError(
+      `Expression too large: ${nodeCount.count} nodes (max: ${MAX_AST_NODES})`
+    );
+  }
+
   if (depth > MAX_EXPRESSION_DEPTH) {
     throw new ExpressionValidationError(
       `Expression too deep: ${depth} (max: ${MAX_EXPRESSION_DEPTH})`
@@ -190,8 +204,8 @@ function validateASTNode(node: Expression, depth = 0): void {
       if (!ALLOWED_OPERATORS.has(binaryNode.operator)) {
         throw new ExpressionValidationError(`Operator not allowed: ${binaryNode.operator}`);
       }
-      validateASTNode(binaryNode.left, depth + 1);
-      validateASTNode(binaryNode.right, depth + 1);
+      validateASTNode(binaryNode.left, depth + 1, nodeCount);
+      validateASTNode(binaryNode.right, depth + 1, nodeCount);
       return;
     }
 
@@ -200,7 +214,7 @@ function validateASTNode(node: Expression, depth = 0): void {
       if (!ALLOWED_UNARY_OPERATORS.has(unaryNode.operator)) {
         throw new ExpressionValidationError(`Unary operator not allowed: ${unaryNode.operator}`);
       }
-      validateASTNode(unaryNode.argument, depth + 1);
+      validateASTNode(unaryNode.argument, depth + 1, nodeCount);
       return;
     }
 
@@ -240,7 +254,7 @@ function validateASTNode(node: Expression, depth = 0): void {
           if (method && ALLOWED_MEMBERS.has(method)) {
             // Validate arguments
             for (const arg of callNode.arguments) {
-              validateASTNode(arg, depth + 1);
+              validateASTNode(arg, depth + 1, nodeCount);
             }
             return;
           }
@@ -254,16 +268,16 @@ function validateASTNode(node: Expression, depth = 0): void {
 
       // Validate arguments
       for (const arg of callNode.arguments) {
-        validateASTNode(arg, depth + 1);
+        validateASTNode(arg, depth + 1, nodeCount);
       }
       return;
     }
 
     case 'ConditionalExpression': {
       const condNode = node as ConditionalExpression;
-      validateASTNode(condNode.test, depth + 1);
-      validateASTNode(condNode.consequent, depth + 1);
-      validateASTNode(condNode.alternate, depth + 1);
+      validateASTNode(condNode.test, depth + 1, nodeCount);
+      validateASTNode(condNode.consequent, depth + 1, nodeCount);
+      validateASTNode(condNode.alternate, depth + 1, nodeCount);
       return;
     }
 
@@ -271,7 +285,7 @@ function validateASTNode(node: Expression, depth = 0): void {
       const arrayNode = node as ArrayExpression;
       for (const element of arrayNode.elements) {
         if (element !== null) {
-          validateASTNode(element, depth + 1);
+          validateASTNode(element, depth + 1, nodeCount);
         }
       }
       return;
