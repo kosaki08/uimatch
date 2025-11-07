@@ -48,7 +48,8 @@ export function createDebugger(namespace: string) {
      */
     debug: (...args: unknown[]) => {
       if (enabled) {
-        process.stdout.write(`[${namespace}]`, ...(args + '\n'));
+        const line = `[${namespace}] ${args.map(String).join(' ')}\n`;
+        process.stdout.write(line);
       }
     },
 
@@ -56,14 +57,16 @@ export function createDebugger(namespace: string) {
      * Log warning message (always shown)
      */
     warn: (...args: unknown[]) => {
-      process.stderr.write(`[${namespace}]`, ...(args + '\n'));
+      const line = `[${namespace}] ${args.map(String).join(' ')}\n`;
+      process.stderr.write(line);
     },
 
     /**
      * Log error message (always shown)
      */
     error: (...args: unknown[]) => {
-      process.stderr.write(`[${namespace}]`, ...(args + '\n'));
+      const line = `[${namespace}] ${args.map(String).join(' ')}\n`;
+      process.stderr.write(line);
     },
 
     /**

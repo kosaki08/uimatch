@@ -177,10 +177,10 @@ For detailed CLI usage, available options, and advanced features (size handling,
 ### Programmatic API
 
 ```typescript
-import { runCompare, runLoop, getSettings, setSettings } from 'uimatch-plugin';
+import { uiMatchCompare, uiMatchLoop, getSettings, updateSettings } from 'uimatch-plugin';
 
 // Run comparison
-const result = await runCompare({
+const result = await uiMatchCompare({
   figma: 'AbCdEf123:456-789',
   story: 'http://localhost:6006',
   selector: '#button',
@@ -192,7 +192,7 @@ console.log(`DFS: ${result.dfs}`);
 console.log(`Status: ${result.status}`);
 
 // Run iterative loop
-await runLoop({
+await uiMatchLoop({
   figma: 'AbCdEf123:456-789',
   story: 'http://localhost:6006',
   selector: '#button',
@@ -202,7 +202,7 @@ await runLoop({
 
 // Settings management
 const settings = await getSettings();
-await setSettings({ comparison: { acceptancePixelDiffRatio: 0.05 } });
+await updateSettings({ comparison: { acceptancePixelDiffRatio: 0.05 } });
 ```
 
 ## Configuration

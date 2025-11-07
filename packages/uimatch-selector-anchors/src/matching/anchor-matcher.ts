@@ -148,6 +148,40 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
   for (const result of results) {
     const { anchor } = result;
 
+    // 0. lastKnown/resolvedCss selector match (highest priority)
+    const lastSelector = anchor.lastKnown?.selector || anchor.resolvedCss;
+    if (lastSelector) {
+      const s0 = normalizeSelector(initialSelector);
+      const s1 = normalizeSelector(lastSelector);
+      if (s0 === s1) {
+        result.score += weights.exactLastKnownMatch;
+        result.reasons.push('Matches lastKnown/resolvedCss (exact)');
+      } else if (s0.includes(s1) || s1.includes(s0)) {
+        result.score += weights.partialLastKnownMatch;
+        result.reasons.push('Matches lastKnown/resolvedCss (partial)');
+      }
+    }
+
+    // 0.1. Recent update bonus (recency)
+    if (anchor.lastSeen) {
+      const days = (Date.now() - Date.parse(anchor.lastSeen)) / 86400000;
+      if (days <= config.thresholds.recentUpdateDays) {
+        result.score += weights.recentUpdate;
+        result.reasons.push(`Recently seen alive (${Math.round(days)} days ago)`);
+      }
+    }
+
+    // 0.2. High stability bonus
+    if (
+      anchor.lastKnown?.stabilityScore &&
+      anchor.lastKnown.stabilityScore >= config.thresholds.highStabilityScore
+    ) {
+      result.score += weights.highStability;
+      result.reasons.push(
+        `Historically high stability (${anchor.lastKnown.stabilityScore}% score)`
+      );
+    }
+
     // 1. Hint testid match with format flexibility
     if (anchor.hint?.testid && hasTestId(initialSelector, anchor.hint.testid)) {
       result.score += weights.testidHintMatch;

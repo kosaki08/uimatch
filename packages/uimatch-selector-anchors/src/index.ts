@@ -260,7 +260,11 @@ async function resolve(context: ResolveContext): Promise<Resolution> {
                               ...a,
                               resolvedCss: best.selector,
                               lastSeen: new Date().toISOString(),
-                              // Note: write-back now only updates resolvedCss/lastSeen
+                              lastKnown: {
+                                selector: best.selector,
+                                stabilityScore: Math.round(best.score.overall * 100),
+                                timestamp: new Date().toISOString(),
+                              },
                             }
                           : a
                       ),

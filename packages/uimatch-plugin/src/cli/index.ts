@@ -14,6 +14,7 @@ process.on('unhandledRejection', (reason: unknown) => {
   process.exit(1);
 });
 
+import { uiMatchSettings } from '#plugin/commands/settings.js';
 import { runCompare } from './compare.js';
 import { runDoctor } from './doctor/index.js';
 import { initLogger } from './logger.js';
@@ -35,6 +36,7 @@ function printHelp(): void {
     '  compare    Compare Figma design with web implementation',
     '  suite      Run multiple compares from a JSON suite file',
     '  doctor     Check environment and configuration',
+    '  settings   Manage plugin configuration (get|set|reset)',
     '  help       Show this help message',
     '',
     'Global Options:',
@@ -62,6 +64,10 @@ async function main(): Promise<void> {
     await runSuite(args);
   } else if (command === 'doctor') {
     await runDoctor(args);
+  } else if (command === 'settings') {
+    // Parse settings action from args
+    const action = (args[0] as 'get' | 'set' | 'reset') || 'get';
+    uiMatchSettings(action);
   } else {
     console.error(`Unknown command: ${command}`);
     console.error('Run "uimatch help" to see available commands');

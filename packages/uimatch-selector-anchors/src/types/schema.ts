@@ -95,6 +95,14 @@ export const SelectorAnchorSchema = z.object({
   hints: HintsSchema.optional().describe(
     'Additional hints extracted from source (tag, classList, aria, role, etc.)'
   ),
+  lastKnown: z
+    .object({
+      selector: z.string(),
+      stabilityScore: z.number().min(0).max(100).optional(),
+      timestamp: z.string().datetime().optional(),
+    })
+    .optional()
+    .describe('Last known good selector with optional stability and timestamp'),
   snippetHash: z.string().optional().describe('Hash of surrounding code snippet (±N lines)'),
   snippet: z.string().optional().describe('Original snippet text used to build the hash'),
   snippetContext: SnippetContextSchema.optional().describe('Snippet extraction configuration'),
