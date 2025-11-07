@@ -5,6 +5,7 @@
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
 import { browserPool } from 'uimatch-core';
 import { uiMatchCompare } from './compare';
+import { outln } from '../cli/print.js';
 
 /**
  * Loop-specific arguments extending CompareArgs
@@ -133,13 +134,13 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
         (d: { severity: string }) => d.severity === 'high'
       );
 
-      console.log(
+      outln(
         `${pixelPass ? '✅' : '❌'} Pixel diff: ${(pixelDiffRatio * 100).toFixed(2)}% (threshold: ${(thresholds.pixelDiffRatio * 100).toFixed(2)}%)`
       );
-      console.log(
+      outln(
         `${colorPass ? '✅' : '❌'} Color diff: ${colorDeltaEAvg.toFixed(2)} ΔE (threshold: ${thresholds.deltaE.toFixed(2)})`
       );
-      console.log(
+      outln(
         `${noHighSeverity ? '✅' : '❌'} High severity issues: ${result.report.styleDiffs.filter((d: { severity: string }) => d.severity === 'high').length} (must be 0)`
       );
     }
@@ -156,7 +157,7 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
       process.stdout.write(`\nDFS change: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)}`);
 
       if (improvement <= 0 || improvement < improvementThreshold) {
-        console.log(
+        outln(
           `\n⚠️  ${improvement <= 0 ? 'DFS degraded or unchanged' : `Improvement stagnated (< ${improvementThreshold} points)`}. Stopping iterations.`
         );
         break;

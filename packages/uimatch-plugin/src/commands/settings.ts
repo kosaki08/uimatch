@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DEFAULT_CONFIG, mergeConfig, type AppConfig } from 'uimatch-core';
+import { outln } from '../cli/print.js';
 
 /**
  * Configuration file path
@@ -113,23 +114,23 @@ export function displaySettings(config: AppConfig): void {
 
   // Comparison settings
   process.stdout.write('\n📊 Comparison Settings:');
-  console.log(
+  outln(
     `  Pixelmatch threshold: ${config.comparison.pixelmatchThreshold.toFixed(2)} (0-1, lower = more sensitive)`
   );
   process.stdout.write(`  Include anti-aliasing: ${config.comparison.includeAA}` + '\n');
   process.stdout.write(
     `  Color delta E threshold: ${config.comparison.colorDeltaEThreshold.toFixed(1)} ΔE` + '\n'
   );
-  console.log(
+  outln(
     `  Acceptance pixel diff ratio: ${(config.comparison.acceptancePixelDiffRatio * 100).toFixed(2)}%`
   );
-  console.log(
+  outln(
     `  Acceptance color delta E: ${config.comparison.acceptanceColorDeltaE.toFixed(1)} ΔE`
   );
 
   // Capture settings
   process.stdout.write('\n🖥️  Capture Settings:');
-  console.log(
+  outln(
     `  Default viewport: ${config.capture.defaultViewportWidth}x${config.capture.defaultViewportHeight}`
   );
   process.stdout.write(`  Default DPR: ${config.capture.defaultDpr}` + '\n');
@@ -141,7 +142,7 @@ export function displaySettings(config: AppConfig): void {
   // Basic Auth
   if (config.capture.basicAuthUser || config.capture.basicAuthPass) {
     process.stdout.write('\n🔐 Basic Authentication:');
-    console.log(
+    outln(
       `  Username: ${config.capture.basicAuthUser ? config.capture.basicAuthUser : '(not set)'}`
     );
     process.stdout.write(

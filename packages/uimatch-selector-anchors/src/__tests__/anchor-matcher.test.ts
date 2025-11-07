@@ -303,10 +303,7 @@ describe('Anchor Matcher', () => {
         },
       ];
 
-      const results: AnchorScore[] = matchAnchors(
-        anchors,
-        'button[data-testid="submit"].primary'
-      );
+      const results: AnchorScore[] = matchAnchors(anchors, 'button[data-testid="submit"].primary');
 
       const firstResult: AnchorScore | undefined = results[0];
       expect(firstResult).toBeDefined();

@@ -11,6 +11,20 @@ import { generateSnippetHash } from '../hashing/snippet-hash.js';
 import type { SelectorAnchor, SelectorsAnchors } from '../types/schema.js';
 import { SelectorsAnchorsSchema } from '../types/schema.js';
 
+/**
+ * Write line to stdout (for normal CLI output)
+ */
+const outln = (...parts: unknown[]): void => {
+  process.stdout.write(parts.map(String).join(' ') + '\n');
+};
+
+/**
+ * Write line to stderr (for errors and warnings)
+ */
+const errln = (...parts: unknown[]): void => {
+  process.stderr.write(parts.map(String).join(' ') + '\n');
+};
+
 interface AddAnchorOptions {
   file: string;
   line: number;
@@ -101,7 +115,7 @@ function parseArgs(args: string[]): ParseResult {
  * Print usage information
  */
 function printUsage(): void {
-  console.log(`
+  outln(`
 Usage: uimatch-anchors [options]
 
 Add a new anchor to anchors.json based on source code location
@@ -173,7 +187,7 @@ async function addAnchor(options: AddAnchorOptions): Promise<void> {
       hashDigits: 10,
     });
   } catch (error) {
-    console.error(
+    errln(
       `Error generating snippet hash: ${error instanceof Error ? error.message : String(error)}`
     );
     process.exit(1);

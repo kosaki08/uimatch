@@ -6,6 +6,7 @@ import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import path from 'node:path';
+import { outln } from '../print.js';
 import { getSelectedChecks } from './checks/index.js';
 import { formatReport } from './format.js';
 import type { DoctorCheckResult, DoctorOptions, DoctorReport } from './types.js';
@@ -111,35 +112,31 @@ export async function runDoctor(args: string[]): Promise<void> {
 
   // Show help if requested
   if (args.includes('--help') || args.includes('-h')) {
-    process.stdout.write('uiMatch Doctor - Environment and configuration checker' + '\n');
-    process.stdout.write('' + '\n');
-    process.stdout.write('Usage: uimatch doctor [options]' + '\n');
-    process.stdout.write('' + '\n');
-    process.stdout.write('Options:' + '\n');
-    process.stdout.write('  --quick              Quick check (env + playwright only)' + '\n');
-    process.stdout.write('  --deep               Deep check (all categories)' + '\n');
-    process.stdout.write('  --strict             Treat warnings as failures' + '\n');
-    process.stdout.write('  --offline            Skip checks requiring network' + '\n');
-    process.stdout.write('  --fix                Auto-fix issues when possible' + '\n');
-    process.stdout.write('  --ci                 CI mode (strict + json + quiet)' + '\n');
-    process.stdout.write(
-      '  --format <format>    Output format: table|markdown|json|sarif|junit' + '\n'
-    );
-    process.stdout.write(
-      '  --out-dir <dir>      Output directory (default: uimatch-out/doctor)' + '\n'
-    );
-    process.stdout.write('  --report-name <name> Report filename (default: report.json)' + '\n');
-    console.log(
+    outln('uiMatch Doctor - Environment and configuration checker');
+    outln('');
+    outln('Usage: uimatch doctor [options]');
+    outln('');
+    outln('Options:');
+    outln('  --quick              Quick check (env + playwright only)');
+    outln('  --deep               Deep check (all categories)');
+    outln('  --strict             Treat warnings as failures');
+    outln('  --offline            Skip checks requiring network');
+    outln('  --fix                Auto-fix issues when possible');
+    outln('  --ci                 CI mode (strict + json + quiet)');
+    outln('  --format <format>    Output format: table|markdown|json|sarif|junit');
+    outln('  --out-dir <dir>      Output directory (default: uimatch-out/doctor)');
+    outln('  --report-name <name> Report filename (default: report.json)');
+    outln(
       '  --select <cats>      Check categories: env,playwright,figma,anchors,config,cache,git,fs,external'
     );
-    process.stdout.write('  --keep <n>           Keep last N reports (cleanup old runs)' + '\n');
-    process.stdout.write('' + '\n');
+    outln('  --keep <n>           Keep last N reports (cleanup old runs)');
+    outln('');
     process.exit(0);
   }
 
   const cwd = process.cwd();
   const format = options.format || (options.ci ? 'json' : 'table');
-  const logger = options.ci ? () => {} : console.log;
+  const logger = options.ci ? () => {} : outln;
 
   // Get checks to run based on flags
   const ALL_CATEGORIES: DoctorOptions['select'] = [

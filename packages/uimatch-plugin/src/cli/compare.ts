@@ -13,6 +13,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { getQualityGateProfile } from 'uimatch-core';
 import { getLogger, initLogger } from './logger.js';
+import { errln, outln } from './print.js';
 
 /**
  * Get logger safely: fallback to silentLogger if not initialized.
@@ -216,131 +217,77 @@ function parseHexColor(value?: string): { r: number; g: number; b: number } | un
 }
 
 function printUsage(): void {
-  console.error(
-    'Usage: uimatch compare figma=<FILE:NODE|URL> story=<URL> selector=<CSS> [options]'
-  );
-  process.stderr.write('' + '\n');
-  process.stderr.write('Required:' + '\n');
-  process.stderr.write(
-    '  figma=<value>           Figma file key and node ID (e.g., AbCdEf:1-23) or URL' + '\n'
-  );
-  process.stderr.write('  story=<url>             Target URL to compare' + '\n');
-  process.stderr.write('  selector=<css>          CSS selector for element to capture' + '\n');
-  process.stderr.write('' + '\n');
-  process.stderr.write('Optional:' + '\n');
-  console.error(
-    '  subselector=<selector>  Child element inside selector for Figma child-node mapping'
-  );
-  console.error(
+  errln('Usage: uimatch compare figma=<FILE:NODE|URL> story=<URL> selector=<CSS> [options]');
+  errln('');
+  errln('Required:');
+  errln('  figma=<value>           Figma file key and node ID (e.g., AbCdEf:1-23) or URL');
+  errln('  story=<url>             Target URL to compare');
+  errln('  selector=<css>          CSS selector for element to capture');
+  errln('');
+  errln('Optional:');
+  errln('  subselector=<selector>  Child element inside selector for Figma child-node mapping');
+  errln(
     '  figmaChildStrategy=<mode>  Child-node mapping strategy (area|area+position, default: area+position)'
   );
-  process.stderr.write(
-    '  selectors=<path>        Path to selector anchors JSON (LLM-managed)' + '\n'
-  );
-  console.error(
-    '  selectorsWriteBack=<bool>  Write back resolved selectors to JSON (default: false)'
-  );
-  console.error(
+  errln('  selectors=<path>        Path to selector anchors JSON (LLM-managed)');
+  errln('  selectorsWriteBack=<bool>  Write back resolved selectors to JSON (default: false)');
+  errln(
     '  selectorsPlugin=<pkg>   Selector resolution plugin package (default: @uimatch/selector-anchors)'
   );
-  process.stderr.write(
-    '  maxChildren=<number>    Max child elements to analyze (default: 200)' + '\n'
-  );
-  console.error(
+  errln('  maxChildren=<number>    Max child elements to analyze (default: 200)');
+  errln(
     '  propsMode=<mode>        CSS properties to collect (default|extended|all, default: extended)'
   );
-  process.stderr.write(
-    '  maxDepth=<number>       Max depth to traverse for child elements (default: 6)' + '\n'
-  );
-  process.stderr.write('  viewport=<WxH>          Viewport size (e.g., 1584x1104)' + '\n');
-  process.stderr.write('  dpr=<number>            Device pixel ratio (default: 2)' + '\n');
-  process.stderr.write(
-    '  figmaScale=<number>     Figma export scale factor (1-4, default: 2)' + '\n'
-  );
-  console.error(
+  errln('  maxDepth=<number>       Max depth to traverse for child elements (default: 6)');
+  errln('  viewport=<WxH>          Viewport size (e.g., 1584x1104)');
+  errln('  dpr=<number>            Device pixel ratio (default: 2)');
+  errln('  figmaScale=<number>     Figma export scale factor (1-4, default: 2)');
+  errln(
     '  figmaAutoRoi=<bool>     Auto-detect best matching child node (true/false, default: false)'
   );
-  console.error(
+  errln(
     '  detectStorybookIframe=<bool>  Use Storybook iframe (true/false, default: auto-detect from URL)'
   );
-  console.error(
-    '  size=<mode>             Size handling mode (strict|pad|crop|scale, default: strict)'
-  );
-  console.error(
+  errln('  size=<mode>             Size handling mode (strict|pad|crop|scale, default: strict)');
+  errln(
     '  align=<mode>            Alignment for pad/crop (center|top-left|top|left, default: center)'
   );
-  process.stderr.write(
-    '  padColor=<color>        Padding color (auto|#RRGGBB, default: auto)' + '\n'
-  );
-  console.error(
+  errln('  padColor=<color>        Padding color (auto|#RRGGBB, default: auto)');
+  errln(
     '  contentBasis=<mode>     Content area basis (union|intersection|figma|impl, default: union)'
   );
-  console.error(
+  errln(
     '  emitArtifacts=<bool>    Include base64 artifacts in JSON output (true/false, default: false, auto-enabled by outDir)'
   );
-  console.error(
-    '  outDir=<path>           Save artifacts to directory (auto-enables emitArtifacts)'
-  );
-  console.error(
-    '  overlay=<bool>          Save overlay.png (impl + red highlights, default: false)'
-  );
-  console.error(
+  errln('  outDir=<path>           Save artifacts to directory (auto-enables emitArtifacts)');
+  errln('  overlay=<bool>          Save overlay.png (impl + red highlights, default: false)');
+  errln(
     '  jsonOnly=<bool>         Omit base64 artifacts from JSON (default: true when outDir set)'
   );
-  process.stderr.write(
-    '  verbose=<bool>          Show full URLs and paths (default: false)' + '\n'
-  );
-  process.stderr.write(
-    '  bootstrap=<bool>        Derive expectedSpec from Figma node (default: true)' + '\n'
-  );
-  process.stderr.write(
-    '  expected=<path>         Load expectedSpec JSON and use it for style diffs' + '\n'
-  );
-  process.stderr.write(
-    '  saveExpected=<path>     If bootstrapped, save expectedSpec JSON to this path' + '\n'
-  );
-  console.error(
-    '  ignore=<props>          CSV of CSS properties to exclude (e.g., background-color,gap)'
-  );
-  console.error(
-    '  weights=<json>          JSON weights for DFS (e.g., \'{"color":0.5,"spacing":1}\')'
-  );
-  process.stderr.write(
-    '  format=<type>           Output format (standard|claude, default: standard)' + '\n'
-  );
-  console.error(
+  errln('  verbose=<bool>          Show full URLs and paths (default: false)');
+  errln('  bootstrap=<bool>        Derive expectedSpec from Figma node (default: true)');
+  errln('  expected=<path>         Load expectedSpec JSON and use it for style diffs');
+  errln('  saveExpected=<path>     If bootstrapped, save expectedSpec JSON to this path');
+  errln('  ignore=<props>          CSV of CSS properties to exclude (e.g., background-color,gap)');
+  errln('  weights=<json>          JSON weights for DFS (e.g., \'{"color":0.5,"spacing":1}\')');
+  errln('  format=<type>           Output format (standard|claude, default: standard)');
+  errln(
     '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|lenient|custom)'
   );
-  process.stderr.write(
-    '  showCqi=<bool>          Display Composite Quality Indicator (default: true)' + '\n'
-  );
-  process.stderr.write(
-    '  showSuspicions=<bool>   Display suspicion warnings (default: true)' + '\n'
-  );
-  process.stderr.write(
-    '  showReEval=<bool>       Display re-evaluation recommendations (default: true)' + '\n'
-  );
-  process.stderr.write('' + '\n');
-  process.stderr.write('Text Match (experimental):' + '\n');
-  process.stderr.write('  text=<bool>             Enable text match (default: false)' + '\n');
-  process.stderr.write(
-    '  textMode=<self|descendants>        Text collection scope (default: self)' + '\n'
-  );
-  process.stderr.write(
-    '  textNormalize=<none|nfkc|nfkc_ws>  Normalization mode (default: nfkc_ws)' + '\n'
-  );
-  process.stderr.write(
-    '  textCase=<sensitive|insensitive>   Case sensitivity (default: insensitive)' + '\n'
-  );
-  process.stderr.write(
-    '  textMatch=<exact|contains|ratio>   Matching mode (default: ratio)' + '\n'
-  );
-  process.stderr.write(
-    '  textMinRatio=<0..1>                Minimum similarity ratio (default: 0.98)' + '\n'
-  );
-  process.stderr.write('' + '\n');
-  process.stderr.write('Example:' + '\n');
-  console.error(
+  errln('  showCqi=<bool>          Display Composite Quality Indicator (default: true)');
+  errln('  showSuspicions=<bool>   Display suspicion warnings (default: true)');
+  errln('  showReEval=<bool>       Display re-evaluation recommendations (default: true)');
+  errln('');
+  errln('Text Match (experimental):');
+  errln('  text=<bool>             Enable text match (default: false)');
+  errln('  textMode=<self|descendants>        Text collection scope (default: self)');
+  errln('  textNormalize=<none|nfkc|nfkc_ws>  Normalization mode (default: nfkc_ws)');
+  errln('  textCase=<sensitive|insensitive>   Case sensitivity (default: insensitive)');
+  errln('  textMatch=<exact|contains|ratio>   Matching mode (default: ratio)');
+  errln('  textMinRatio=<0..1>                Minimum similarity ratio (default: 0.98)');
+  errln('');
+  errln('Example:');
+  errln(
     '  uimatch compare figma=AbCdEf:1-23 story=http://localhost:6006/iframe.html?id=button--default selector="#storybook-root" size=pad contentBasis=figma profile=component/strict outDir=./out'
   );
 }
@@ -573,21 +520,25 @@ export async function runCompare(argv: string[]): Promise<void> {
         const text = await readFile(args.expected, 'utf-8');
         const parsed: unknown = JSON.parse(text);
         config.expectedSpec = parsed as Record<string, Record<string, string>>;
-        logger.info(`Loaded expectedSpec from ${args.expected}`);
+        logger.info({ path: args.expected }, 'Loaded expectedSpec from file');
       } catch (e) {
         logger.warn(
-          `Failed to read expectedSpec from ${args.expected}: ${(e as Error)?.message ?? String(e)}`
+          { path: args.expected, error: (e as Error)?.message ?? String(e) },
+          'Failed to read expectedSpec'
         );
       }
     }
 
     // Log sanitized inputs
-    logger.info('Execution mode', { mode: config.sizeMode ?? 'strict' });
-    logger.info('Figma reference', {
-      figma: verbose ? args.figma : sanitizeFigmaRef(args.figma),
-    });
-    logger.info('Target URL', { story: verbose ? args.story : sanitizeUrl(args.story) });
-    logger.info('Selector', { selector: args.selector });
+    logger.info({ mode: config.sizeMode ?? 'strict' }, 'Execution mode');
+    logger.info(
+      {
+        figma: verbose ? args.figma : sanitizeFigmaRef(args.figma),
+      },
+      'Figma reference'
+    );
+    logger.info({ story: verbose ? args.story : sanitizeUrl(args.story) }, 'Target URL');
+    logger.info({ selector: args.selector }, 'Selector');
 
     const result = await uiMatchCompare(config);
 
@@ -606,7 +557,7 @@ export async function runCompare(argv: string[]): Promise<void> {
           const nodeJson = await rest.getNode({ fileKey: ref.fileKey, nodeId: ref.nodeId });
           const expected = buildExpectedSpecFromFigma(nodeJson, undefined);
           await writeFile(saveExpectedPath, JSON.stringify(expected, null, 2), 'utf-8');
-          logger.info(`expectedSpec saved to ${relativizePath(saveExpectedPath)}`);
+          logger.info({ path: relativizePath(saveExpectedPath) }, 'expectedSpec saved');
         } else {
           logger.warn('Cannot save expectedSpec: missing FIGMA_ACCESS_TOKEN or "current" ref');
         }
@@ -619,12 +570,15 @@ export async function runCompare(argv: string[]): Promise<void> {
     if (args.outDir) {
       if (!result.report.artifacts) {
         // This should never happen if emitArtifacts auto-enable worked correctly
-        logger.warn('outDir specified but artifacts missing in report', {
-          possibleCauses: [
-            'emitArtifacts was not auto-enabled (check config builder)',
-            'Compare function did not generate artifacts despite emitArtifacts=true',
-          ],
-        });
+        logger.warn(
+          {
+            possibleCauses: [
+              'emitArtifacts was not auto-enabled (check config builder)',
+              'Compare function did not generate artifacts despite emitArtifacts=true',
+            ],
+          },
+          'outDir specified but artifacts missing in report'
+        );
         logger.warn('Skipping artifact save to disk');
       } else {
         // Resolve outDir properly: if absolute, use as-is; if relative, resolve from cwd
@@ -693,17 +647,17 @@ export async function runCompare(argv: string[]): Promise<void> {
         }
 
         const relativeOut = relativizePath(outDir);
-        process.stdout.write(`✅ Artifacts saved → ${relativeOut}/` + '\n');
-        process.stdout.write('   - figma.png' + '\n');
-        process.stdout.write('   - impl.png' + '\n');
-        process.stdout.write('   - diff.png' + '\n');
-        if (saveOverlay) process.stdout.write('   - overlay.png' + '\n');
-        process.stdout.write('   - report.json' + '\n');
+        outln(`✅ Artifacts saved → ${relativeOut}/`);
+        outln('   - figma.png');
+        outln('   - impl.png');
+        outln('   - diff.png');
+        if (saveOverlay) outln('   - overlay.png');
+        outln('   - report.json');
         if (args.format === 'claude') {
-          process.stdout.write('   - claude.json' + '\n');
-          process.stdout.write('   - claude-prompt.txt' + '\n');
+          outln('   - claude.json');
+          outln('   - claude-prompt.txt');
         }
-        process.stdout.write('' + '\n');
+        outln('');
       }
     }
 
@@ -720,17 +674,17 @@ export async function runCompare(argv: string[]): Promise<void> {
 
       const llmPayload = formatForLLM(result, { preferTokens: true });
 
-      process.stdout.write('' + '\n');
-      process.stdout.write('=== LLM-Formatted Output ===' + '\n');
-      process.stdout.write('' + '\n');
-      process.stdout.write(generateLLMPrompt(llmPayload) + '\n');
-      process.stdout.write('' + '\n');
+      outln('');
+      outln('=== LLM-Formatted Output ===');
+      outln('');
+      outln(generateLLMPrompt(llmPayload));
+      outln('');
       process.exit(0);
     }
 
     // Standard output
-    process.stdout.write(result.summary + '\n');
-    process.stdout.write('' + '\n');
+    outln(result.summary);
+    outln('');
 
     // Additional profile-based quality gate checks
     let profileGatePass = result.report.qualityGate?.pass ?? false;
@@ -777,10 +731,10 @@ export async function runCompare(argv: string[]): Promise<void> {
         }
 
         if (additionalReasons.length > 0) {
-          process.stdout.write(`Profile gate (${profile.name}): ❌ FAIL` + '\n');
-          additionalReasons.forEach((r) => process.stdout.write(`  - ${r}`) + '\n');
+          outln(`Profile gate (${profile.name}): ❌ FAIL`);
+          additionalReasons.forEach((r) => outln(`  - ${r}`));
         } else if (args.profile) {
-          process.stdout.write(`Profile gate (${profile.name}): ✅ PASS` + '\n');
+          outln(`Profile gate (${profile.name}): ✅ PASS`);
         }
       } catch (e) {
         logger.warn(`Failed to evaluate profile gate: ${(e as Error)?.message ?? String(e)}`);
@@ -788,18 +742,12 @@ export async function runCompare(argv: string[]): Promise<void> {
     }
 
     if (verbose) {
-      process.stdout.write('Details:' + '\n');
-      process.stdout.write(JSON.stringify(result.report, null, 2) + '\n');
+      outln('Details:');
+      outln(JSON.stringify(result.report, null, 2));
     } else {
-      process.stdout.write('Gate:', result.report.qualityGate?.pass ? '✅ PASS' : '❌ FAIL' + '\n');
-      process.stdout.write(
-        'Pixel diff ratio:',
-        result.report.metrics.pixelDiffRatio.toFixed(4) + '\n'
-      );
-      process.stdout.write(
-        'Color delta E (avg):',
-        result.report.metrics.colorDeltaEAvg.toFixed(2) + '\n'
-      );
+      outln(`Gate: ${result.report.qualityGate?.pass ? '✅ PASS' : '❌ FAIL'}`);
+      outln(`Pixel diff ratio: ${result.report.metrics.pixelDiffRatio.toFixed(4)}`);
+      outln(`Color delta E (avg): ${result.report.metrics.colorDeltaEAvg.toFixed(2)}`);
 
       // === V2 Features (optional display) ===
       const gate = result.report.qualityGate;
@@ -810,34 +758,32 @@ export async function runCompare(argv: string[]): Promise<void> {
       // Show CQI if available and enabled
       if (showCqi && gate?.cqi !== undefined) {
         const cqiEmoji = gate.cqi >= 90 ? '🟢' : gate.cqi >= 70 ? '🟡' : '🔴';
-        process.stdout.write(`CQI: ${cqiEmoji} ${gate.cqi}/100` + '\n');
+        outln(`CQI: ${cqiEmoji} ${gate.cqi}/100`);
       }
 
       // Show hard gate violations (always show if present)
       if (gate?.hardGateViolations && gate.hardGateViolations.length > 0) {
-        process.stdout.write('\n⚠️  Hard Gate Violations:');
+        outln('\n⚠️  Hard Gate Violations:');
         gate.hardGateViolations.forEach((v) => {
           const severityEmoji = v.severity === 'critical' ? '🚨' : '⚠️';
-          process.stdout.write(`  ${severityEmoji} [${v.type}] ${v.reason}` + '\n');
+          outln(`  ${severityEmoji} [${v.type}] ${v.reason}`);
         });
       }
 
       // Show suspicions if enabled
       if (showSuspicions && gate?.suspicions?.detected) {
-        process.stdout.write('\n🔍 Suspicions Detected:');
+        outln('\n🔍 Suspicions Detected:');
         gate.suspicions.reasons.forEach((r) => {
-          process.stdout.write(`  • ${r}` + '\n');
+          outln(`  • ${r}`);
         });
       }
 
       // Show re-evaluation recommendation if enabled
       if (showReEval && gate?.reEvaluated) {
-        process.stdout.write('\n💡 Re-evaluation Recommended:');
-        process.stdout.write(
-          '  Consider using contentBasis=intersection for more accurate metrics' + '\n'
-        );
+        outln('\n💡 Re-evaluation Recommended:');
+        outln('  Consider using contentBasis=intersection for more accurate metrics');
         if (gate.originalMetrics) {
-          console.log(
+          outln(
             `  Original: ${(gate.originalMetrics.pixelDiffRatioContent * 100).toFixed(2)}% (${gate.originalMetrics.contentBasis})`
           );
         }
@@ -845,13 +791,11 @@ export async function runCompare(argv: string[]): Promise<void> {
 
       // Show SFS if available
       if (result.report.styleSummary) {
-        process.stdout.write(
-          `\nStyle Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`
-        );
-        console.log(
+        outln(`\nStyle Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`);
+        outln(
           `  Breakdown: ${result.report.styleSummary.highCount} high, ${result.report.styleSummary.mediumCount} medium, ${result.report.styleSummary.lowCount} low`
         );
-        console.log(
+        outln(
           `  Autofixable: ${result.report.styleSummary.autofixableCount}/${result.report.styleSummary.totalDiffs}`
         );
       }
@@ -861,10 +805,7 @@ export async function runCompare(argv: string[]): Promise<void> {
     const finalPass = (result.report.qualityGate?.pass ?? false) && profileGatePass;
     process.exit(finalPass ? 0 : 1);
   } catch (error) {
-    process.stderr.write(
-      '❌ Error:',
-      error instanceof Error ? error.message : String(error) + '\n'
-    );
+    errln('❌ Error:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }

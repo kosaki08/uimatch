@@ -15,19 +15,18 @@
  * - Complexity limits on expressions
  */
 
-// @ts-expect-error - jsep has CJS/ESM interop issues with TypeScript
-import jsep from 'jsep';
 import type {
-  Expression,
+  ArrayExpression,
   BinaryExpression,
-  UnaryExpression,
-  MemberExpression,
   CallExpression,
   ConditionalExpression,
-  ArrayExpression,
+  Expression,
   Identifier,
   Literal,
+  MemberExpression,
+  UnaryExpression,
 } from 'jsep';
+import jsep from 'jsep';
 
 /**
  * Maximum input length to prevent DoS attacks
@@ -206,18 +205,6 @@ function validateASTNode(node: Expression, depth = 0): void {
       return;
     }
 
-    case 'BinaryExpression': {
-      const logicalNode = node as BinaryExpression;
-      if (!ALLOWED_OPERATORS.has(logicalNode.operator)) {
-        throw new ExpressionValidationError(
-          `Logical operator not allowed: ${logicalNode.operator}`
-        );
-      }
-      validateASTNode(logicalNode.left, depth + 1);
-      validateASTNode(logicalNode.right, depth + 1);
-      return;
-    }
-
     case 'MemberExpression': {
       const memberNode = node as MemberExpression;
       // Only allow specific whitelisted member access
@@ -225,9 +212,7 @@ function validateASTNode(node: Expression, depth = 0): void {
 
       // Allow safe property access on literals (e.g., "hello".length)
       if (memberNode.object.type === 'Literal') {
-        const property = !memberNode.computed
-          ? (memberNode.property as Identifier).name
-          : null;
+        const property = !memberNode.computed ? (memberNode.property as Identifier).name : null;
 
         // Only allow whitelisted properties on literals
         if (property && ALLOWED_MEMBERS.has(property)) {
@@ -250,9 +235,7 @@ function validateASTNode(node: Expression, depth = 0): void {
       if (callNode.callee.type === 'MemberExpression') {
         const memberExpr = callNode.callee as MemberExpression;
         if (memberExpr.object.type === 'Literal') {
-          const method = !memberExpr.computed
-            ? (memberExpr.property as Identifier).name
-            : null;
+          const method = !memberExpr.computed ? (memberExpr.property as Identifier).name : null;
 
           // Only allow whitelisted methods on literals
           if (method && ALLOWED_MEMBERS.has(method)) {
@@ -288,7 +271,9 @@ function validateASTNode(node: Expression, depth = 0): void {
     case 'ArrayExpression': {
       const arrayNode = node as ArrayExpression;
       for (const element of arrayNode.elements) {
-        validateASTNode(element, depth + 1);
+        if (element !== null) {
+          validateASTNode(element, depth + 1);
+        }
       }
       return;
     }
@@ -424,22 +409,6 @@ function interpretASTNode(node: Expression, context: SafeEvalContext): unknown {
       }
     }
 
-    case 'BinaryExpression': {
-      const logicalNode = node as BinaryExpression;
-      const left = interpretASTNode(logicalNode.left, context);
-
-      // Short-circuit evaluation
-      if (logicalNode.operator === '&&') {
-        return left ? interpretASTNode(logicalNode.right, context) : left;
-      } else if (logicalNode.operator === '||') {
-        return left ? left : interpretASTNode(logicalNode.right, context);
-      }
-
-      throw new ExpressionValidationError(
-        `Logical operator not implemented: ${logicalNode.operator}`
-      );
-    }
-
     case 'ConditionalExpression': {
       const condNode = node as ConditionalExpression;
       const test = interpretASTNode(condNode.test, context);
@@ -479,12 +448,15 @@ function interpretASTNode(node: Expression, context: SafeEvalContext): unknown {
         throw new ExpressionValidationError(`Not a function: ${buildMemberPath(callNode.callee)}`);
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       return fn(...args);
     }
 
     case 'ArrayExpression': {
       const arrayNode = node as ArrayExpression;
-      return arrayNode.elements.map((element) => interpretASTNode(element, context));
+      return arrayNode.elements.map((element) =>
+        element !== null ? interpretASTNode(element, context) : null
+      );
     }
 
     default:

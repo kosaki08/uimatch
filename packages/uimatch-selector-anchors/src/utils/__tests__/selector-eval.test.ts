@@ -307,9 +307,8 @@ describe('safeEval - Real-world Use Cases', () => {
   });
 
   it('should evaluate string matching conditions', () => {
-    const context = {
-      text: 'Hello World',
-    };
+    // Context defined but not used in these literal string tests
+    // const _context = { text: 'Hello World' };
 
     expect(safeEval('"Hello World".length === 11')).toBe(true);
     expect(safeEval('"Hello".toLowerCase() === "hello"')).toBe(true);

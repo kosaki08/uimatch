@@ -8,6 +8,7 @@ import { uiMatchCompare } from '#plugin/commands/compare';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getLogger } from './logger.js';
+import { errln, outln } from './print.js';
 
 type SuiteItem = {
   name: string;
@@ -100,7 +101,7 @@ function mergeItem(defaults: Partial<SuiteItem> | undefined, item: SuiteItem): S
 export async function runSuite(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
   if (!args.path) {
-    console.error(
+    errln(
       'Usage: uimatch suite path=<suite.json> [outDir=.uimatch-suite] [concurrency=4] [verbose=false]'
     );
     process.exit(2);
@@ -136,11 +137,14 @@ export async function runSuite(argv: string[]): Promise<void> {
       const itemDir = join(outBase, `${String(index + 1).padStart(3, '0')}-${slugify(itemName)}`);
       await mkdir(itemDir, { recursive: true });
 
-      logger.info(`Suite item #${index + 1}: ${itemName}`, {
-        figma: item.figma,
-        story: item.story,
-        selector: item.selector,
-      });
+      logger.info(
+        {
+          figma: item.figma,
+          story: item.story,
+          selector: item.selector,
+        },
+        `Suite item #${index + 1}: ${itemName}`
+      );
 
       try {
         const res = await uiMatchCompare({
@@ -236,14 +240,14 @@ export async function runSuite(argv: string[]): Promise<void> {
   await writeFile(join(outBase, 'suite-report.json'), JSON.stringify(summary, null, 2));
 
   // Pretty print
-  process.stdout.write(`\n=== ${summary.name} ===`);
+  outln(`\n=== ${summary.name} ===`);
   for (const r of results) {
     const badge = r.ok ? '✓' : r.error ? 'E' : '✖';
-    console.log(
+    outln(
       `${badge} ${r.name}  ->  DFS:${r.dfs}  pix:${(r.pixelDiff * 100).toFixed(1)}%  ΔE:${r.colorDE.toFixed(2)}  out:${r.outDir}`
     );
   }
-  console.log(
+  outln(
     `\nTotal ${summary.total}, Passed ${summary.passed}, Failed ${summary.failed}, Errors ${summary.errors}`
   );
   process.exit(summary.failed === 0 && summary.errors === 0 ? 0 : 1);
