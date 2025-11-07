@@ -193,10 +193,27 @@ bun run build
 # Run tests
 bun test
 
+# Run tests with coverage
+bun run test:coverage           # Text output to console
+bun run test:coverage:html      # Generate lcov report in ./coverage/
+
 # Lint and format
 bun run lint
 bun run format
 ```
+
+### Test Coverage
+
+Generate coverage reports for observation and CI artifacts:
+
+```bash
+bun run test:coverage       # Text summary to console
+bun run test:coverage:html  # LCOV report in ./coverage/
+```
+
+View reports with Coverage Gutters (VS Code), Codecov, or Coveralls.
+
+**No thresholds yet** — observe coverage trends first, then set thresholds for core packages after analysis.
 
 ## Troubleshooting
 
