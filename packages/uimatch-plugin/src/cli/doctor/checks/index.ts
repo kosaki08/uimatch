@@ -3,15 +3,16 @@
  */
 
 import type { DoctorCheck, DoctorCheckCategory } from '../types.js';
+import { anchorsChecks } from './anchors.js';
 import { envChecks } from './env.js';
 import { playwrightChecks } from './playwright.js';
 
 export const allChecks: Record<DoctorCheckCategory, DoctorCheck[]> = {
   env: envChecks,
   playwright: playwrightChecks,
+  anchors: anchorsChecks,
   // Placeholder for other categories - to be implemented
   figma: [],
-  anchors: [],
   config: [],
   cache: [],
   git: [],

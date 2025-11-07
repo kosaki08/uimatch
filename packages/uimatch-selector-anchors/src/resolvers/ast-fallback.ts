@@ -341,13 +341,3 @@ export async function heuristicCandidates(
     };
   }
 }
-
-/**
- * Execute parser with timeout protection
- */
-export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-  return await Promise.race([
-    promise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
-  ]);
-}

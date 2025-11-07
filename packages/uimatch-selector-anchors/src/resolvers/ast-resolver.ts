@@ -74,9 +74,8 @@ export async function resolveFromTypeScript(
   const content = await readFile(absolutePath, 'utf-8');
 
   // Import fallback utilities
-  const { fastPathParse, attributeOnlyParse, heuristicCandidates, withTimeout } = await import(
-    './ast-fallback.js'
-  );
+  const { fastPathParse, attributeOnlyParse, heuristicCandidates } = await import('./ast-fallback.js');
+  const { withTimeout } = await import('../utils/async.js');
 
   // Parse TypeScript/JSX
   const sourceFile = ts.createSourceFile(

@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Selector Anchors",
+  "description": "Schema for @uimatch/selector-anchors anchors.json file",
+  "type": "object",
+  "required": ["anchors"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Anchors file format version",
+      "default": "1.0.0"
+    },
+    "anchors": {
+      "type": "array",
+      "description": "List of selector anchors for stable resolution",
+      "items": {
+        "type": "object",
+        "required": ["id", "source"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for this anchor",
+            "minLength": 1
+          },
+          "source": {
+            "type": "object",
+            "description": "Source code location for this anchor",
+            "required": ["file", "line", "col"],
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "Relative path to source file from project root"
+              },
+              "line": {
+                "type": "integer",
+                "description": "Line number (1-based)",
+                "minimum": 1
+              },
+              "col": {
+                "type": "integer",
+                "description": "Column number (0-based)",
+                "minimum": 0
+              }
+            }
+          },
+          "hint": {
+            "type": "object",
+            "description": "Optional resolution hints for selector strategies",
+            "properties": {
+              "prefer": {
+                "type": "array",
+                "description": "Preferred selector strategies in priority order",
+                "items": {
+                  "type": "string",
+                  "enum": ["testid", "role", "text", "css"]
+                },
+                "uniqueItems": true
+              },
+              "expectedText": {
+                "type": "string",
+                "description": "Expected text content for verification"
+              },
+              "testid": {
+                "type": "string",
+                "description": "Expected data-testid attribute value"
+              },
+              "role": {
+                "type": "string",
+                "description": "Expected ARIA role"
+              },
+              "ariaLabel": {
+                "type": "string",
+                "description": "Expected aria-label attribute value"
+              }
+            }
+          },
+          "snippetHash": {
+            "type": "string",
+            "description": "Hash of code snippet for fuzzy matching (auto-generated)"
+          },
+          "snippet": {
+            "type": "string",
+            "description": "Source code snippet for debugging (auto-generated)"
+          },
+          "snippetContext": {
+            "type": "object",
+            "description": "Snippet extraction configuration",
+            "properties": {
+              "contextBefore": {
+                "type": "integer",
+                "description": "Number of lines to include before target line",
+                "minimum": 0,
+                "default": 3
+              },
+              "contextAfter": {
+                "type": "integer",
+                "description": "Number of lines to include after target line",
+                "minimum": 0,
+                "default": 3
+              },
+              "algorithm": {
+                "type": "string",
+                "description": "Hash algorithm for snippet hash generation",
+                "enum": ["sha1", "sha256", "md5"],
+                "default": "sha1"
+              },
+              "hashDigits": {
+                "type": "integer",
+                "description": "Number of digits to keep from hash",
+                "minimum": 6,
+                "maximum": 64,
+                "default": 10
+              }
+            }
+          },
+          "subselector": {
+            "type": "string",
+            "description": "Optional child element selector for Figma auto-ROI targeting"
+          },
+          "resolvedCss": {
+            "type": ["string", "null"],
+            "description": "Last successfully resolved CSS selector (write-back cache)"
+          },
+          "lastSeen": {
+            "type": ["string", "null"],
+            "description": "ISO 8601 timestamp when selector was last verified",
+            "format": "date-time"
+          },
+          "lastKnown": {
+            "type": "object",
+            "description": "Last known resolution state for debugging",
+            "properties": {
+              "selector": {
+                "type": "string",
+                "description": "Last resolved selector"
+              },
+              "stabilityScore": {
+                "type": "number",
+                "description": "Last stability score (0-100)",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "timestamp": {
+                "type": "string",
+                "description": "Timestamp of last resolution",
+                "format": "date-time"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Human-readable metadata for organization and debugging",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

@@ -26,7 +26,7 @@ export * from '@uimatch/selector-spi';
 
 // Re-export all core functionality (selective to avoid conflicts)
 export { performHealthCheck } from './core/health-check.js';
-export { isLive, resolve, resolveProjectPath, withTimeout } from './core/resolver.js';
+export { isLive, resolve, resolveProjectPath } from './core/resolver.js';
 
 // Re-export domain modules
 export * from './hashing/snippet-hash.js';
