@@ -41,7 +41,7 @@ const DEFAULT_SNIPPET_CONFIG = {
   HIGH_CONFIDENCE: 0.92,
 
   /** Fuzzy matching threshold for accepting partial matches (0.0 - 1.0) */
-  FUZZY_THRESHOLD: 0.55,
+  FUZZY_THRESHOLD: 0.6,
 } as const;
 
 /**

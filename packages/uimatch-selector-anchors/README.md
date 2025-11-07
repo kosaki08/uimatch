@@ -28,6 +28,27 @@ bun add @uimatch/selector-anchors @uimatch/selector-spi
 
 This package provides intelligent selector resolution by analyzing source code (TypeScript/JSX/HTML) and maintaining anchor points that survive code refactoring and line number changes.
 
+### System Flow
+
+```mermaid
+flowchart LR
+  CLI["uimatch compare (plugin invocation)"] --> PL["@uimatch/selector-anchors (SPI)"]
+  PL --> A0["Load anchors.json"]
+  A0 --> M1["selectBestAnchor(initialSelector)"]
+  M1 --> Q1{"snippetHash exists?"}
+  Q1 -- Yes --> S1["findSnippetMatch(±radius, fuzzy)"]
+  Q1 -- No --> AST
+  S1 --> AST["AST/HTML resolution (tiered fallback)"]
+  AST --> C1["Candidate selectors"]
+  C1 --> L1["Liveness check via probe.check()"]
+  L1 --> SC["calculateStabilityScore()"]
+  SC --> P1["Select best selector"]
+  P1 --> W1{"writeBack enabled?"}
+  W1 -- Yes --> U1["Update anchors.json resolvedCss/lastSeen/lastKnown"]
+  P1 --> R1["Resolution { selector, score, reasons }"]
+  R1 --> CORE["To uimatch-core compareImages()"]
+```
+
 ## Features
 
 - **AST-based Resolution**: Extract semantic selectors from TypeScript/JSX and HTML
@@ -101,11 +122,20 @@ console.log(resolution.reasons); // Selection reasoning
 4. Verify liveness via Probe interface
 5. Score stability and return best match
 
-**Fuzzy Matching**: When original line number no longer matches, searches nearby lines in the same file using partial match scoring (80% token match + 20% char match). Default threshold: 0.55 (recommended: 0.6 for stricter matching; configurable via `UIMATCH_SNIPPET_FUZZY_THRESHOLD`). Exact match only (without original snippet).
+**Fuzzy Matching**: When original line number no longer matches, searches nearby lines in the same file using partial match scoring (80% token match + 20% char match). Default threshold: 0.6 (configurable via `UIMATCH_SNIPPET_FUZZY_THRESHOLD`). Exact match only (without original snippet).
 
 ### Stability Scoring
 
 Stability scores (0-100) are calculated using weighted components:
+
+```mermaid
+graph LR
+  HQ["Hint quality<br/>(testid/role/text/css)"] --> SUM[Weighted Sum]
+  SM[Snippet match] --> SUM
+  LV["Liveness<br/>(probe.check)"] --> SUM
+  SP["Specificity<br/>(data-testid > role > id > text)"] --> SUM
+  SUM --> SCORE["Stability (0-100)"]
+```
 
 **Default Weights:**
 
@@ -169,6 +199,18 @@ The plugin uses configurable timeouts for various operations. You can adjust the
 
 The AST resolution uses a tiered fallback strategy with three timeout levels:
 
+```mermaid
+flowchart TB
+  START[resolveFromTypeScript] --> FAST["Fast path (tag / data-testid / id)\n< 300ms"]
+  FAST -- "Candidates found" --> DONE[return selectors]
+  FAST -- "Empty/timeout" --> ATTR["Attr-only (all attrs, no text)\n< 600ms"]
+  ATTR -- "Candidates found" --> DONE
+  ATTR -- "Empty/timeout" --> FULL["Full parse (including text)\n< 900ms"]
+  FULL -- "Candidates found" --> DONE
+  FULL -- "Empty/timeout" --> H["Heuristics (regex-based)\n~ 50ms"]
+  H --> DONE
+```
+
 ```bash
 # Fast path timeout (tag + data-testid/id only) - default: 300ms
 export UIMATCH_AST_FAST_PATH_TIMEOUT_MS=300
@@ -202,8 +244,8 @@ export UIMATCH_SNIPPET_MAX_RADIUS=400
 # High confidence threshold for early exit (0.0-1.0) - default: 0.92
 export UIMATCH_SNIPPET_HIGH_CONFIDENCE=0.92
 
-# Fuzzy matching threshold (0.0-1.0) - default: 0.55
-export UIMATCH_SNIPPET_FUZZY_THRESHOLD=0.55
+# Fuzzy matching threshold (0.0-1.0) - default: 0.6
+export UIMATCH_SNIPPET_FUZZY_THRESHOLD=0.6
 ```
 
 **Debug Logging:**
@@ -220,10 +262,10 @@ export DEBUG=uimatch:selector-anchors
 
 ## Integration Notes
 
-**Text Matching (uiMatch Plugin)**: テキスト一致確認は `uimatch-plugin` の `/uiMatch compare` で提供されます（`textCheck` オプション）。
-`mode: 'self' | 'descendants'` / `normalize: 'none' | 'nfkc' | 'nfkc_ws'` / `match: 'exact' | 'contains' | 'ratio'` / `minRatio: 0.98`。
+**Text Matching (uiMatch Plugin)**: Text matching verification is provided by `uimatch-plugin` in `/uiMatch compare` (via the `textCheck` option).
+`mode: 'self' | 'descendants'` / `normalize: 'none' | 'nfkc' | 'nfkc_ws'` / `match: 'exact' | 'contains' | 'ratio'` / `minRatio: 0.98`.
 
-**Role Selector Resolution**: `role:button[name="Submit"]` は `getByRole()` を使用。`checked/selected/...` などのブーリアンは CSS フォールバックを採用。
+**Role Selector Resolution**: `role:button[name="Submit"]` uses `getByRole()`. Boolean attributes like `checked/selected/...` fall back to CSS.
 
 ## Anchors JSON Format
 
