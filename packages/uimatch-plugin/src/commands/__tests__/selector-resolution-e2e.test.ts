@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * E2E test for selector resolution plugin
  *
@@ -15,12 +14,6 @@ import { join } from 'node:path';
 
 const ENABLE_E2E_TESTS = process.env.UIMATCH_ENABLE_E2E_TESTS === 'true';
 const runE2E = ENABLE_E2E_TESTS ? describe : describe.skip;
-
-if (!ENABLE_E2E_TESTS) {
-  console.warn(
-    '[uimatch] Skipping selector-anchors E2E tests (set UIMATCH_ENABLE_E2E_TESTS=true to enable)'
-  );
-}
 
 runE2E('Selector resolution E2E', () => {
   test('complete flow: anchor → AST → liveness → score → writeBack', async () => {

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Tests for enhanced selector system with prefix support
  */
@@ -12,12 +11,6 @@ const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
 
 const ENABLE_BROWSER_TESTS = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
 const run = ENABLE_BROWSER_TESTS ? describe : describe.skip;
-
-if (!ENABLE_BROWSER_TESTS) {
-  console.warn(
-    '[uimatch] Skipping Playwright integration tests (set UIMATCH_ENABLE_BROWSER_TESTS=true to enable)'
-  );
-}
 
 // Pre-warm browser once before all tests to avoid startup cost in each test
 if (ENABLE_BROWSER_TESTS) {

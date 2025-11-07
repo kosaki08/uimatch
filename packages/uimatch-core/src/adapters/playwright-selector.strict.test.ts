@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { browserPool } from './browser-pool';
 import { captureTarget } from './playwright';
@@ -6,12 +5,6 @@ import { captureTarget } from './playwright';
 const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: 15000 });
 const ENABLE_BROWSER_TESTS = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
 const run = ENABLE_BROWSER_TESTS ? describe : describe.skip;
-
-if (!ENABLE_BROWSER_TESTS) {
-  console.warn(
-    '[uimatch] Skipping Playwright integration tests (set UIMATCH_ENABLE_BROWSER_TESTS=true to enable)'
-  );
-}
 
 if (ENABLE_BROWSER_TESTS) {
   beforeAll(async () => {
