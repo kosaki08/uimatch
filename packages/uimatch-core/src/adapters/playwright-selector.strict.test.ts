@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { browserPool } from './browser-pool';
 import { captureTarget } from './playwright';

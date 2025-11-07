@@ -100,9 +100,9 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
   let finalResult: CompareResult | null = null;
 
   for (let iter = 1; iter <= maxIters; iter++) {
-    console.log(`\n${'='.repeat(50)}`);
-    console.log(`Iteration ${iter}/${maxIters}`);
-    console.log('='.repeat(50));
+    process.stdout.write(`\n${'='.repeat(50)}`);
+    process.stdout.write(`Iteration ${iter}/${maxIters}` + '\n');
+    process.stdout.write('='.repeat(50) + '\n');
 
     // Run comparison with browser reuse enabled
     const result = await uiMatchCompare({ ...args, reuseBrowser: true });
@@ -120,10 +120,10 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
     });
 
     // Display results
-    console.log(result.summary);
+    process.stdout.write(result.summary + '\n');
 
     if (result.report.qualityGate) {
-      console.log('\nQuality Gate Status:');
+      process.stdout.write('\nQuality Gate Status:');
       const { pixelDiffRatio, colorDeltaEAvg } = result.report.metrics;
       const { thresholds } = result.report.qualityGate;
 
@@ -146,14 +146,14 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
 
     // Check if passed
     if (passed) {
-      console.log(`\n✅ Quality gates passed! DFS: ${currentDfs}`);
+      process.stdout.write(`\n✅ Quality gates passed! DFS: ${currentDfs}`);
       break;
     }
 
     // Check for improvement stagnation or degradation
     if (iter > 1) {
       const improvement = currentDfs - previousDfs;
-      console.log(`\nDFS change: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)}`);
+      process.stdout.write(`\nDFS change: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)}`);
 
       if (improvement <= 0 || improvement < improvementThreshold) {
         console.log(
@@ -167,17 +167,19 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
 
     // Prompt for next iteration (if not last)
     if (iter < maxIters) {
-      console.log(`\n❌ Quality gates not met.`);
+      process.stdout.write(`\n❌ Quality gates not met.`);
 
       if (interactive) {
-        console.log('Make your fixes, then press Enter to continue (or Ctrl+C to stop)...');
+        process.stdout.write(
+          'Make your fixes, then press Enter to continue (or Ctrl+C to stop)...' + '\n'
+        );
         // In actual implementation, we would await user input here
         // For now, we'll just note this in the comment
       } else {
-        console.log('Non-interactive mode: continuing to next iteration...');
+        process.stdout.write('Non-interactive mode: continuing to next iteration...' + '\n');
       }
     } else {
-      console.log(`\n⚠️  Max iterations (${maxIters}) reached.`);
+      process.stdout.write(`\n⚠️  Max iterations (${maxIters}) reached.`);
     }
   }
 
@@ -187,17 +189,19 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
   const improvement = lastDfs - firstDfs;
   const passed = iterations[iterations.length - 1]?.passed ?? false;
 
-  console.log('\n' + '='.repeat(50));
-  console.log('Loop Summary');
-  console.log('='.repeat(50));
-  console.log(`Total iterations: ${iterations.length}`);
-  console.log(`Final DFS: ${lastDfs}`);
-  console.log(`Status: ${passed ? '✅ Passed' : '❌ Not passed'}`);
-  console.log(`\nIteration history:`);
+  process.stdout.write('\n' + '='.repeat(50));
+  process.stdout.write('Loop Summary' + '\n');
+  process.stdout.write('='.repeat(50) + '\n');
+  process.stdout.write(`Total iterations: ${iterations.length}` + '\n');
+  process.stdout.write(`Final DFS: ${lastDfs}` + '\n');
+  process.stdout.write(`Status: ${passed ? '✅ Passed' : '❌ Not passed'}` + '\n');
+  process.stdout.write(`\nIteration history:`);
   iterations.forEach((iter) => {
-    console.log(`${iter.iteration}: DFS ${iter.dfs} ${iter.passed ? '✅' : '❌'}`);
+    process.stdout.write(`${iter.iteration}: DFS ${iter.dfs} ${iter.passed ? '✅' : '❌'}` + '\n');
   });
-  console.log(`\nImprovement: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)} points`);
+  process.stdout.write(
+    `\nImprovement: ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)} points`
+  );
 
   const summary = [
     passed ? 'PASS' : 'FAIL',
@@ -208,7 +212,7 @@ export async function uiMatchLoop(args: LoopArgs): Promise<LoopResult> {
 
   // Clean up browser pool after loop completes
   if (browserPool.isActive()) {
-    console.log('\n🧹 Cleaning up browser resources...');
+    process.stdout.write('\n🧹 Cleaning up browser resources...');
     await browserPool.closeAll();
   }
 

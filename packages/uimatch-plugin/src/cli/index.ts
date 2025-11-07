@@ -4,13 +4,13 @@
 
 // P0 Guard: Top-level exception handlers to prevent silent crashes
 process.on('uncaughtException', (error: Error) => {
-  console.error('Fatal error (uncaught exception):', error?.message ?? error);
+  process.stderr.write(`Fatal error (uncaught exception): ${error?.message ?? error}\n`);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
   const error = reason as Error | undefined;
-  console.error('Fatal error (unhandled promise rejection):', error?.message ?? reason);
+  process.stderr.write(`Fatal error (unhandled promise rejection): ${error?.message ?? reason}\n`);
   process.exit(1);
 });
 
@@ -22,26 +22,34 @@ import { runSuite } from './suite.js';
 const command = process.argv[2];
 const args = process.argv.slice(3);
 
+/**
+ * Print help message to stdout (bypassing logger for CLI output)
+ */
+function printHelp(): void {
+  const help = [
+    'uiMatch CLI - Visual comparison tool for Figma designs and web implementations',
+    '',
+    'Usage: uimatch <command> [options]',
+    '',
+    'Commands:',
+    '  compare    Compare Figma design with web implementation',
+    '  suite      Run multiple compares from a JSON suite file',
+    '  doctor     Check environment and configuration',
+    '  help       Show this help message',
+    '',
+    'Global Options:',
+    '  --log-level <level>     Set log level (silent|debug|info|warn|error)',
+    '  --log-format <format>   Set log format (json|pretty|silent)',
+    '  --log-file <path>       Write logs to file',
+    '',
+    'Run "uimatch compare" or "uimatch suite" without args to see command-specific options',
+  ].join('\n');
+  process.stdout.write(help + '\n');
+}
+
 async function main(): Promise<void> {
   if (!command || command === 'help' || command === '--help' || command === '-h') {
-    console.log('uiMatch CLI - Visual comparison tool for Figma designs and web implementations');
-    console.log('');
-    console.log('Usage: uimatch <command> [options]');
-    console.log('');
-    console.log('Commands:');
-    console.log('  compare    Compare Figma design with web implementation');
-    console.log('  suite      Run multiple compares from a JSON suite file');
-    console.log('  doctor     Check environment and configuration');
-    console.log('  help       Show this help message');
-    console.log('');
-    console.log('Global Options:');
-    console.log('  --log-level <level>     Set log level (silent|debug|info|warn|error)');
-    console.log('  --log-format <format>   Set log format (json|pretty|silent)');
-    console.log('  --log-file <path>       Write logs to file');
-    console.log('');
-    console.log(
-      'Run "uimatch compare" or "uimatch suite" without args to see command-specific options'
-    );
+    printHelp();
     process.exit(0);
   }
 

@@ -8,6 +8,7 @@ import { loadFigmaMcpConfig, loadSkillConfig } from '#plugin/config/index';
 import { buildExpectedSpecFromFigma } from '#plugin/expected/from-figma';
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
 import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
+import { createLogger } from '@uimatch/shared-logging';
 import type { CaptureResult, CompareImageResult } from 'uimatch-core';
 import {
   browserPool,
@@ -19,6 +20,8 @@ import {
 } from 'uimatch-core';
 import { computeDFS } from 'uimatch-scoring';
 import { getSettings } from './settings';
+
+const logger = createLogger({ package: 'uimatch-plugin', module: 'compare' });
 
 /**
  * Read PNG dimensions from IHDR chunk (bytes 16-23).
@@ -166,7 +169,7 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
   try {
     pluginModule = await import(pluginId);
   } catch {
-    console.warn(`[uimatch] selector plugin "${pluginId}" not found. Skip.`);
+    logger.warn({ pluginId }, 'selector plugin not found. Skip.');
     return { selector: args.selector };
   }
 
@@ -240,7 +243,7 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
 
     // Validate plugin interface before use
     if (!plugin || typeof plugin.resolve !== 'function') {
-      console.warn(`[uimatch] selector plugin "${pluginId}" has no resolve(). Skip.`);
+      logger.warn({ pluginId }, 'selector plugin has no resolve(). Skip.');
       return { selector: args.selector };
     }
 
@@ -254,10 +257,11 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
         const fs = await import('node:fs/promises');
         const updatedJson = JSON.stringify(resolved.updatedAnchors, null, 2);
         await fs.writeFile(args.selectorsPath, updatedJson, 'utf-8');
-        console.log(`[uimatch] Updated anchors file: ${args.selectorsPath}`);
+        logger.info({ selectorsPath: args.selectorsPath }, 'Updated anchors file');
       } catch (err) {
-        console.warn(
-          `[uimatch] Failed to write back anchors: ${err instanceof Error ? err.message : String(err)}`
+        logger.warn(
+          { error: err instanceof Error ? err.message : String(err) },
+          'Failed to write back anchors'
         );
       }
     }
@@ -268,7 +272,10 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
       diagnostic: resolved,
     };
   } catch (err) {
-    console.warn('[uimatch] selector plugin failed:', err instanceof Error ? err.message : err);
+    logger.warn(
+      { error: err instanceof Error ? err.message : String(err) },
+      'selector plugin failed'
+    );
     return { selector: args.selector };
   } finally {
     await browserPool.closeContext(context);
@@ -351,11 +358,12 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   // Debug: Display effective mode and parsed reference
   if (args.verbose) {
-    console.log(
-      '[uimatch] mode:',
-      b64raw ? 'BYPASS' : process.env.FIGMA_ACCESS_TOKEN ? 'REST' : 'MCP',
-      '| figma arg:',
-      args.figma
+    logger.info(
+      {
+        mode: b64raw ? 'BYPASS' : process.env.FIGMA_ACCESS_TOKEN ? 'REST' : 'MCP',
+        figma: args.figma,
+      },
+      'Figma mode'
     );
   }
 
@@ -427,8 +435,9 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     if (pngSize && pngSize.width > 0 && pngSize.height > 0) {
       effectiveViewport = { width: pngSize.width, height: pngSize.height };
       if (args.verbose) {
-        console.log(
-          `[uimatch] Auto-detected viewport from Figma PNG: ${pngSize.width}x${pngSize.height}`
+        logger.info(
+          { width: pngSize.width, height: pngSize.height },
+          'Auto-detected viewport from Figma PNG'
         );
       }
     }
@@ -478,8 +487,9 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
       if (pick.nodeId) {
         if (args.verbose) {
-          console.log(
-            `[uimatch] Child-node mapping: Found Figma child "${pick.debug?.picked}" (${pick.nodeId})`
+          logger.info(
+            { picked: pick.debug?.picked, nodeId: pick.nodeId },
+            'Child-node mapping: Found Figma child'
           );
         }
         nodeId = pick.nodeId;
@@ -487,7 +497,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(`[uimatch] Child-node mapping failed (continuing with parent): ${errMsg}`);
+      logger.warn({ error: errMsg }, 'Child-node mapping failed (continuing with parent)');
     }
   }
 
@@ -520,8 +530,9 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
         if (roiResult.wasAdjusted) {
           if (args.verbose) {
-            console.log(
-              `[uimatch] Auto-ROI enabled: Re-fetching Figma PNG for node ${roiResult.nodeId}`
+            logger.info(
+              { nodeId: roiResult.nodeId },
+              'Auto-ROI enabled: Re-fetching Figma PNG for node'
             );
           }
           nodeId = roiResult.nodeId;
@@ -531,7 +542,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(`[uimatch] Auto-ROI failed (continuing with original node): ${errMsg}`);
+      logger.warn({ error: errMsg }, 'Auto-ROI failed (continuing with original node)');
     }
   }
 
@@ -544,13 +555,13 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
         const nodeJson = await rest.getNode({ fileKey, nodeId });
         expectedSpec = buildExpectedSpecFromFigma(nodeJson, args.tokens);
         if (args.verbose) {
-          console.log('[uimatch] expectedSpec bootstrapped from Figma node (robust subset).');
+          logger.info('expectedSpec bootstrapped from Figma node (robust subset)');
         }
       } catch (e) {
-        console.warn('[uimatch] bootstrap failed:', (e as Error)?.message ?? String(e));
+        logger.warn({ error: (e as Error)?.message ?? String(e) }, 'bootstrap failed');
       }
     } else {
-      console.warn('[uimatch] FIGMA_ACCESS_TOKEN is not set; skip expectedSpec bootstrap.');
+      logger.warn('FIGMA_ACCESS_TOKEN is not set; skip expectedSpec bootstrap');
     }
   }
 
@@ -738,7 +749,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       }
     } catch (e) {
       if (args.verbose)
-        console.warn('[uimatch] textMatch figma fetch failed:', (e as Error).message);
+        logger.warn({ error: (e as Error).message }, 'textMatch figma fetch failed');
     }
 
     // 3) Normalize & compare

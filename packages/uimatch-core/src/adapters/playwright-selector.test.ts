@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Tests for enhanced selector system with prefix support
  */

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * E2E test for selector resolution plugin
  *

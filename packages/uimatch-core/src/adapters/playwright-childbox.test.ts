@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Test childBox capture with childSelector
  */

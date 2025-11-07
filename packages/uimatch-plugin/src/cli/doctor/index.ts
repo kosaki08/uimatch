@@ -111,25 +111,29 @@ export async function runDoctor(args: string[]): Promise<void> {
 
   // Show help if requested
   if (args.includes('--help') || args.includes('-h')) {
-    console.log('uiMatch Doctor - Environment and configuration checker');
-    console.log('');
-    console.log('Usage: uimatch doctor [options]');
-    console.log('');
-    console.log('Options:');
-    console.log('  --quick              Quick check (env + playwright only)');
-    console.log('  --deep               Deep check (all categories)');
-    console.log('  --strict             Treat warnings as failures');
-    console.log('  --offline            Skip checks requiring network');
-    console.log('  --fix                Auto-fix issues when possible');
-    console.log('  --ci                 CI mode (strict + json + quiet)');
-    console.log('  --format <format>    Output format: table|markdown|json|sarif|junit');
-    console.log('  --out-dir <dir>      Output directory (default: uimatch-out/doctor)');
-    console.log('  --report-name <name> Report filename (default: report.json)');
+    process.stdout.write('uiMatch Doctor - Environment and configuration checker' + '\n');
+    process.stdout.write('' + '\n');
+    process.stdout.write('Usage: uimatch doctor [options]' + '\n');
+    process.stdout.write('' + '\n');
+    process.stdout.write('Options:' + '\n');
+    process.stdout.write('  --quick              Quick check (env + playwright only)' + '\n');
+    process.stdout.write('  --deep               Deep check (all categories)' + '\n');
+    process.stdout.write('  --strict             Treat warnings as failures' + '\n');
+    process.stdout.write('  --offline            Skip checks requiring network' + '\n');
+    process.stdout.write('  --fix                Auto-fix issues when possible' + '\n');
+    process.stdout.write('  --ci                 CI mode (strict + json + quiet)' + '\n');
+    process.stdout.write(
+      '  --format <format>    Output format: table|markdown|json|sarif|junit' + '\n'
+    );
+    process.stdout.write(
+      '  --out-dir <dir>      Output directory (default: uimatch-out/doctor)' + '\n'
+    );
+    process.stdout.write('  --report-name <name> Report filename (default: report.json)' + '\n');
     console.log(
       '  --select <cats>      Check categories: env,playwright,figma,anchors,config,cache,git,fs,external'
     );
-    console.log('  --keep <n>           Keep last N reports (cleanup old runs)');
-    console.log('');
+    process.stdout.write('  --keep <n>           Keep last N reports (cleanup old runs)' + '\n');
+    process.stdout.write('' + '\n');
     process.exit(0);
   }
 
@@ -162,13 +166,13 @@ export async function runDoctor(args: string[]): Promise<void> {
   const allResults: DoctorCheckResult[] = [];
 
   if (!options.ci) {
-    console.log('Running uiMatch Doctor...\n');
+    process.stdout.write('Running uiMatch Doctor...\n');
   }
 
   // Run all checks
   for (const { category, checks } of selectedChecks) {
     if (!options.ci) {
-      console.log(`[${category.toUpperCase()}]`);
+      process.stdout.write(`[${category.toUpperCase()}]` + '\n');
     }
 
     for (const check of checks) {
@@ -191,12 +195,12 @@ export async function runDoctor(args: string[]): Promise<void> {
               : result.status === 'fail'
                 ? '❌'
                 : '⏭️';
-        console.log(`  ${icon} ${result.title}`);
+        process.stdout.write(`  ${icon} ${result.title}` + '\n');
       }
     }
 
     if (!options.ci) {
-      console.log('');
+      process.stdout.write('' + '\n');
     }
   }
 
@@ -235,7 +239,7 @@ export async function runDoctor(args: string[]): Promise<void> {
 
   // Console output for table/markdown
   if (format === 'table' || format === 'markdown') {
-    console.log(formatted);
+    process.stdout.write(formatted + '\n');
   }
 
   // File output
@@ -252,7 +256,7 @@ export async function runDoctor(args: string[]): Promise<void> {
     writeFileSync(reportPath, formatted, 'utf-8');
 
     if (!options.ci) {
-      console.log(`\nReport saved to: ${reportPath}`);
+      process.stdout.write(`\nReport saved to: ${reportPath}`);
     }
 
     // Rotate old reports if --keep is set
@@ -273,7 +277,7 @@ export async function runDoctor(args: string[]): Promise<void> {
         }
 
         if (!options.ci && toDelete.length > 0) {
-          console.log(`Cleaned up ${toDelete.length} old report(s)`);
+          process.stdout.write(`Cleaned up ${toDelete.length} old report(s)` + '\n');
         }
       } catch {
         // Best-effort cleanup, don't fail if it doesn't work
@@ -289,9 +293,9 @@ export async function runDoctor(args: string[]): Promise<void> {
   const exitCode = failed > 0 ? 2 : strict && warnings > 0 ? 1 : 0;
 
   if (!options.ci) {
-    console.log(`\nScore: ${report.summary.score}/100`);
+    process.stdout.write(`\nScore: ${report.summary.score}/100`);
     if (exitCode > 0) {
-      console.log(`Exit code: ${exitCode}`);
+      process.stdout.write(`Exit code: ${exitCode}` + '\n');
     }
   }
 

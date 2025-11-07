@@ -4,15 +4,19 @@
 export type LogLevel = 'silent' | 'debug' | 'info' | 'warn' | 'error';
 
 /**
- * Minimal logger interface for library use.
- * Libraries can accept this interface optionally,
- * allowing host applications to inject their own logger implementation.
+ * Structured logger interface supporting both simple messages and context objects.
+ *
+ * @example
+ * ```ts
+ * logger.info('Simple message');
+ * logger.warn({ userId: 123, action: 'delete' }, 'User action logged');
+ * ```
  */
 export interface Logger {
-  debug: (...args: unknown[]) => void;
-  info: (...args: unknown[]) => void;
-  warn: (...args: unknown[]) => void;
-  error: (...args: unknown[]) => void;
+  debug: (contextOrMessage: Record<string, unknown> | string, message?: string) => void;
+  info: (contextOrMessage: Record<string, unknown> | string, message?: string) => void;
+  warn: (contextOrMessage: Record<string, unknown> | string, message?: string) => void;
+  error: (contextOrMessage: Record<string, unknown> | string, message?: string) => void;
 }
 
 /**

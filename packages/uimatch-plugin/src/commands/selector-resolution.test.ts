@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Test for selector resolution plugin integration (Phase 3)
  *

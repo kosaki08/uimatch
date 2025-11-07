@@ -27,7 +27,7 @@ export function getSettings(): AppConfig {
       const parsed = JSON.parse(content) as Partial<AppConfig>;
       return mergeConfig(parsed); // Apply defaults and validation
     } catch {
-      console.warn('⚠️  Failed to parse .uimatchrc.json, using defaults');
+      process.stderr.write('⚠️  Failed to parse .uimatchrc.json, using defaults' + '\n');
     }
   }
   return DEFAULT_CONFIG;
@@ -60,7 +60,7 @@ export function updateSettings(updates: Partial<AppConfig>): AppConfig {
       // Merge existing with defaults to get full config
       existing = mergeConfig(parsed);
     } catch {
-      console.warn(`⚠️  Failed to parse existing config, using defaults`);
+      process.stderr.write(`⚠️  Failed to parse existing config, using defaults` + '\n');
     }
   }
 
@@ -108,16 +108,18 @@ export function resetSettings(): AppConfig {
  * @param config - Configuration to display
  */
 export function displaySettings(config: AppConfig): void {
-  console.log('\nCurrent uiMatch Configuration:');
-  console.log('─'.repeat(50));
+  process.stdout.write('\nCurrent uiMatch Configuration:');
+  process.stdout.write('─'.repeat(50) + '\n');
 
   // Comparison settings
-  console.log('\n📊 Comparison Settings:');
+  process.stdout.write('\n📊 Comparison Settings:');
   console.log(
     `  Pixelmatch threshold: ${config.comparison.pixelmatchThreshold.toFixed(2)} (0-1, lower = more sensitive)`
   );
-  console.log(`  Include anti-aliasing: ${config.comparison.includeAA}`);
-  console.log(`  Color delta E threshold: ${config.comparison.colorDeltaEThreshold.toFixed(1)} ΔE`);
+  process.stdout.write(`  Include anti-aliasing: ${config.comparison.includeAA}` + '\n');
+  process.stdout.write(
+    `  Color delta E threshold: ${config.comparison.colorDeltaEThreshold.toFixed(1)} ΔE` + '\n'
+  );
   console.log(
     `  Acceptance pixel diff ratio: ${(config.comparison.acceptancePixelDiffRatio * 100).toFixed(2)}%`
   );
@@ -126,27 +128,29 @@ export function displaySettings(config: AppConfig): void {
   );
 
   // Capture settings
-  console.log('\n🖥️  Capture Settings:');
+  process.stdout.write('\n🖥️  Capture Settings:');
   console.log(
     `  Default viewport: ${config.capture.defaultViewportWidth}x${config.capture.defaultViewportHeight}`
   );
-  console.log(`  Default DPR: ${config.capture.defaultDpr}`);
-  console.log(`  Default Figma scale: ${config.capture.defaultFigmaScale}`);
-  console.log(`  Auto ROI: ${config.capture.figmaAutoRoi}`);
-  console.log(`  Idle wait: ${config.capture.defaultIdleWaitMs}ms`);
-  console.log(`  Max children to analyze: ${config.capture.defaultMaxChildren}`);
+  process.stdout.write(`  Default DPR: ${config.capture.defaultDpr}` + '\n');
+  process.stdout.write(`  Default Figma scale: ${config.capture.defaultFigmaScale}` + '\n');
+  process.stdout.write(`  Auto ROI: ${config.capture.figmaAutoRoi}` + '\n');
+  process.stdout.write(`  Idle wait: ${config.capture.defaultIdleWaitMs}ms` + '\n');
+  process.stdout.write(`  Max children to analyze: ${config.capture.defaultMaxChildren}` + '\n');
 
   // Basic Auth
   if (config.capture.basicAuthUser || config.capture.basicAuthPass) {
-    console.log('\n🔐 Basic Authentication:');
+    process.stdout.write('\n🔐 Basic Authentication:');
     console.log(
       `  Username: ${config.capture.basicAuthUser ? config.capture.basicAuthUser : '(not set)'}`
     );
-    console.log(`  Password: ${config.capture.basicAuthPass ? '***' : '(not set)'}`);
+    process.stdout.write(
+      `  Password: ${config.capture.basicAuthPass ? '***' : '(not set)'}` + '\n'
+    );
   }
 
-  console.log('\n' + '─'.repeat(50));
-  console.log(`\n💡 Config file: ${path.join(process.cwd(), CONFIG_FILE)}`);
+  process.stdout.write('\n' + '─'.repeat(50));
+  process.stdout.write(`\n💡 Config file: ${path.join(process.cwd(), CONFIG_FILE)}`);
 }
 
 /**
@@ -172,14 +176,14 @@ export function uiMatchSettings(
         throw new Error('Updates required for set action');
       }
       const config = updateSettings(updates);
-      console.log('\n✅ Settings updated successfully\n');
+      process.stdout.write('\n✅ Settings updated successfully\n');
       displaySettings(config);
       return config;
     }
 
     case 'reset': {
       const config = resetSettings();
-      console.log('\n✅ Settings reset to defaults\n');
+      process.stdout.write('\n✅ Settings reset to defaults\n');
       displaySettings(config);
       return config;
     }

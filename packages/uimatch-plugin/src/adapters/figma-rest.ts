@@ -1,5 +1,5 @@
-import { setTimeout as delay } from 'node:timers/promises';
 import { getLoggerSafe } from '#plugin/cli/logger.js';
+import { setTimeout as delay } from 'node:timers/promises';
 
 /**
  * Node metadata extracted from Figma REST API
@@ -322,7 +322,7 @@ export class FigmaRestClient {
       if (bestChild) {
         getLoggerSafe().info(
           `[figma-auto-roi] Adjusted from ${parentMeta.name} (${parentMeta.width}x${parentMeta.height}) ` +
-            `to child ${bestChild.name} (${bestChild.width}x${bestChild.height})`,
+            `to child ${bestChild.name} (${bestChild.width}x${bestChild.height})`
         );
         return { nodeId: bestChild.id, wasAdjusted: true, originalNodeId: params.nodeId };
       }

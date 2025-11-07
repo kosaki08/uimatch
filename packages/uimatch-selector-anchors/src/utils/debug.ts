@@ -48,7 +48,7 @@ export function createDebugger(namespace: string) {
      */
     debug: (...args: unknown[]) => {
       if (enabled) {
-        console.log(`[${namespace}]`, ...args);
+        process.stdout.write(`[${namespace}]`, ...(args + '\n'));
       }
     },
 
@@ -56,14 +56,14 @@ export function createDebugger(namespace: string) {
      * Log warning message (always shown)
      */
     warn: (...args: unknown[]) => {
-      console.warn(`[${namespace}]`, ...args);
+      process.stderr.write(`[${namespace}]`, ...(args + '\n'));
     },
 
     /**
      * Log error message (always shown)
      */
     error: (...args: unknown[]) => {
-      console.error(`[${namespace}]`, ...args);
+      process.stderr.write(`[${namespace}]`, ...(args + '\n'));
     },
 
     /**

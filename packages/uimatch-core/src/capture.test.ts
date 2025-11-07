@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

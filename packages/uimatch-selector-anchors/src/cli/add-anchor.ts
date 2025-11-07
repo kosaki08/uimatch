@@ -80,7 +80,7 @@ function parseArgs(args: string[]): ParseResult {
   ].filter(Boolean) as string[];
 
   if (missing.length) {
-    console.error(`Error: Missing required arguments: ${missing.join(', ')}`);
+    process.stderr.write(`Error: Missing required arguments: ${missing.join(', ')}` + '\n');
     printUsage();
     return {};
   }
@@ -89,7 +89,7 @@ function parseArgs(args: string[]): ParseResult {
   const lineNum = options.line ?? 0;
   const colNum = options.column ?? 0;
   if (lineNum < 1 || colNum < 0) {
-    console.error('Error: --line must be >= 1 and --column must be >= 0');
+    process.stderr.write('Error: --line must be >= 1 and --column must be >= 0' + '\n');
     printUsage();
     return {};
   }
@@ -157,12 +157,12 @@ async function addAnchor(options: AddAnchorOptions): Promise<void> {
   try {
     await stat(absoluteFilePath);
   } catch {
-    console.error(`Error: File not found: ${absoluteFilePath}`);
+    process.stderr.write(`Error: File not found: ${absoluteFilePath}` + '\n');
     process.exit(1);
   }
 
   // Generate snippet hash
-  console.log(`Generating snippet hash for ${file}:${line}:${column}...`);
+  process.stdout.write(`Generating snippet hash for ${file}:${line}:${column}...` + '\n');
 
   let snippetResult;
   try {
@@ -187,7 +187,9 @@ async function addAnchor(options: AddAnchorOptions): Promise<void> {
   const existingIndex = anchorsData.anchors.findIndex((a) => a.id === id);
 
   if (existingIndex >= 0 && !force) {
-    console.error(`Error: Anchor with ID "${id}" already exists. Use --force to overwrite.`);
+    process.stderr.write(
+      `Error: Anchor with ID "${id}" already exists. Use --force to overwrite.` + '\n'
+    );
     process.exit(1);
   }
 
@@ -217,19 +219,21 @@ async function addAnchor(options: AddAnchorOptions): Promise<void> {
   // Add or update anchor
   if (existingIndex >= 0) {
     anchorsData.anchors[existingIndex] = newAnchor;
-    console.log(`Updated anchor "${id}"`);
+    process.stdout.write(`Updated anchor "${id}"` + '\n');
   } else {
     anchorsData.anchors.push(newAnchor);
-    console.log(`Added anchor "${id}"`);
+    process.stdout.write(`Added anchor "${id}"` + '\n');
   }
 
   // Write back to file
   const content = JSON.stringify(anchorsData, null, 2);
   await writeFile(outputPath, content, 'utf-8');
 
-  console.log(`Saved to ${outputPath}`);
-  console.log(`Snippet hash: ${snippetResult.hash}`);
-  console.log(`Snippet range: lines ${snippetResult.startLine}-${snippetResult.endLine}`);
+  process.stdout.write(`Saved to ${outputPath}` + '\n');
+  process.stdout.write(`Snippet hash: ${snippetResult.hash}` + '\n');
+  process.stdout.write(
+    `Snippet range: lines ${snippetResult.startLine}-${snippetResult.endLine}` + '\n'
+  );
 }
 
 /**
@@ -258,7 +262,9 @@ async function main(): Promise<void> {
   try {
     await addAnchor(result.options);
   } catch (error) {
-    console.error(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
+    process.stderr.write(
+      `Fatal error: ${error instanceof Error ? error.message : String(error)}` + '\n'
+    );
     process.exit(1);
   }
 }

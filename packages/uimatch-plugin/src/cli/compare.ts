@@ -219,34 +219,44 @@ function printUsage(): void {
   console.error(
     'Usage: uimatch compare figma=<FILE:NODE|URL> story=<URL> selector=<CSS> [options]'
   );
-  console.error('');
-  console.error('Required:');
-  console.error('  figma=<value>           Figma file key and node ID (e.g., AbCdEf:1-23) or URL');
-  console.error('  story=<url>             Target URL to compare');
-  console.error('  selector=<css>          CSS selector for element to capture');
-  console.error('');
-  console.error('Optional:');
+  process.stderr.write('' + '\n');
+  process.stderr.write('Required:' + '\n');
+  process.stderr.write(
+    '  figma=<value>           Figma file key and node ID (e.g., AbCdEf:1-23) or URL' + '\n'
+  );
+  process.stderr.write('  story=<url>             Target URL to compare' + '\n');
+  process.stderr.write('  selector=<css>          CSS selector for element to capture' + '\n');
+  process.stderr.write('' + '\n');
+  process.stderr.write('Optional:' + '\n');
   console.error(
     '  subselector=<selector>  Child element inside selector for Figma child-node mapping'
   );
   console.error(
     '  figmaChildStrategy=<mode>  Child-node mapping strategy (area|area+position, default: area+position)'
   );
-  console.error('  selectors=<path>        Path to selector anchors JSON (LLM-managed)');
+  process.stderr.write(
+    '  selectors=<path>        Path to selector anchors JSON (LLM-managed)' + '\n'
+  );
   console.error(
     '  selectorsWriteBack=<bool>  Write back resolved selectors to JSON (default: false)'
   );
   console.error(
     '  selectorsPlugin=<pkg>   Selector resolution plugin package (default: @uimatch/selector-anchors)'
   );
-  console.error('  maxChildren=<number>    Max child elements to analyze (default: 200)');
+  process.stderr.write(
+    '  maxChildren=<number>    Max child elements to analyze (default: 200)' + '\n'
+  );
   console.error(
     '  propsMode=<mode>        CSS properties to collect (default|extended|all, default: extended)'
   );
-  console.error('  maxDepth=<number>       Max depth to traverse for child elements (default: 6)');
-  console.error('  viewport=<WxH>          Viewport size (e.g., 1584x1104)');
-  console.error('  dpr=<number>            Device pixel ratio (default: 2)');
-  console.error('  figmaScale=<number>     Figma export scale factor (1-4, default: 2)');
+  process.stderr.write(
+    '  maxDepth=<number>       Max depth to traverse for child elements (default: 6)' + '\n'
+  );
+  process.stderr.write('  viewport=<WxH>          Viewport size (e.g., 1584x1104)' + '\n');
+  process.stderr.write('  dpr=<number>            Device pixel ratio (default: 2)' + '\n');
+  process.stderr.write(
+    '  figmaScale=<number>     Figma export scale factor (1-4, default: 2)' + '\n'
+  );
   console.error(
     '  figmaAutoRoi=<bool>     Auto-detect best matching child node (true/false, default: false)'
   );
@@ -259,7 +269,9 @@ function printUsage(): void {
   console.error(
     '  align=<mode>            Alignment for pad/crop (center|top-left|top|left, default: center)'
   );
-  console.error('  padColor=<color>        Padding color (auto|#RRGGBB, default: auto)');
+  process.stderr.write(
+    '  padColor=<color>        Padding color (auto|#RRGGBB, default: auto)' + '\n'
+  );
   console.error(
     '  contentBasis=<mode>     Content area basis (union|intersection|figma|impl, default: union)'
   );
@@ -275,33 +287,59 @@ function printUsage(): void {
   console.error(
     '  jsonOnly=<bool>         Omit base64 artifacts from JSON (default: true when outDir set)'
   );
-  console.error('  verbose=<bool>          Show full URLs and paths (default: false)');
-  console.error('  bootstrap=<bool>        Derive expectedSpec from Figma node (default: true)');
-  console.error('  expected=<path>         Load expectedSpec JSON and use it for style diffs');
-  console.error('  saveExpected=<path>     If bootstrapped, save expectedSpec JSON to this path');
+  process.stderr.write(
+    '  verbose=<bool>          Show full URLs and paths (default: false)' + '\n'
+  );
+  process.stderr.write(
+    '  bootstrap=<bool>        Derive expectedSpec from Figma node (default: true)' + '\n'
+  );
+  process.stderr.write(
+    '  expected=<path>         Load expectedSpec JSON and use it for style diffs' + '\n'
+  );
+  process.stderr.write(
+    '  saveExpected=<path>     If bootstrapped, save expectedSpec JSON to this path' + '\n'
+  );
   console.error(
     '  ignore=<props>          CSV of CSS properties to exclude (e.g., background-color,gap)'
   );
   console.error(
     '  weights=<json>          JSON weights for DFS (e.g., \'{"color":0.5,"spacing":1}\')'
   );
-  console.error('  format=<type>           Output format (standard|claude, default: standard)');
+  process.stderr.write(
+    '  format=<type>           Output format (standard|claude, default: standard)' + '\n'
+  );
   console.error(
     '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|lenient|custom)'
   );
-  console.error('  showCqi=<bool>          Display Composite Quality Indicator (default: true)');
-  console.error('  showSuspicions=<bool>   Display suspicion warnings (default: true)');
-  console.error('  showReEval=<bool>       Display re-evaluation recommendations (default: true)');
-  console.error('');
-  console.error('Text Match (experimental):');
-  console.error('  text=<bool>             Enable text match (default: false)');
-  console.error('  textMode=<self|descendants>        Text collection scope (default: self)');
-  console.error('  textNormalize=<none|nfkc|nfkc_ws>  Normalization mode (default: nfkc_ws)');
-  console.error('  textCase=<sensitive|insensitive>   Case sensitivity (default: insensitive)');
-  console.error('  textMatch=<exact|contains|ratio>   Matching mode (default: ratio)');
-  console.error('  textMinRatio=<0..1>                Minimum similarity ratio (default: 0.98)');
-  console.error('');
-  console.error('Example:');
+  process.stderr.write(
+    '  showCqi=<bool>          Display Composite Quality Indicator (default: true)' + '\n'
+  );
+  process.stderr.write(
+    '  showSuspicions=<bool>   Display suspicion warnings (default: true)' + '\n'
+  );
+  process.stderr.write(
+    '  showReEval=<bool>       Display re-evaluation recommendations (default: true)' + '\n'
+  );
+  process.stderr.write('' + '\n');
+  process.stderr.write('Text Match (experimental):' + '\n');
+  process.stderr.write('  text=<bool>             Enable text match (default: false)' + '\n');
+  process.stderr.write(
+    '  textMode=<self|descendants>        Text collection scope (default: self)' + '\n'
+  );
+  process.stderr.write(
+    '  textNormalize=<none|nfkc|nfkc_ws>  Normalization mode (default: nfkc_ws)' + '\n'
+  );
+  process.stderr.write(
+    '  textCase=<sensitive|insensitive>   Case sensitivity (default: insensitive)' + '\n'
+  );
+  process.stderr.write(
+    '  textMatch=<exact|contains|ratio>   Matching mode (default: ratio)' + '\n'
+  );
+  process.stderr.write(
+    '  textMinRatio=<0..1>                Minimum similarity ratio (default: 0.98)' + '\n'
+  );
+  process.stderr.write('' + '\n');
+  process.stderr.write('Example:' + '\n');
   console.error(
     '  uimatch compare figma=AbCdEf:1-23 story=http://localhost:6006/iframe.html?id=button--default selector="#storybook-root" size=pad contentBasis=figma profile=component/strict outDir=./out'
   );
@@ -655,17 +693,17 @@ export async function runCompare(argv: string[]): Promise<void> {
         }
 
         const relativeOut = relativizePath(outDir);
-        console.log(`✅ Artifacts saved → ${relativeOut}/`);
-        console.log('   - figma.png');
-        console.log('   - impl.png');
-        console.log('   - diff.png');
-        if (saveOverlay) console.log('   - overlay.png');
-        console.log('   - report.json');
+        process.stdout.write(`✅ Artifacts saved → ${relativeOut}/` + '\n');
+        process.stdout.write('   - figma.png' + '\n');
+        process.stdout.write('   - impl.png' + '\n');
+        process.stdout.write('   - diff.png' + '\n');
+        if (saveOverlay) process.stdout.write('   - overlay.png' + '\n');
+        process.stdout.write('   - report.json' + '\n');
         if (args.format === 'claude') {
-          console.log('   - claude.json');
-          console.log('   - claude-prompt.txt');
+          process.stdout.write('   - claude.json' + '\n');
+          process.stdout.write('   - claude-prompt.txt' + '\n');
         }
-        console.log('');
+        process.stdout.write('' + '\n');
       }
     }
 
@@ -682,17 +720,17 @@ export async function runCompare(argv: string[]): Promise<void> {
 
       const llmPayload = formatForLLM(result, { preferTokens: true });
 
-      console.log('');
-      console.log('=== LLM-Formatted Output ===');
-      console.log('');
-      console.log(generateLLMPrompt(llmPayload));
-      console.log('');
+      process.stdout.write('' + '\n');
+      process.stdout.write('=== LLM-Formatted Output ===' + '\n');
+      process.stdout.write('' + '\n');
+      process.stdout.write(generateLLMPrompt(llmPayload) + '\n');
+      process.stdout.write('' + '\n');
       process.exit(0);
     }
 
     // Standard output
-    console.log(result.summary);
-    console.log('');
+    process.stdout.write(result.summary + '\n');
+    process.stdout.write('' + '\n');
 
     // Additional profile-based quality gate checks
     let profileGatePass = result.report.qualityGate?.pass ?? false;
@@ -739,10 +777,10 @@ export async function runCompare(argv: string[]): Promise<void> {
         }
 
         if (additionalReasons.length > 0) {
-          console.log(`Profile gate (${profile.name}): ❌ FAIL`);
-          additionalReasons.forEach((r) => console.log(`  - ${r}`));
+          process.stdout.write(`Profile gate (${profile.name}): ❌ FAIL` + '\n');
+          additionalReasons.forEach((r) => process.stdout.write(`  - ${r}`) + '\n');
         } else if (args.profile) {
-          console.log(`Profile gate (${profile.name}): ✅ PASS`);
+          process.stdout.write(`Profile gate (${profile.name}): ✅ PASS` + '\n');
         }
       } catch (e) {
         logger.warn(`Failed to evaluate profile gate: ${(e as Error)?.message ?? String(e)}`);
@@ -750,12 +788,18 @@ export async function runCompare(argv: string[]): Promise<void> {
     }
 
     if (verbose) {
-      console.log('Details:');
-      console.log(JSON.stringify(result.report, null, 2));
+      process.stdout.write('Details:' + '\n');
+      process.stdout.write(JSON.stringify(result.report, null, 2) + '\n');
     } else {
-      console.log('Gate:', result.report.qualityGate?.pass ? '✅ PASS' : '❌ FAIL');
-      console.log('Pixel diff ratio:', result.report.metrics.pixelDiffRatio.toFixed(4));
-      console.log('Color delta E (avg):', result.report.metrics.colorDeltaEAvg.toFixed(2));
+      process.stdout.write('Gate:', result.report.qualityGate?.pass ? '✅ PASS' : '❌ FAIL' + '\n');
+      process.stdout.write(
+        'Pixel diff ratio:',
+        result.report.metrics.pixelDiffRatio.toFixed(4) + '\n'
+      );
+      process.stdout.write(
+        'Color delta E (avg):',
+        result.report.metrics.colorDeltaEAvg.toFixed(2) + '\n'
+      );
 
       // === V2 Features (optional display) ===
       const gate = result.report.qualityGate;
@@ -766,30 +810,32 @@ export async function runCompare(argv: string[]): Promise<void> {
       // Show CQI if available and enabled
       if (showCqi && gate?.cqi !== undefined) {
         const cqiEmoji = gate.cqi >= 90 ? '🟢' : gate.cqi >= 70 ? '🟡' : '🔴';
-        console.log(`CQI: ${cqiEmoji} ${gate.cqi}/100`);
+        process.stdout.write(`CQI: ${cqiEmoji} ${gate.cqi}/100` + '\n');
       }
 
       // Show hard gate violations (always show if present)
       if (gate?.hardGateViolations && gate.hardGateViolations.length > 0) {
-        console.log('\n⚠️  Hard Gate Violations:');
+        process.stdout.write('\n⚠️  Hard Gate Violations:');
         gate.hardGateViolations.forEach((v) => {
           const severityEmoji = v.severity === 'critical' ? '🚨' : '⚠️';
-          console.log(`  ${severityEmoji} [${v.type}] ${v.reason}`);
+          process.stdout.write(`  ${severityEmoji} [${v.type}] ${v.reason}` + '\n');
         });
       }
 
       // Show suspicions if enabled
       if (showSuspicions && gate?.suspicions?.detected) {
-        console.log('\n🔍 Suspicions Detected:');
+        process.stdout.write('\n🔍 Suspicions Detected:');
         gate.suspicions.reasons.forEach((r) => {
-          console.log(`  • ${r}`);
+          process.stdout.write(`  • ${r}` + '\n');
         });
       }
 
       // Show re-evaluation recommendation if enabled
       if (showReEval && gate?.reEvaluated) {
-        console.log('\n💡 Re-evaluation Recommended:');
-        console.log('  Consider using contentBasis=intersection for more accurate metrics');
+        process.stdout.write('\n💡 Re-evaluation Recommended:');
+        process.stdout.write(
+          '  Consider using contentBasis=intersection for more accurate metrics' + '\n'
+        );
         if (gate.originalMetrics) {
           console.log(
             `  Original: ${(gate.originalMetrics.pixelDiffRatioContent * 100).toFixed(2)}% (${gate.originalMetrics.contentBasis})`
@@ -799,7 +845,9 @@ export async function runCompare(argv: string[]): Promise<void> {
 
       // Show SFS if available
       if (result.report.styleSummary) {
-        console.log(`\nStyle Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`);
+        process.stdout.write(
+          `\nStyle Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`
+        );
         console.log(
           `  Breakdown: ${result.report.styleSummary.highCount} high, ${result.report.styleSummary.mediumCount} medium, ${result.report.styleSummary.lowCount} low`
         );
@@ -813,7 +861,10 @@ export async function runCompare(argv: string[]): Promise<void> {
     const finalPass = (result.report.qualityGate?.pass ?? false) && profileGatePass;
     process.exit(finalPass ? 0 : 1);
   } catch (error) {
-    console.error('❌ Error:', error instanceof Error ? error.message : String(error));
+    process.stderr.write(
+      '❌ Error:',
+      error instanceof Error ? error.message : String(error) + '\n'
+    );
     process.exit(1);
   }
 }

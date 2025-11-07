@@ -236,7 +236,7 @@ export async function runSuite(argv: string[]): Promise<void> {
   await writeFile(join(outBase, 'suite-report.json'), JSON.stringify(summary, null, 2));
 
   // Pretty print
-  console.log(`\n=== ${summary.name} ===`);
+  process.stdout.write(`\n=== ${summary.name} ===`);
   for (const r of results) {
     const badge = r.ok ? '✓' : r.error ? 'E' : '✖';
     console.log(

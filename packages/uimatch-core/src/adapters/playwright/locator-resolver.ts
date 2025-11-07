@@ -2,8 +2,11 @@
  * Selector resolution utilities for Playwright
  */
 
+import { createLogger } from '@uimatch/shared-logging';
 import type { Frame, Locator } from 'playwright';
 import { normalizeText } from '../../utils/normalize';
+
+const logger = createLogger({ package: 'uimatch-core', module: 'locator-resolver' });
 
 /**
  * Applies `.first()` to the locator if UIMATCH_SELECTOR_FIRST=true.
@@ -48,7 +51,7 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
   // DEBUG logging for troubleshooting
   const DEBUG = process.env.DEBUG?.includes('uimatch:selector');
   if (DEBUG) {
-    console.debug('[uimatch:selector] input:', selectorString);
+    logger.debug({ selector: selectorString }, 'input');
   }
 
   // Only match known prefixes to avoid false positives with CSS selectors
@@ -65,7 +68,7 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
   if (!m) {
     // No known prefix detected → treat as CSS selector
     if (DEBUG) {
-      console.debug('[uimatch:selector] no known prefix → CSS fallback');
+      logger.debug('no known prefix → CSS fallback');
     }
 
     // In strict mode, check if selector looks like it might have a typo
@@ -211,17 +214,14 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
         }
 
         if (DEBUG) {
-          console.debug('[uimatch:selector] role (CSS fallback):', {
-            roleName,
-            selector: checked ? 'union' : base,
-          });
+          logger.debug({ roleName, selector: checked ? 'union' : base }, 'role (CSS fallback)');
         }
         return applyFirstIfNeeded(locator);
       }
 
       // No boolean options: use standard getByRole
       if (DEBUG) {
-        console.debug('[uimatch:selector] role:', { roleName, options });
+        logger.debug({ roleName, ...options }, 'role');
       }
       return applyFirstIfNeeded(
         frame.getByRole(roleName as Parameters<typeof frame.getByRole>[0], options)
@@ -230,7 +230,7 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
 
     case 'testid': {
       if (DEBUG) {
-        console.debug('[uimatch:selector] testid:', rest);
+        logger.debug('testid:', rest);
       }
       return applyFirstIfNeeded(frame.getByTestId(rest));
     }
@@ -269,7 +269,7 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
         };
 
         if (DEBUG) {
-          console.debug('[uimatch:selector] text (XPath exact):', { raw });
+          logger.debug({ text: raw }, 'text (XPath exact)');
         }
         return frame.locator(`xpath=//*[normalize-space(.)=${xpathLiteral(raw)}]`);
       }
@@ -289,7 +289,7 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
         raw = normalizeText(raw);
 
         if (DEBUG) {
-          console.debug('[uimatch:selector] text (quoted):', { raw, exact: true });
+          logger.debug({ text: raw, exact: true }, 'text (quoted)');
         }
         // Quoted strings always use exact:true
         return applyFirstIfNeeded(frame.getByText(raw, { exact: true }));
@@ -302,11 +302,14 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
           const pattern = s.slice(1, lastSlash);
           const flags = s.slice(lastSlash + 1);
           if (DEBUG) {
-            console.debug('[uimatch:selector] text (regex):', {
-              pattern,
-              flags,
-              exact: exactFlag || false,
-            });
+            logger.debug(
+              {
+                pattern,
+                flags,
+                exact: exactFlag || false,
+              },
+              'text (regex)'
+            );
           }
           return applyFirstIfNeeded(
             frame.getByText(new RegExp(pattern, flags), { exact: exactFlag || false })
@@ -317,24 +320,27 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
       // Default: treat as plain text (with normalization)
       const normalizedText = normalizeText(s);
       if (DEBUG) {
-        console.debug('[uimatch:selector] text (plain):', {
-          text: normalizedText,
-          exact: exactFlag || false,
-        });
+        logger.debug(
+          {
+            text: normalizedText,
+            exact: exactFlag || false,
+          },
+          'text (plain)'
+        );
       }
       return applyFirstIfNeeded(frame.getByText(normalizedText, { exact: exactFlag || false }));
     }
 
     case 'xpath': {
       if (DEBUG) {
-        console.debug('[uimatch:selector] xpath:', rest);
+        logger.debug('xpath:', rest);
       }
       return applyFirstIfNeeded(frame.locator(`xpath=${rest}`));
     }
 
     case 'css': {
       if (DEBUG) {
-        console.debug('[uimatch:selector] css:', rest);
+        logger.debug('css:', rest);
       }
       return applyFirstIfNeeded(frame.locator(rest));
     }
@@ -342,7 +348,7 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
     case 'dompath': {
       // Internal DOM path after capture (e.g., "__self__ > :nth-child(2)")
       if (DEBUG) {
-        console.debug('[uimatch:selector] dompath:', rest);
+        logger.debug('dompath:', rest);
       }
       // Don't apply first() for internal DOM paths - we want exact child selector
       return frame.locator(rest);
