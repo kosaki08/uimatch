@@ -34,17 +34,20 @@ bunx playwright install chromium
 ## Quickstart
 
 1. **Install dependencies**
+
    ```bash
    npm install -g uimatch-plugin playwright
    npx playwright install chromium
    ```
 
 2. **Set Figma token** (get from [Figma Settings](https://www.figma.com/developers/api#access-tokens))
+
    ```bash
    export FIGMA_ACCESS_TOKEN="figd_..."
    ```
 
 3. **Create config** (`.uimatchrc.json`)
+
    ```json
    {
      "comparison": {
@@ -56,6 +59,7 @@ bunx playwright install chromium
    ```
 
 4. **Run comparison**
+
    ```bash
    npx uimatch compare \
      figma=<fileKey>:<nodeId> \
