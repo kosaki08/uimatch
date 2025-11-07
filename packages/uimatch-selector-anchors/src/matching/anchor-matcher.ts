@@ -107,6 +107,25 @@ function tokenizeSelector(selector: string): string[] {
 }
 
 /**
+ * Calculate Jaccard coefficient between two token sets
+ * @param tokens1 - First set of tokens
+ * @param tokens2 - Second set of tokens
+ * @returns Jaccard coefficient (0-1)
+ */
+function jaccardCoefficient(tokens1: string[], tokens2: string[]): number {
+  if (tokens1.length === 0 && tokens2.length === 0) return 1.0;
+  if (tokens1.length === 0 || tokens2.length === 0) return 0.0;
+
+  const set1 = new Set(tokens1);
+  const set2 = new Set(tokens2);
+
+  const intersection = new Set([...set1].filter((x) => set2.has(x)));
+  const union = new Set([...set1, ...set2]);
+
+  return intersection.size / union.size;
+}
+
+/**
  * Check if component name matches any selector token
  * Uses token-level matching to reduce false positives
  * @param selector - CSS selector to check
@@ -159,6 +178,19 @@ export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string)
       } else if (s0.includes(s1) || s1.includes(s0)) {
         result.score += weights.partialLastKnownMatch;
         result.reasons.push('Matches lastKnown/resolvedCss (partial)');
+      } else {
+        // Tokenized fuzzy matching using Jaccard coefficient
+        const tokens0 = tokenizeSelector(s0);
+        const tokens1 = tokenizeSelector(s1);
+        const jaccard = jaccardCoefficient(tokens0, tokens1);
+        // Apply partial score if Jaccard coefficient > 0.66 (2/3 threshold)
+        if (jaccard > 0.66) {
+          const fuzzyScore = Math.round(weights.partialLastKnownMatch * jaccard);
+          result.score += fuzzyScore;
+          result.reasons.push(
+            `Matches lastKnown/resolvedCss (tokenized fuzzy, Jaccard: ${jaccard.toFixed(2)})`
+          );
+        }
       }
     }
 

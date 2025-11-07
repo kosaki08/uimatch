@@ -257,5 +257,202 @@ describe('Anchor Matcher', () => {
         expect(firstResult2.reasons).toContain('Matches component metadata (token-level)');
       }
     });
+
+    test('lastKnown exact match gets highest priority', () => {
+      const anchors: SelectorAnchor[] = [
+        {
+          id: 'anchor-1',
+          source: { file: 'test.tsx', line: 10, col: 0 },
+          lastKnown: {
+            selector: '[data-testid="submit-button"]',
+            stabilityScore: 95,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        {
+          id: 'anchor-2',
+          source: { file: 'test.tsx', line: 20, col: 0 },
+          hint: { testid: 'cancel' },
+        },
+      ];
+
+      const results: AnchorScore[] = matchAnchors(anchors, '[data-testid="submit-button"]');
+
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('Matches lastKnown/resolvedCss (exact)');
+      }
+    });
+
+    test('lastKnown partial match provides bonus', () => {
+      const anchors: SelectorAnchor[] = [
+        {
+          id: 'anchor-1',
+          source: { file: 'test.tsx', line: 10, col: 0 },
+          lastKnown: {
+            selector: '[data-testid="submit"]',
+            stabilityScore: 90,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        {
+          id: 'anchor-2',
+          source: { file: 'test.tsx', line: 20, col: 0 },
+        },
+      ];
+
+      const results: AnchorScore[] = matchAnchors(
+        anchors,
+        'button[data-testid="submit"].primary'
+      );
+
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        expect(firstResult.reasons).toContain('Matches lastKnown/resolvedCss (partial)');
+      }
+    });
+
+    test('Jaccard coefficient fuzzy matching for lastKnown', () => {
+      const anchors: SelectorAnchor[] = [
+        {
+          id: 'anchor-1',
+          source: { file: 'test.tsx', line: 10, col: 0 },
+          lastKnown: {
+            selector: 'button.primary.submit-btn',
+            stabilityScore: 85,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        {
+          id: 'anchor-2',
+          source: { file: 'test.tsx', line: 20, col: 0 },
+        },
+      ];
+
+      // Selector with similar tokens but different order/structure
+      const results: AnchorScore[] = matchAnchors(anchors, '.submit-btn.secondary.button');
+
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-1');
+        // Should have fuzzy match reason with Jaccard coefficient
+        const fuzzyReason = firstResult.reasons.find((r) => r.includes('tokenized fuzzy'));
+        expect(fuzzyReason).toBeDefined();
+        expect(fuzzyReason).toContain('Jaccard:');
+      }
+    });
+
+    test('recency bonus for recently seen anchors', () => {
+      const now = Date.now();
+      const recentDate = new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(); // 5 days ago
+      const oldDate = new Date(now - 60 * 24 * 60 * 60 * 1000).toISOString(); // 60 days ago
+
+      const anchors: SelectorAnchor[] = [
+        {
+          id: 'anchor-recent',
+          source: { file: 'test.tsx', line: 10, col: 0 },
+          lastSeen: recentDate,
+          snippetHash: 'abc123',
+        },
+        {
+          id: 'anchor-old',
+          source: { file: 'test.tsx', line: 20, col: 0 },
+          lastSeen: oldDate,
+          snippetHash: 'def456',
+        },
+      ];
+
+      const results: AnchorScore[] = matchAnchors(anchors, '.some-selector');
+
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-recent');
+        const recencyReason = firstResult.reasons.find((r) => r.includes('Recently seen alive'));
+        expect(recencyReason).toBeDefined();
+      }
+    });
+
+    test('high stability bonus for lastKnown with high score', () => {
+      const anchors: SelectorAnchor[] = [
+        {
+          id: 'anchor-stable',
+          source: { file: 'test.tsx', line: 10, col: 0 },
+          lastKnown: {
+            selector: '[data-testid="stable"]',
+            stabilityScore: 95,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        {
+          id: 'anchor-unstable',
+          source: { file: 'test.tsx', line: 20, col: 0 },
+          lastKnown: {
+            selector: '[data-testid="unstable"]',
+            stabilityScore: 50,
+            timestamp: new Date().toISOString(),
+          },
+        },
+      ];
+
+      const results: AnchorScore[] = matchAnchors(anchors, '.some-selector');
+
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-stable');
+        const stabilityReason = firstResult.reasons.find((r) =>
+          r.includes('Historically high stability')
+        );
+        expect(stabilityReason).toBeDefined();
+      }
+    });
+
+    test('combines lastKnown, recency, and stability bonuses', () => {
+      const recentDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+
+      const anchors: SelectorAnchor[] = [
+        {
+          id: 'anchor-perfect',
+          source: { file: 'test.tsx', line: 10, col: 0 },
+          lastKnown: {
+            selector: '[data-testid="submit"]',
+            stabilityScore: 98,
+            timestamp: recentDate,
+          },
+          lastSeen: recentDate,
+          snippetHash: 'abc123',
+        },
+        {
+          id: 'anchor-basic',
+          source: { file: 'test.tsx', line: 20, col: 0 },
+          snippetHash: 'def456',
+        },
+      ];
+
+      const results: AnchorScore[] = matchAnchors(anchors, '[data-testid="submit"]');
+
+      const firstResult: AnchorScore | undefined = results[0];
+      expect(firstResult).toBeDefined();
+      if (firstResult) {
+        expect(firstResult.anchor.id).toBe('anchor-perfect');
+        // Should have multiple bonus reasons
+        expect(firstResult.reasons).toContain('Matches lastKnown/resolvedCss (exact)');
+        expect(firstResult.reasons.some((r) => r.includes('Recently seen alive'))).toBe(true);
+        expect(firstResult.reasons.some((r) => r.includes('Historically high stability'))).toBe(
+          true
+        );
+        // Score should be significantly higher than basic anchor
+        const secondResult = results[1];
+        if (secondResult) {
+          expect(firstResult.score).toBeGreaterThan(secondResult.score + 100);
+        }
+      }
+    });
   });
 });
