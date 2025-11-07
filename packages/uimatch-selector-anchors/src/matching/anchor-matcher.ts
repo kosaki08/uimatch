@@ -1,5 +1,7 @@
 /**
  * Anchor matching logic for selecting the best anchor based on initialSelector hint
+ *
+ * @module matching/anchor-matcher
  */
 
 import type { SelectorAnchor } from '../types/schema.js';
@@ -7,6 +9,15 @@ import { getAnchorMatchingConfig } from '../types/weights.js';
 
 /**
  * Scoring result for anchor matching
+ *
+ * @example
+ * ```typescript
+ * const score: AnchorScore = {
+ *   anchor: { id: 'button-1', hint: 'testid:submit-btn', ...otherFields },
+ *   score: 0.95,
+ *   reasons: ['Exact testid match', 'High confidence']
+ * };
+ * ```
  */
 export interface AnchorScore {
   anchor: SelectorAnchor;
@@ -142,9 +153,18 @@ function tokenizeSelector(selector: string): string[] {
 
 /**
  * Calculate Jaccard coefficient between two token sets
+ *
  * @param tokens1 - First set of tokens
  * @param tokens2 - Second set of tokens
  * @returns Jaccard coefficient (0-1)
+ *
+ * @example
+ * ```typescript
+ * const tokens1 = ['button', 'primary', 'submit'];
+ * const tokens2 = ['button', 'submit', 'action'];
+ * const similarity = jaccardCoefficient(tokens1, tokens2);
+ * // Returns: 0.5 (2 共通要素 / 4 全体要素)
+ * ```
  */
 function jaccardCoefficient(tokens1: string[], tokens2: string[]): number {
   if (tokens1.length === 0 && tokens2.length === 0) return 1.0;
@@ -185,6 +205,20 @@ function matchesComponentTokenized(selector: string, componentName: string): boo
  * @param anchors - Array of available anchors
  * @param initialSelector - Initial selector provided by user
  * @returns Sorted array of anchors with scores
+ *
+ * @example
+ * ```typescript
+ * const anchors = [
+ *   { id: 'button-1', hint: 'testid:submit-btn', ...otherFields },
+ *   { id: 'button-2', hint: 'role:button', ...otherFields }
+ * ];
+ *
+ * const matches = matchAnchors(anchors, '[data-testid="submit-btn"]');
+ * // Returns: [
+ * //   { anchor: {...button-1}, score: 95, reasons: ['Exact testid match'] },
+ * //   { anchor: {...button-2}, score: 20, reasons: ['Component metadata'] }
+ * // ]
+ * ```
  */
 export function matchAnchors(anchors: SelectorAnchor[], initialSelector: string): AnchorScore[] {
   const results: AnchorScore[] = anchors.map((anchor) => ({
