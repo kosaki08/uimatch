@@ -27,6 +27,27 @@ export default [
     },
   },
   {
+    files: ['packages/uimatch-core/**/*.test.ts', 'packages/uimatch-core/src/**/__tests__/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: path.join(__dirname, 'packages/uimatch-core/tsconfig.test.json'),
+        tsconfigRootDir: __dirname,
+      },
+    },
+  },
+  {
+    files: [
+      'packages/uimatch-plugin/**/*.test.ts',
+      'packages/uimatch-plugin/src/**/__tests__/**/*.ts',
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: path.join(__dirname, 'packages/uimatch-plugin/tsconfig.test.json'),
+        tsconfigRootDir: __dirname,
+      },
+    },
+  },
+  {
     files: [
       'packages/uimatch-selector-anchors/**/*.test.ts',
       'packages/uimatch-selector-anchors/src/__tests__/**/*.ts',

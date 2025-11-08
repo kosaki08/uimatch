@@ -1,0 +1,14 @@
+{
+  "reporter": ["text", "lcov", "html"],
+  "reports-dir": "coverage",
+  "all": true,
+  "extension": [".ts", ".tsx"],
+  "exclude": [
+    "**/dist/**",
+    "**/*.test.*",
+    "**/__tests__/**",
+    "**/scripts/**",
+    "**/*.config.*",
+    "**/node_modules/**"
+  ]
+}

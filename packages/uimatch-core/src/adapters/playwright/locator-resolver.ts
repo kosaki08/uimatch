@@ -229,6 +229,9 @@ export function resolveLocator(frame: Frame, selectorString: string): Locator {
     }
 
     case 'testid': {
+      if (!rest.trim()) {
+        throw new Error(`Invalid selector format: "${selectorString}"`);
+      }
       if (DEBUG) {
         logger.debug('testid:', rest);
       }
