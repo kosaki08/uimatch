@@ -142,7 +142,7 @@ jobs:
         run: |
           # pnpm automatically resolves workspace:* to actual versions during pack
           # Use package names for accurate filtering
-          pnpm -r --sort \
+          pnpm -r \
             --filter @uimatch/selector-spi \
             --filter @uimatch/selector-anchors \
             pack --pack-destination dist-packages
@@ -242,8 +242,8 @@ jobs:
       - name: Pack all workspace packages (topological order)
         run: |
           mkdir -p dist-packages
-          # pnpm -r --sort packs in dependency order, resolves workspace:* automatically
-          pnpm -r --sort pack --pack-destination dist-packages
+          # pnpm -r packs in dependency order, resolves workspace:* automatically
+          pnpm -r pack --pack-destination dist-packages
 
       - name: Create isolated test environment
         run: mkdir -p /tmp/uimatch-cli-smoke
