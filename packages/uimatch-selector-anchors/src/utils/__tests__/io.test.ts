@@ -50,7 +50,9 @@ describe('io utilities', () => {
 
       expect(result).toEqual(validData);
       expect(result.anchors).toHaveLength(1);
-      expect(result.anchors[0].id).toBe('test-anchor');
+      const anchor0 = result.anchors[0];
+      if (!anchor0) throw new Error('Expected anchor');
+      expect(anchor0.id).toBe('test-anchor');
     });
 
     test('throws error for non-existent file (ENOENT)', () => {

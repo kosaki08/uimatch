@@ -98,6 +98,8 @@ describe('Resolver Coverage Tests', () => {
       const probe = new MockProbe();
       const result = await resolve({
         initialSelector: '.test-selector',
+        url: 'test.html',
+        url: 'test.html',
         anchorsPath: undefined,
         probe,
       });
@@ -121,6 +123,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.fallback',
+        url: 'test.html',
         anchorsPath: './nonexistent.json',
         probe,
       });
@@ -139,6 +142,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.fallback',
+        url: 'test.html',
         anchorsPath: './broken.json',
         probe,
       });
@@ -157,6 +161,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.fallback',
+        url: 'test.html',
         anchorsPath: './invalid-schema.json',
         probe,
       });
@@ -200,6 +205,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '[data-testid="cached"]',
+        url: 'test.html',
         anchorsPath: './anchors.json',
         probe,
       });
@@ -256,6 +262,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '[data-testid="dead-cache"]',
+        url: 'test.html',
         anchorsPath: './anchors.json',
         probe,
       });
@@ -301,6 +308,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.moved',
+        url: 'test.html',
         anchorsPath: './anchors.json',
         probe,
       });
@@ -334,6 +342,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.error',
+        url: 'test.html',
         anchorsPath: './anchors.json',
         probe,
       });
@@ -393,6 +402,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.old',
+        url: 'test.html',
         anchorsPath: './anchors.json',
         writeBack: true,
         postWrite,
@@ -403,14 +413,22 @@ describe('Resolver Coverage Tests', () => {
       expect(postWrite).toHaveBeenCalledTimes(1);
 
       const postWriteCall = postWrite.mock.calls[0];
+      if (!postWriteCall) {
+        throw new Error('Expected postWrite to be called');
+      }
       expect(postWriteCall[0]).toBe('./anchors.json');
 
       const savedAnchors = postWriteCall[1] as SelectorsAnchors;
       expect(savedAnchors.version).toBe('1.0.0');
       expect(savedAnchors.anchors).toHaveLength(1);
-      expect(savedAnchors.anchors[0].id).toBe('writeback-test');
-      expect(savedAnchors.anchors[0].resolvedCss).toBe('[data-testid="new"]');
-      expect(savedAnchors.anchors[0].lastKnown?.selector).toBe('[data-testid="new"]');
+
+      const firstAnchor = savedAnchors.anchors[0];
+      if (!firstAnchor) {
+        throw new Error('Expected anchors array to have at least one element');
+      }
+      expect(firstAnchor.id).toBe('writeback-test');
+      expect(firstAnchor.resolvedCss).toBe('[data-testid="new"]');
+      expect(firstAnchor.lastKnown?.selector).toBe('[data-testid="new"]');
       expect(result.reasons?.some((r) => r.includes('persisted via postWrite hook'))).toBe(true);
 
       loadSpy.mockRestore();
@@ -458,6 +476,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.old',
+        url: 'test.html',
         anchorsPath: './anchors.json',
         writeBack: true,
         postWrite,
@@ -512,6 +531,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.old',
+        url: 'test.html',
         anchorsPath: './anchors.json',
         writeBack: true,
         probe,
@@ -537,6 +557,7 @@ describe('Resolver Coverage Tests', () => {
 
       const result = await resolve({
         initialSelector: '.fallback',
+        url: 'test.html',
         anchorsPath: './error.json',
         probe,
       });
