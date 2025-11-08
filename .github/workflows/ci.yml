@@ -147,24 +147,16 @@ jobs:
             --filter @uimatch/selector-anchors \
             pack --pack-destination dist-packages
 
-      - name: Assert no workspace: protocol leaked
+      - name: 'Assert no workspace: protocol leaked'
         run: |
           set -eux
           for TGZ in dist-packages/*.tgz; do
-            tar -xzf "$TGZ" -O package/package.json | \
-            node --input-type=module -e '
-              let s = "";
-              process.stdin.on("data", c => s += c);
-              process.stdin.on("end", () => {
-                const pkg = JSON.parse(s);
-                const hasWorkspace = JSON.stringify(pkg).includes("workspace:");
-                if (hasWorkspace) {
-                  console.error("❌ workspace: protocol leaked in", process.argv[1]);
-                  process.exit(1);
-                }
-                console.log("✅ No workspace: protocol in", process.argv[1]);
-              });
-            ' "$TGZ"
+            echo "Checking $TGZ for workspace: protocol..."
+            if tar -xzf "$TGZ" -O package/package.json | grep -q '"workspace:'; then
+              echo "❌ ERROR: workspace: protocol leaked in $TGZ"
+              exit 1
+            fi
+            echo "✅ No workspace: protocol in $TGZ"
           done
 
       - name: Create temp project directory
@@ -265,24 +257,16 @@ jobs:
           # pnpm -r packs in dependency order, resolves workspace:* automatically
           pnpm -r pack --pack-destination dist-packages
 
-      - name: Assert no workspace: protocol leaked
+      - name: 'Assert no workspace: protocol leaked'
         run: |
           set -eux
           for TGZ in dist-packages/*.tgz; do
-            tar -xzf "$TGZ" -O package/package.json | \
-            node --input-type=module -e '
-              let s = "";
-              process.stdin.on("data", c => s += c);
-              process.stdin.on("end", () => {
-                const pkg = JSON.parse(s);
-                const hasWorkspace = JSON.stringify(pkg).includes("workspace:");
-                if (hasWorkspace) {
-                  console.error("❌ workspace: protocol leaked in", process.argv[1]);
-                  process.exit(1);
-                }
-                console.log("✅ No workspace: protocol in", process.argv[1]);
-              });
-            ' "$TGZ"
+            echo "Checking $TGZ for workspace: protocol..."
+            if tar -xzf "$TGZ" -O package/package.json | grep -q '"workspace:'; then
+              echo "❌ ERROR: workspace: protocol leaked in $TGZ"
+              exit 1
+            fi
+            echo "✅ No workspace: protocol in $TGZ"
           done
 
       - name: Create isolated test environment
