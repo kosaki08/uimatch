@@ -74,7 +74,8 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 
 ## Requirements
 
-- **Runtime**: Node.js 20.19+ / 22.12+ (ESM only) or Bun 1.x
+- **Runtime**: Node.js 20.19+ / 22.12+ (ESM only)
+- **Package Manager**: pnpm 9.15.4+ (for development)
 - **Browser**: Playwright Chromium (peer dependency, install once)
 
 ## Installation
@@ -83,10 +84,6 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 # As npm package (recommended)
 npm install -g uimatch-plugin playwright
 npx playwright install chromium
-
-# Or with Bun
-bun add -g uimatch-plugin playwright
-bunx playwright install chromium
 ```
 
 ## Quickstart
@@ -158,7 +155,7 @@ npx uimatch compare figma=... story=... selector=... selectors=./anchors.json
 npx uimatch doctor
 
 # Development (from repository)
-bun run uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button"
+pnpm uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button"
 ```
 
 ### Claude Code Plugin
@@ -198,7 +195,7 @@ Create `.uimatchrc.json` in your project root:
 Smoke test without Figma/Storybook (expects `DFS: X.XX`):
 
 ```bash
-bun run build
+pnpm build
 node packages/uimatch-plugin/dist/cli/index.js compare \
   figma=bypass:test \
   story="data:text/html,<div style='width:10px;height:10px;background:red'></div>" \
@@ -264,26 +261,27 @@ This simulates actual npm distribution and catches dependency issues:
 
 ```bash
 # Build all packages first
-bun run build
+pnpm build
 
-# Create tarballs for all workspace packages
-cd packages/shared-logging && npm pack && cd ../..
-cd packages/uimatch-selector-spi && npm pack && cd ../..
-cd packages/uimatch-core && npm pack && cd ../..
-cd packages/uimatch-scoring && npm pack && cd ../..
-cd packages/uimatch-selector-anchors && npm pack && cd ../..
-cd packages/uimatch-plugin && npm pack && cd ../..
+# Create tarballs (pnpm automatically resolves workspace:* to versions)
+mkdir -p dist-packages
+pnpm -C packages/shared-logging pack --pack-destination ../../dist-packages
+pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
+pnpm -C packages/uimatch-core pack --pack-destination ../../dist-packages
+pnpm -C packages/uimatch-scoring pack --pack-destination ../../dist-packages
+pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
+pnpm -C packages/uimatch-plugin pack --pack-destination ../../dist-packages
 
 # Test in isolated environment
 mkdir -p /tmp/uimatch-test && cd /tmp/uimatch-test
 npm init -y
 npm install \
-  /path/to/ui-match/packages/shared-logging/uimatch-shared-logging-*.tgz \
-  /path/to/ui-match/packages/uimatch-selector-spi/uimatch-selector-spi-*.tgz \
-  /path/to/ui-match/packages/uimatch-core/uimatch-core-*.tgz \
-  /path/to/ui-match/packages/uimatch-scoring/uimatch-scoring-*.tgz \
-  /path/to/ui-match/packages/uimatch-selector-anchors/uimatch-selector-anchors-*.tgz \
-  /path/to/ui-match/packages/uimatch-plugin/uimatch-plugin-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-shared-logging-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-selector-spi-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-core-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-scoring-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-selector-anchors-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-plugin-*.tgz \
   playwright
 
 npx playwright install chromium
@@ -295,31 +293,31 @@ npx uimatch compare figma=bypass:test \
   selector="#t" dpr=1 size=pad
 ```
 
-**Important**: All workspace dependencies must be installed simultaneously to resolve `workspace:*` protocol references.
+**Note**: pnpm pack automatically resolves `workspace:*` to actual versions during pack.
 
 ### Method 2: Link (for rapid iteration)
 
 ```bash
 # Register packages globally
-cd packages/shared-logging && bun link && cd ../..
-cd packages/uimatch-selector-spi && bun link && cd ../..
-cd packages/uimatch-core && bun link && cd ../..
-cd packages/uimatch-scoring && bun link && cd ../..
-cd packages/uimatch-selector-anchors && bun link && cd ../..
-cd packages/uimatch-plugin && bun link && cd ../..
+cd packages/shared-logging && pnpm link --global && cd ../..
+cd packages/uimatch-selector-spi && pnpm link --global && cd ../..
+cd packages/uimatch-core && pnpm link --global && cd ../..
+cd packages/uimatch-scoring && pnpm link --global && cd ../..
+cd packages/uimatch-selector-anchors && pnpm link --global && cd ../..
+cd packages/uimatch-plugin && pnpm link --global && cd ../..
 
 # Link in consumer project
 cd /path/to/consumer
-bun link @uimatch/shared-logging
-bun link @uimatch/selector-spi
-bun link uimatch-core
-bun link uimatch-scoring
-bun link @uimatch/selector-anchors
-bun link uimatch-plugin
+pnpm link --global @uimatch/shared-logging
+pnpm link --global @uimatch/selector-spi
+pnpm link --global uimatch-core
+pnpm link --global uimatch-scoring
+pnpm link --global @uimatch/selector-anchors
+pnpm link --global uimatch-plugin
 
 # Unlink when done
-bun unlink uimatch-plugin  # in consumer
-cd packages/uimatch-plugin && bun unlink  # in source
+pnpm unlink --global uimatch-plugin  # in consumer
+cd packages/uimatch-plugin && pnpm unlink --global  # in source
 ```
 
 **Note**: Links persist across shell restarts but break if source paths move or `node_modules` is regenerated.
@@ -328,21 +326,21 @@ cd packages/uimatch-plugin && bun unlink  # in source
 
 ```bash
 # Install dependencies
-bun install
+pnpm install
 
 # Build all packages (required before testing)
-bun run build
+pnpm build
 
 # Run tests
-bun test
+pnpm test
 
 # Run tests with coverage
-bun run test:coverage           # Text output to console
-bun run test:coverage:html      # Generate lcov report in ./coverage/
+pnpm test:coverage           # Text output to console
+pnpm test:coverage:html      # Generate lcov report in ./coverage/
 
 # Lint and format
-bun run lint
-bun run format
+pnpm lint
+pnpm format
 ```
 
 ### Test Coverage
@@ -350,8 +348,8 @@ bun run format
 Generate coverage reports for observation and CI artifacts:
 
 ```bash
-bun run test:coverage       # Text summary to console
-bun run test:coverage:html  # LCOV report in ./coverage/
+pnpm test:coverage       # Text summary to console
+pnpm test:coverage:html  # LCOV report in ./coverage/
 ```
 
 View reports with Coverage Gutters (VS Code), Codecov, or Coveralls.
@@ -402,30 +400,25 @@ $ npx uimatch doctor
 
 ### Publishing to npm
 
-**Workspace protocol resolution**: `workspace:*` dependencies are automatically converted to semver ranges when using `npm publish` from workspace root.
+**Workspace protocol resolution**: `workspace:*` dependencies are automatically converted to semver ranges by pnpm during pack/publish.
 
 ```bash
 # 1. Version all packages (consider using Changesets for coordinated releases)
-npm version patch -w @uimatch/shared-logging
-npm version patch -w @uimatch/selector-spi
-npm version patch -w uimatch-core
-npm version patch -w uimatch-scoring
-npm version patch -w @uimatch/selector-anchors
-npm version patch -w uimatch-plugin
+pnpm -r exec -- npm version patch
 
 # 2. Build all packages
-bun run build
+pnpm build
 
-# 3. Publish in dependency order from workspace root
-npm publish -w @uimatch/shared-logging --access public
-npm publish -w @uimatch/selector-spi --access public
-npm publish -w uimatch-core --access public
-npm publish -w uimatch-scoring --access public
-npm publish -w @uimatch/selector-anchors --access public
-npm publish -w uimatch-plugin --access public
+# 3. Publish in dependency order
+pnpm -C packages/shared-logging publish --access public
+pnpm -C packages/uimatch-selector-spi publish --access public
+pnpm -C packages/uimatch-core publish --access public
+pnpm -C packages/uimatch-scoring publish --access public
+pnpm -C packages/uimatch-selector-anchors publish --access public
+pnpm -C packages/uimatch-plugin publish --access public
 ```
 
-**Important**: Always publish from workspace root, not individual package directories. Publishing from subdirectories leaves `workspace:*` unresolved in distributed packages.
+**Important**: pnpm automatically resolves `workspace:*` to actual versions during publish. No manual script needed.
 
 ### Pre-Publish Checklist
 
@@ -433,12 +426,12 @@ Before publishing, verify distribution integrity:
 
 ```bash
 # Test with pack method (see Local Testing section)
-bun run build
+pnpm build
 # ... run full pack verification from Local Testing section
 
-# Or quick smoke test from repo root
-npm pack -w uimatch-plugin
-npm i -g ./packages/uimatch-plugin/uimatch-plugin-*.tgz
+# Or quick smoke test
+pnpm -C packages/uimatch-plugin pack --pack-destination ../../
+npm i -g ./uimatch-plugin-*.tgz
 npx uimatch compare figma=bypass:test story="..." selector="..."
 ```
 

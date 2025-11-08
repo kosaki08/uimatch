@@ -4,8 +4,9 @@ This document describes the required tools and setup for developing uiMatch.
 
 ## Required Tools
 
-- **Runtime**: Bun 1.x
-- **Package manager**: Bun (`packageManager` field enforced)
+- **Runtime**: Node.js 20.19+ / 22.12+ (ESM only)
+- **Package manager**: pnpm 9.15.4+ (`packageManager` field enforced)
+- **Task runner**: Bun 1.x (for running scripts)
 - **Editor**: VS Code (recommended)
 
 ## VS Code Extensions
@@ -18,12 +19,12 @@ Recommended extensions are configured in `.vscode/extensions.json`:
 
 ## Available Scripts
 
-- `bun install`: Install dependencies and Playwright browsers (via postinstall hook)
-- `bun run lint`: Check code with ESLint
-- `bun run lint:fix`: Auto-fix ESLint issues
-- `bun run format`: Format all files with Prettier
-- `bun run format:check`: Check formatting without writing
-- `bun run test`: Run all tests (includes pretest fixture generation)
+- `pnpm install`: Install dependencies and Playwright browsers (via postinstall hook)
+- `pnpm lint`: Check code with ESLint
+- `pnpm lint:fix`: Auto-fix ESLint issues
+- `pnpm format`: Format all files with Prettier
+- `pnpm format:check`: Check formatting without writing
+- `pnpm test`: Run all tests (includes pretest fixture generation)
 
 ## Environment Variables
 
@@ -38,8 +39,9 @@ Required for plugin operation:
 
 - Phase 0 tests: < 200ms per spec; avoid I/O when possible
 - Playwright browsers: install with `--with-deps` and cache
-- **Package manager**: Bun only (lock: `bun.lock`; others gitignored)
-- **CI**: Bun for all operations except `npm publish` in release workflow
+- **Package manager**: pnpm only (lock: `pnpm-lock.yaml`; others gitignored)
+- **CI**: pnpm for dependency management, Bun for task execution
+- **Publishing**: pnpm automatically resolves `workspace:*` during pack/publish
 
 ## Versioning & Release
 
