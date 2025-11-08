@@ -32,6 +32,6 @@ pnpm test
 # Run tests with coverage
 pnpm test:coverage
 
-# Run specific test file
-bun test path/to/test.test.ts  # Bun test runner
+# Run specific test file (note: pnpm test uses Bun as task runner)
+pnpm test -- path/to/test.test.ts
 ```
