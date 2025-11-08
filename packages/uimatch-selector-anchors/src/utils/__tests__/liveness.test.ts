@@ -149,9 +149,7 @@ describe('liveness utilities', () => {
       });
 
       // Even though first selector throws, it should continue
-      expect(checkLivenessPriority(probe, ['.error', '.alive'])).rejects.toThrow(
-        'Check failed'
-      );
+      expect(checkLivenessPriority(probe, ['.error', '.alive'])).rejects.toThrow('Check failed');
     });
 
     test('passes options to probe check', async () => {
@@ -177,11 +175,17 @@ describe('liveness utilities', () => {
       const results = await checkLivenessAll(probe, ['.alive1', '.dead', '.alive2']);
 
       expect(results).toHaveLength(3);
-      expect(results[0].selector).toBe('.alive1');
+      const result0 = results[0];
+      if (!result0) throw new Error('Expected result0');
+      expect(result0.selector).toBe('.alive1');
       expect(results[0].isAlive).toBe(true);
-      expect(results[1].selector).toBe('.dead');
+      const result1 = results[1];
+      if (!result1) throw new Error('Expected result1');
+      expect(result1.selector).toBe('.dead');
       expect(results[1].isAlive).toBe(false);
-      expect(results[2].selector).toBe('.alive2');
+      const result2 = results[2];
+      if (!result2) throw new Error('Expected result2');
+      expect(result2.selector).toBe('.alive2');
       expect(results[2].isAlive).toBe(true);
     });
 
