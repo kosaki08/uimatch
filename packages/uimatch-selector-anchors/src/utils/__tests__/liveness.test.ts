@@ -178,15 +178,15 @@ describe('liveness utilities', () => {
       const result0 = results[0];
       if (!result0) throw new Error('Expected result0');
       expect(result0.selector).toBe('.alive1');
-      expect(results[0].isAlive).toBe(true);
+      expect(result0.isAlive).toBe(true);
       const result1 = results[1];
       if (!result1) throw new Error('Expected result1');
       expect(result1.selector).toBe('.dead');
-      expect(results[1].isAlive).toBe(false);
+      expect(result1.isAlive).toBe(false);
       const result2 = results[2];
       if (!result2) throw new Error('Expected result2');
       expect(result2.selector).toBe('.alive2');
-      expect(results[2].isAlive).toBe(true);
+      expect(result2.isAlive).toBe(true);
     });
 
     test('handles empty selector array', async () => {
@@ -207,14 +207,18 @@ describe('liveness utilities', () => {
       expect(results).toHaveLength(2);
 
       // First result should be failed
-      expect(results[0].selector).toBe('.error');
-      expect(results[0].isValid).toBe(false);
-      expect(results[0].isAlive).toBe(false);
-      expect(results[0].error).toBe('Probe check failed');
+      const result0 = results[0];
+      if (!result0) throw new Error('Expected result0');
+      expect(result0.selector).toBe('.error');
+      expect(result0.isValid).toBe(false);
+      expect(result0.isAlive).toBe(false);
+      expect(result0.error).toBe('Probe check failed');
 
       // Second result should succeed
-      expect(results[1].selector).toBe('.alive');
-      expect(results[1].isAlive).toBe(true);
+      const result1 = results[1];
+      if (!result1) throw new Error('Expected result1');
+      expect(result1.selector).toBe('.alive');
+      expect(result1.isAlive).toBe(true);
     });
 
     test('handles non-Error rejection values', async () => {
@@ -232,8 +236,10 @@ describe('liveness utilities', () => {
       const probe = new StringErrorProbe();
       const results = await checkLivenessAll(probe, ['.string-error', '.alive']);
 
-      expect(results[0].error).toBe('String error message');
-      expect(results[0].isValid).toBe(false);
+      const result0 = results[0];
+      if (!result0) throw new Error('Expected result0');
+      expect(result0.error).toBe('String error message');
+      expect(result0.isValid).toBe(false);
     });
 
     test('runs checks in parallel (not sequentially)', async () => {
@@ -271,9 +277,13 @@ describe('liveness utilities', () => {
 
       const results = await checkLivenessAll(probe, ['.first', '.second', '.third']);
 
-      expect(results[0].selector).toBe('.first');
-      expect(results[1].selector).toBe('.second');
-      expect(results[2].selector).toBe('.third');
+      const result0 = results[0];
+      const result1 = results[1];
+      const result2 = results[2];
+      if (!result0 || !result1 || !result2) throw new Error('Expected all results');
+      expect(result0.selector).toBe('.first');
+      expect(result1.selector).toBe('.second');
+      expect(result2.selector).toBe('.third');
     });
 
     test('passes options to all probe checks', async () => {
@@ -316,8 +326,10 @@ describe('liveness utilities', () => {
       const probe = new BrokenProbe();
       const results = await checkLivenessAll(probe, ['.test']);
 
-      expect(results[0].selector).toBe('.test');
-      expect(results[0].error).toBe('Broken probe');
+      const result0 = results[0];
+      if (!result0) throw new Error('Expected result0');
+      expect(result0.selector).toBe('.test');
+      expect(result0.error).toBe('Broken probe');
     });
   });
 

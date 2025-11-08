@@ -331,7 +331,12 @@ describe('io utilities', () => {
             source: { file: 'test.tsx', line: 10, col: 5 },
             snippetHash: 'hash123',
             snippet: '<button>',
-            snippetContext: { contextBefore: 3, contextAfter: 3 },
+            snippetContext: {
+              contextBefore: 3,
+              contextAfter: 3,
+              algorithm: 'sha1',
+              hashDigits: 10,
+            },
             resolvedCss: '[data-testid="test"]',
             subselector: '> span',
             lastSeen: '2025-01-01T00:00:00Z',
@@ -349,10 +354,12 @@ describe('io utilities', () => {
 
       // Zod schema applies defaults, so we check structure is preserved
       expect(loaded.anchors).toHaveLength(1);
-      expect(loaded.anchors[0].id).toBe('rich-anchor');
-      expect(loaded.anchors[0].snippetHash).toBe('hash123');
-      expect(loaded.anchors[0].lastKnown?.selector).toBe('[data-testid="test"]');
-      expect(loaded.anchors[0].subselector).toBe('> span');
+      const anchor = loaded.anchors[0];
+      if (!anchor) throw new Error('Expected anchor');
+      expect(anchor.id).toBe('rich-anchor');
+      expect(anchor.snippetHash).toBe('hash123');
+      expect(anchor.lastKnown?.selector).toBe('[data-testid="test"]');
+      expect(anchor.subselector).toBe('> span');
     });
 
     test('handles empty anchors array', async () => {
@@ -383,8 +390,11 @@ describe('io utilities', () => {
       const loaded = await loadSelectorsAnchors(anchorsPath);
 
       expect(loaded.anchors).toHaveLength(1000);
-      expect(loaded.anchors[0].id).toBe('anchor-0');
-      expect(loaded.anchors[999].id).toBe('anchor-999');
+      const first = loaded.anchors[0];
+      const last = loaded.anchors[999];
+      if (!first || !last) throw new Error('Expected anchors');
+      expect(first.id).toBe('anchor-0');
+      expect(last.id).toBe('anchor-999');
     });
   });
 });
