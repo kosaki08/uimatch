@@ -47,7 +47,7 @@ const AnchorsSchema = z.object({
           timestamp: z.string().optional(),
         })
         .optional(),
-      meta: z.record(z.unknown()).optional(),
+      meta: z.record(z.string(), z.unknown()).optional(),
     })
   ),
 });
