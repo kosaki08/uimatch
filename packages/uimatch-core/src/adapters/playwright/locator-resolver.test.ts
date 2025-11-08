@@ -193,7 +193,9 @@ describe('resolveLocator', () => {
     test('resolves role with pressed option', () => {
       const result = resolveLocator(frame, 'role:button[pressed=true]');
       // Boolean options without name fallback to CSS selector
-      expect((result as unknown as MockLocator).toString()).toContain('locator([role="button"][aria-pressed="true"])');
+      expect((result as unknown as MockLocator).toString()).toContain(
+        'locator([role="button"][aria-pressed="true"])'
+      );
     });
 
     test('resolves role with boolean options using CSS fallback', () => {
@@ -268,12 +270,16 @@ describe('resolveLocator', () => {
   describe('xpath: prefix', () => {
     test('resolves xpath selector', () => {
       const result = resolveLocator(frame, 'xpath://div[@class="container"]');
-      expect((result as unknown as MockLocator).toString()).toBe('locator(xpath=//div[@class="container"])');
+      expect((result as unknown as MockLocator).toString()).toBe(
+        'locator(xpath=//div[@class="container"])'
+      );
     });
 
     test('handles complex xpath expressions', () => {
       const result = resolveLocator(frame, 'xpath://div[contains(@class, "test")]//button');
-      expect((result as unknown as MockLocator).toString()).toBe('locator(xpath=//div[contains(@class, "test")]//button)');
+      expect((result as unknown as MockLocator).toString()).toBe(
+        'locator(xpath=//div[contains(@class, "test")]//button)'
+      );
     });
   });
 
@@ -285,14 +291,18 @@ describe('resolveLocator', () => {
 
     test('handles complex css selectors', () => {
       const result = resolveLocator(frame, 'css:div.container > button:nth-child(2)');
-      expect((result as unknown as MockLocator).toString()).toBe('locator(div.container > button:nth-child(2))');
+      expect((result as unknown as MockLocator).toString()).toBe(
+        'locator(div.container > button:nth-child(2))'
+      );
     });
   });
 
   describe('dompath: prefix', () => {
     test('resolves dompath selector', () => {
       const result = resolveLocator(frame, 'dompath:__self__ > :nth-child(2)');
-      expect((result as unknown as MockLocator).toString()).toBe('locator(__self__ > :nth-child(2))');
+      expect((result as unknown as MockLocator).toString()).toBe(
+        'locator(__self__ > :nth-child(2))'
+      );
     });
 
     test('does not apply first() for dompath', () => {

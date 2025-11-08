@@ -61,6 +61,15 @@ export default [
     },
   },
   {
+    files: ['e2e/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: path.join(__dirname, 'e2e/tsconfig.json'),
+        tsconfigRootDir: __dirname,
+      },
+    },
+  },
+  {
     ignores: [
       'node_modules/**',
       'dist/**',

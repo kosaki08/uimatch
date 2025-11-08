@@ -3,15 +3,12 @@
   "type": "module",
   "private": true,
   "packageManager": "pnpm@9.15.4",
-  "workspaces": [
-    "packages/*"
-  ],
   "engines": {
     "node": ">=20.19 <21 || >=22.12"
   },
   "scripts": {
-    "postinstall": "bunx playwright install chromium",
-    "ci:postinstall": "bunx playwright install --with-deps chromium",
+    "postinstall": "pnpm exec playwright install chromium",
+    "ci:postinstall": "pnpm exec playwright install --with-deps chromium",
     "doctor": "bun run packages/uimatch-plugin/src/cli/index.ts doctor",
     "pretest": "bun ./packages/uimatch-core/scripts/generate-fixtures.ts",
     "test": "UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
@@ -23,9 +20,10 @@
     "lint:fix": "eslint . --fix",
     "build:types": "bun run --filter @uimatch/shared-logging build && bun run --filter uimatch-scoring build && bun run --filter @uimatch/selector-spi build",
     "build": "bun run --filter @uimatch/shared-logging build && bun run --filter uimatch-scoring build && bun run --filter @uimatch/selector-spi build && bun run --filter @uimatch/selector-anchors build && bun run --filter uimatch-plugin build",
-    "type-check": "bun run build:types && bun run type-check:plugin && bun run type-check:selector-anchors",
+    "type-check": "bun run build:types && bun run type-check:plugin && bun run type-check:selector-anchors && bun run type-check:e2e",
     "type-check:plugin": "cd packages/uimatch-plugin && tsc --noEmit",
     "type-check:selector-anchors": "cd packages/uimatch-selector-anchors && tsc --noEmit",
+    "type-check:e2e": "cd e2e && tsc --noEmit",
     "check": "bun run lint && bun run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
