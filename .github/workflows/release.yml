@@ -14,33 +14,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Bun
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+
+      - name: Setup Bun (for scripts only)
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Build all packages
-        run: bun run build
+        run: pnpm run build
 
       - name: Run tests
-        run: bun test
-
-      # Setup Node.js only for npm publishing
-      - name: Setup Node.js for publishing
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-          registry-url: 'https://registry.npmjs.org'
+        run: pnpm test
 
       - name: Pack packages for validation
-        working-directory: packages/uimatch-core
-        run: npm pack --pack-destination ../../artifacts
+        run: |
+          mkdir -p artifacts
+          # Pack all packages in topological order
+          pnpm -r --sort pack --pack-destination artifacts
 
       - name: Upload packed artifacts
         uses: actions/upload-artifact@v4
@@ -49,7 +56,8 @@ jobs:
           path: artifacts
 
       # - name: Publish packages to npm
-      #   working-directory: packages/uimatch-core
-      #   run: npm publish --provenance --access public
+      #   run: |
+      #     # Publish all packages in topological order
+      #     pnpm -r --sort publish --provenance --access public --no-git-checks
       #   env:
       #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

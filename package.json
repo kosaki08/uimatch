@@ -7,7 +7,6 @@
     "node": ">=20.19 <21 || >=22.12"
   },
   "scripts": {
-    "postinstall": "pnpm exec playwright install chromium",
     "ci:postinstall": "pnpm exec playwright install --with-deps chromium",
     "doctor": "bun run packages/uimatch-plugin/src/cli/index.ts doctor",
     "pretest": "bun ./packages/uimatch-core/scripts/generate-fixtures.ts",

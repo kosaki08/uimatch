@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.12.x'
+          node-version: '22.21.x'
           cache: 'pnpm'
 
       - name: Setup Bun (for scripts only)
@@ -61,7 +61,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.12.x'
+          node-version: '22.21.x'
           cache: 'pnpm'
 
       - name: Setup Bun (for scripts only)
@@ -93,7 +93,7 @@ jobs:
           UIMATCH_SELECTOR_WAIT_MS: '3000'
           UIMATCH_BBOX_TIMEOUT_MS: '800'
           UIMATCH_SCREENSHOT_TIMEOUT_MS: '1000'
-        run: pnpm test --timeout 30000 packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts packages/uimatch-plugin/src/cli/__tests__/e2e-outdir.test.ts packages/uimatch-plugin/src/commands/__tests__/selector-resolution-e2e.test.ts
+        run: pnpm test -- --timeout 30000 packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts packages/uimatch-plugin/src/cli/__tests__/e2e-outdir.test.ts packages/uimatch-plugin/src/commands/__tests__/selector-resolution-e2e.test.ts
 
       - name: Upload test artifacts on failure
         if: failure()
@@ -121,7 +121,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.12.x'
+          node-version: '22.21.x'
           cache: 'pnpm'
 
       - name: Setup Bun (for scripts only)
@@ -141,7 +141,11 @@ jobs:
       - name: Pack selector-spi & selector-anchors (pnpm resolves workspace:*)
         run: |
           # pnpm automatically resolves workspace:* to actual versions during pack
-          pnpm -r --sort --filter '{packages/uimatch-selector-spi}...' --filter '{packages/uimatch-selector-anchors}...' pack --pack-destination dist-packages
+          # Use package names for accurate filtering
+          pnpm -r --sort \
+            --filter @uimatch/selector-spi \
+            --filter @uimatch/selector-anchors \
+            pack --pack-destination dist-packages
 
       - name: Create temp project directory
         run: mkdir -p /tmp/uimatch-smoke
@@ -221,7 +225,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.12.x'
+          node-version: '22.21.x'
           cache: 'pnpm'
 
       - name: Setup Bun (for scripts only)
