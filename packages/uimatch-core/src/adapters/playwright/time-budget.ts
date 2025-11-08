@@ -76,7 +76,7 @@ export function getE2ETimeBudget(): number {
   if (envValue) {
     const parsed = Number(envValue);
     if (!Number.isNaN(parsed) && parsed > 0) {
-      return parsed;
+      return Math.floor(parsed);
     }
   }
   // Default: 8 seconds (conservative for 10s test timeout)

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { createTimeBudget, getE2ETimeBudget } from './time-budget';
 
 describe('createTimeBudget', () => {
-  let dateNowSpy: ReturnType<typeof spyOn<typeof Date.now>> | null = null;
+  let dateNowSpy: { mockRestore: () => void } | null = null;
   let mockTime = 0;
 
   beforeEach(() => {
@@ -15,9 +15,7 @@ describe('createTimeBudget', () => {
   });
 
   afterEach(() => {
-    if (dateNowSpy) {
-      dateNowSpy.mockRestore();
-    }
+    dateNowSpy?.mockRestore();
   });
 
   test('returns full budget initially', () => {
@@ -212,6 +210,6 @@ describe('getE2ETimeBudget', () => {
   test('handles decimal values by converting to integer', () => {
     process.env.UIMATCH_E2E_TIME_BUDGET_MS = '5000.5';
 
-    expect(getE2ETimeBudget()).toBe(5000.5);
+    expect(getE2ETimeBudget()).toBe(5000);
   });
 });

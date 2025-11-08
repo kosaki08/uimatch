@@ -64,7 +64,7 @@ describe('applyFirstIfNeeded', () => {
     const locator = new MockLocator('test') as unknown as Locator;
     const result = applyFirstIfNeeded(locator);
 
-    expect(String(result)).toBe('test');
+    expect((result as unknown as MockLocator).toString()).toBe('test');
   });
 
   test('returns locator as-is when UIMATCH_SELECTOR_FIRST is false', () => {
@@ -73,7 +73,7 @@ describe('applyFirstIfNeeded', () => {
     const locator = new MockLocator('test') as unknown as Locator;
     const result = applyFirstIfNeeded(locator);
 
-    expect(String(result)).toBe('test');
+    expect((result as unknown as MockLocator).toString()).toBe('test');
   });
 
   test('applies first() when UIMATCH_SELECTOR_FIRST is true', () => {
@@ -82,7 +82,7 @@ describe('applyFirstIfNeeded', () => {
     const locator = new MockLocator('test') as unknown as Locator;
     const result = applyFirstIfNeeded(locator);
 
-    expect(String(result)).toBe('test.first()');
+    expect((result as unknown as MockLocator).toString()).toBe('test.first()');
   });
 });
 
@@ -115,27 +115,27 @@ describe('resolveLocator', () => {
   describe('CSS selectors (no prefix)', () => {
     test('treats selectors without known prefix as CSS', () => {
       const result = resolveLocator(frame, '.my-class');
-      expect(String(result)).toBe('locator(.my-class)');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(.my-class)');
     });
 
     test('handles CSS pseudo-classes', () => {
       const result = resolveLocator(frame, 'li:nth-child(1)');
-      expect(String(result)).toBe('locator(li:nth-child(1))');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(li:nth-child(1))');
     });
 
     test('handles :root pseudo-class', () => {
       const result = resolveLocator(frame, ':root');
-      expect(String(result)).toBe('locator(:root)');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(:root)');
     });
 
     test('handles :has() pseudo-class', () => {
       const result = resolveLocator(frame, 'div:has(> p)');
-      expect(String(result)).toBe('locator(div:has(> p))');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(div:has(> p))');
     });
 
     test('handles attribute selectors with colons', () => {
       const result = resolveLocator(frame, 'a[href*="https:"]');
-      expect(String(result)).toBe('locator(a[href*="https:"])');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(a[href*="https:"])');
     });
   });
 
@@ -146,7 +146,7 @@ describe('resolveLocator', () => {
 
     test('allows CSS pseudo-classes in strict mode', () => {
       const result = resolveLocator(frame, 'li:nth-child(1)');
-      expect(String(result)).toBe('locator(li:nth-child(1))');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(li:nth-child(1))');
     });
 
     test('throws error for unknown prefix in strict mode', () => {
@@ -157,55 +157,55 @@ describe('resolveLocator', () => {
 
     test('does not throw for attribute selectors in strict mode', () => {
       const result = resolveLocator(frame, 'a[href*="https:"]');
-      expect(String(result)).toBe('locator(a[href*="https:"])');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(a[href*="https:"])');
     });
   });
 
   describe('role: prefix', () => {
     test('resolves basic role selector', () => {
       const result = resolveLocator(frame, 'role:button');
-      expect(String(result)).toContain('getByRole(button');
+      expect((result as unknown as MockLocator).toString()).toContain('getByRole(button');
     });
 
     test('resolves role with name option', () => {
       const result = resolveLocator(frame, 'role:button[name="Submit"]');
-      expect(String(result)).toContain('getByRole(button');
-      expect(String(result)).toContain('"name":"Submit"');
+      expect((result as unknown as MockLocator).toString()).toContain('getByRole(button');
+      expect((result as unknown as MockLocator).toString()).toContain('"name":"Submit"');
     });
 
     test('resolves role with regex name', () => {
       const result = resolveLocator(frame, 'role:button[name=/submit/i]');
-      expect(String(result)).toContain('getByRole(button');
+      expect((result as unknown as MockLocator).toString()).toContain('getByRole(button');
     });
 
     test('resolves role with level option', () => {
       const result = resolveLocator(frame, 'role:heading[level=1]');
-      expect(String(result)).toContain('getByRole(heading');
-      expect(String(result)).toContain('"level":1');
+      expect((result as unknown as MockLocator).toString()).toContain('getByRole(heading');
+      expect((result as unknown as MockLocator).toString()).toContain('"level":1');
     });
 
     test('resolves role with exact option', () => {
       const result = resolveLocator(frame, 'role:button[name="Submit"][exact]');
-      expect(String(result)).toContain('getByRole(button');
-      expect(String(result)).toContain('"exact":true');
+      expect((result as unknown as MockLocator).toString()).toContain('getByRole(button');
+      expect((result as unknown as MockLocator).toString()).toContain('"exact":true');
     });
 
     test('resolves role with pressed option', () => {
       const result = resolveLocator(frame, 'role:button[pressed=true]');
       // Boolean options without name fallback to CSS selector
-      expect(String(result)).toContain('locator([role="button"][aria-pressed="true"])');
+      expect((result as unknown as MockLocator).toString()).toContain('locator([role="button"][aria-pressed="true"])');
     });
 
     test('resolves role with boolean options using CSS fallback', () => {
       const result = resolveLocator(frame, 'role:checkbox[checked=true]');
       // When boolean options without name are used, it should fallback to CSS
-      expect(String(result)).toContain('locator');
+      expect((result as unknown as MockLocator).toString()).toContain('locator');
     });
 
     test('uses getByRole when name is specified with boolean', () => {
       const result = resolveLocator(frame, 'role:checkbox[name="Accept"][checked=true]');
       // When both name and boolean are specified, should use getByRole
-      expect(String(result)).toContain('getByRole(checkbox');
+      expect((result as unknown as MockLocator).toString()).toContain('getByRole(checkbox');
     });
 
     test('throws error for invalid role format', () => {
@@ -216,90 +216,90 @@ describe('resolveLocator', () => {
   describe('testid: prefix', () => {
     test('resolves test id selector', () => {
       const result = resolveLocator(frame, 'testid:submit-button');
-      expect(String(result)).toBe('getByTestId(submit-button)');
+      expect((result as unknown as MockLocator).toString()).toBe('getByTestId(submit-button)');
     });
 
     test('handles test id with special characters', () => {
       const result = resolveLocator(frame, 'testid:my-test_id.123');
-      expect(String(result)).toBe('getByTestId(my-test_id.123)');
+      expect((result as unknown as MockLocator).toString()).toBe('getByTestId(my-test_id.123)');
     });
   });
 
   describe('text: prefix', () => {
     test('resolves quoted text with exact match', () => {
       const result = resolveLocator(frame, 'text:"Submit"');
-      expect(String(result)).toContain('getByText');
-      expect(String(result)).toContain('"exact":true');
+      expect((result as unknown as MockLocator).toString()).toContain('getByText');
+      expect((result as unknown as MockLocator).toString()).toContain('"exact":true');
     });
 
     test('resolves single-quoted text', () => {
       const result = resolveLocator(frame, "text:'Submit'");
-      expect(String(result)).toContain('getByText');
-      expect(String(result)).toContain('"exact":true');
+      expect((result as unknown as MockLocator).toString()).toContain('getByText');
+      expect((result as unknown as MockLocator).toString()).toContain('"exact":true');
     });
 
     test('resolves text with explicit exact flag using XPath', () => {
       const result = resolveLocator(frame, 'text:"Submit"[exact]');
       // With [exact] flag, should use XPath for deterministic matching
-      expect(String(result)).toContain('xpath=');
+      expect((result as unknown as MockLocator).toString()).toContain('xpath=');
     });
 
     test('resolves regex text', () => {
       const result = resolveLocator(frame, 'text:/submit/i');
-      expect(String(result)).toContain('getByText');
+      expect((result as unknown as MockLocator).toString()).toContain('getByText');
     });
 
     test('resolves plain text', () => {
       const result = resolveLocator(frame, 'text:Submit');
-      expect(String(result)).toContain('getByText');
+      expect((result as unknown as MockLocator).toString()).toContain('getByText');
     });
 
     test('handles escape sequences in quoted text', () => {
       const result = resolveLocator(frame, 'text:"Line 1\\nLine 2"');
-      expect(String(result)).toContain('getByText');
+      expect((result as unknown as MockLocator).toString()).toContain('getByText');
     });
 
     test('handles backslash escape sequences', () => {
       const result = resolveLocator(frame, 'text:"Path\\\\to\\\\file"');
-      expect(String(result)).toContain('getByText');
+      expect((result as unknown as MockLocator).toString()).toContain('getByText');
     });
   });
 
   describe('xpath: prefix', () => {
     test('resolves xpath selector', () => {
       const result = resolveLocator(frame, 'xpath://div[@class="container"]');
-      expect(String(result)).toBe('locator(xpath=//div[@class="container"])');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(xpath=//div[@class="container"])');
     });
 
     test('handles complex xpath expressions', () => {
       const result = resolveLocator(frame, 'xpath://div[contains(@class, "test")]//button');
-      expect(String(result)).toBe('locator(xpath=//div[contains(@class, "test")]//button)');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(xpath=//div[contains(@class, "test")]//button)');
     });
   });
 
   describe('css: prefix', () => {
     test('resolves explicit css selector', () => {
       const result = resolveLocator(frame, 'css:.my-class');
-      expect(String(result)).toBe('locator(.my-class)');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(.my-class)');
     });
 
     test('handles complex css selectors', () => {
       const result = resolveLocator(frame, 'css:div.container > button:nth-child(2)');
-      expect(String(result)).toBe('locator(div.container > button:nth-child(2))');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(div.container > button:nth-child(2))');
     });
   });
 
   describe('dompath: prefix', () => {
     test('resolves dompath selector', () => {
       const result = resolveLocator(frame, 'dompath:__self__ > :nth-child(2)');
-      expect(String(result)).toBe('locator(__self__ > :nth-child(2))');
+      expect((result as unknown as MockLocator).toString()).toBe('locator(__self__ > :nth-child(2))');
     });
 
     test('does not apply first() for dompath', () => {
       process.env.UIMATCH_SELECTOR_FIRST = 'true';
       const result = resolveLocator(frame, 'dompath:__self__ > :nth-child(2)');
       // Should not have .first() appended
-      expect(String(result)).not.toContain('.first()');
+      expect((result as unknown as MockLocator).toString()).not.toContain('.first()');
     });
   });
 
@@ -310,22 +310,22 @@ describe('resolveLocator', () => {
 
     test('applies first() to CSS selectors', () => {
       const result = resolveLocator(frame, '.my-class');
-      expect(String(result)).toContain('.first()');
+      expect((result as unknown as MockLocator).toString()).toContain('.first()');
     });
 
     test('applies first() to role selectors', () => {
       const result = resolveLocator(frame, 'role:button');
-      expect(String(result)).toContain('.first()');
+      expect((result as unknown as MockLocator).toString()).toContain('.first()');
     });
 
     test('applies first() to text selectors', () => {
       const result = resolveLocator(frame, 'text:"Submit"');
-      expect(String(result)).toContain('.first()');
+      expect((result as unknown as MockLocator).toString()).toContain('.first()');
     });
 
     test('does not apply first() to dompath selectors', () => {
       const result = resolveLocator(frame, 'dompath:__self__');
-      expect(String(result)).not.toContain('.first()');
+      expect((result as unknown as MockLocator).toString()).not.toContain('.first()');
     });
   });
 
@@ -355,8 +355,8 @@ describe('resolveLocator', () => {
   });
 
   describe('edge cases', () => {
-    test('handles empty string after prefix', () => {
-      expect(() => resolveLocator(frame, 'testid:')).toBeDefined();
+    test('throws error for empty testid value', () => {
+      expect(() => resolveLocator(frame, 'testid:')).toThrow(/Invalid selector format/);
     });
 
     test('handles whitespace in text selectors', () => {

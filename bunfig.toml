@@ -1,26 +1,8 @@
 # Bun configuration
 # https://bun.sh/docs/runtime/bunfig
+#
+# Coverage configuration has been moved to .c8rc.json
+# Bun uses c8/V8-based coverage, which is configured via .c8rc.json
 
 [test]
-# Exclude patterns from coverage calculation and reporting
-# This ensures only source files (src/) are included in coverage metrics
-coveragePathIgnorePatterns = [
-  "dist/**",              # Exclude all compiled/built files
-  "**/dist/**",           # Exclude dist in all packages
-  "node_modules/**",      # Exclude dependencies
-  "**/node_modules/**",   # Exclude node_modules in all packages
-  "*.config.*",           # Exclude configuration files
-  "**/*.config.*",        # Exclude config files in all directories
-  "scripts/**",           # Exclude utility scripts
-  "**/scripts/**",        # Exclude scripts in all packages
-]
-
-# Skip test files from coverage calculation
-# Test files themselves don't need to be covered
-coverageSkipTestFiles = true
-
-# Coverage reporters: text (console) and lcov (for IDE integration)
-coverageReporter = ["text", "lcov"]
-
-# Coverage output directory
-coverageDir = "coverage"
+# Test configuration can be added here if needed
