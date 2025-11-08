@@ -1,14 +1,18 @@
 name: release
+
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+
+concurrency: release-${{ github.ref }}
 
 jobs:
-  publish:
+  release:
+    name: Release
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      pull-requests: write
       id-token: write
     steps:
       - name: Checkout repository
@@ -34,30 +38,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Build all packages
+      - name: Build packages
         run: pnpm run build
 
-      - name: Run tests
-        run: pnpm test
-
-      - name: Pack packages for validation
-        run: |
-          mkdir -p artifacts
-          # Pack all packages in topological order
-          pnpm -r --sort pack --pack-destination artifacts
-
-      - name: Upload packed artifacts
-        uses: actions/upload-artifact@v4
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        uses: changesets/action@v1
         with:
-          name: npm-packs
-          path: artifacts
-
-      # - name: Publish packages to npm
-      #   run: |
-      #     # Publish all packages in topological order
-      #     pnpm -r --sort publish --provenance --access public --no-git-checks
-      #   env:
-      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          version: pnpm changeset version
+          publish: pnpm publish -r --access public --provenance --no-git-checks
+          title: "chore: version packages"
+          commit: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
