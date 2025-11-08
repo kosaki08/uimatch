@@ -99,7 +99,6 @@ describe('Resolver Coverage Tests', () => {
       const result = await resolve({
         initialSelector: '.test-selector',
         url: 'test.html',
-        url: 'test.html',
         anchorsPath: undefined,
         probe,
       });
@@ -242,7 +241,12 @@ describe('Resolver Coverage Tests', () => {
             resolvedCss: '[data-testid="dead-cache"]',
             snippetHash: 'abc123',
             snippet: '<button data-testid="new-selector">',
-            snippetContext: { contextBefore: 2, contextAfter: 2 },
+            snippetContext: {
+              contextBefore: 2,
+              contextAfter: 2,
+              algorithm: 'sha1',
+              hashDigits: 10,
+            },
             source: { file: 'test.tsx', line: 10, col: 5 },
           },
         ],
@@ -258,6 +262,7 @@ describe('Resolver Coverage Tests', () => {
       astResolveSpy.mockResolvedValueOnce({
         selectors: ['[data-testid="new-selector"]'],
         hint: { prefer: ['testid'] },
+        reasons: [],
       });
 
       const result = await resolve({
@@ -294,7 +299,12 @@ describe('Resolver Coverage Tests', () => {
             hint: { prefer: ['testid'] },
             snippetHash: 'hash123',
             snippet: '<button>',
-            snippetContext: { contextBefore: 3, contextAfter: 3 },
+            snippetContext: {
+              contextBefore: 3,
+              contextAfter: 3,
+              algorithm: 'sha1',
+              hashDigits: 10,
+            },
             source: { file: 'test.tsx', line: 10, col: 5 },
           },
         ],
@@ -382,7 +392,12 @@ describe('Resolver Coverage Tests', () => {
             hint: { prefer: ['testid'] },
             snippetHash: 'wb123',
             snippet: '<button>',
-            snippetContext: { contextBefore: 2, contextAfter: 2 },
+            snippetContext: {
+              contextBefore: 2,
+              contextAfter: 2,
+              algorithm: 'sha1',
+              hashDigits: 10,
+            },
             source: { file: 'test.tsx', line: 10, col: 5 },
           },
         ],
@@ -398,6 +413,7 @@ describe('Resolver Coverage Tests', () => {
       astResolveSpy.mockResolvedValueOnce({
         selectors: ['[data-testid="new"]'],
         hint: { prefer: ['testid'] },
+        reasons: [],
       });
 
       const result = await resolve({
@@ -456,7 +472,12 @@ describe('Resolver Coverage Tests', () => {
             hint: { prefer: ['testid'] },
             snippetHash: 'wbf123',
             snippet: '<button>',
-            snippetContext: { contextBefore: 2, contextAfter: 2 },
+            snippetContext: {
+              contextBefore: 2,
+              contextAfter: 2,
+              algorithm: 'sha1',
+              hashDigits: 10,
+            },
             source: { file: 'test.tsx', line: 10, col: 5 },
           },
         ],
@@ -472,6 +493,7 @@ describe('Resolver Coverage Tests', () => {
       astResolveSpy.mockResolvedValueOnce({
         selectors: ['[data-testid="new"]'],
         hint: { prefer: ['testid'] },
+        reasons: [],
       });
 
       const result = await resolve({
@@ -511,7 +533,12 @@ describe('Resolver Coverage Tests', () => {
             hint: { prefer: ['testid'] },
             snippetHash: 'nh123',
             snippet: '<button>',
-            snippetContext: { contextBefore: 2, contextAfter: 2 },
+            snippetContext: {
+              contextBefore: 2,
+              contextAfter: 2,
+              algorithm: 'sha1',
+              hashDigits: 10,
+            },
             source: { file: 'test.tsx', line: 10, col: 5 },
           },
         ],
@@ -527,6 +554,7 @@ describe('Resolver Coverage Tests', () => {
       astResolveSpy.mockResolvedValueOnce({
         selectors: ['[data-testid="new"]'],
         hint: { prefer: ['testid'] },
+        reasons: [],
       });
 
       const result = await resolve({
