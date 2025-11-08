@@ -2,7 +2,7 @@
 name: 'uiMatch Compare'
 description: 'Compare Figma design with implementation and return DiffReport'
 version: '0.1.0'
-dependencies: 'Node.js >=22.11.0, Playwright, Figma MCP server'
+dependencies: 'Node.js >=22.12, Playwright, Figma MCP server'
 ---
 
 # uiMatch Compare Command
