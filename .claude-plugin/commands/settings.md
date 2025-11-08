@@ -2,7 +2,7 @@
 name: 'uiMatch Settings'
 description: 'View and configure uiMatch default settings and thresholds'
 version: '0.1.0'
-dependencies: 'Node.js >=22.11.0'
+dependencies: 'Node.js >=22.12'
 ---
 
 # uiMatch Settings Command

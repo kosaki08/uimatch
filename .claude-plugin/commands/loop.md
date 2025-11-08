@@ -2,7 +2,7 @@
 name: 'uiMatch Loop'
 description: 'Iterative comparison with quality gates and automatic retry'
 version: '0.1.0'
-dependencies: 'Node.js >=22.11.0, Playwright, Figma MCP server'
+dependencies: 'Node.js >=22.12, Playwright, Figma MCP server'
 ---
 
 # uiMatch Loop Command
