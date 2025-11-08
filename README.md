@@ -324,6 +324,11 @@ cd packages/uimatch-plugin && pnpm unlink --global  # in source
 
 ## Development
 
+**Prerequisites**:
+- **Node.js**: 20.19+ / 22.12+ (推奨: 22.12+)
+- **pnpm**: 9.15.4+
+- **Bun**: 1.x (スクリプト実行・テストランナーとして使用)
+
 ```bash
 # Install dependencies
 pnpm install

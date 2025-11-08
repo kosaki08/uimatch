@@ -27,6 +27,9 @@
   ],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=20.19 <21 || >=22.12"
+  },
   "publishConfig": {
     "access": "public"
   },
