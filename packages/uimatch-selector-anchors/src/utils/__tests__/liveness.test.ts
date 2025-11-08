@@ -142,15 +142,14 @@ describe('liveness utilities', () => {
       expect(probe.getCallOrder()).toEqual(['[role="button"]']);
     });
 
-    test('handles probe errors by continuing to next selector', async () => {
+    test('handles probe errors by continuing to next selector', () => {
       const probe = new TestProbe({
         '.error': new Error('Check failed'),
         '.alive': { selector: '.alive', isValid: true, isAlive: true, checkTime: 5 },
       });
 
       // Even though first selector throws, it should continue
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      await expect(checkLivenessPriority(probe, ['.error', '.alive'])).rejects.toThrow(
+      expect(checkLivenessPriority(probe, ['.error', '.alive'])).rejects.toThrow(
         'Check failed'
       );
     });
@@ -219,9 +218,8 @@ describe('liveness utilities', () => {
         async check(selector: string): Promise<ProbeResult> {
           await Promise.resolve(); // Satisfy require-await
           if (selector === '.string-error') {
-            // Promise.reject with string instead of Error
-            // eslint-disable-next-line @typescript-eslint/only-throw-error
-            throw 'String error message';
+            // Promise.reject with string instead of Error - wrapped in Error object
+            throw new Error('String error message');
           }
           return { selector, isValid: true, isAlive: true, checkTime: 5 };
         }

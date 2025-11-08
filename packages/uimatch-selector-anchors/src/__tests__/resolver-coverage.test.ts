@@ -3,8 +3,6 @@
  * Targets uncovered branches in resolver.ts, io.ts, and liveness.ts
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import type { Probe, ProbeResult } from '@uimatch/selector-spi';
 import { beforeEach, describe, expect, test, vi } from 'bun:test';
 import { resolve as resolvePath } from 'node:path';
@@ -403,21 +401,16 @@ describe('Resolver Coverage Tests', () => {
 
       expect(result.selector).toBe('[data-testid="new"]');
       expect(postWrite).toHaveBeenCalledTimes(1);
-      expect(postWrite).toHaveBeenCalledWith(
-        './anchors.json',
-        expect.objectContaining({
-          version: '1.0.0',
-          anchors: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'writeback-test',
-              resolvedCss: '[data-testid="new"]',
-              lastKnown: expect.objectContaining({
-                selector: '[data-testid="new"]',
-              }),
-            }),
-          ]),
-        })
-      );
+
+      const postWriteCall = postWrite.mock.calls[0];
+      expect(postWriteCall[0]).toBe('./anchors.json');
+
+      const savedAnchors = postWriteCall[1] as SelectorsAnchors;
+      expect(savedAnchors.version).toBe('1.0.0');
+      expect(savedAnchors.anchors).toHaveLength(1);
+      expect(savedAnchors.anchors[0].id).toBe('writeback-test');
+      expect(savedAnchors.anchors[0].resolvedCss).toBe('[data-testid="new"]');
+      expect(savedAnchors.anchors[0].lastKnown?.selector).toBe('[data-testid="new"]');
       expect(result.reasons?.some((r) => r.includes('persisted via postWrite hook'))).toBe(true);
 
       loadSpy.mockRestore();
