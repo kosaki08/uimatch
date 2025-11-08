@@ -47,8 +47,8 @@ jobs:
         with:
           version: pnpm changeset version
           publish: pnpm publish -r --access public --provenance --no-git-checks
-          title: "chore: version packages"
-          commit: "chore: version packages"
+          title: 'chore: version packages'
+          commit: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
