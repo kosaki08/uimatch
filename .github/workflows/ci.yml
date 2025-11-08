@@ -12,23 +12,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Bun
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.x'
+          cache: 'pnpm'
+
+      - name: Setup Bun (for scripts only)
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Cache Bun packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun
-          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
-          restore-keys: bun-cache-
-
-      - name: Verify Node version compatibility
-        run: npx check-node-version --node ">=20.19 <21 || >=22.12"
-
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: bun run build
@@ -52,17 +53,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Bun
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.x'
+          cache: 'pnpm'
+
+      - name: Setup Bun (for scripts only)
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      - name: Cache Bun packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun
-          key: bun-cache-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
-          restore-keys: bun-cache-
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -72,7 +77,7 @@ jobs:
           restore-keys: playwright-
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: bun run build
@@ -108,18 +113,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: 9.15.4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '22.12.x'
+          cache: 'pnpm'
+
+      - name: Setup Bun (for scripts only)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: bun run build
@@ -127,18 +138,11 @@ jobs:
       - name: Create distribution directory
         run: mkdir -p dist-packages
 
-      - name: Pack selector-spi & selector-anchors with resolved dependencies
+      - name: Pack selector-spi & selector-anchors (pnpm resolves workspace:*)
         run: |
-          # Resolve workspace:* to actual versions
-          cp packages/uimatch-selector-spi/package.json packages/uimatch-selector-spi/package.json.bak
-          node scripts/resolve-workspace-deps.js packages/uimatch-selector-spi
-          (cd packages/uimatch-selector-spi && npm pack --pack-destination=../../dist-packages)
-          mv packages/uimatch-selector-spi/package.json.bak packages/uimatch-selector-spi/package.json
-
-          cp packages/uimatch-selector-anchors/package.json packages/uimatch-selector-anchors/package.json.bak
-          node scripts/resolve-workspace-deps.js packages/uimatch-selector-anchors
-          (cd packages/uimatch-selector-anchors && npm pack --pack-destination=../../dist-packages)
-          mv packages/uimatch-selector-anchors/package.json.bak packages/uimatch-selector-anchors/package.json
+          # pnpm automatically resolves workspace:* to actual versions during pack
+          pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
 
       - name: Create temp project directory
         run: mkdir -p /tmp/uimatch-smoke
@@ -210,42 +214,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: 9.15.4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '22.12.x'
+          cache: 'pnpm'
+
+      - name: Setup Bun (for scripts only)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build all packages
         run: bun run build
 
-      - name: Pack all workspace packages with resolved dependencies
+      - name: Pack all workspace packages (pnpm resolves workspace:*)
         run: |
           mkdir -p dist-packages
 
-          # Function to pack a package with resolved dependencies
-          pack_package() {
-            local pkg_dir=$1
-            cp "${pkg_dir}/package.json" "${pkg_dir}/package.json.bak"
-            node scripts/resolve-workspace-deps.js "${pkg_dir}"
-            (cd "${pkg_dir}" && npm pack --pack-destination=../../dist-packages)
-            mv "${pkg_dir}/package.json.bak" "${pkg_dir}/package.json"
-          }
-
-          # Pack packages in dependency order
-          pack_package "packages/shared-logging"
-          pack_package "packages/uimatch-selector-spi"
-          pack_package "packages/uimatch-core"
-          pack_package "packages/uimatch-scoring"
-          pack_package "packages/uimatch-selector-anchors"
-          pack_package "packages/uimatch-plugin"
+          # pnpm automatically resolves workspace:* to actual versions during pack
+          pnpm -C packages/shared-logging pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-core pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-scoring pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-plugin pack --pack-destination ../../dist-packages
 
       - name: Create isolated test environment
         run: mkdir -p /tmp/uimatch-cli-smoke

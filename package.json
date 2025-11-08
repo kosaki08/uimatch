@@ -2,7 +2,7 @@
   "name": "ui-match",
   "type": "module",
   "private": true,
-  "packageManager": "bun@1.x",
+  "packageManager": "pnpm@9.15.4",
   "workspaces": [
     "packages/*"
   ],

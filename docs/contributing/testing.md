@@ -27,11 +27,11 @@ This document describes the testing strategy and conventions for uiMatch.
 
 ```bash
 # Run all tests (includes pretest fixture generation)
-bun run test
+pnpm test
 
 # Run tests with coverage
-bun test --coverage
+pnpm test:coverage
 
 # Run specific test file
-bun test path/to/test.test.ts
+bun test path/to/test.test.ts  # Bun test runner
 ```

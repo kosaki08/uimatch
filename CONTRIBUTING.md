@@ -5,17 +5,17 @@ Quick reference for contributors. See [AI Assistant Guidelines](docs/ai-assistan
 ## Setup
 
 ```bash
-bun install
-bun test
+pnpm install
+pnpm test
 ```
 
 ## Development Workflow
 
 ```bash
 # Make changes
-bun run format        # Format code
-bun run lint          # Check linting
-bun test             # Run tests
+pnpm format        # Format code
+pnpm lint          # Check linting
+pnpm test          # Run tests
 ```
 
 ## Commit Guidelines
