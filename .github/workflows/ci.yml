@@ -32,19 +32,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: bun run build
+        run: pnpm run build
 
       - name: Lint
-        run: bun run lint
+        run: pnpm run lint
 
       - name: Type check
-        run: bun run type-check
+        run: pnpm run type-check
 
       - name: Format check
-        run: bun run format:check
+        run: pnpm run format:check
 
       - name: Run unit tests
-        run: bun test
+        run: pnpm test
 
   e2e-playwright:
     runs-on: ubuntu-latest
@@ -80,10 +80,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: bun run build
+        run: pnpm run build
 
       - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E tests
         env:
@@ -93,7 +93,7 @@ jobs:
           UIMATCH_SELECTOR_WAIT_MS: '3000'
           UIMATCH_BBOX_TIMEOUT_MS: '800'
           UIMATCH_SCREENSHOT_TIMEOUT_MS: '1000'
-        run: bun test --timeout 30000 packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts packages/uimatch-plugin/src/cli/__tests__/e2e-outdir.test.ts packages/uimatch-plugin/src/commands/__tests__/selector-resolution-e2e.test.ts
+        run: pnpm test --timeout 30000 packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts packages/uimatch-plugin/src/cli/__tests__/e2e-outdir.test.ts packages/uimatch-plugin/src/commands/__tests__/selector-resolution-e2e.test.ts
 
       - name: Upload test artifacts on failure
         if: failure()
@@ -133,7 +133,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: bun run build
+        run: pnpm run build
 
       - name: Create distribution directory
         run: mkdir -p dist-packages
@@ -141,8 +141,7 @@ jobs:
       - name: Pack selector-spi & selector-anchors (pnpm resolves workspace:*)
         run: |
           # pnpm automatically resolves workspace:* to actual versions during pack
-          pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
+          pnpm -r --sort --filter '{packages/uimatch-selector-spi}...' --filter '{packages/uimatch-selector-anchors}...' pack --pack-destination dist-packages
 
       - name: Create temp project directory
         run: mkdir -p /tmp/uimatch-smoke
@@ -234,19 +233,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build all packages
-        run: bun run build
+        run: pnpm run build
 
-      - name: Pack all workspace packages (pnpm resolves workspace:*)
+      - name: Pack all workspace packages (topological order)
         run: |
           mkdir -p dist-packages
-
-          # pnpm automatically resolves workspace:* to actual versions during pack
-          pnpm -C packages/shared-logging pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-core pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-scoring pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-plugin pack --pack-destination ../../dist-packages
+          # pnpm -r --sort packs in dependency order, resolves workspace:* automatically
+          pnpm -r --sort pack --pack-destination dist-packages
 
       - name: Create isolated test environment
         run: mkdir -p /tmp/uimatch-cli-smoke
