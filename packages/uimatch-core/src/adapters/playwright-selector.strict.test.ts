@@ -12,7 +12,11 @@ run('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
     try {
       let err: Error | undefined;
       try {
-        await captureTarget({ html: '<div>Test</div>', selector: 'foo:bar' });
+        await captureTarget({
+          html: '<div>Test</div>',
+          selector: 'foo:bar',
+          idleWaitMs: 0,
+        });
       } catch (e) {
         err = e as Error;
       }
@@ -36,6 +40,7 @@ run('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
         selector: 'li:nth-child(1)',
         detectStorybookIframe: false,
         dpr: 1,
+        idleWaitMs: 0,
       });
       expect(res.implPng).toBeInstanceOf(Buffer);
     } finally {
@@ -61,6 +66,7 @@ run('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
         selector: 'a[href*="https:"]',
         detectStorybookIframe: false,
         dpr: 1,
+        idleWaitMs: 0,
       });
       expect(res.implPng).toBeInstanceOf(Buffer);
     } finally {
