@@ -11,12 +11,25 @@ This document describes the testing strategy and conventions for uiMatch.
 
 ## Test Writing Guidelines
 
-- Write tests for all business logic
-- Use descriptive test names in English
+- Write tests for all business logic with descriptive names (English)
 - Aim for high coverage on critical paths
-- Test file naming: `*.test.ts` or `*.spec.ts`
 - Mock external dependencies using adapters
 - Use fixtures for consistent test data
+
+### Test Organization
+
+- **Unit/Integration**: `packages/*/src/**/*.test.ts` (always run)
+- **E2E browser tests**: `e2e/**/*.e2e.test.ts` (gated by `UIMATCH_ENABLE_BROWSER_TESTS=true`)
+
+All E2E test files must include environment gate:
+
+```typescript
+const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+const run = ENABLE_E2E ? describe : describe.skip;
+run('Suite name', () => {
+  /* tests */
+});
+```
 
 ## Test Performance
 
@@ -26,12 +39,17 @@ This document describes the testing strategy and conventions for uiMatch.
 ## Running Tests
 
 ```bash
-# Run all tests (includes pretest fixture generation)
+# Unit and integration tests
 pnpm test
 
-# Run tests with coverage
+# With coverage
 pnpm test:coverage
 
-# Run specific test file (note: pnpm test uses Bun as task runner)
-pnpm test -- path/to/test.test.ts
+# E2E browser tests
+UIMATCH_ENABLE_BROWSER_TESTS=true pnpm test
 ```
+
+### Build Configuration
+
+- `tsconfig.json`: IDE and test runner (includes test files)
+- `tsconfig.build.json`: Production build (excludes tests and artifacts)
