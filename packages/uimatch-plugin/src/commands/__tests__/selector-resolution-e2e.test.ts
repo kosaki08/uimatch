@@ -12,24 +12,18 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// TEMPORARILY SKIPPED: Tests are failing (AST resolution issues)
-// - Test 1: Expected [data-testid="submit-btn"], got .btn-primary
-// - Test 2: Expected full selector, got partial
-// - Test 3: updatedAnchors is undefined
-// TODO: Fix selector resolution logic before re-enabling
-describe.skip('Selector resolution E2E', () => {
-  // When re-enabling, use:
-  // const ENABLE_E2E_TESTS =
-  //   process.env.UIMATCH_ENABLE_E2E_TESTS === 'true' ||
-  //   process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-  // describe.skipIf(!ENABLE_E2E_TESTS)('Selector resolution E2E', () => {
-  //   if (ENABLE_E2E_TESTS) {
-  //     process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
-  //     process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
-  //     process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '3000';
-  //     process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '800';
-  //     process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '1000';
-  //   }
+// E2E tests for selector resolution
+const ENABLE_E2E_TESTS =
+  process.env.UIMATCH_ENABLE_E2E_TESTS === 'true' ||
+  process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+describe.skipIf(!ENABLE_E2E_TESTS)('Selector resolution E2E', () => {
+  if (ENABLE_E2E_TESTS) {
+    process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
+    process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
+    process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '3000';
+    process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '800';
+    process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '1000';
+  }
   test('complete flow: anchor → AST → liveness → score → writeBack', async () => {
     // Create temporary directory
     const tmpDir = await mkdtemp(join(tmpdir(), 'uimatch-e2e-'));
@@ -68,7 +62,7 @@ export function Button() {
             source: {
               file: componentPath,
               line: 6,
-              col: 0,
+              col: 4,
             },
             hint: {
               prefer: ['testid', 'role'],
@@ -77,6 +71,12 @@ export function Button() {
             },
             snippetHash: actualHash.hash,
             snippet: '<button data-testid="submit-btn" className="btn btn-primary">',
+            snippetContext: {
+              contextBefore: 0,
+              contextAfter: 0,
+              algorithm: 'sha1' as const,
+              hashDigits: 10,
+            },
             subselector: '[data-testid="submit-btn"]',
             lastKnown: {
               selector: '[data-testid="submit-btn"]',
@@ -181,7 +181,7 @@ export function Form() {
       const { generateSnippetHash } = await import('@uimatch/selector-anchors');
       const actualHash = await generateSnippetHash(
         componentPath,
-        7, // line number
+        8, // line number (input element)
         { contextBefore: 0, contextAfter: 0 }
       );
 
@@ -193,7 +193,7 @@ export function Form() {
             id: 'email-input',
             source: {
               file: componentPath,
-              line: 7,
+              line: 8,
               col: 6,
             },
             hint: {
@@ -202,6 +202,12 @@ export function Form() {
             },
             snippetHash: actualHash.hash,
             snippet: '<input type="email" name="email" />',
+            snippetContext: {
+              contextBefore: 0,
+              contextAfter: 0,
+              algorithm: 'sha1' as const,
+              hashDigits: 10,
+            },
             subselector: 'dompath:form/label/input[type="email"]',
             lastKnown: {
               selector: 'input[type="email"][name="email"]',
@@ -297,6 +303,12 @@ export function MultiButton() {
             },
             snippetHash: submitHash.hash,
             snippet: '<button data-testid="submit">Submit</button>',
+            snippetContext: {
+              contextBefore: 0,
+              contextAfter: 0,
+              algorithm: 'sha1' as const,
+              hashDigits: 10,
+            },
             subselector: '[data-testid="submit"]',
             lastKnown: {
               selector: '[data-testid="submit"]',
@@ -319,6 +331,12 @@ export function MultiButton() {
             },
             snippetHash: cancelHash.hash,
             snippet: '<button data-testid="cancel">Cancel</button>',
+            snippetContext: {
+              contextBefore: 0,
+              contextAfter: 0,
+              algorithm: 'sha1' as const,
+              hashDigits: 10,
+            },
             subselector: '[data-testid="cancel"]',
             lastKnown: {
               selector: '[data-testid="cancel"]',

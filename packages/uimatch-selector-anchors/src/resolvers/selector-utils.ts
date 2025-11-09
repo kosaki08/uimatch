@@ -271,13 +271,22 @@ export function generateSelectorsFromAttributes(
     }
   }
 
-  // Priority 6: tag + unique attribute combination
+  // Priority 6: tag + attribute combinations
   if (!attributes['id'] && !attributes['data-testid']) {
     // Only add if not already covered by higher priority selectors
+    const attrParts: string[] = [];
+
+    // For input elements, combine type and name for better specificity
+    if (attributes['type']) {
+      attrParts.push(`[type="${attributes['type']}"]`);
+    }
     if (attributes['name']) {
-      selectors.push(`${tag}[name="${attributes['name']}"]`);
-    } else if (attributes['type']) {
-      selectors.push(`${tag}[type="${attributes['type']}"]`);
+      attrParts.push(`[name="${attributes['name']}"]`);
+    }
+
+    // Generate combined selector if we have attributes
+    if (attrParts.length > 0) {
+      selectors.push(`${tag}${attrParts.join('')}`);
     }
   }
 
