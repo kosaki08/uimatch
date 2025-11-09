@@ -1,16 +1,16 @@
 /**
  * Test childBox capture with childSelector
  */
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { browserPool } from './browser-pool';
 import { captureTarget } from './playwright';
 
 const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
 const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: TEST_TIMEOUT });
 
-// Browser tests always enabled in test:all
-const run = describe;
-
-// Configure environment for faster E2E tests and warm up browser
+// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
+const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+const run = ENABLE_E2E ? describe : describe.skip;
 
 run('Playwright childBox capture - with childSelector', () => {
   itT('should capture childBox for CSS child selector', async () => {
@@ -51,6 +51,17 @@ run('Playwright childBox capture - with childSelector', () => {
   });
 });
 
+run('Playwright childBox capture - with childSelector', () => {
+  // Cleanup: Close all browser instances to prevent process leakage
+  afterAll(async () => {
+    try {
+      await browserPool.closeAll();
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+});
+
 run('Playwright childBox capture - without childSelector', () => {
   itT('should work without childSelector', async () => {
     const html = `<div id="parent">Content</div>`;
@@ -64,5 +75,14 @@ run('Playwright childBox capture - without childSelector', () => {
 
     expect(result.childBox).toBeUndefined();
     expect(result.implPng).toBeDefined();
+  });
+
+  // Cleanup: Close all browser instances to prevent process leakage
+  afterAll(async () => {
+    try {
+      await browserPool.closeAll();
+    } catch {
+      // Ignore cleanup errors
+    }
   });
 });

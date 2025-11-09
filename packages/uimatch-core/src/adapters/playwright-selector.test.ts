@@ -2,16 +2,16 @@
  * Tests for enhanced selector system with prefix support
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { browserPool } from './browser-pool';
 import { PlaywrightAdapter } from './playwright';
 
 // E2E tests need more time than the default 5s. Use 15s as default.
 const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
 
-// Browser tests always enabled in test:all
-const run = describe;
-
-// Pre-warm browser once before all tests to avoid startup cost in each test
+// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
+const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+const run = ENABLE_E2E ? describe : describe.skip;
 
 // Helper to apply consistent timeout to all tests
 const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: TEST_TIMEOUT });
@@ -357,5 +357,14 @@ Line 2</p>
 
     expect(result.implPng).toBeInstanceOf(Buffer);
     expect(result.styles['__self__']).toBeDefined();
+  });
+
+  // Cleanup: Close all browser instances to prevent process leakage
+  afterAll(async () => {
+    try {
+      await browserPool.closeAll();
+    } catch {
+      // Ignore cleanup errors
+    }
   });
 });

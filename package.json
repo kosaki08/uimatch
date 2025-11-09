@@ -21,7 +21,7 @@
     "build:types": "bun run --filter @uimatch/shared-logging build && bun run --filter uimatch-scoring build && bun run --filter @uimatch/selector-spi build",
     "build": "bun run --filter @uimatch/shared-logging build && bun run --filter uimatch-scoring build && bun run --filter @uimatch/selector-spi build && bun run --filter @uimatch/selector-anchors build && bun run --filter uimatch-plugin build",
     "type-check": "bun run build:types && bun run type-check:plugin && bun run type-check:selector-anchors && bun run type-check:e2e",
-    "type-check:plugin": "cd packages/uimatch-plugin && tsc --noEmit",
+    "type-check:plugin": "cd packages/uimatch-plugin && tsc --noEmit -p tsconfig.build.json",
     "type-check:selector-anchors": "cd packages/uimatch-selector-anchors && tsc --noEmit",
     "type-check:e2e": "cd e2e && tsc --noEmit",
     "check": "bun run lint && bun run type-check",
