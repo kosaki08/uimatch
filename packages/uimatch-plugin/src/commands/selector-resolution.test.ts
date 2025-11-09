@@ -6,8 +6,8 @@
 
 import { describe, expect, test } from 'bun:test';
 
-const ENABLE_BROWSER_TESTS = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-const runBrowser = ENABLE_BROWSER_TESTS ? describe : describe.skip;
+// Browser tests always enabled in test:all
+const runBrowser = describe;
 
 describe('Selector resolution plugin integration', () => {
   describe('Plugin-disabled mode (fallback)', () => {
