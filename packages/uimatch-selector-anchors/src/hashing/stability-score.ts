@@ -329,7 +329,24 @@ export function compareStabilityScores(a: StabilityScore, b: StabilityScore): nu
 }
 
 /**
+ * Determine selector type priority (higher = more stable)
+ * data-testid > id > role > aria > class > tag
+ */
+function getSelectorTypePriority(selector: string): number {
+  if (selector.includes('[data-testid=')) return 1000;
+  if (selector.includes('[data-test-id=')) return 1000;
+  if (selector.includes('[data-test=')) return 1000;
+  if (selector.startsWith('#')) return 900; // ID selector
+  if (selector.includes('role=')) return 800;
+  if (selector.includes('[role=')) return 800;
+  if (selector.includes('[aria-')) return 700;
+  if (selector.includes('.')) return 300; // Class selector
+  return 100; // Tag selector
+}
+
+/**
  * Find the most stable selector from a list with their scores
+ * Prioritizes data-testid selectors even if overall score is slightly lower
  */
 export function findMostStableSelector(
   scores: Array<{ selector: string; score: StabilityScore }>
@@ -338,7 +355,19 @@ export function findMostStableSelector(
     return null;
   }
 
-  return scores.reduce((best, current) =>
-    current.score.overall > best.score.overall ? current : best
-  );
+  return scores.reduce((best, current) => {
+    const bestPriority = getSelectorTypePriority(best.selector);
+    const currentPriority = getSelectorTypePriority(current.selector);
+
+    // If type priority differs significantly (>100), prefer higher priority
+    if (currentPriority - bestPriority > 100) {
+      return current;
+    }
+    if (bestPriority - currentPriority > 100) {
+      return best;
+    }
+
+    // Same type priority, use overall score
+    return current.score.overall > best.score.overall ? current : best;
+  });
 }
