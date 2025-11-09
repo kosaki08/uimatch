@@ -1,9 +1,12 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { browserPool } from '../../../../uimatch-core/src/adapters/browser-pool';
-import { runCompare } from '../compare';
+
+// Path to CLI for process-based execution (same as smoke.test.ts)
+const CLI_PATH = join(__dirname, '../../index.ts');
 
 // Type definitions for test report
 interface TestReport {
@@ -52,40 +55,29 @@ describe('E2E: outDir artifact saving', () => {
   test(
     'should save artifacts when outDir is specified',
     async () => {
-      // Simulate CLI invocation with outDir
-      const argv = [
-        'figma=bypass:test',
-        'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
-        'selector=#test',
+      // Execute CLI same way as smoke/distribution tests (stable, fast)
+      const env = {
+        ...process.env,
+        UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
+        UIMATCH_HEADLESS: 'true',
+        NODE_ENV: 'test',
+      };
+
+      const cmd = [
+        `bun "${CLI_PATH}" compare`,
+        `figma=bypass:test`,
+        `story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>`,
+        `selector=#test`,
         `outDir=${testOutDir}`,
-        'timestampOutDir=false',
-        'size=pad', // Use pad mode to handle dimension mismatch
-        'viewport=10x10', // Match the bypass PNG size
-        'dpr=1', // Use dpr=1 for deterministic testing
-      ];
+        `timestampOutDir=false`,
+        `size=pad`,
+        `viewport=10x10`,
+        `dpr=1`,
+      ].join(' ');
 
-      // Run compare (will exit process, so we need to catch)
-      const originalExit = process.exit.bind(process);
-
-      try {
-        // Mock process.exit to prevent actual exit but allow async operations to complete
-        const mockExit = (code?: number | string | null): never => {
-          throw new Error(`EXIT_${code ?? 0}`);
-        };
-        process.exit = mockExit as typeof process.exit;
-
-        // Run compare and wait for completion (will throw EXIT_0)
-        await runCompare(argv);
-      } catch (err) {
-        // Expected exit throw
-        if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
-          throw err;
-        }
-      } finally {
-        process.exit = originalExit;
-        // Give sufficient delay for all file writes to complete
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
+      execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
+      // Wait for file flush
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Verify artifacts were saved
       const files = await readdir(testOutDir);
@@ -112,35 +104,28 @@ describe('E2E: outDir artifact saving', () => {
   test(
     'should include artifacts in JSON when jsonOnly=false',
     async () => {
-      const argv = [
-        'figma=bypass:test',
-        'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
-        'selector=#test',
+      const env = {
+        ...process.env,
+        UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
+        UIMATCH_HEADLESS: 'true',
+        NODE_ENV: 'test',
+      };
+
+      const cmd = [
+        `bun "${CLI_PATH}" compare`,
+        `figma=bypass:test`,
+        `story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>`,
+        `selector=#test`,
         `outDir=${testOutDir}`,
-        'timestampOutDir=false',
-        'jsonOnly=false',
-        'size=pad',
-        'viewport=10x10',
-        'dpr=1',
-      ];
+        `timestampOutDir=false`,
+        `jsonOnly=false`,
+        `size=pad`,
+        `viewport=10x10`,
+        `dpr=1`,
+      ].join(' ');
 
-      const originalExit = process.exit.bind(process);
-
-      try {
-        const mockExit = (code?: number | string | null): never => {
-          throw new Error(`EXIT_${code ?? 0}`);
-        };
-        process.exit = mockExit as typeof process.exit;
-
-        await runCompare(argv);
-      } catch (err) {
-        if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
-          throw err;
-        }
-      } finally {
-        process.exit = originalExit;
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
+      execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Verify report.json DOES contain artifacts
       const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
@@ -157,35 +142,28 @@ describe('E2E: outDir artifact saving', () => {
   test('should auto-enable emitArtifacts when outDir specified', async () => {
     // This test verifies the config builder auto-enables emitArtifacts
     // by checking that artifacts are actually saved (which requires emitArtifacts=true)
-    const argv = [
-      'figma=bypass:test',
-      'story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>',
-      'selector=#test',
+    const env = {
+      ...process.env,
+      UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
+      UIMATCH_HEADLESS: 'true',
+      NODE_ENV: 'test',
+    };
+
+    const cmd = [
+      `bun "${CLI_PATH}" compare`,
+      `figma=bypass:test`,
+      `story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>`,
+      `selector=#test`,
       `outDir=${testOutDir}`,
-      'timestampOutDir=false',
-      'size=pad',
-      'viewport=10x10',
-      'dpr=1',
+      `timestampOutDir=false`,
+      `size=pad`,
+      `viewport=10x10`,
+      `dpr=1`,
       // Note: NOT specifying emitArtifacts explicitly
-    ];
+    ].join(' ');
 
-    const originalExit = process.exit.bind(process);
-
-    try {
-      const mockExit = (code?: number | string | null): never => {
-        throw new Error(`EXIT_${code ?? 0}`);
-      };
-      process.exit = mockExit as typeof process.exit;
-
-      await runCompare(argv);
-    } catch (err) {
-      if (!(err instanceof Error && err.message.startsWith('EXIT_'))) {
-        throw err;
-      }
-    } finally {
-      process.exit = originalExit;
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
+    execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     // If emitArtifacts was NOT auto-enabled, these files wouldn't exist
     expect(existsSync(join(testOutDir, 'figma.png'))).toBe(true);

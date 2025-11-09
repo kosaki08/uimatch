@@ -93,7 +93,13 @@ jobs:
           UIMATCH_SELECTOR_WAIT_MS: '3000'
           UIMATCH_BBOX_TIMEOUT_MS: '800'
           UIMATCH_SCREENSHOT_TIMEOUT_MS: '1000'
-        run: pnpm test -- --timeout 30000 packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts packages/uimatch-plugin/src/cli/__tests__/e2e-outdir.test.ts packages/uimatch-plugin/src/commands/__tests__/selector-resolution-e2e.test.ts
+        run: |
+          # Run E2E tests sequentially (--jobs=1) to avoid CI resource contention
+          # Use 60s timeout for CI environment (browser startup + font loading variability)
+          bun test --bail --jobs=1 --timeout 60000 \
+            packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts \
+            packages/uimatch-plugin/src/cli/__tests__/e2e-outdir.test.ts \
+            packages/uimatch-plugin/src/commands/__tests__/selector-resolution-e2e.test.ts
 
       - name: Upload test artifacts on failure
         if: failure()
@@ -141,11 +147,9 @@ jobs:
       - name: Pack selector-spi & selector-anchors (pnpm resolves workspace:*)
         run: |
           # pnpm automatically resolves workspace:* to actual versions during pack
-          # Use package names for accurate filtering
-          pnpm -r \
-            --filter @uimatch/selector-spi \
-            --filter @uimatch/selector-anchors \
-            pack --pack-destination dist-packages
+          # Use -C to avoid unknown --recursive option
+          pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
 
       - name: 'Assert no workspace: protocol leaked'
         run: |
