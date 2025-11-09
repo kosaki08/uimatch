@@ -149,14 +149,12 @@ jobs:
 
       - name: 'Assert no workspace: protocol leaked'
         run: |
-          set -eux
-          for TGZ in dist-packages/*.tgz; do
-            echo "Checking $TGZ for workspace: protocol..."
-            if tar -xzf "$TGZ" -O package/package.json | grep -q '"workspace:'; then
-              echo "❌ ERROR: workspace: protocol leaked in $TGZ"
-              exit 1
-            fi
-            echo "✅ No workspace: protocol in $TGZ"
+          set -euo pipefail
+          cd dist-packages
+          for TGZ in *.tgz; do
+            echo "Checking $TGZ for workspace: protocol in publish-relevant fields..."
+            tar -xzf "$TGZ" -O package/package.json | node ../.github/scripts/assert-no-workspace.cjs
+            echo "✅ No workspace: protocol leaked in $TGZ"
           done
 
       - name: Create temp project directory
@@ -254,19 +252,22 @@ jobs:
       - name: Pack all workspace packages (topological order)
         run: |
           mkdir -p dist-packages
-          # pnpm -r packs in dependency order, resolves workspace:* automatically
-          pnpm -r pack --pack-destination dist-packages
+          # Pack each public package individually (pnpm resolves workspace:* automatically)
+          pnpm -C packages/shared-logging pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-core pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-scoring pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
+          pnpm -C packages/uimatch-plugin pack --pack-destination ../../dist-packages
 
       - name: 'Assert no workspace: protocol leaked'
         run: |
-          set -eux
-          for TGZ in dist-packages/*.tgz; do
-            echo "Checking $TGZ for workspace: protocol..."
-            if tar -xzf "$TGZ" -O package/package.json | grep -q '"workspace:'; then
-              echo "❌ ERROR: workspace: protocol leaked in $TGZ"
-              exit 1
-            fi
-            echo "✅ No workspace: protocol in $TGZ"
+          set -euo pipefail
+          cd dist-packages
+          for TGZ in *.tgz; do
+            echo "Checking $TGZ for workspace: protocol in publish-relevant fields..."
+            tar -xzf "$TGZ" -O package/package.json | node ../.github/scripts/assert-no-workspace.cjs
+            echo "✅ No workspace: protocol leaked in $TGZ"
           done
 
       - name: Create isolated test environment
