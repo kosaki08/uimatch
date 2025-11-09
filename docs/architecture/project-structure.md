@@ -11,8 +11,7 @@ ui-match/
 ├── .claude-plugin/        # Claude Code plugin definition
 │   ├── plugin.json        # Plugin metadata
 │   ├── commands/          # Command implementations (compare, loop, settings)
-│   ├── mcp.json           # Figma MCP integration
-│   └── marketplace.json   # Distribution metadata
+│   └── mcp.json           # Figma MCP integration
 ├── packages/              # Workspace packages
 │   ├── uimatch-core/      # Core comparison library
 │   │   ├── src/           # Source code
@@ -23,7 +22,8 @@ ui-match/
 ├── docs/                  # Documentation
 │   ├── contributing/      # Contribution guidelines
 │   ├── architecture/      # Architecture documentation
-│   └── ai-assistant/      # AI assistant guidelines
+│   ├── concepts/          # Core concepts and features
+│   └── examples/          # Usage examples
 └── README.md              # Project overview
 ```
 
@@ -65,9 +65,18 @@ Architecture and design documentation:
 - `project-structure.md`: This document
 - `security.md`: Security guidelines and best practices
 
-### docs/ai-assistant/
+### docs/concepts/
 
-AI assistant specific instructions:
+Core concepts and feature documentation:
 
-- `claude-code.md`: Claude Code tool usage and workflows
-- `general-guidelines.md`: General AI assistant guidelines
+- `quality-gate-v2.md`: Content-aware quality metrics
+- `selector-resolution.md`: Selector resolution strategies
+- `size-handling.md`: Size mismatch handling strategies
+
+### docs/examples/
+
+Usage examples and patterns:
+
+- `page-vs-component.md`: Comparing different contexts
+- `component-vs-component.md`: Strict component comparison
+- `anchors-stabilization.md`: Selector anchor stabilization

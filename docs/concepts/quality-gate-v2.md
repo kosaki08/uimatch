@@ -45,52 +45,56 @@ pixelDiffRatioContent = 100 / 10000 = 0.01 ✅ PASS
 
 **Threshold**: `> 85` (recommended)
 
-## V1 vs V2
+## Quality Gate Improvements
 
-| Metric            | V1                   | V2                      | Impact                  |
-| ----------------- | -------------------- | ----------------------- | ----------------------- |
-| Pixel diff basis  | Total area           | Content area            | Less padding noise      |
-| Size mismatch     | Strict rejection     | Configurable (size=pad) | More flexible           |
-| Content awareness | None                 | contentBasis option     | Intersection/union mode |
-| Recommended for   | Exact-size scenarios | Mixed-size scenarios    | Real-world use cases    |
+Quality Gate V2 improves comparison accuracy through:
+
+| Aspect            | Improvement                                   | Benefit                              |
+| ----------------- | --------------------------------------------- | ------------------------------------ |
+| Pixel diff basis  | Content area instead of total area            | Reduces false positives from padding |
+| Size handling     | Flexible strategies via `size` CLI flag       | Supports varied layout contexts      |
+| Content awareness | Automatic content area detection              | Focus on actual visible content      |
+| Threshold control | Configurable via `.uimatchrc.json`            | Adaptable to project requirements    |
+| Use cases         | Optimized for mixed-size/varied contexts      | Real-world scenario support          |
 
 ## Configuration
+
+Quality Gate V2 is the default and only implementation. Configure thresholds in `.uimatchrc.json`:
 
 ```json
 {
   "comparison": {
-    "qualityGateMode": "v2",
-    "pixelDiffRatioV2": 0.01,
-    "areaGapThreshold": 0.05,
-    "cqiThreshold": 85,
-    "contentBasis": "intersection"
+    "acceptancePixelDiffRatio": 0.01,
+    "acceptanceColorDeltaE": 3.0,
+    "pixelmatchThreshold": 0.1
   }
 }
 ```
 
+**Available options:**
+- `acceptancePixelDiffRatio`: Maximum acceptable pixel difference ratio (default: 0.01 / 1%)
+- `acceptanceColorDeltaE`: Maximum acceptable color difference (default: 3.0)
+- `pixelmatchThreshold`: Pixelmatch sensitivity, smaller = more sensitive (default: 0.1)
+
 ## When to Use
 
-**Use V2**:
+Quality Gate V2 is designed for real-world scenarios:
 
 - Page vs component comparisons
 - Different padding/margins expected
 - Content-focused validation
 - CI/CD with varied contexts
+- Mixed-size scenarios with flexible layouts
 
-**Use V1**:
-
-- Pixel-perfect strict mode
-- Fixed-size components only
-- Legacy workflows
+The content-aware pixel difference calculation reduces false positives from padding/margin differences while maintaining strict quality standards for actual content.
 
 ## Troubleshooting
 
-| Issue                        | Solution                                               |
-| ---------------------------- | ------------------------------------------------------ |
-| Too many false positives     | Increase `pixelDiffRatioV2=0.02`                       |
-| Area gap failures            | Check layout shifts, use `size=pad`                    |
-| CQI too strict               | Lower `cqiThreshold=80`                                |
-| Content area detection wrong | Verify `contentBasis` (intersection/union/figma/story) |
+| Issue                    | Solution                                                      |
+| ------------------------ | ------------------------------------------------------------- |
+| Too many false positives | Increase `acceptancePixelDiffRatio=0.02` in comparison config |
+| Color differences fail   | Increase `acceptanceColorDeltaE=5.0` in comparison config     |
+| Area gap failures        | Check layout shifts, use `size=pad` CLI flag                  |
 
 ## See Also
 
