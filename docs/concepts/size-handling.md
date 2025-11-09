@@ -101,15 +101,17 @@ Defines how content area is calculated (used with `pad`/`crop` for Quality Gate 
 
 ## Configuration
 
-```json
-{
-  "comparison": {
-    "sizeHandling": "pad",
-    "contentBasis": "intersection",
-    "qualityGateMode": "v2"
-  }
-}
+Size handling is controlled via CLI flags (not config file):
+
+```bash
+npx uimatch compare \
+  figma=... \
+  story=... \
+  selector=... \
+  size=pad
 ```
+
+Available size strategies: `strict`, `pad`, `crop`, `scale`
 
 ## Visual Examples
 

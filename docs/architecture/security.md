@@ -25,11 +25,11 @@ This document describes security best practices and requirements for uiMatch.
 
 ## Environment Variables
 
-Required secure environment variables:
+Optional secure environment variables:
 
-- `FIGMA_MCP_TOKEN`: (Optional) Bearer token for Figma MCP authentication
-- `BASIC_AUTH_USER`: (Optional) Basic auth username for target URLs
-- `BASIC_AUTH_PASS`: (Optional) Basic auth password for target URLs
+- `FIGMA_MCP_TOKEN`: Bearer token for Figma MCP authentication (when using MCP mode)
+- `BASIC_AUTH_USER`: Basic auth username for target URLs (when targets require authentication)
+- `BASIC_AUTH_PASS`: Basic auth password for target URLs (when targets require authentication)
 
 These should never be:
 
