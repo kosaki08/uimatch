@@ -168,9 +168,14 @@ The plugin also provides a standalone CLI for use outside of Claude Code:
 # Compare command
 uimatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
 
-# Loop command
-uimatch loop figma=<fileKey>:<nodeId> story=<url> selector=<css> maxIters=5
+# Suite command (batch comparison)
+uimatch suite suite-config.json
+
+# Doctor command (diagnostics)
+uimatch doctor
 ```
+
+**Note:** The `loop` command is available only as a Claude Code plugin command (`/uiMatch loop`), not in standalone CLI.
 
 For detailed CLI usage, available options, and advanced features (size handling, content basis modes, auto-ROI, suite testing, etc.), see [**CLI Usage Documentation**](../../docs/cli-usage.md).
 
@@ -234,7 +239,7 @@ These are separate layers: detection threshold captures all notable differences,
 
 Required for Figma integration:
 
-- `FIGMA_MCP_URL`: Figma MCP server URL (e.g., `http://localhost:8765`)
+- `FIGMA_MCP_URL`: Figma MCP server URL (default: `http://127.0.0.1:3845/mcp`)
 - `FIGMA_MCP_TOKEN`: (Optional) Bearer token for Figma MCP authentication
 
 Optional for target URL authentication:
@@ -371,7 +376,7 @@ Configure MCP via `.claude-plugin/mcp.json`:
 ```json
 {
   "figma": {
-    "url": "http://localhost:8765",
+    "url": "http://127.0.0.1:3845/mcp",
     "token": "${FIGMA_MCP_TOKEN}"
   }
 }
@@ -497,8 +502,8 @@ export UIMATCH_CHROME_CHANNEL=chrome
 **Figma Access Errors**:
 
 ```bash
-# Verify MCP server is running
-curl http://localhost:8765/health
+# Verify MCP server is running (default URL)
+curl http://127.0.0.1:3845/mcp/health
 
 # Check environment variables
 echo $FIGMA_MCP_URL
