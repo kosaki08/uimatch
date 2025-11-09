@@ -6,7 +6,7 @@
 
 import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -140,5 +140,14 @@ test.skipIf(!process.env.UIMATCH_ENABLE_BROWSER_TESTS)('A-3: representative E2E 
   const stdout = execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
 
   expect(stdout).toContain('DFS');
-  expect(readFileSync(join(outDir, 'report.json'), 'utf8')).toBeTruthy();
+
+  // Find the timestamped subdirectory
+  const subdirs = readdirSync(outDir).filter((name) => {
+    const stat = statSync(join(outDir, name));
+    return stat.isDirectory();
+  });
+
+  expect(subdirs.length).toBeGreaterThan(0);
+  const reportPath = join(outDir, subdirs[0], 'report.json');
+  expect(readFileSync(reportPath, 'utf8')).toBeTruthy();
 });
