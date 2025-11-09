@@ -87,7 +87,7 @@ Defines how content area is calculated (used with `pad`/`crop` for Quality Gate 
 | `union`        | Full extent of both images        | No area should be ignored  |
 | `intersection` | Only overlapping region           | Ignore padding differences |
 | `figma`        | Use Figma dimensions as reference | Trust design dimensions    |
-| `story`        | Use story dimensions as reference | Trust implementation       |
+| `impl`         | Use impl dimensions as reference  | Trust implementation       |
 
 ## Decision Matrix
 
