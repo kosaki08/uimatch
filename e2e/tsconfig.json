@@ -2,7 +2,9 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "types": ["@playwright/test", "node"],
-    "noEmit": true
+    "noEmit": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]
