@@ -38,10 +38,10 @@ afterAll(() => {
 });
 
 /**
- * A-1: CLI Smoke (no crash)
- * 目的: コマンドが **クラッシュせず** exit code 0 で summary を出力する
+ * CLI Smoke (no crash)
+ * Purpose: Verify the command does not crash and outputs summary with exit code 0
  */
-test('A-1: CLI smoke (no crash)', () => {
+test('CLI smoke (no crash)', () => {
   const env = {
     ...process.env,
     UIMATCH_FIGMA_PNG_B64: MINIMAL_PNG_B64,
@@ -68,11 +68,11 @@ test('A-1: CLI smoke (no crash)', () => {
 });
 
 /**
- * A-2: Deterministic report (reproducibility)
- * 目的: 同一入力 → 同一出力（ハング／フレークの芽を検知）
- * 動的フィールド（timestamp/timing）をマスクして深い比較
+ * Deterministic report (reproducibility)
+ * Purpose: Same input → same output (detect potential hangs/flakes)
+ * Masks dynamic fields (timestamp/timing) for deep comparison
  */
-test('A-2: deterministic report', () => {
+test('deterministic report', () => {
   const env = {
     ...process.env,
     UIMATCH_FIGMA_PNG_B64: MINIMAL_PNG_B64,
@@ -120,10 +120,10 @@ test('A-2: deterministic report', () => {
 });
 
 /**
- * A-3: Representative E2E passes once
- * 目的: Playwright経路の生死確認（厳密性ではなく"動くこと"）
+ * Representative E2E passes once
+ * Purpose: Verify Playwright path works (focus on "it runs" rather than strictness)
  */
-test('A-3: representative E2E passes', () => {
+test('representative E2E passes', () => {
   const outDir = join(testTmpDir, 'e2e-smoke');
   mkdirSync(outDir, { recursive: true });
 

@@ -31,10 +31,10 @@ const largeFilePath = join(fixtureDir, 'large.tsx');
 writeFileSync(largeFilePath, largeTsxContent, 'utf8');
 
 /**
- * B-1: AST resolver respects timeouts
- * 極端に短いタイムアウトでも、必ず結果を返す（ハングしない）
+ * AST resolver respects timeouts
+ * Even with extremely short timeouts, must always return a result (no hanging)
  */
-test('B-1: AST resolver enforces timeouts quickly', async () => {
+test('AST resolver enforces timeouts quickly', async () => {
   const originalEnv = { ...process.env };
 
   try {
@@ -67,10 +67,10 @@ test('B-1: AST resolver enforces timeouts quickly', async () => {
 });
 
 /**
- * B-2: Multiple timeout scenarios
- * 異なるタイムアウト設定でも安全に動作する
+ * Multiple timeout scenarios
+ * Operates safely with different timeout settings
  */
-test('B-2: handles various timeout configurations', async () => {
+test('handles various timeout configurations', async () => {
   const scenarios = [
     { fast: '50', attr: '100', full: '150' },
     { fast: '1', attr: '2', full: '3' },
@@ -108,11 +108,11 @@ test('B-2: handles various timeout configurations', async () => {
 });
 
 /**
- * B-3: Fallback always returns valid structure
- * タイムアウトで heuristics にフォールバックした際も、
- * 必ず有効な構造を返す（null or valid result）
+ * Fallback always returns valid structure
+ * When falling back to heuristics due to timeout,
+ * must always return a valid structure (null or valid result)
  */
-test('B-3: fallback provides valid structure', async () => {
+test('fallback provides valid structure', async () => {
   const originalEnv = { ...process.env };
 
   try {

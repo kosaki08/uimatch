@@ -124,7 +124,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
       }
 
       // Detect Storybook iframe (/iframe.html takes precedence)
-      // HTMLモード時は Storybook iframe 検出を行わない
+      // In HTML mode, skip Storybook iframe detection
       let frame = page.mainFrame();
       if (!isHtmlMode && (opts.detectStorybookIframe ?? true)) {
         const sb = page.frames().find((f) => /\/iframe\.html/.test(f.url()));
@@ -171,7 +171,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
         let loc = resolveLocator(frame, opts.selector);
 
         // Quick probe to detect if element exists (avoid long timeout)
-        // HTMLモードではクイックプローブをスキップ（そのまま visible 待機へ）
+        // In HTML mode, skip quick probe (proceed directly to visible wait)
         const baseProbeMs = Number(process.env.UIMATCH_PROBE_TIMEOUT_MS ?? 1200);
         const probeMs = timeBudget ? timeBudget.allocate(baseProbeMs, 300) : baseProbeMs;
         if (!isHtmlMode && probeMs > 0) {
@@ -237,7 +237,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
             return loc;
           }
         } else {
-          // HTMLモード時はフォールバックなしで続行
+          // In HTML mode, proceed without fallback
         }
 
         // No probe or fallback used, return original locator

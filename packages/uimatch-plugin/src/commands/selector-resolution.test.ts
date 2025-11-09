@@ -13,7 +13,7 @@ describe('Selector resolution plugin integration', () => {
   describe('Plugin-disabled mode (fallback)', () => {
     runBrowser('uses original selector when no plugin is specified', () => {
       test('should use original selector when no plugin is specified', async () => {
-        // Phase 3 Acceptance: プラグインが無い状態で、今まで通り比較が通る
+        // Phase 3 Acceptance: Comparison should work as before when plugin is not available
         const { uiMatchCompare } = await import('./compare.js');
 
         // Mock minimal comparison (no actual browser needed for this test)
