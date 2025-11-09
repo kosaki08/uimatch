@@ -12,10 +12,21 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const ENABLE_E2E_TESTS = process.env.UIMATCH_ENABLE_E2E_TESTS === 'true';
+// Run only in E2E environment (use BROWSER_TESTS flag for CI consistency)
+const ENABLE_E2E_TESTS =
+  process.env.UIMATCH_ENABLE_E2E_TESTS === 'true' ||
+  process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
 const runE2E = ENABLE_E2E_TESTS ? describe : describe.skip;
 
 runE2E('Selector resolution E2E', () => {
+  // Enforce short timeouts for CI stability
+  if (ENABLE_E2E_TESTS) {
+    process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
+    process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
+    process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '3000';
+    process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '800';
+    process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '1000';
+  }
   test('complete flow: anchor → AST → liveness → score → writeBack', async () => {
     // Create temporary directory
     const tmpDir = await mkdtemp(join(tmpdir(), 'uimatch-e2e-'));
