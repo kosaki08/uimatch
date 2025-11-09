@@ -1,9 +1,12 @@
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { browserPool } from './browser-pool';
 import { captureTarget } from './playwright';
 
 const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: 15000 });
-// Browser tests always enabled in test:all
-const run = describe;
+
+// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
+const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+const run = ENABLE_E2E ? describe : describe.skip;
 
 run('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
   itT('UIMATCH_SELECTOR_STRICT=true throws on unknown prefix', async () => {
@@ -129,6 +132,15 @@ run('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
       } else {
         process.env.UIMATCH_SELECTOR_STRICT = orig;
       }
+    }
+  });
+
+  // Cleanup: Close all browser instances to prevent process leakage
+  afterAll(async () => {
+    try {
+      await browserPool.closeAll();
+    } catch {
+      // Ignore cleanup errors
     }
   });
 });

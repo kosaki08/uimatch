@@ -127,7 +127,7 @@ export function Button() {
 
       // Verify updatedAnchors includes updated data
       expect(result.updatedAnchors).toBeDefined();
-      const ua = result.updatedAnchors as SelectorsAnchors | undefined;
+      const ua = result.updatedAnchors;
       expect(ua?.version).toBe('1.0.0');
       expect(ua?.anchors).toHaveLength(1);
 
@@ -374,7 +374,7 @@ export function MultiButton() {
 
       expect(result.updatedAnchors).toBeDefined();
       // Both anchors should be preserved
-      const ua2 = result.updatedAnchors as SelectorsAnchors | undefined;
+      const ua2 = result.updatedAnchors;
       expect(ua2?.anchors).toHaveLength(2);
 
       // Only matched anchor should have updated timestamp
