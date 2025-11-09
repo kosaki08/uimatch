@@ -13,17 +13,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 // E2E tests for selector resolution
-const ENABLE_E2E_TESTS =
-  process.env.UIMATCH_ENABLE_E2E_TESTS === 'true' ||
-  process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-describe.skipIf(!ENABLE_E2E_TESTS)('Selector resolution E2E', () => {
-  if (ENABLE_E2E_TESTS) {
-    process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
-    process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
-    process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '3000';
-    process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '800';
-    process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '1000';
-  }
+describe('Selector resolution E2E', () => {
+  // Set default timeout values for E2E tests
+  process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
+  process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
+  process.env.UIMATCH_SELECTOR_WAIT_MS = process.env.UIMATCH_SELECTOR_WAIT_MS ?? '3000';
+  process.env.UIMATCH_BBOX_TIMEOUT_MS = process.env.UIMATCH_BBOX_TIMEOUT_MS ?? '800';
+  process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS = process.env.UIMATCH_SCREENSHOT_TIMEOUT_MS ?? '1000';
   test('complete flow: anchor → AST → liveness → score → writeBack', async () => {
     // Create temporary directory
     const tmpDir = await mkdtemp(join(tmpdir(), 'uimatch-e2e-'));

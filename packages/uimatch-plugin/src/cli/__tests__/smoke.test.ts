@@ -85,11 +85,11 @@ test('A-2: deterministic report', () => {
   mkdirSync(outDirA, { recursive: true });
   mkdirSync(outDirB, { recursive: true });
 
-  const cmdBase = `bun "${CLI_PATH}" compare figma=bypass:test story="${MINIMAL_HTML}" selector="#target" size=pad dpr=1 timestampOutDir=false --no-screenshots`;
+  const cmdBase = `bun "${CLI_PATH}" compare figma=bypass:test story="${MINIMAL_HTML}" selector="#target" size=pad dpr=1 --no-screenshots`;
 
   // Run twice with different output directories
-  execSync(`${cmdBase} outDir="${outDirA}"`, { env, encoding: 'utf8', stdio: 'pipe' });
-  execSync(`${cmdBase} outDir="${outDirB}"`, { env, encoding: 'utf8', stdio: 'pipe' });
+  execSync(`${cmdBase} --out-dir "${outDirA}"`, { env, encoding: 'utf8', stdio: 'pipe' });
+  execSync(`${cmdBase} --out-dir "${outDirB}"`, { env, encoding: 'utf8', stdio: 'pipe' });
 
   const reportA = JSON.parse(readFileSync(join(outDirA, 'report.json'), 'utf8')) as Record<
     string,
@@ -122,9 +122,8 @@ test('A-2: deterministic report', () => {
 /**
  * A-3: Representative E2E passes once
  * 目的: Playwright経路の生死確認（厳密性ではなく"動くこと"）
- * Note: Requires UIMATCH_ENABLE_BROWSER_TESTS=true
  */
-test.skipIf(!process.env.UIMATCH_ENABLE_BROWSER_TESTS)('A-3: representative E2E passes', () => {
+test('A-3: representative E2E passes', () => {
   const outDir = join(testTmpDir, 'e2e-smoke');
   mkdirSync(outDir, { recursive: true });
 

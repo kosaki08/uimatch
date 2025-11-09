@@ -8,9 +8,9 @@ import { compareImages } from './core/compare';
 const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
 const redBase64 = () => readFileSync(join(FIXTURES_DIR, 'red-100x100.png')).toString('base64');
 
-const ENABLE_BROWSER_TESTS = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+// Browser tests always enabled in test:all
 
-const run = ENABLE_BROWSER_TESTS ? describe : describe.skip;
+const run = describe;
 
 run('captureTarget', () => {
   // E2E stabilization: reduce startup cost and shorten timeouts
