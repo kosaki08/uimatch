@@ -22,10 +22,10 @@ npx uimatch compare \
 
 ## Key Options
 
-| Option         | Value          | Effect                                        |
-| -------------- | -------------- | --------------------------------------------- |
-| `size`         | `pad`          | Add padding to smaller image                  |
-| `contentBasis` | `intersection` | Compare only overlapping content area         |
+| Option         | Value          | Effect                                |
+| -------------- | -------------- | ------------------------------------- |
+| `size`         | `pad`          | Add padding to smaller image          |
+| `contentBasis` | `intersection` | Compare only overlapping content area |
 
 ## Why This Works
 
@@ -35,12 +35,12 @@ npx uimatch compare \
 
 ## Troubleshooting
 
-| Issue                         | Solution                                                                            |
-| ----------------------------- | ----------------------------------------------------------------------------------- |
-| Too much area ignored         | Try `contentBasis=union` to compare full extent                                     |
-| Padding color mismatches      | Normal - intersection mode excludes padding                                         |
-| Still too many false positive | Increase `acceptancePixelDiffRatio=0.03` in `.uimatchrc.json` or check for shifts  |
-| Content area detection wrong  | Verify `contentBasis` logic (union=all, intersection=overlap)                       |
+| Issue                         | Solution                                                                          |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| Too much area ignored         | Try `contentBasis=union` to compare full extent                                   |
+| Padding color mismatches      | Normal - intersection mode excludes padding                                       |
+| Still too many false positive | Increase `acceptancePixelDiffRatio=0.03` in `.uimatchrc.json` or check for shifts |
+| Content area detection wrong  | Verify `contentBasis` logic (union=all, intersection=overlap)                     |
 
 ## Config
 

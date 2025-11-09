@@ -49,13 +49,13 @@ pixelDiffRatioContent = 100 / 10000 = 0.01 ✅ PASS
 
 Quality Gate V2 improves comparison accuracy through:
 
-| Aspect            | Improvement                                   | Benefit                              |
-| ----------------- | --------------------------------------------- | ------------------------------------ |
-| Pixel diff basis  | Content area instead of total area            | Reduces false positives from padding |
-| Size handling     | Flexible strategies via `size` CLI flag       | Supports varied layout contexts      |
-| Content awareness | Automatic content area detection              | Focus on actual visible content      |
-| Threshold control | Configurable via `.uimatchrc.json`            | Adaptable to project requirements    |
-| Use cases         | Optimized for mixed-size/varied contexts      | Real-world scenario support          |
+| Aspect            | Improvement                              | Benefit                              |
+| ----------------- | ---------------------------------------- | ------------------------------------ |
+| Pixel diff basis  | Content area instead of total area       | Reduces false positives from padding |
+| Size handling     | Flexible strategies via `size` CLI flag  | Supports varied layout contexts      |
+| Content awareness | Automatic content area detection         | Focus on actual visible content      |
+| Threshold control | Configurable via `.uimatchrc.json`       | Adaptable to project requirements    |
+| Use cases         | Optimized for mixed-size/varied contexts | Real-world scenario support          |
 
 ## Configuration
 
@@ -72,6 +72,7 @@ Quality Gate V2 is the default and only implementation. Configure thresholds in 
 ```
 
 **Available options:**
+
 - `acceptancePixelDiffRatio`: Maximum acceptable pixel difference ratio (default: 0.01 / 1%)
 - `acceptanceColorDeltaE`: Maximum acceptable color difference (default: 3.0)
 - `pixelmatchThreshold`: Pixelmatch sensitivity, smaller = more sensitive (default: 0.1)
