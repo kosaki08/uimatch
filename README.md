@@ -133,9 +133,8 @@ npx uimatch compare figma=... story=... selector=... size=strict
 npx uimatch compare figma=... story=... selector=... \
   size=pad contentBasis=intersection
 
-# Loop mode (iterate until DFS > 95)
-npx uimatch loop figma=... story=... selector=... \
-  maxIters=5 targetDFS=95
+# Suite mode (batch comparison)
+npx uimatch suite suite-config.json
 ```
 
 **See also**: [Examples](docs/examples/) | [Common Options](#common-options)
