@@ -68,16 +68,7 @@ describe('E2E: outDir artifact saving', () => {
       )}`;
       const cmd = `bun "${CLI_PATH}" compare figma=bypass:test story="${storyUrl}" selector="#test" outDir="${testOutDir}" timestampOutDir=false size=pad viewport=10x10 dpr=1`;
 
-      try {
-        const output = execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
-        console.log('CLI output:', output);
-      } catch (error: unknown) {
-        const execError = error as { status?: number; stdout?: Buffer; stderr?: Buffer };
-        console.error('CLI failed with status:', execError.status);
-        console.error('stdout:', execError.stdout?.toString());
-        console.error('stderr:', execError.stderr?.toString());
-        throw error;
-      }
+      execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
       // Wait for file flush
       await new Promise((resolve) => setTimeout(resolve, 300));
 
