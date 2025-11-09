@@ -70,6 +70,7 @@ Selector resolution is **optional and pluggable** via SPI (Service Provider Inte
 #### Output & Capture
 
 - `outDir=<path>` - Save artifacts to directory
+- `timestampOutDir=<bool>` - Add timestamp to outDir to avoid collisions (default: `true`, `false` when `CI=true`)
 - `format=<type>` - Output format: `standard|claude` (default: `standard`)
 - `viewport=<WxH>` - Viewport size (e.g., `1584x1104`)
 - `dpr=<number>` - Device pixel ratio for browser capture (default: `2`)
@@ -198,11 +199,38 @@ When `selectorsPlugin` is enabled and a plugin successfully resolves the selecto
 
 **Stability Scoring:**
 
-- `100` - `data-testid`, `role[name]` with exact text match
-- `85` - `role` with partial text match, `aria-label`
-- `70` - Class selectors with semantic names
-- `50` - nth-child, positional selectors
-- `30` - Generic CSS selectors without semantic meaning
+The stability score (0-100) is a **weighted composite** of four factors:
+
+1. **Hint Quality (40%)**: Quality of the selector hint
+   - `data-testid`: 1.0
+   - `role`: 0.8
+   - `text`: 0.5
+   - `css`: 0.3
+
+2. **Snippet Match (20%)**: Whether code snippet matches AST
+   - Matched: 1.0
+   - Not matched: 0.0
+
+3. **Liveness (30%)**: Selector validity check
+   - Alive: 1.0
+   - Unchecked: 0.5
+   - Dead: 0.0
+
+4. **Specificity (10%)**: Attribute specificity
+   - `data-testid`: 1.0
+   - `role[name]`: 0.9
+   - `role`: 0.7
+   - Semantic classes: 0.6
+   - Generic selectors: 0.3
+
+**Score formula**: `(hintQuality * 0.4 + snippetMatch * 0.2 + liveness * 0.3 + specificity * 0.1) * 100`
+
+**Examples:**
+- Perfect `data-testid` (matched + alive): 100
+- `role[name]` without snippet match: ~78
+- Generic CSS selector (dead): ~15
+
+The documented scores represent **potential maximums** when all factors are optimal.
 
 This information is useful for:
 
