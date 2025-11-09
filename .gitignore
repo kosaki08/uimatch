@@ -9,6 +9,9 @@ bun.lockb
 # output
 out
 dist
+dist-packages
+dist-test
+packages/**/dist
 *.tgz
 
 # code coverage

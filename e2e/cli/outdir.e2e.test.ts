@@ -3,10 +3,10 @@ import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { browserPool } from '../../../../uimatch-core/src/adapters/browser-pool';
+import { browserPool } from '../../packages/uimatch-core/src/adapters/browser-pool';
 
-// Path to CLI for process-based execution (same as smoke.test.ts)
-const CLI_PATH = join(__dirname, '../index.ts');
+// Path to CLI for process-based execution
+const CLI_PATH = join(import.meta.dir, '../../packages/uimatch-plugin/src/cli/index.ts');
 
 // Type definitions for test report
 interface TestReport {
@@ -17,7 +17,11 @@ interface TestReport {
   };
 }
 
-describe('E2E: outDir artifact saving', () => {
+// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
+const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
+const run = ENABLE_E2E ? describe : describe.skip;
+
+run('E2E: outDir artifact saving', () => {
   const testOutDir = join(import.meta.dir, 'fixtures', 'test-out');
 
   // A minimal 10x10 red PNG in base64 (for UIMATCH_FIGMA_PNG_B64 bypass)
