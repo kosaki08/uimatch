@@ -27,6 +27,7 @@ run('Playwright childBox capture - with childSelector', () => {
       selector: '#parent',
       childSelector: '#child',
       reuseBrowser: true,
+      idleWaitMs: 0,
     });
 
     expect(result.childBox).toBeDefined();
@@ -42,6 +43,7 @@ run('Playwright childBox capture - with childSelector', () => {
       selector: '#parent',
       childSelector: '#nonexistent',
       reuseBrowser: true,
+      idleWaitMs: 0,
     });
 
     expect(result.childBox).toBeUndefined();
@@ -57,6 +59,7 @@ run('Playwright childBox capture - without childSelector', () => {
       html,
       selector: '#parent',
       reuseBrowser: true,
+      idleWaitMs: 0,
     });
 
     expect(result.childBox).toBeUndefined();
