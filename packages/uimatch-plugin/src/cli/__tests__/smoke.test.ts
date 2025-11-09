@@ -71,9 +71,8 @@ test('A-1: CLI smoke (no crash)', () => {
  * A-2: Deterministic report (reproducibility)
  * 目的: 同一入力 → 同一出力（ハング／フレークの芽を検知）
  * 動的フィールド（timestamp/timing）をマスクして深い比較
- * TODO: Optimize test speed (currently ~2.6s, target < 200ms)
  */
-test.skip('A-2: deterministic report', () => {
+test('A-2: deterministic report', () => {
   const env = {
     ...process.env,
     UIMATCH_FIGMA_PNG_B64: MINIMAL_PNG_B64,
@@ -86,11 +85,11 @@ test.skip('A-2: deterministic report', () => {
   mkdirSync(outDirA, { recursive: true });
   mkdirSync(outDirB, { recursive: true });
 
-  const cmdBase = `bun "${CLI_PATH}" compare figma=bypass:test story="${MINIMAL_HTML}" selector="#target" size=pad dpr=1 --no-screenshots`;
+  const cmdBase = `bun "${CLI_PATH}" compare figma=bypass:test story="${MINIMAL_HTML}" selector="#target" size=pad dpr=1 timestampOutDir=false --no-screenshots`;
 
   // Run twice with different output directories
-  execSync(`${cmdBase} --out-dir "${outDirA}"`, { env, encoding: 'utf8', stdio: 'pipe' });
-  execSync(`${cmdBase} --out-dir "${outDirB}"`, { env, encoding: 'utf8', stdio: 'pipe' });
+  execSync(`${cmdBase} outDir="${outDirA}"`, { env, encoding: 'utf8', stdio: 'pipe' });
+  execSync(`${cmdBase} outDir="${outDirB}"`, { env, encoding: 'utf8', stdio: 'pipe' });
 
   const reportA = JSON.parse(readFileSync(join(outDirA, 'report.json'), 'utf8')) as Record<
     string,
