@@ -148,6 +148,10 @@ test.skipIf(!process.env.UIMATCH_ENABLE_BROWSER_TESTS)('A-3: representative E2E 
   });
 
   expect(subdirs.length).toBeGreaterThan(0);
-  const reportPath = join(outDir, subdirs[0], 'report.json');
+  const subdir = subdirs[0];
+  if (!subdir) {
+    throw new Error('No subdirectory found in output directory');
+  }
+  const reportPath = join(outDir, subdir, 'report.json');
   expect(readFileSync(reportPath, 'utf8')).toBeTruthy();
 });
