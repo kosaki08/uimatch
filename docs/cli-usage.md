@@ -226,6 +226,7 @@ The stability score (0-100) is a **weighted composite** of four factors:
 **Score formula**: `(hintQuality * 0.4 + snippetMatch * 0.2 + liveness * 0.3 + specificity * 0.1) * 100`
 
 **Examples:**
+
 - Perfect `data-testid` (matched + alive): 100
 - `role[name]` without snippet match: ~78
 - Generic CSS selector (dead): ~15
