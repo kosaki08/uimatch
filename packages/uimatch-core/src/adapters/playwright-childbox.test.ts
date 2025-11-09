@@ -51,17 +51,6 @@ run('Playwright childBox capture - with childSelector', () => {
   });
 });
 
-run('Playwright childBox capture - with childSelector', () => {
-  // Cleanup: Close all browser instances to prevent process leakage
-  afterAll(async () => {
-    try {
-      await browserPool.closeAll();
-    } catch {
-      // Ignore cleanup errors
-    }
-  });
-});
-
 run('Playwright childBox capture - without childSelector', () => {
   itT('should work without childSelector', async () => {
     const html = `<div id="parent">Content</div>`;
@@ -76,13 +65,13 @@ run('Playwright childBox capture - without childSelector', () => {
     expect(result.childBox).toBeUndefined();
     expect(result.implPng).toBeDefined();
   });
+});
 
-  // Cleanup: Close all browser instances to prevent process leakage
-  afterAll(async () => {
-    try {
-      await browserPool.closeAll();
-    } catch {
-      // Ignore cleanup errors
-    }
-  });
+// Cleanup: Close all browser instances to prevent process leakage
+afterAll(async () => {
+  try {
+    await browserPool.closeAll();
+  } catch {
+    // Ignore cleanup errors
+  }
 });
