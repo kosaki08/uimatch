@@ -74,7 +74,7 @@ export function Button() {
               testid: 'submit-btn',
               role: 'button',
             },
-            snippetHash: actualHash,
+            snippetHash: actualHash.hash,
             snippet: '<button data-testid="submit-btn" className="btn btn-primary">',
             subselector: '[data-testid="submit-btn"]',
             lastKnown: {
@@ -199,7 +199,7 @@ export function Form() {
               prefer: ['role', 'css'],
               role: 'textbox',
             },
-            snippetHash: actualHash,
+            snippetHash: actualHash.hash,
             snippet: '<input type="email" name="email" />',
             subselector: 'dompath:form/label/input[type="email"]',
             lastKnown: {
@@ -294,7 +294,7 @@ export function MultiButton() {
               prefer: ['testid'],
               testid: 'submit',
             },
-            snippetHash: submitHash,
+            snippetHash: submitHash.hash,
             snippet: '<button data-testid="submit">Submit</button>',
             subselector: '[data-testid="submit"]',
             lastKnown: {
@@ -316,7 +316,7 @@ export function MultiButton() {
               prefer: ['testid'],
               testid: 'cancel',
             },
-            snippetHash: cancelHash,
+            snippetHash: cancelHash.hash,
             snippet: '<button data-testid="cancel">Cancel</button>',
             subselector: '[data-testid="cancel"]',
             lastKnown: {
