@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { browserPool } from '../../../../uimatch-core/src/adapters/browser-pool';
 
 // Path to CLI for process-based execution (same as smoke.test.ts)
-const CLI_PATH = join(__dirname, '../../index.ts');
+const CLI_PATH = join(__dirname, '../index.ts');
 
 // Type definitions for test report
 interface TestReport {
@@ -63,19 +63,21 @@ describe('E2E: outDir artifact saving', () => {
         NODE_ENV: 'test',
       };
 
-      const cmd = [
-        `bun "${CLI_PATH}" compare`,
-        `figma=bypass:test`,
-        `story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>`,
-        `selector=#test`,
-        `outDir=${testOutDir}`,
-        `timestampOutDir=false`,
-        `size=pad`,
-        `viewport=10x10`,
-        `dpr=1`,
-      ].join(' ');
+      const storyUrl = `data:text/html,${encodeURIComponent(
+        '<div id="test" style="width:10px;height:10px;background:red"></div>'
+      )}`;
+      const cmd = `bun "${CLI_PATH}" compare figma=bypass:test story="${storyUrl}" selector="#test" outDir="${testOutDir}" timestampOutDir=false size=pad viewport=10x10 dpr=1`;
 
-      execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
+      try {
+        const output = execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
+        console.log('CLI output:', output);
+      } catch (error: unknown) {
+        const execError = error as { status?: number; stdout?: Buffer; stderr?: Buffer };
+        console.error('CLI failed with status:', execError.status);
+        console.error('stdout:', execError.stdout?.toString());
+        console.error('stderr:', execError.stderr?.toString());
+        throw error;
+      }
       // Wait for file flush
       await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -111,18 +113,10 @@ describe('E2E: outDir artifact saving', () => {
         NODE_ENV: 'test',
       };
 
-      const cmd = [
-        `bun "${CLI_PATH}" compare`,
-        `figma=bypass:test`,
-        `story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>`,
-        `selector=#test`,
-        `outDir=${testOutDir}`,
-        `timestampOutDir=false`,
-        `jsonOnly=false`,
-        `size=pad`,
-        `viewport=10x10`,
-        `dpr=1`,
-      ].join(' ');
+      const storyUrl = `data:text/html,${encodeURIComponent(
+        '<div id="test" style="width:10px;height:10px;background:red"></div>'
+      )}`;
+      const cmd = `bun "${CLI_PATH}" compare figma=bypass:test story="${storyUrl}" selector="#test" outDir="${testOutDir}" timestampOutDir=false jsonOnly=false size=pad viewport=10x10 dpr=1`;
 
       execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -149,18 +143,11 @@ describe('E2E: outDir artifact saving', () => {
       NODE_ENV: 'test',
     };
 
-    const cmd = [
-      `bun "${CLI_PATH}" compare`,
-      `figma=bypass:test`,
-      `story=data:text/html,<div id="test" style="width:10px;height:10px;background:red"></div>`,
-      `selector=#test`,
-      `outDir=${testOutDir}`,
-      `timestampOutDir=false`,
-      `size=pad`,
-      `viewport=10x10`,
-      `dpr=1`,
-      // Note: NOT specifying emitArtifacts explicitly
-    ].join(' ');
+    const storyUrl = `data:text/html,${encodeURIComponent(
+      '<div id="test" style="width:10px;height:10px;background:red"></div>'
+    )}`;
+    const cmd = `bun "${CLI_PATH}" compare figma=bypass:test story="${storyUrl}" selector="#test" outDir="${testOutDir}" timestampOutDir=false size=pad viewport=10x10 dpr=1`;
+    // Note: NOT specifying emitArtifacts explicitly
 
     execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
     await new Promise((resolve) => setTimeout(resolve, 300));
