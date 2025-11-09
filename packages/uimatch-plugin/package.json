@@ -36,7 +36,7 @@
     "zod": "^4.1.12"
   },
   "peerDependencies": {
-    "@uimatch/selector-anchors": ">=0.1.0",
+    "@uimatch/selector-anchors": "workspace:*",
     "playwright": ">=1.49.0"
   },
   "peerDependenciesMeta": {
