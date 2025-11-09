@@ -1,6 +1,7 @@
 {
   "name": "@uimatch/selector-anchors",
   "version": "0.1.0",
+  "private": true,
   "description": "Selector resolution plugin for uiMatch using AST-based anchors",
   "type": "module",
   "main": "./dist/index.js",
