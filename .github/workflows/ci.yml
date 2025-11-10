@@ -34,6 +34,9 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
+      - name: Build types for all packages (safe pre-step)
+        run: pnpm -r --if-present build
+
       - name: Debug ESLint effective config (one E2E file)
         run: |
           pnpm exec eslint --print-config e2e/cli/outdir.e2e.test.ts \

@@ -13,7 +13,7 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        projectService: true,
+        project: path.join(__dirname, 'tsconfig.eslint.json'),
         tsconfigRootDir: __dirname,
       },
     },
@@ -25,53 +25,6 @@ export default [
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
       'no-console': 'error',
-    },
-  },
-  {
-    files: ['packages/uimatch-core/**/*.test.ts', 'packages/uimatch-core/src/**/__tests__/**/*.ts'],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: __dirname,
-      },
-    },
-  },
-  {
-    files: [
-      'packages/uimatch-plugin/**/*.test.ts',
-      'packages/uimatch-plugin/src/**/__tests__/**/*.ts',
-    ],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: __dirname,
-      },
-    },
-  },
-  {
-    files: [
-      'packages/uimatch-selector-anchors/**/*.test.ts',
-      'packages/uimatch-selector-anchors/src/__tests__/**/*.ts',
-      'packages/uimatch-selector-anchors/src/*/__tests__/**/*.ts',
-    ],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: __dirname,
-      },
-    },
-  },
-  {
-    files: ['**/e2e/**/*.ts'],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: __dirname,
-      },
     },
   },
   {
