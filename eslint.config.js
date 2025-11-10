@@ -11,8 +11,9 @@ export default [
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
+      parser: tseslint.parser,
       parserOptions: {
-        project: true,
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },
@@ -29,8 +30,9 @@ export default [
   {
     files: ['packages/uimatch-core/**/*.test.ts', 'packages/uimatch-core/src/**/__tests__/**/*.ts'],
     languageOptions: {
+      parser: tseslint.parser,
       parserOptions: {
-        project: path.join(__dirname, 'packages/uimatch-core/tsconfig.test.json'),
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },
@@ -41,8 +43,9 @@ export default [
       'packages/uimatch-plugin/src/**/__tests__/**/*.ts',
     ],
     languageOptions: {
+      parser: tseslint.parser,
       parserOptions: {
-        project: path.join(__dirname, 'packages/uimatch-plugin/tsconfig.test.json'),
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },
@@ -54,8 +57,9 @@ export default [
       'packages/uimatch-selector-anchors/src/*/__tests__/**/*.ts',
     ],
     languageOptions: {
+      parser: tseslint.parser,
       parserOptions: {
-        project: path.join(__dirname, 'packages/uimatch-selector-anchors/tsconfig.test.json'),
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },
@@ -63,8 +67,9 @@ export default [
   {
     files: ['**/e2e/**/*.ts'],
     languageOptions: {
+      parser: tseslint.parser,
       parserOptions: {
-        project: path.join(__dirname, 'e2e/tsconfig.json'),
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },

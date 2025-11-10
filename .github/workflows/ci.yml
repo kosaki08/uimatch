@@ -34,6 +34,11 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
+      - name: Debug ESLint effective config (one E2E file)
+        run: |
+          pnpm exec eslint --print-config e2e/cli/outdir.e2e.test.ts \
+            | jq '{parserOptions: .languageOptions.parserOptions, unsafeRules: (.rules | with_entries(select(.key|startswith("@typescript-eslint/no-unsafe"))))}'
+
       - name: Lint
         run: pnpm run lint
 
