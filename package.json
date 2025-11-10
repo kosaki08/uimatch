@@ -9,8 +9,8 @@
   "scripts": {
     "ci:postinstall": "pnpm exec playwright install --with-deps chromium",
     "doctor": "bun run packages/uimatch-plugin/src/cli/index.ts doctor",
-    "clean:tsbuild": "find packages -name \"*.tsbuildinfo\" -delete",
-    "build:force": "pnpm run clean:tsbuild && pnpm -r exec tsc --build --force",
+    "clean:tsbuild": "rimraf \"packages/**/tsconfig.tsbuildinfo\"",
+    "build:force": "pnpm run clean:tsbuild && tsc -b --force tsconfig.build.json",
     "bootstrap": "node -e \"const fs=require('fs');process.exit(fs.existsSync('node_modules')?0:1)\" || pnpm install --frozen-lockfile; pnpm -r --if-present build",
     "pretest": "pnpm run bootstrap && bun ./packages/uimatch-core/scripts/generate-fixtures.ts",
     "test": "UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
