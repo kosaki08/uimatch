@@ -75,12 +75,7 @@ export function extractErrorStack(err: unknown): string | undefined {
   }
 
   // Handle error-like objects with stack property
-  if (
-    typeof err === 'object' &&
-    err !== null &&
-    'stack' in err &&
-    typeof err.stack === 'string'
-  ) {
+  if (typeof err === 'object' && err !== null && 'stack' in err && typeof err.stack === 'string') {
     return err.stack;
   }
 
