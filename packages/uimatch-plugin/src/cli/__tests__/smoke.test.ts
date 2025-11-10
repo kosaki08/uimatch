@@ -72,7 +72,7 @@ test('CLI smoke (no crash)', () => {
  * Purpose: Same input → same output (detect potential hangs/flakes)
  * Masks dynamic fields (timestamp/timing) for deep comparison
  */
-test('deterministic report', () => {
+test('deterministic report', async () => {
   const env = {
     ...process.env,
     UIMATCH_FIGMA_PNG_B64: MINIMAL_PNG_B64,
@@ -91,11 +91,19 @@ test('deterministic report', () => {
   execSync(`${cmdBase} --out-dir "${outDirA}"`, { env, encoding: 'utf8', stdio: 'pipe' });
   execSync(`${cmdBase} --out-dir "${outDirB}"`, { env, encoding: 'utf8', stdio: 'pipe' });
 
-  const reportA = JSON.parse(readFileSync(join(outDirA, 'report.json'), 'utf8')) as Record<
+  // Find the report.json files (may be in subdirectories)
+  const { globby } = await import('globby');
+  const reportsA = await globby(['**/report*.json'], { cwd: outDirA });
+  const reportsB = await globby(['**/report*.json'], { cwd: outDirB });
+
+  expect(reportsA.length).toBeGreaterThan(0);
+  expect(reportsB.length).toBeGreaterThan(0);
+
+  const reportA = JSON.parse(readFileSync(join(outDirA, reportsA[0]!), 'utf8')) as Record<
     string,
     unknown
   >;
-  const reportB = JSON.parse(readFileSync(join(outDirB, 'report.json'), 'utf8')) as Record<
+  const reportB = JSON.parse(readFileSync(join(outDirB, reportsB[0]!), 'utf8')) as Record<
     string,
     unknown
   >;
@@ -123,7 +131,7 @@ test('deterministic report', () => {
  * Representative E2E passes once
  * Purpose: Verify Playwright path works (focus on "it runs" rather than strictness)
  */
-test('representative E2E passes', () => {
+test('representative E2E passes', async () => {
   const outDir = join(testTmpDir, 'e2e-smoke');
   mkdirSync(outDir, { recursive: true });
 
@@ -139,17 +147,11 @@ test('representative E2E passes', () => {
 
   expect(stdout).toContain('DFS');
 
-  // Find the timestamped subdirectory
-  const subdirs = readdirSync(outDir).filter((name) => {
-    const stat = statSync(join(outDir, name));
-    return stat.isDirectory();
-  });
+  // Check that required artifacts exist (PNG screenshots and JSON report)
+  const { globby } = await import('globby');
+  const paths = await globby(['**/*.png', '**/report*.json'], { cwd: outDir });
 
-  expect(subdirs.length).toBeGreaterThan(0);
-  const subdir = subdirs[0];
-  if (!subdir) {
-    throw new Error('No subdirectory found in output directory');
-  }
-  const reportPath = join(outDir, subdir, 'report.json');
-  expect(readFileSync(reportPath, 'utf8')).toBeTruthy();
+  // Verify that at least one PNG and one report JSON were generated
+  expect(paths.some((p) => p.endsWith('.png'))).toBe(true);
+  expect(paths.some((p) => p.endsWith('.json'))).toBe(true);
 });
