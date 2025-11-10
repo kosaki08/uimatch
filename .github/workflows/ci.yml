@@ -160,8 +160,15 @@ jobs:
 
       - name: Pack all packages (pnpm resolves workspace:*)
         run: |
-          # pnpm automatically resolves workspace:* to actual versions during pack
-          pnpm -r pack --pack-destination ${{ github.workspace }}/dist-packages
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/dist-packages"
+          # Loop through all package directories (pnpm9-compatible approach)
+          for dir in packages/*; do
+            if [ -f "$dir/package.json" ]; then
+              echo "Packing $dir..."
+              (cd "$dir" && pnpm pack --pack-destination "${{ github.workspace }}/dist-packages")
+            fi
+          done
 
       - name: 'Assert no workspace: protocol leaked'
         run: |
@@ -267,9 +274,15 @@ jobs:
 
       - name: Pack all workspace packages
         run: |
-          mkdir -p dist-packages
-          # pnpm automatically resolves workspace:* to actual versions during pack
-          pnpm -r pack --pack-destination ${{ github.workspace }}/dist-packages
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/dist-packages"
+          # Loop through all package directories (pnpm9-compatible approach)
+          for dir in packages/*; do
+            if [ -f "$dir/package.json" ]; then
+              echo "Packing $dir..."
+              (cd "$dir" && pnpm pack --pack-destination "${{ github.workspace }}/dist-packages")
+            fi
+          done
 
       - name: 'Assert no workspace: protocol leaked'
         run: |
