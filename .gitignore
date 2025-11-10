@@ -35,6 +35,13 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cache
 *.tsbuildinfo
 
+# TypeScript generated files in src (should be in dist)
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
+packages/*/src/**/*.js
+!packages/*/src/**/*.test.js
+!packages/*/src/**/*.spec.js
+
 # IntelliJ based IDEs
 .idea
 
