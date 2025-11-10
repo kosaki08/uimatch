@@ -40,8 +40,11 @@ jobs:
       - name: Type check
         run: pnpm run type-check
 
-      - name: Build packages
-        run: pnpm run build
+      - name: Clean tsbuildinfo cache
+        run: pnpm run clean:tsbuild
+
+      - name: Force build packages (CI clean build)
+        run: pnpm run build:force
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
@@ -147,12 +150,10 @@ jobs:
       - name: Create distribution directory
         run: mkdir -p dist-packages
 
-      - name: Pack selector-spi & selector-anchors (pnpm resolves workspace:*)
+      - name: Pack all packages (pnpm resolves workspace:*)
         run: |
           # pnpm automatically resolves workspace:* to actual versions during pack
-          # Use -C to avoid unknown --recursive option
-          pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
+          pnpm -r pack --pack-destination ${{ github.workspace }}/dist-packages
 
       - name: 'Assert no workspace: protocol leaked'
         run: |
@@ -256,16 +257,11 @@ jobs:
       - name: Build all packages
         run: pnpm run build
 
-      - name: Pack all workspace packages (topological order)
+      - name: Pack all workspace packages
         run: |
           mkdir -p dist-packages
-          # Pack each public package individually (pnpm resolves workspace:* automatically)
-          pnpm -C packages/shared-logging pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-core pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-scoring pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
-          pnpm -C packages/uimatch-plugin pack --pack-destination ../../dist-packages
+          # pnpm automatically resolves workspace:* to actual versions during pack
+          pnpm -r pack --pack-destination ${{ github.workspace }}/dist-packages
 
       - name: 'Assert no workspace: protocol leaked'
         run: |

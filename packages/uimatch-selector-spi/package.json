@@ -1,7 +1,6 @@
 {
   "name": "@uimatch/selector-spi",
   "version": "0.1.0",
-  "private": true,
   "description": "Service Provider Interface types for uiMatch selector resolution plugins",
   "type": "module",
   "imports": {
@@ -17,8 +16,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc --build",
-    "clean": "rimraf dist tsconfig.tsbuildinfo"
+    "build": "tsc",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "uimatch",
