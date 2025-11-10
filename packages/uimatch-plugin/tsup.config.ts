@@ -10,7 +10,12 @@ export default defineConfig({
   shims: false,
   platform: 'node',
   // Bundle internal dependencies for easy distribution
-  noExternal: ['uimatch-core', 'uimatch-scoring', '@uimatch/selector-spi'],
+  noExternal: [
+    'uimatch-core',
+    'uimatch-scoring',
+    '@uimatch/selector-spi',
+    '@uimatch/shared-logging',
+  ],
   // External dependencies that should not be bundled
   external: [
     'playwright',

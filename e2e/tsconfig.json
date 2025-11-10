@@ -1,7 +1,7 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "types": ["@playwright/test", "node"],
+    "types": ["@playwright/test", "node", "bun-types"],
     "noEmit": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true

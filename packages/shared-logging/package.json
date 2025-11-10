@@ -1,7 +1,6 @@
 {
   "name": "@uimatch/shared-logging",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,6 +16,7 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "clean": "rimraf dist",
+    "prepublishOnly": "npm run build",
     "lint": "eslint src --max-warnings 0",
     "format": "prettier --write ."
   },
