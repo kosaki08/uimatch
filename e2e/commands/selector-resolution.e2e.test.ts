@@ -11,6 +11,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { isSelectorsAnchors } from '../helpers/type-guards';
 
 // Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
 const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
@@ -131,13 +132,16 @@ export function Button() {
 
       // Verify updatedAnchors includes updated data
       expect(result.updatedAnchors).toBeDefined();
-      const ua = result.updatedAnchors as SelectorsAnchors | undefined;
-      expect(ua?.version).toBe('1.0.0');
-      expect(ua?.anchors).toHaveLength(1);
+      if (!isSelectorsAnchors(result.updatedAnchors)) {
+        throw new Error('updatedAnchors is not SelectorsAnchors');
+      }
+      const ua = result.updatedAnchors;
+      expect(ua.version).toBe('1.0.0');
+      expect(ua.anchors).toHaveLength(1);
 
       // Verify anchor was updated with AST data
       if (result.updatedAnchors) {
-        const updatedData = result.updatedAnchors as SelectorsAnchors;
+        const updatedData = result.updatedAnchors;
         expect(updatedData.anchors.length).toBeGreaterThan(0);
         const updatedAnchor = updatedData.anchors[0];
         if (updatedAnchor) {
@@ -378,12 +382,15 @@ export function MultiButton() {
 
       expect(result.updatedAnchors).toBeDefined();
       // Both anchors should be preserved
-      const ua2 = result.updatedAnchors as SelectorsAnchors | undefined;
-      expect(ua2?.anchors).toHaveLength(2);
+      if (!isSelectorsAnchors(result.updatedAnchors)) {
+        throw new Error('updatedAnchors is not SelectorsAnchors');
+      }
+      const ua2 = result.updatedAnchors;
+      expect(ua2.anchors).toHaveLength(2);
 
       // Only matched anchor should have updated timestamp
       if (result.updatedAnchors) {
-        const updatedData = result.updatedAnchors as SelectorsAnchors;
+        const updatedData = result.updatedAnchors;
         const submitAnchor = updatedData.anchors.find((a) => a.id === 'submit-btn');
         const cancelAnchor = updatedData.anchors.find((a) => a.id === 'cancel-btn');
 

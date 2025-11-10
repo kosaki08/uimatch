@@ -6,7 +6,9 @@ import { browserPool } from '../../packages/uimatch-core/src/adapters/browser-po
 import { captureTarget } from '../../packages/uimatch-core/src/adapters/playwright';
 
 const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
-const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: TEST_TIMEOUT });
+const itT = (name: string, fn: () => Promise<void>): void => {
+  test(name, fn, { timeout: TEST_TIMEOUT });
+};
 
 // Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
 const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
