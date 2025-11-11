@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Fast local checks (lint + format on staged files only)
+pnpm lint-staged

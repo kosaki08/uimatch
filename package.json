@@ -7,6 +7,7 @@
     "node": ">=20.19 <21 || >=22.12"
   },
   "scripts": {
+    "prepare": "husky",
     "ci:postinstall": "pnpm exec playwright install --with-deps chromium",
     "doctor": "bun run packages/uimatch-plugin/src/cli/index.ts doctor",
     "clean:tsbuild": "rimraf \"packages/**/tsconfig.tsbuildinfo\"",
@@ -28,14 +29,18 @@
     "type-check:selector-anchors": "cd packages/uimatch-selector-anchors && tsc --noEmit",
     "type-check:e2e": "cd e2e && tsc --noEmit",
     "check": "bun run lint && bun run type-check",
+    "check:fast": "pnpm run format:check && pnpm run lint && pnpm run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "pack:all": "mkdir -p dist-packages && node -e \"require('fs').readdirSync('packages',{withFileTypes:true}).filter(d=>d.isDirectory()).forEach(d=>{require('child_process').spawnSync('pnpm',['pack','--pack-destination','../dist-packages'],{cwd:'packages/'+d.name,stdio:'inherit'})})\"",
+    "pack:local": "mkdir -p dist-packages && node -e \"require('fs').readdirSync('packages',{withFileTypes:true}).filter(d=>d.isDirectory()).forEach(d=>{require('child_process').spawnSync('pnpm',['pack','--pack-destination','../dist-packages'],{cwd:'packages/'+d.name,stdio:'inherit'})})\"",
+    "test:quick": "UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
     "uimatch:compare": "bun run packages/uimatch-plugin/src/cli/index.ts compare",
     "uimatch:suite": "bun run packages/uimatch-plugin/src/cli/index.ts suite"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.38.0",
     "@playwright/test": "^1.56.1",
     "@types/bun": "latest",
@@ -44,7 +49,9 @@
     "bun-types": "^1.3.2",
     "dotenv": "^17.2.3",
     "eslint": "^9.38.0",
+    "husky": "^9.1.7",
     "jsep": "^1.4.0",
+    "lint-staged": "^16.2.6",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.3.0",
     "rimraf": "^6.0.1",
@@ -53,5 +60,13 @@
   },
   "dependencies": {
     "parse5": "^8.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js}": [
+      "eslint --fix --max-warnings=0"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }
