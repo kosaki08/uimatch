@@ -10,8 +10,6 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    # Only run if NPM_TOKEN is configured
-    if: ${{ secrets.NPM_TOKEN != '' }}
     permissions:
       contents: write
       pull-requests: write
@@ -45,6 +43,8 @@ jobs:
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
+        # Only proceed if NPM_TOKEN is configured
+        if: ${{ secrets.NPM_TOKEN != '' }}
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
