@@ -33,6 +33,13 @@ export default [
       'no-console': 'error',
     },
   },
+  // Allow console in test files and scripts
+  {
+    files: ['**/__tests__/**/*.ts', '**/*.test.ts', '**/scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
   // Ignore config files and generated code
   {
     ignores: [

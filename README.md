@@ -1,5 +1,8 @@
 # uiMatch
 
+[![CI](https://github.com/kosaki08/ui-match/actions/workflows/ci.yml/badge.svg)](https://github.com/kosaki08/ui-match/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/kosaki08/ui-match/branch/main/graph/badge.svg)](https://codecov.io/gh/kosaki08/ui-match)
+
 **TL;DR**: uiMatch automates Figma-to-implementation comparison with Playwright, calculating pixel-level color differences (ΔE), dimensional accuracy, spacing, typography, and layout discrepancies. Reports are generated with numerical scores, annotated screenshots, and CI integration support.
 
 Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design. Distributed as a Claude Code plugin.
