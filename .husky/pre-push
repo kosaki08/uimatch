@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname "$0")/_/husky.sh"
-
 # Lightweight quality gate (fast checks only, E2E left to CI)
 echo "Running pre-push checks (format, lint, type-check, unit tests)..."
 pnpm run check:fast
