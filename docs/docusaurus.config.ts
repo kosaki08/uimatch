@@ -90,12 +90,7 @@ const config: Config = {
           type: 'docSidebar',
           sidebarId: 'tutorialSidebar',
           position: 'left',
-          label: 'Docs',
-        },
-        {
-          to: '/docs/api',
-          label: 'API',
-          position: 'left',
+          label: 'Guide',
         },
         {
           href: 'https://github.com/kosaki08/ui-match',

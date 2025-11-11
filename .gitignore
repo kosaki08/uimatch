@@ -67,6 +67,7 @@ playwright/.cache/
 # Documentation build artifacts
 docs/build/
 docs/.docusaurus/
+docs/api/
 docs/docs/api/
 docs/static/api/
 docs-temp/
