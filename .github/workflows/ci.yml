@@ -159,9 +159,7 @@ jobs:
         run: mkdir -p dist-packages
 
       - name: Pack all packages (pnpm resolves workspace:*)
-        run: |
-          # pnpm automatically resolves workspace:* to actual versions during pack
-          pnpm -r pack --pack-destination ${{ github.workspace }}/dist-packages
+        run: pnpm run pack:all
 
       - name: 'Assert no workspace: protocol leaked'
         run: |
@@ -266,10 +264,7 @@ jobs:
         run: pnpm run build
 
       - name: Pack all workspace packages
-        run: |
-          mkdir -p dist-packages
-          # pnpm automatically resolves workspace:* to actual versions during pack
-          pnpm -r pack --pack-destination ${{ github.workspace }}/dist-packages
+        run: pnpm run pack:all
 
       - name: 'Assert no workspace: protocol leaked'
         run: |
