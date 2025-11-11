@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
 
-concurrency: release-${{ github.ref }}
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -14,6 +16,10 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
+    # Expose secrets to env at job level for safe if-condition evaluation
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,8 +49,8 @@ jobs:
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
-        # Only proceed if NPM_TOKEN is configured
-        if: ${{ secrets.NPM_TOKEN != '' }}
+        # Use env instead of secrets for safe if-condition evaluation
+        if: ${{ env.NPM_TOKEN != '' }}
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
@@ -52,6 +58,6 @@ jobs:
           title: 'chore: version packages'
           commit: 'chore: version packages'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ env.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
