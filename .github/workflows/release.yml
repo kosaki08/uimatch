@@ -10,6 +10,8 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    # Only run if NPM_TOKEN is configured
+    if: ${{ secrets.NPM_TOKEN != '' }}
     permissions:
       contents: write
       pull-requests: write
