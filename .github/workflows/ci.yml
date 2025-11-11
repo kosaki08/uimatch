@@ -155,21 +155,47 @@ jobs:
       - name: Build packages
         run: pnpm run build
 
-      - name: Create distribution directory
-        run: mkdir -p dist-packages
-
-      - name: Pack all packages (pnpm resolves workspace:*)
-        run: pnpm run pack:all
+      - name: Pack all packages (pnpm9-safe loop to ${{ github.workspace }}/dist-packages)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          DIST_DIR="${{ github.workspace }}/dist-packages"
+          mkdir -p "$DIST_DIR"
+          echo "Packing into: $DIST_DIR"
+          # Pack each workspace package
+          while IFS= read -r -d '' dir; do
+            if [[ -f "$dir/package.json" ]]; then
+              echo "→ pnpm pack $(basename "$dir")"
+              (cd "$dir" && pnpm pack --pack-destination "$DIST_DIR")
+            fi
+          done < <(find packages -mindepth 1 -maxdepth 1 -type d -print0)
+          echo "Generated tarballs:"
+          ls -la "$DIST_DIR" || true
 
       - name: 'Assert no workspace: protocol leaked'
+        shell: bash
         run: |
-          set -euo pipefail
-          cd dist-packages
-          for TGZ in *.tgz; do
-            echo "Checking $TGZ for workspace: protocol in publish-relevant fields..."
-            tar -xzf "$TGZ" -O package/package.json | node ../.github/scripts/assert-no-workspace.cjs
-            echo "✅ No workspace: protocol leaked in $TGZ"
+          set -Eeuo pipefail
+          DIST_DIR="${{ github.workspace }}/dist-packages"
+          cd "$DIST_DIR"
+          shopt -s nullglob
+          tgzs=(*.tgz)
+          if [[ ${#tgzs[@]} -eq 0 ]]; then
+            echo "::error::No .tgz generated in $DIST_DIR"
+            ls -la "$DIST_DIR" || true
+            exit 1
+          fi
+          for TGZ in "${tgzs[@]}"; do
+            echo "Checking $TGZ…"
+            tar -xzf "$TGZ" -O package/package.json | node "$GITHUB_WORKSPACE/.github/scripts/assert-no-workspace.cjs"
           done
+          echo "✅ workspace: protocol not found in any tarball"
+
+      - name: Upload tarballs (debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages-smoke
+          path: ${{ github.workspace }}/dist-packages/*.tgz
 
       - name: Create temp project directory
         run: mkdir -p /tmp/uimatch-smoke
@@ -264,17 +290,45 @@ jobs:
         run: pnpm run build
 
       - name: Pack all workspace packages
-        run: pnpm run pack:all
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          DIST_DIR="${{ github.workspace }}/dist-packages"
+          mkdir -p "$DIST_DIR"
+          echo "Packing into: $DIST_DIR"
+          while IFS= read -r -d '' dir; do
+            if [[ -f "$dir/package.json" ]]; then
+              echo "→ pnpm pack $(basename "$dir")"
+              (cd "$dir" && pnpm pack --pack-destination "$DIST_DIR")
+            fi
+          done < <(find packages -mindepth 1 -maxdepth 1 -type d -print0)
+          echo "Tarballs ready:"
+          ls -la "$DIST_DIR" || true
 
       - name: 'Assert no workspace: protocol leaked'
+        shell: bash
         run: |
-          set -euo pipefail
-          cd dist-packages
-          for TGZ in *.tgz; do
-            echo "Checking $TGZ for workspace: protocol in publish-relevant fields..."
-            tar -xzf "$TGZ" -O package/package.json | node ../.github/scripts/assert-no-workspace.cjs
-            echo "✅ No workspace: protocol leaked in $TGZ"
+          set -Eeuo pipefail
+          DIST_DIR="${{ github.workspace }}/dist-packages"
+          cd "$DIST_DIR"
+          shopt -s nullglob
+          tgzs=(*.tgz)
+          if [[ ${#tgzs[@]} -eq 0 ]]; then
+            echo "::error::No .tgz generated in $DIST_DIR"
+            ls -la "$DIST_DIR" || true
+            exit 1
+          fi
+          for TGZ in "${tgzs[@]}"; do
+            echo "Checking $TGZ…"
+            tar -xzf "$TGZ" -O package/package.json | node "$GITHUB_WORKSPACE/.github/scripts/assert-no-workspace.cjs"
           done
+          echo "✅ workspace: protocol not found in any tarball"
+
+      - name: Upload tarballs (debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages-cli
+          path: ${{ github.workspace }}/dist-packages/*.tgz
 
       - name: Create isolated test environment
         run: mkdir -p /tmp/uimatch-cli-smoke
