@@ -30,6 +30,7 @@
     "check": "bun run lint && bun run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "pack:all": "mkdir -p dist-packages && node -e \"require('fs').readdirSync('packages',{withFileTypes:true}).filter(d=>d.isDirectory()).forEach(d=>{require('child_process').spawnSync('pnpm',['pack','--pack-destination','../dist-packages'],{cwd:'packages/'+d.name,stdio:'inherit'})})\"",
     "uimatch:compare": "bun run packages/uimatch-plugin/src/cli/index.ts compare",
     "uimatch:suite": "bun run packages/uimatch-plugin/src/cli/index.ts suite"
   },
