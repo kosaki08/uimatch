@@ -6,7 +6,7 @@
 
 import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { execSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -99,11 +99,17 @@ test('deterministic report', async () => {
   expect(reportsA.length).toBeGreaterThan(0);
   expect(reportsB.length).toBeGreaterThan(0);
 
-  const reportA = JSON.parse(readFileSync(join(outDirA, reportsA[0]!), 'utf8')) as Record<
+  const reportPathA = reportsA[0];
+  const reportPathB = reportsB[0];
+  if (!reportPathA || !reportPathB) {
+    throw new Error('Report files not found in output directories');
+  }
+
+  const reportA = JSON.parse(readFileSync(join(outDirA, reportPathA), 'utf8')) as Record<
     string,
     unknown
   >;
-  const reportB = JSON.parse(readFileSync(join(outDirB, reportsB[0]!), 'utf8')) as Record<
+  const reportB = JSON.parse(readFileSync(join(outDirB, reportPathB), 'utf8')) as Record<
     string,
     unknown
   >;
