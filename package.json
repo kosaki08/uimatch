@@ -62,8 +62,11 @@
     "parse5": "^8.0.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js}": [
-      "eslint --fix --max-warnings=0"
+    "packages/**/*.{ts,tsx}": [
+      "eslint --cache --cache-location .cache/eslint --fix --max-warnings=0"
+    ],
+    "packages/**/*.js": [
+      "eslint --cache --cache-location .cache/eslint --fix --max-warnings=0"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"

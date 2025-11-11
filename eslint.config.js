@@ -6,8 +6,14 @@ import tseslint from 'typescript-eslint';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default [
+  // Base ESLint recommended rules for all JS/TS files
   eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
+  // TypeScript type-checked rules for .ts/.tsx files
+  ...tseslint.configs.recommendedTypeChecked.map((config) => ({
+    ...config,
+    files: ['**/*.ts', '**/*.tsx'],
+  })),
+  // Additional strict rules for .ts/.tsx files
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
@@ -27,6 +33,7 @@ export default [
       'no-console': 'error',
     },
   },
+  // Ignore config files and generated code
   {
     ignores: [
       'node_modules/**',
@@ -34,6 +41,8 @@ export default [
       '**/dist/**',
       'build/**',
       '*.config.js',
+      '*.config.cjs',
+      '*.config.mjs',
       '**/scripts/**',
       '**/fixtures/**',
     ],
