@@ -35,7 +35,11 @@
     "pack:local": "mkdir -p dist-packages && node -e \"require('fs').readdirSync('packages',{withFileTypes:true}).filter(d=>d.isDirectory()).forEach(d=>{require('child_process').spawnSync('pnpm',['pack','--pack-destination','../dist-packages'],{cwd:'packages/'+d.name,stdio:'inherit'})})\"",
     "test:quick": "UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
     "uimatch:compare": "bun run packages/uimatch-plugin/src/cli/index.ts compare",
-    "uimatch:suite": "bun run packages/uimatch-plugin/src/cli/index.ts suite"
+    "uimatch:suite": "bun run packages/uimatch-plugin/src/cli/index.ts suite",
+    "docs:dev": "cd docs && pnpm start",
+    "docs:build": "cd docs && pnpm build",
+    "docs:serve": "cd docs && pnpm serve",
+    "docs:deploy": "pnpm run docs:build && cd docs && pnpm deploy"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",

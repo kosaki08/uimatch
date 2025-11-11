@@ -52,6 +52,8 @@ export default [
       '*.config.mjs',
       '**/scripts/**',
       '**/fixtures/**',
+      'docs/**',
+      'docs-temp/**',
     ],
   },
 ];

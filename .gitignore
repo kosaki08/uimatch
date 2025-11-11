@@ -63,3 +63,10 @@ packages/*/src/**/*.js
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Documentation build artifacts
+docs/build/
+docs/.docusaurus/
+docs/docs/api/
+docs/static/api/
+docs-temp/
