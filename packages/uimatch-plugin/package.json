@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@uimatch/selector-spi": "workspace:*",
+    "globby": "^14.0.2",
     "tsup": "^8.5.0",
     "uimatch-core": "workspace:*",
     "uimatch-scoring": "workspace:*"
