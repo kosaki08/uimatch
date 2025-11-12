@@ -121,9 +121,9 @@ jobs:
           # Run E2E tests sequentially (--jobs=1) to avoid CI resource contention
           # Use 60s timeout for CI environment (browser startup + font loading variability)
           bun test --bail --jobs=1 --timeout 60000 \
-            packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts \
-            packages/uimatch-plugin/src/cli/__tests__/e2e-outdir.test.ts \
-            packages/uimatch-plugin/src/commands/__tests__/selector-resolution-e2e.test.ts
+            packages/@uimatch/cli/src/cli/__tests__/smoke.test.ts \
+            packages/@uimatch/cli/src/cli/__tests__/e2e-outdir.test.ts \
+            packages/@uimatch/cli/src/commands/__tests__/selector-resolution-e2e.test.ts
 
       - name: Upload test artifacts on failure
         if: failure()
@@ -131,7 +131,7 @@ jobs:
         with:
           name: playwright-artifacts
           path: |
-            packages/uimatch-core/fixtures/
+            packages/@uimatch/core/fixtures/
             test-results/
           retention-days: 7
 
@@ -350,10 +350,10 @@ jobs:
           npm install \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-shared-logging-*.tgz \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-spi-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-core-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-scoring-*.tgz \
+            ${GITHUB_WORKSPACE}/dist-packages/@uimatch/core-*.tgz \
+            ${GITHUB_WORKSPACE}/dist-packages/@uimatch/scoring-*.tgz \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-plugin-*.tgz \
+            ${GITHUB_WORKSPACE}/dist-packages/@uimatch/cli-*.tgz \
             playwright
 
       - name: Install Playwright browsers

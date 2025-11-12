@@ -46,7 +46,7 @@ flowchart LR
   P1 --> W1{"writeBack enabled?"}
   W1 -- Yes --> U1["Update anchors.json resolvedCss/lastSeen/lastKnown"]
   P1 --> R1["Resolution { selector, score, reasons }"]
-  R1 --> CORE["To uimatch-core compareImages()"]
+  R1 --> CORE["To @uimatch/core compareImages()"]
 ```
 
 ## Features
@@ -262,7 +262,7 @@ export DEBUG=uimatch:selector-anchors
 
 ## Integration Notes
 
-**Text Matching (uiMatch Plugin)**: Text matching verification is provided by `uimatch-plugin` in `/uiMatch compare` (via the `textCheck` option).
+**Text Matching (uiMatch Plugin)**: Text matching verification is provided by `@uimatch/cli` in `/uiMatch compare` (via the `textCheck` option).
 `mode: 'self' | 'descendants'` / `normalize: 'none' | 'nfkc' | 'nfkc_ws'` / `match: 'exact' | 'contains' | 'ratio'` / `minRatio: 0.98`.
 
 **Role Selector Resolution**: `role:button[name="Submit"]` uses `getByRole()`. Boolean attributes like `checked/selected/...` fall back to CSS.

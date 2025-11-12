@@ -42,7 +42,7 @@ When the user requests a comparison, follow these steps:
 2. **Import and execute the comparison function**:
 
    ```typescript
-   import { uiMatchCompare } from 'uimatch-plugin';
+   import { uiMatchCompare } from '@uimatch/cli';
 
    const result = await uiMatchCompare({
      figma: '<fileKey>:<nodeId>',
@@ -289,7 +289,7 @@ The command returns a structured result:
 ## Integration Notes
 
 - **CLI available**: `uimatch compare` (see above for options)
-- **Programmatic API**: `import { uiMatchCompare } from 'uimatch-plugin'`
+- **Programmatic API**: `import { uiMatchCompare } from '@uimatch/cli'`
 - **Artifacts**: Saved to `.uimatch-out/` by default (gitignored)
 - **Logging**: Sanitized by default (no tokens, relative paths, compact Figma refs)
 - **Figma access**: REST API (recommended) with `FIGMA_ACCESS_TOKEN`, or MCP server fallback

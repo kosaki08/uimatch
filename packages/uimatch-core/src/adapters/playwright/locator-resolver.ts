@@ -6,7 +6,7 @@ import { createLogger } from '@uimatch/shared-logging';
 import type { Frame, Locator } from 'playwright';
 import { normalizeText } from '../../utils/normalize';
 
-const logger = createLogger({ package: 'uimatch-core', module: 'locator-resolver' });
+const logger = createLogger({ package: '@uimatch/core', module: 'locator-resolver' });
 
 /**
  * Applies `.first()` to the locator if UIMATCH_SELECTOR_FIRST=true.

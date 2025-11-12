@@ -300,7 +300,7 @@ resolve: async (selector, page) => {
 ### Package Structure
 
 ```
-my-uimatch-plugin/
+my-@uimatch/cli/
 ├── package.json
 ├── src/
 │   └── index.ts

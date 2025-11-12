@@ -2,10 +2,16 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
-// Import TypeDoc generated sidebar
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const typedoc = require('./docs/api/typedoc-sidebar.cjs');
-const apiItems = Array.isArray(typedoc) ? typedoc : (typedoc.items ?? typedoc);
+// Import TypeDoc generated sidebar with fallback for initial builds
+let apiItems: any[] = [];
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const typedoc = require('./docs/api/typedoc-sidebar.cjs');
+  apiItems = Array.isArray(typedoc) ? typedoc : (typedoc.items ?? []);
+} catch {
+  // Fallback when TypeDoc hasn't generated the sidebar yet
+  apiItems = [{ type: 'link', label: 'Open API Reference', href: '/docs/api' }];
+}
 
 /**
  * Creating a sidebar enables you to:

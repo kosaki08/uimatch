@@ -6,7 +6,7 @@ import type { Logger, LogLevel } from './types.js';
  *
  * @example
  * ```ts
- * const logger = createLogger({ package: 'uimatch-core', module: 'capture' });
+ * const logger = createLogger({ package: '@uimatch/core', module: 'capture' });
  * logger.info({ fileId: 123 }, 'Processing file');
  * logger.warn({ error: err.message }, 'Failed to parse');
  * ```

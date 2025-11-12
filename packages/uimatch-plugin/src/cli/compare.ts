@@ -7,11 +7,11 @@
 import { uiMatchCompare } from '#plugin/commands/compare';
 import type { CompareArgs } from '#plugin/types/index';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#plugin/utils/sanitize';
+import { getQualityGateProfile } from '@uimatch/core';
 import { silentLogger } from '@uimatch/shared-logging';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
-import { getQualityGateProfile } from 'uimatch-core';
 import { getLogger, initLogger } from './logger.js';
 import { errln, outln } from './print.js';
 

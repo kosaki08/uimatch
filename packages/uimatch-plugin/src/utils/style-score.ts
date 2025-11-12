@@ -3,7 +3,7 @@
  * Normalizes style diffs and computes weighted scores for LLM consumption
  */
 
-import type { StyleDiff } from 'uimatch-core';
+import type { StyleDiff } from '@uimatch/core';
 
 /**
  * Category weights for SFS calculation
@@ -48,7 +48,7 @@ export interface ToleranceThresholds {
 }
 
 /**
- * Default tolerances (from uimatch-core defaults)
+ * Default tolerances (from @uimatch/core defaults)
  */
 export const DEFAULT_TOLERANCES: ToleranceThresholds = {
   deltaE: 3.0,

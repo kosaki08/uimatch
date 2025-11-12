@@ -34,7 +34,7 @@ Use this command when:
 2. **Run comparison loop**:
 
    ```typescript
-   import { uiMatchCompare } from 'uimatch-plugin';
+   import { uiMatchCompare } from '@uimatch/cli';
 
    const maxIters = 5;
    const thresholds = {

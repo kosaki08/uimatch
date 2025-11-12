@@ -1,4 +1,4 @@
-# uimatch-core
+# @uimatch/core
 
 Core library for comparing Figma designs with implemented UI. Provides pixel-perfect comparison, style analysis, and quality scoring.
 
@@ -13,18 +13,18 @@ Core library for comparing Figma designs with implemented UI. Provides pixel-per
 
 ## Installation
 
-> **Note**: This is an internal package bundled into `uimatch-plugin`. Direct installation is not required for normal usage.
+> **Note**: This is an internal package bundled into `@uimatch/cli`. Direct installation is not required for normal usage.
 
 For development or standalone use:
 
 ```bash
-bun add uimatch-core
+bun add @uimatch/core
 ```
 
 ## Quick Start
 
 ```typescript
-import { compareImages, PlaywrightAdapter, captureTarget } from 'uimatch-core';
+import { compareImages, PlaywrightAdapter, captureTarget } from '@uimatch/core';
 
 // Capture implementation screenshot
 const adapter = new PlaywrightAdapter();
@@ -93,7 +93,7 @@ The `contentBasis` option controls how pixel difference ratios are calculated:
 The library extracts and compares CSS properties:
 
 ```typescript
-import { buildStyleDiffs } from 'uimatch-core';
+import { buildStyleDiffs } from '@uimatch/core';
 
 const diffs = buildStyleDiffs(implementationElements, expectedSpec, tokenMap, options);
 
@@ -117,7 +117,7 @@ const diffs = buildStyleDiffs(implementationElements, expectedSpec, tokenMap, op
 Capture implementation screenshots with Playwright:
 
 ```typescript
-import { PlaywrightAdapter, browserPool } from 'uimatch-core';
+import { PlaywrightAdapter, browserPool } from '@uimatch/core';
 
 // Single capture
 const adapter = new PlaywrightAdapter();
@@ -291,7 +291,7 @@ interface StyleDiff {
 ### Default Configuration
 
 ```typescript
-import { DEFAULT_CONFIG } from 'uimatch-core';
+import { DEFAULT_CONFIG } from '@uimatch/core';
 
 console.log(DEFAULT_CONFIG);
 // {
@@ -310,13 +310,13 @@ console.log(DEFAULT_CONFIG);
 ### Loading Configuration
 
 ```typescript
-import { loadConfig } from 'uimatch-core';
+import { loadConfig } from '@uimatch/core';
 
 // Load from .uimatchrc.json in current directory
 const config = await loadConfig();
 
 // Merge with custom config
-import { mergeConfig } from 'uimatch-core';
+import { mergeConfig } from '@uimatch/core';
 const finalConfig = mergeConfig(config, {
   comparison: {
     acceptancePixelDiffRatio: 0.05,
@@ -329,7 +329,7 @@ const finalConfig = mergeConfig(config, {
 ### Color Utilities
 
 ```typescript
-import { rgbToLab, deltaE2000 } from 'uimatch-core';
+import { rgbToLab, deltaE2000 } from '@uimatch/core';
 
 // Convert RGB to Lab color space
 const lab = rgbToLab({ r: 255, g: 0, b: 0 });
@@ -345,7 +345,7 @@ const difference = deltaE2000(lab1, lab2);
 ### CSS Normalization
 
 ```typescript
-import { parseCssColorToRgb, parseBoxShadow, normLineHeight, toPx } from 'uimatch-core';
+import { parseCssColorToRgb, parseBoxShadow, normLineHeight, toPx } from '@uimatch/core';
 
 // Parse CSS colors to RGB
 const rgb = parseCssColorToRgb('#ff0000'); // { r: 255, g: 0, b: 0 }
@@ -366,7 +366,7 @@ const px = toPx('1.5rem', 16); // 24
 The library uses a `Result<T, E>` pattern for operations that can fail:
 
 ```typescript
-import { isOk, isErr, unwrap } from 'uimatch-core';
+import { isOk, isErr, unwrap } from '@uimatch/core';
 
 const result = await captureTarget(adapter, options);
 
@@ -393,7 +393,7 @@ const value = unwrap(result);
 For improved performance in multiple comparisons:
 
 ```typescript
-import { browserPool } from 'uimatch-core';
+import { browserPool } from '@uimatch/core';
 
 const pool = browserPool();
 
@@ -444,12 +444,12 @@ import type {
   CaptureOptions,
   CaptureResult,
   BrowserAdapter,
-} from 'uimatch-core';
+} from '@uimatch/core';
 ```
 
 ## Distribution
 
-Not published independently (`private: true`). Bundled into `uimatch-plugin`.
+Not published independently (`private: true`). Bundled into `@uimatch/cli`.
 
 ## License
 
@@ -457,6 +457,6 @@ See root project LICENSE.
 
 ## Related
 
-- [uimatch-plugin](../uimatch-plugin) - Claude Code plugin integration
+- [@uimatch/cli](../@uimatch/cli) - Claude Code plugin integration
 - [pixelmatch](https://github.com/mapbox/pixelmatch) - Underlying pixel comparison library
 - [Playwright](https://playwright.dev) - Browser automation

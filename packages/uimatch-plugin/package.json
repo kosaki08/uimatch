@@ -1,9 +1,12 @@
 {
-  "name": "uimatch-plugin",
+  "name": "@uimatch/cli",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typedoc": {
+    "entryPoint": "src/index.ts"
+  },
   "exports": {
     ".": "./dist/index.js",
     "./cli": "./dist/cli/index.js"
@@ -49,9 +52,9 @@
   },
   "devDependencies": {
     "@uimatch/selector-spi": "workspace:*",
+    "@uimatch/core": "workspace:*",
+    "@uimatch/scoring": "workspace:*",
     "globby": "^14.0.2",
-    "tsup": "^8.5.0",
-    "uimatch-core": "workspace:*",
-    "uimatch-scoring": "workspace:*"
+    "tsup": "^8.5.0"
   }
 }

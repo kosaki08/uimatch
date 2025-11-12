@@ -11,8 +11,8 @@ export default defineConfig({
   platform: 'node',
   // Bundle internal dependencies for easy distribution
   noExternal: [
-    'uimatch-core',
-    'uimatch-scoring',
+    '@uimatch/core',
+    '@uimatch/scoring',
     '@uimatch/selector-spi',
     '@uimatch/shared-logging',
   ],

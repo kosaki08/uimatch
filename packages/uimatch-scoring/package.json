@@ -1,11 +1,14 @@
 {
-  "name": "uimatch-scoring",
+  "name": "@uimatch/scoring",
   "version": "0.1.0",
   "type": "module",
   "private": true,
   "description": "Design Fidelity Score (DFS) calculation for uiMatch",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typedoc": {
+    "entryPoint": "src/index.ts"
+  },
   "imports": {
     "#/*": "./dist/*"
   },
@@ -31,7 +34,7 @@
     "uimatch"
   ],
   "dependencies": {
-    "uimatch-core": "workspace:*"
+    "@uimatch/core": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

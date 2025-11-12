@@ -1,4 +1,4 @@
-# uimatch-plugin
+# @uimatch/cli
 
 Claude Code plugin and CLI for comparing Figma designs with implementation. Provides commands for visual comparison, iterative improvement loops, and settings management.
 
@@ -27,11 +27,11 @@ Claude Code plugin and CLI for comparing Figma designs with implementation. Prov
 
 ```bash
 # Global installation (recommended)
-npm install -g uimatch-plugin playwright
+npm install -g @uimatch/cli playwright
 npx playwright install chromium
 
 # Or project-local installation
-npm install -D uimatch-plugin playwright
+npm install -D @uimatch/cli playwright
 npx playwright install chromium
 ```
 
@@ -182,7 +182,7 @@ For detailed CLI usage, available options, and advanced features (size handling,
 ### Programmatic API
 
 ```typescript
-import { uiMatchCompare, uiMatchLoop, getSettings, updateSettings } from 'uimatch-plugin';
+import { uiMatchCompare, uiMatchLoop, getSettings, updateSettings } from '@uimatch/cli';
 
 // Run comparison
 const result = await uiMatchCompare({
@@ -564,7 +564,7 @@ import type {
   LoopResult,
   Settings,
   QualityGateProfile,
-} from 'uimatch-plugin';
+} from '@uimatch/cli';
 ```
 
 ## License
@@ -573,7 +573,7 @@ See root project LICENSE.
 
 ## Related
 
-- [uimatch-core](../uimatch-core) - Core comparison library
+- [@uimatch/core](../@uimatch/core) - Core comparison library
 - [Claude Code](https://claude.com/claude-code) - AI-powered IDE integration
 - [Figma](https://figma.com) - Design tool
 - [Playwright](https://playwright.dev) - Browser automation

@@ -31,7 +31,7 @@ Use this command when:
 When user requests to see current settings:
 
 ```typescript
-import { loadConfig } from 'uimatch-core';
+import { loadConfig } from '@uimatch/core';
 
 const config = loadConfig(); // Loads from .uimatchrc.json or defaults
 
@@ -97,7 +97,7 @@ console.log('✅ Settings updated successfully');
 
 ```typescript
 import fs from 'fs';
-import { DEFAULT_CONFIG } from 'uimatch-core';
+import { DEFAULT_CONFIG } from '@uimatch/core';
 
 const configPath = path.join(process.cwd(), '.uimatchrc.json');
 fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2));
@@ -388,7 +388,7 @@ Configuration is loaded in this priority (highest to lowest):
 1. Environment variables
 2. `.uimatchrc.json` in current directory
 3. `uimatch.config.js` in current directory
-4. Default values from `uimatch-core`
+4. Default values from `@uimatch/core`
 
 ## See Also
 

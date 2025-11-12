@@ -208,9 +208,9 @@ export async function runDoctor(args: string[]): Promise<void> {
   };
   const version = packageJson.workspaces
     ? (
-        JSON.parse(
-          readFileSync(path.join(cwd, 'packages/uimatch-plugin/package.json'), 'utf-8')
-        ) as { version?: string }
+        JSON.parse(readFileSync(path.join(cwd, 'packages/@uimatch/cli/package.json'), 'utf-8')) as {
+          version?: string;
+        }
       ).version
     : packageJson.version;
 

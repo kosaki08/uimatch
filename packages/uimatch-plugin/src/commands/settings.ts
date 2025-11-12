@@ -2,9 +2,9 @@
  * Settings management command
  */
 
+import { DEFAULT_CONFIG, mergeConfig, type AppConfig } from '@uimatch/core';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_CONFIG, mergeConfig, type AppConfig } from 'uimatch-core';
 import { outln } from '../cli/print.js';
 
 /**

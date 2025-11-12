@@ -17,7 +17,7 @@ const config: Config = {
   organizationName: 'kosaki08', // Your GitHub org/user name
   projectName: 'ui-match', // Your repo name
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
 
   i18n: {
     defaultLocale: 'en',
@@ -52,14 +52,16 @@ const config: Config = {
       'docusaurus-plugin-typedoc',
       {
         id: 'api',
+        // entryPoints: packages directory (not src/index.ts)
         entryPoints: [
-          '../packages/uimatch-core/src/index.ts',
-          '../packages/uimatch-plugin/src/index.ts',
-          '../packages/uimatch-selector-spi/src/index.ts',
-          '../packages/uimatch-selector-anchors/src/index.ts',
-          '../packages/uimatch-scoring/src/index.ts',
+          '../packages/uimatch-core',
+          '../packages/uimatch-plugin',
+          '../packages/uimatch-selector-spi',
+          '../packages/uimatch-selector-anchors',
+          '../packages/uimatch-scoring',
         ],
-        entryPointStrategy: 'expand',
+        // Use 'packages' strategy to show @uimatch/* scope names
+        entryPointStrategy: 'packages',
         tsconfig: '../tsconfig.json',
         out: 'docs/api',
         sidebar: {

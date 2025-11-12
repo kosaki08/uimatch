@@ -3,7 +3,7 @@
  */
 
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
-import { browserPool } from 'uimatch-core';
+import { browserPool } from '@uimatch/core';
 import { outln } from '../cli/print.js';
 import { uiMatchCompare } from './compare';
 

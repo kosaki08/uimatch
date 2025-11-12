@@ -1,4 +1,4 @@
-import type { ExpectedSpec, TokenMap } from 'uimatch-core';
+import type { ExpectedSpec, TokenMap } from '@uimatch/core';
 
 /**
  * Minimal Figma node shapes we care about (partial & tolerant)

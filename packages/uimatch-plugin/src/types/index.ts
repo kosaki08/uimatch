@@ -1,9 +1,9 @@
 /**
- * Type definitions for uimatch-plugin
+ * Type definitions for @uimatch/cli
  */
 
 import type { StyleSummary } from '#plugin/utils/style-score';
-import type { ExpectedSpec, QualityGateResult, StyleDiff, TokenMap } from 'uimatch-core';
+import type { ExpectedSpec, QualityGateResult, StyleDiff, TokenMap } from '@uimatch/core';
 
 /**
  * Figma design variable (color, number, or string).

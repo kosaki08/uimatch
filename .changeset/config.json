@@ -7,12 +7,12 @@
       "@uimatch/shared-logging",
       "@uimatch/selector-spi",
       "@uimatch/selector-anchors",
-      "uimatch-plugin"
+      "@uimatch/cli"
     ]
   ],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["uimatch-core", "uimatch-scoring"]
+  "ignore": ["@uimatch/core", "@uimatch/scoring"]
 }

@@ -2,7 +2,7 @@
  * Type definitions for Design Fidelity Score (DFS) calculation
  */
 
-import type { CompareImageResult } from 'uimatch-core';
+import type { CompareImageResult } from '@uimatch/core';
 
 /**
  * Weights for DFS calculation components

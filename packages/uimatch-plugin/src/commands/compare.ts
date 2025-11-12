@@ -7,9 +7,7 @@ import { FigmaMcpClient, parseFigmaRef } from '#plugin/adapters/index';
 import { loadFigmaMcpConfig, loadSkillConfig } from '#plugin/config/index';
 import { buildExpectedSpecFromFigma } from '#plugin/expected/from-figma';
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
-import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
-import { createLogger } from '@uimatch/shared-logging';
-import type { CaptureResult, CompareImageResult } from 'uimatch-core';
+import type { CaptureResult, CompareImageResult } from '@uimatch/core';
 import {
   browserPool,
   captureTarget,
@@ -17,11 +15,13 @@ import {
   normalizeTextEx,
   resolveLocator,
   textSimilarity,
-} from 'uimatch-core';
-import { computeDFS } from 'uimatch-scoring';
+} from '@uimatch/core';
+import { computeDFS } from '@uimatch/scoring';
+import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
+import { createLogger } from '@uimatch/shared-logging';
 import { getSettings } from './settings';
 
-const logger = createLogger({ package: 'uimatch-plugin', module: 'compare' });
+const logger = createLogger({ package: '@uimatch/cli', module: 'compare' });
 
 /**
  * Read PNG dimensions from IHDR chunk (bytes 16-23).
@@ -614,7 +614,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const tDe = args.thresholds?.deltaE ?? settings.comparison.acceptanceColorDeltaE;
 
   // Use unified quality gate (V2 logic)
-  const { evaluateQualityGate } = await import('uimatch-core');
+  const { evaluateQualityGate } = await import('@uimatch/core');
   const qualityGateResult = evaluateQualityGate(
     result,
     styleDiffs,

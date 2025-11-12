@@ -1,5 +1,5 @@
 /**
- * uimatch-scoring - Design Fidelity Score (DFS) calculation
+ * @uimatch/scoring - Design Fidelity Score (DFS) calculation
  */
 
 export { computeDFS } from './dfs/computeDFS';
