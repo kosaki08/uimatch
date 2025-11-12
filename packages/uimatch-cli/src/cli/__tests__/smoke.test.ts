@@ -95,10 +95,10 @@ test(
     execSync(`${cmdBase} --out-dir "${outDirB}"`, { env, encoding: 'utf8', stdio: 'pipe' });
 
     // Find the report.json files (may be in subdirectories)
-     
-    const reportsA = (await globby(['**/report*.json'], { cwd: outDirA }));
-     
-    const reportsB = (await globby(['**/report*.json'], { cwd: outDirB }));
+
+    const reportsA = await globby(['**/report*.json'], { cwd: outDirA });
+
+    const reportsB = await globby(['**/report*.json'], { cwd: outDirB });
 
     expect(reportsA.length).toBeGreaterThan(0);
     expect(reportsB.length).toBeGreaterThan(0);
@@ -162,8 +162,8 @@ test(
     expect(stdout).toContain('DFS');
 
     // Check that required artifacts exist (PNG screenshots and JSON report)
-     
-    const paths = (await globby(['**/*.png', '**/report*.json'], { cwd: outDir }));
+
+    const paths = await globby(['**/*.png', '**/report*.json'], { cwd: outDir });
 
     // Verify that at least one PNG and one report JSON were generated
     expect(paths.some((p) => p.endsWith('.png'))).toBe(true);

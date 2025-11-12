@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { browserPool } from '../../packages/uimatch-core/src/adapters/browser-pool';
 
 // Path to CLI for process-based execution
-const CLI_PATH = join(import.meta.dir, '../../packages/uimatch-plugin/src/cli/index.ts');
+const CLI_PATH = join(import.meta.dir, '../../packages/uimatch-cli/src/cli/index.ts');
 
 // Type definitions for test report
 interface TestReport {
