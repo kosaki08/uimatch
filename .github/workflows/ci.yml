@@ -31,6 +31,9 @@ jobs:
       - name: Install dependencies (no scripts)
         run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Bootstrap workspace (pre-build local packages)
+        run: pnpm run bootstrap
+
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
 
@@ -107,6 +110,9 @@ jobs:
       - name: Install dependencies (no scripts)
         run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Bootstrap workspace (pre-build local packages)
+        run: pnpm run bootstrap
+
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
 
@@ -165,6 +171,9 @@ jobs:
 
       - name: Install dependencies (no scripts)
         run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Bootstrap workspace (pre-build local packages)
+        run: pnpm run bootstrap
 
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
@@ -299,6 +308,9 @@ jobs:
 
       - name: Install dependencies (no scripts)
         run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Bootstrap workspace (pre-build local packages)
+        run: pnpm run bootstrap
 
       - name: Build all packages (solution, ordered)
         run: pnpm run build:force

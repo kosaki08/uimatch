@@ -7,6 +7,12 @@
       "#plugin/*": ["./src/*"]
     }
   },
+  "references": [
+    { "path": "../shared-logging" },
+    { "path": "../uimatch-selector-spi" },
+    { "path": "../uimatch-scoring" },
+    { "path": "../uimatch-core" }
+  ],
   "include": ["src/**/*", "*.ts"],
   "exclude": ["node_modules", "dist"]
 }

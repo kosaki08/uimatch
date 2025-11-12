@@ -7,6 +7,7 @@
       "#/*": ["./src/*"]
     }
   },
+  "references": [{ "path": "../shared-logging" }],
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/__tests__/**"]
 }
