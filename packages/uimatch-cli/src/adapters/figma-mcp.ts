@@ -63,9 +63,7 @@ export class FigmaMcpClient {
       }
     }
 
-    throw new Error(
-      `Figma MCP fetch failed after ${tries} attempts: ${errorMessage(lastErr)}`
-    );
+    throw new Error(`Figma MCP fetch failed after ${tries} attempts: ${errorMessage(lastErr)}`);
   }
 
   /**
@@ -246,7 +244,7 @@ export class FigmaMcpClient {
  * @param ref - Figma reference string
  * @returns File key and node ID, or 'current' for current selection
  */
- 
+
 export function parseFigmaRef(ref: string): FigmaRef | 'current' {
   // Special case: 'current' means use current Figma selection
   if (ref === 'current') {

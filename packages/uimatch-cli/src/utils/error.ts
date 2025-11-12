@@ -1,8 +1,7 @@
 /**
  * Safe error message extractor to satisfy TypeScript no-unsafe-* rules
  */
-export const errorMessage = (e: unknown): string =>
-  e instanceof Error ? e.message : String(e);
+export const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 /**
  * Safe error stack extractor
@@ -19,10 +18,7 @@ export const isObject = (val: unknown): val is Record<string, unknown> =>
 /**
  * Safe property access with type guard
  */
-export const getStringProp = (
-  obj: unknown,
-  key: string,
-): string | undefined => {
+export const getStringProp = (obj: unknown, key: string): string | undefined => {
   if (!isObject(obj)) return undefined;
   const val = obj[key];
   return typeof val === 'string' ? val : undefined;
