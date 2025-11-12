@@ -55,7 +55,7 @@ const config: Config = {
         // entryPoints: packages directory (not src/index.ts)
         entryPoints: [
           '../packages/uimatch-core',
-          '../packages/uimatch-plugin',
+          '../packages/uimatch-cli',
           '../packages/uimatch-selector-spi',
           '../packages/uimatch-selector-anchors',
           '../packages/uimatch-scoring',

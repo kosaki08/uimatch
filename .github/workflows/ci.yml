@@ -125,7 +125,7 @@ jobs:
           # Run E2E tests sequentially (--jobs=1) to avoid CI resource contention
           # Use 60s timeout for CI environment (browser startup + font loading variability)
           bun test --bail --jobs=1 --timeout 60000 \
-            packages/uimatch-plugin/src/cli/__tests__/smoke.test.ts \
+            packages/uimatch-cli/src/cli/__tests__/smoke.test.ts \
             e2e/cli/outdir.e2e.test.ts \
             e2e/commands/selector-resolution.e2e.test.ts
 

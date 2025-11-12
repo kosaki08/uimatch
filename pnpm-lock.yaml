@@ -129,29 +129,7 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  packages/uimatch-core:
-    dependencies:
-      '@uimatch/shared-logging':
-        specifier: workspace:*
-        version: link:../shared-logging
-      pixelmatch:
-        specifier: ^6.0.0
-        version: 6.0.0
-      playwright:
-        specifier: ^1.49.1
-        version: 1.56.1
-      pngjs:
-        specifier: ^7.0.0
-        version: 7.0.0
-      zod:
-        specifier: ^4.1.12
-        version: 4.1.12
-    devDependencies:
-      '@types/pixelmatch':
-        specifier: ^5.2.6
-        version: 5.2.6
-
-  packages/uimatch-plugin:
+  packages/uimatch-cli:
     dependencies:
       '@uimatch/selector-anchors':
         specifier: workspace:*
@@ -193,6 +171,28 @@ importers:
       tsup:
         specifier: ^8.5.0
         version: 8.5.0(jiti@2.6.1)(postcss@8.5.6)(typescript@5.9.3)(yaml@2.8.1)
+
+  packages/uimatch-core:
+    dependencies:
+      '@uimatch/shared-logging':
+        specifier: workspace:*
+        version: link:../shared-logging
+      pixelmatch:
+        specifier: ^6.0.0
+        version: 6.0.0
+      playwright:
+        specifier: ^1.49.1
+        version: 1.56.1
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
+      zod:
+        specifier: ^4.1.12
+        version: 4.1.12
+    devDependencies:
+      '@types/pixelmatch':
+        specifier: ^5.2.6
+        version: 5.2.6
 
   packages/uimatch-scoring:
     dependencies:

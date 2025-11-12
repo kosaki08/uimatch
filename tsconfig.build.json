@@ -3,7 +3,7 @@
   "references": [
     { "path": "./packages/uimatch-core" },
     { "path": "./packages/uimatch-scoring" },
-    { "path": "./packages/uimatch-plugin" },
+    { "path": "./packages/uimatch-cli" },
     { "path": "./packages/shared-logging" },
     { "path": "./packages/uimatch-selector-spi" },
     { "path": "./packages/uimatch-selector-anchors" }

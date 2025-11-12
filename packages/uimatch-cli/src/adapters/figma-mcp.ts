@@ -4,6 +4,7 @@
 
 import type { FigmaMcpConfig } from '#plugin/config/index';
 import type { FigmaRef, FigmaVariable } from '#plugin/types/index';
+import { errorMessage, getStringProp, isObject } from '#plugin/utils/error';
 import { z } from 'zod';
 
 /**
@@ -50,7 +51,7 @@ export class FigmaMcpClient {
         }
 
         return r;
-      } catch (e) {
+      } catch (e: unknown) {
         clearTimeout(timeoutId);
         lastErr = e;
 
@@ -63,7 +64,7 @@ export class FigmaMcpClient {
     }
 
     throw new Error(
-      `Figma MCP fetch failed after ${tries} attempts: ${(lastErr as Error)?.message ?? 'unknown'}`
+      `Figma MCP fetch failed after ${tries} attempts: ${errorMessage(lastErr)}`
     );
   }
 
@@ -116,12 +117,14 @@ export class FigmaMcpClient {
    * Normalize various image responses to Buffer.
    */
   private toPngBuffer(out: unknown): Buffer {
-    const obj = out as Record<string, unknown>;
+    // Narrow unknown safely before member access
+    const obj = isObject(out) ? out : {};
+    const dataUrl = getStringProp(obj, 'dataUrl');
     const b64 =
-      (obj?.pngB64 as string | undefined) ??
-      (obj?.imageB64 as string | undefined) ??
-      (typeof obj?.dataUrl === 'string' && obj.dataUrl.startsWith('data:image/png;base64,')
-        ? obj.dataUrl.replace(/^data:image\/png;base64,/, '')
+      getStringProp(obj, 'pngB64') ??
+      getStringProp(obj, 'imageB64') ??
+      (dataUrl && dataUrl.startsWith('data:image/png;base64,')
+        ? dataUrl.replace(/^data:image\/png;base64,/, '')
         : undefined);
     if (!b64) {
       throw new Error('Figma MCP: screenshot response did not contain base64 PNG');
@@ -243,6 +246,7 @@ export class FigmaMcpClient {
  * @param ref - Figma reference string
  * @returns File key and node ID, or 'current' for current selection
  */
+ 
 export function parseFigmaRef(ref: string): FigmaRef | 'current' {
   // Special case: 'current' means use current Figma selection
   if (ref === 'current') {
