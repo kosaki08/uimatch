@@ -6,7 +6,7 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 let apiItems: any[] = [];
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const typedoc = require('./api/typedoc-sidebar.cjs');
+  const typedoc = require('./docs/api/typedoc-sidebar.cjs');
   apiItems = Array.isArray(typedoc) ? typedoc : (typedoc.items ?? []);
 } catch {
   // Fallback when TypeDoc hasn't generated the sidebar yet

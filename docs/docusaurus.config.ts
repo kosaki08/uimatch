@@ -63,7 +63,8 @@ const config: Config = {
         // Use 'packages' strategy to show @uimatch/* scope names
         entryPointStrategy: 'packages',
         tsconfig: '../tsconfig.json',
-        out: 'docs/api',
+        // Output to docs/api (relative to docs root) - Docusaurus will place it in docs/docs/api
+        out: 'api',
         sidebar: {
           pretty: true,
         },
