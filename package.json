@@ -76,5 +76,9 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
-  }
+  },
+  "workspaces": [
+    "packages/*",
+    "docs"
+  ]
 }
