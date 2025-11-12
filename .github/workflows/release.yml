@@ -41,11 +41,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (no scripts)
+        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build packages
-        run: pnpm run build
+      - name: Build packages (solution, ordered)
+        run: pnpm run build:force
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets

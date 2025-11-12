@@ -28,14 +28,14 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (no scripts)
+        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build packages (solution, ordered)
+        run: pnpm run build:force
 
       - name: Format check
         run: pnpm run format:check
-
-      - name: Build types for all packages (safe pre-step)
-        run: pnpm -r --if-present build
 
       - name: Debug ESLint effective config (one E2E file)
         run: |
@@ -100,11 +100,11 @@ jobs:
           key: playwright-${{ runner.os }}-v1
           restore-keys: playwright-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (no scripts)
+        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build packages
-        run: pnpm run build
+      - name: Build packages (solution, ordered)
+        run: pnpm run build:force
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
@@ -159,11 +159,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (no scripts)
+        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build packages
-        run: pnpm run build
+      - name: Build packages (solution, ordered)
+        run: pnpm run build:force
 
       - name: Pack all packages (pnpm9-safe loop to ${{ github.workspace }}/dist-packages)
         shell: bash
@@ -293,11 +293,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (no scripts)
+        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build all packages
-        run: pnpm run build
+      - name: Build all packages (solution, ordered)
+        run: pnpm run build:force
 
       - name: Pack all workspace packages
         shell: bash
@@ -413,8 +413,8 @@ jobs:
           node-version: '22.21.x'
           cache: 'pnpm'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (no scripts)
+        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run npm audit
         run: pnpm audit --audit-level=moderate

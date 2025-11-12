@@ -27,7 +27,6 @@
     "build": "tsc --project tsconfig.json && npm run postbuild",
     "postbuild": "rimraf dist/__tests__ dist/**/*.test.* dist/**/safe-regex.test.*",
     "clean": "rimraf dist",
-    "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "bun test"
   },

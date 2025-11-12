@@ -52,11 +52,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (no scripts)
+        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build packages
-        run: pnpm run build:types
+      - name: Build packages (solution, ordered)
+        run: pnpm run build:force
 
       - name: Install docs dependencies
         run: cd docs && pnpm install --frozen-lockfile
