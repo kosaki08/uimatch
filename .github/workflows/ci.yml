@@ -54,21 +54,25 @@ jobs:
       - name: Type check
         run: pnpm run type-check
 
+      - name: Toolchain versions
+        run: |
+          node -v
+          pnpm -v
+          bun -v || true
+          npx tsc -v
+
+      - name: Workspace graph (top 2 levels)
+        run: pnpm -r ls --depth 2 || true
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run unit tests with coverage
-        run: pnpm run test:coverage
+      - name: Run unit tests (CI)
+        run: pnpm run test:ci
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./coverage/coverage-final.json
-          flags: unittests
-          name: codecov-ui-match
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: tsc build plan (verbose)
+        if: failure()
+        run: npx tsc -b -v tsconfig.build.json
 
   e2e-playwright:
     runs-on: ubuntu-latest
