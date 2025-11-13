@@ -6,7 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
+  # Layer 1: Fast quality checks (format, lint, type-check)
+  typecheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -95,12 +96,6 @@ jobs:
       - name: Workspace graph (top 2 levels)
         run: pnpm -r ls --depth 2 || true
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Run unit tests (CI)
-        run: pnpm run test:ci
-
       - name: 'Debug: Upload TypeScript diagnostics on failure'
         if: failure()
         uses: actions/upload-artifact@v4
@@ -124,9 +119,46 @@ jobs:
         if: failure()
         run: (cd packages/uimatch-core && ../../node_modules/.bin/tsc --listFilesOnly) || true
 
+  # Layer 2: Unit tests (fast, no browser)
+  unit:
+    runs-on: ubuntu-latest
+    needs: typecheck
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.21.x'
+          cache: 'pnpm'
+
+      - name: Setup Bun (for scripts only)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (no scripts)
+        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Bootstrap workspace (pre-build local packages)
+        run: pnpm run bootstrap
+
+      - name: Build packages (solution, ordered)
+        run: pnpm run build:force
+
+      - name: Run unit tests (CI)
+        run: pnpm run test:ci
+
+  # Layer 3: E2E tests with Playwright
   e2e-playwright:
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: unit
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -195,7 +227,7 @@ jobs:
   # P0 Guard: Package distribution validation
   package-distribution-smoke:
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: unit
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -332,7 +364,7 @@ jobs:
   # P0 Guard: CLI distribution full-stack smoke test
   cli-distribution-smoke:
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: unit
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -386,14 +418,8 @@ jobs:
           echo "Tarballs ready:"
           ls -la "$DIST_DIR" || true
 
-      - name: Assert CLI tarball contains bin entry point
-        run: |
-          set -eux
-          CLI_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-cli-*.tgz)
-          test -f "$CLI_TGZ"
-          echo "Verifying CLI tarball contents..."
-          tar -tzf "$CLI_TGZ" | grep -q 'package/dist/cli/index.js'
-          echo "✅ CLI tarball contains bin entry point"
+      - name: Assert CLI tarball structure
+        run: bash scripts/ci/assert-cli-tarball.sh dist-packages
 
       - name: 'Assert no workspace: protocol leaked'
         shell: bash
