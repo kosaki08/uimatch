@@ -2,7 +2,15 @@
  * uiMatch CLI entry point
  */
 
-// P0 Guard: Top-level exception handlers to prevent silent crashes
+import { uiMatchSettings } from '#plugin/commands/settings.js';
+import { runCompare } from './compare.js';
+import { runDoctor } from './doctor/index.js';
+import { initLogger } from './logger.js';
+import { errln, outln } from './print.js';
+import { runSuite } from './suite.js';
+
+// P0 Guard: Exception handlers to catch runtime errors
+// Note: Module loading errors cannot be caught here per ESM specification
 process.on('uncaughtException', (error: Error) => {
   process.stderr.write(`Fatal error (uncaught exception): ${error?.message ?? String(error)}\n`);
   process.exit(1);
@@ -15,13 +23,6 @@ process.on('unhandledRejection', (reason: unknown) => {
   );
   process.exit(1);
 });
-
-import { uiMatchSettings } from '#plugin/commands/settings.js';
-import { runCompare } from './compare.js';
-import { runDoctor } from './doctor/index.js';
-import { initLogger } from './logger.js';
-import { errln, outln } from './print.js';
-import { runSuite } from './suite.js';
 
 const command = process.argv[2];
 const args = process.argv.slice(3);

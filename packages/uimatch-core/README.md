@@ -13,34 +13,41 @@ Core library for comparing Figma designs with implemented UI. Provides pixel-per
 
 ## Installation
 
-> **Note**: This is an internal package bundled into `@uimatch/cli`. Direct installation is not required for normal usage.
+> **Note**: This is an internal monorepo package bundled into `@uimatch/cli`. It is not published to npm (`private: true` in package.json).
 
-For development or standalone use:
+**For normal usage**: Install `@uimatch/cli` instead:
 
 ```bash
-bun add @uimatch/core
+npm install -g @uimatch/cli
+```
+
+**For monorepo development**: This package is automatically linked via pnpm workspace protocol:
+
+```bash
+# From monorepo root
+pnpm install
+pnpm build
 ```
 
 ## Quick Start
 
+> **Note**: This package is internal. For normal usage, use `@uimatch/cli` instead. See Installation section above.
+
+**For monorepo development only:**
+
 ```typescript
-import { compareImages, PlaywrightAdapter, captureTarget } from '@uimatch/core';
+import { compareImages, captureTarget } from '@uimatch/core';
 
 // Capture implementation screenshot
-const adapter = new PlaywrightAdapter();
-const captureResult = await captureTarget(adapter, {
+const captureResult = await captureTarget({
   url: 'http://localhost:6006/?path=/story/button',
   selector: '#root button',
 });
 
-if (!captureResult.success) {
-  throw captureResult.error;
-}
-
 // Compare with Figma design
 const result = await compareImages({
   figmaPngB64: figmaBase64Image,
-  implPngB64: captureResult.value.pngB64,
+  implPngB64: captureResult.implPng.toString('base64'),
   threshold: 0.1, // pixelmatch sensitivity
   sizeMode: 'pad', // handle dimension mismatches
   contentBasis: 'intersection', // content-aware metrics
@@ -112,31 +119,22 @@ const diffs = buildStyleDiffs(implementationElements, expectedSpec, tokenMap, op
 - Border properties (width, radius, color)
 - Shadow properties (box-shadow)
 
-### Browser Adapter
+### Browser Capture
 
-Capture implementation screenshots with Playwright:
+Capture implementation screenshots with internal browser pooling:
 
 ```typescript
-import { PlaywrightAdapter, browserPool } from '@uimatch/core';
+import { captureTarget } from '@uimatch/core';
 
-// Single capture
-const adapter = new PlaywrightAdapter();
-const result = await captureTarget(adapter, {
+// Single capture with automatic browser pooling
+const result = await captureTarget({
   url: 'http://localhost:6006',
   selector: '#root button',
   idleWaitMs: 150, // wait for animations
+  reuseBrowser: true, // default: automatic browser reuse
 });
-await adapter.close();
 
-// Browser pooling (for multiple comparisons)
-const pool = browserPool();
-const browser = await pool.acquire();
-const context = await browser.newContext();
-const page = await context.newPage();
-// ... perform captures
-await context.close();
-await pool.release(browser);
-await pool.closeAll();
+// Browser is automatically managed and reused across captures
 ```
 
 ### Enhanced Selectors
@@ -212,19 +210,22 @@ interface CompareImageResult {
 }
 ```
 
-### captureTarget(adapter, options): Promise&lt;Result&lt;CaptureResult, CaptureError&gt;&gt;
+### captureTarget(options): Promise&lt;CaptureResult&gt;
 
-Capture a screenshot of a web element.
+Capture a screenshot of a web element with automatic browser pooling.
 
 **Options**:
 
 ```typescript
 interface CaptureOptions {
   url: string; // target URL
-  selector: string; // CSS selector
+  selector: string; // CSS selector (supports enhanced selectors)
+  childSelector?: string; // optional child selector
+  viewport?: { width: number; height: number }; // viewport size
+  dpr?: number; // device pixel ratio, default: 1
   idleWaitMs?: number; // wait after load, default: 150
-  authUser?: string; // basic auth username
-  authPass?: string; // basic auth password
+  reuseBrowser?: boolean; // enable browser pooling, default: true
+  basicAuth?: { username: string; password: string }; // basic auth credentials
 }
 ```
 
@@ -232,20 +233,21 @@ interface CaptureOptions {
 
 ```typescript
 interface CaptureResult {
-  pngB64: string; // base64-encoded PNG
-  width: number;
-  height: number;
-  selector: string;
-  computedStyles?: Array<{
-    selector: string;
-    tag: string;
-    id?: string;
-    class?: string;
-    testid?: string;
-    cssSelector?: string;
-    styles: Record<string, string>;
-  }>;
+  implPng: Buffer; // PNG screenshot as Buffer
+  styles: Record<string, Record<string, string>>; // CSS styles keyed by selector
+  box: { x: number; y: number; width: number; height: number }; // Element bounding box
+  childBox?: { x: number; y: number; width: number; height: number }; // Child element box (optional)
+  meta?: Record<string, ElementMeta>; // DOM element metadata (optional)
 }
+```
+
+**Usage Note**: Convert `implPng` to base64 for `compareImages`:
+
+```typescript
+const result = await compareImages({
+  implPngB64: captureResult.implPng.toString('base64'),
+  // ... other options
+});
 ```
 
 ### buildStyleDiffs(elements, expectedSpec, tokenMap, options): StyleDiff[]
@@ -363,58 +365,54 @@ const px = toPx('1.5rem', 16); // 24
 
 ## Error Handling
 
-The library uses a `Result<T, E>` pattern for operations that can fail:
+The library throws exceptions for errors. Use try-catch for error handling:
 
 ```typescript
-import { isOk, isErr, unwrap } from '@uimatch/core';
+import { captureTarget } from '@uimatch/core';
 
-const result = await captureTarget(adapter, options);
-
-if (isOk(result)) {
-  const value = result.value;
-  console.log(`Captured ${value.width}x${value.height} image`);
-} else {
-  const error = result.error;
+try {
+  const result = await captureTarget({
+    url: 'http://localhost:6006',
+    selector: '#root button',
+  });
+  console.log(`Captured ${result.width}x${result.height} image`);
+} catch (error) {
   console.error(`Capture failed: ${error.message}`);
 }
-
-// Or unwrap (throws if error)
-const value = unwrap(result);
 ```
 
 **Error Types**:
 
-- `CaptureError`: Browser capture failures
-- `ComparisonError`: Image comparison failures
-- `ConfigError`: Configuration validation failures
+- Standard JavaScript `Error` for capture failures
+- Validation errors for invalid configuration
+- Playwright errors for browser-related issues
 
 ## Browser Pooling
 
-For improved performance in multiple comparisons:
+Browser pooling is automatically managed internally when using `captureTarget` with `reuseBrowser: true` (default):
 
 ```typescript
-import { browserPool } from '@uimatch/core';
+import { captureTarget } from '@uimatch/core';
 
-const pool = browserPool();
-
-// Multiple comparisons
+// Multiple comparisons with automatic browser reuse
 for (const test of tests) {
-  const browser = await pool.acquire();
-  const context = await browser.newContext();
-  // ... perform comparison
-  await context.close();
-  await pool.release(browser);
+  const result = await captureTarget({
+    url: test.url,
+    selector: test.selector,
+    reuseBrowser: true, // default: automatic browser reuse
+  });
+  // Browser is automatically pooled and reused
 }
 
-// Cleanup
-await pool.closeAll();
+// Browser cleanup is automatic on process exit
 ```
 
 **Features**:
 
-- Automatic browser instance reuse
+- Automatic browser instance reuse (no manual pool management)
 - Lightweight context creation per comparison
 - Reduces startup overhead from ~2s to ~500ms per iteration
+- Automatic cleanup on process exit
 
 ## Testing
 

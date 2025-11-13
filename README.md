@@ -7,6 +7,21 @@
 
 Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design. Distributed as a Claude Code plugin.
 
+## Quick Navigation by Role
+
+**👤 Using uiMatch (CI/Local Testing)**
+→ See [Installation](#installation) and [Quickstart](#quickstart) for getting started
+→ See [CI Integration](#ci-integration) for GitHub Actions setup
+
+**🎨 Claude Code Plugin User**
+→ See [Claude Code Plugin](#claude-code-plugin) section for `/uiMatch` commands
+→ See [Configuration](#configuration) for settings
+
+**👨‍💻 Contributing / OSS Development**
+→ See [Development](#development) for local setup
+→ See [Local Testing](#local-testing) for pack/link workflows
+→ See [Project Structure](#project-structure) for codebase overview
+
 ## Architecture Overview
 
 ```
@@ -17,8 +32,10 @@ Design-to-implementation comparison tool that evaluates how closely an implement
   Figma Design           Implementation         Selector Engine
   ────────────           ──────────────         ───────────────
        │                       │                       │
-       │ FIGMA_ACCESS_TOKEN    │ Storybook/URL         │ Optional
-       │                       │                       │
+       │ 3 MODES:              │ Storybook/URL         │ Optional
+       │ • BYPASS (env var)    │                       │
+       │ • REST (token)        │                       │
+       │ • MCP (figma server)  │                       │
        ▼                       ▼                       ▼
   ┌─────────┐           ┌──────────┐          ┌──────────────┐
   │ Figma   │           │ Playwright│          │  Anchors     │
@@ -57,6 +74,12 @@ Design-to-implementation comparison tool that evaluates how closely an implement
                      ▼
             [ CI/CD Integration ]
 ```
+
+**Figma Integration Modes**:
+
+- **BYPASS**: Use `UIMATCH_FIGMA_PNG_B64` env var (useful for CI, avoids API rate limits)
+- **REST**: Use `FIGMA_ACCESS_TOKEN` for direct Figma API access
+- **MCP**: Use `figma=current` with MCP server for enhanced integration
 
 **Key Components:**
 
