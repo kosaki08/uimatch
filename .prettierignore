@@ -8,3 +8,7 @@ bun.lock
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# CI debug artifacts
+tsc-root.json
+tsc-build-plan.log

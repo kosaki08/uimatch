@@ -81,3 +81,7 @@ docs-temp/
 
 # Claude Code documentation
 claudedocs/
+
+# CI debug artifacts
+tsc-root.json
+tsc-build-plan.log
