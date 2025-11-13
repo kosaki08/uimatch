@@ -1,13 +1,7 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.packages.base.json",
   "compilerOptions": {
-    "composite": true,
-    "noEmit": false,
-    "emitDeclarationOnly": true,
-    "declaration": true,
-    "declarationMap": true,
     "rootDir": ".",
-    "outDir": "dist-types",
     "lib": ["esnext", "dom"],
     "baseUrl": ".",
     "paths": {
@@ -20,6 +14,5 @@
     { "path": "../uimatch-scoring" },
     { "path": "../uimatch-core" }
   ],
-  "include": ["src/**/*", "*.ts"],
-  "exclude": ["node_modules", "dist", "dist-types"]
+  "include": ["src/**/*", "*.ts"]
 }

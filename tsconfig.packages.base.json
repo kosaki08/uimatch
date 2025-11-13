@@ -8,7 +8,6 @@
     "noEmit": false,
     "emitDeclarationOnly": true,
     "allowImportingTsExtensions": false,
-    "rootDir": "src",
     "outDir": "dist-types"
   },
   "include": ["src/**/*"],

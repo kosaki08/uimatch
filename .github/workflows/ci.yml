@@ -29,13 +29,10 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Check lockfile sync
+      - name: Check lockfile sync and install dependencies
         run: |
-          pnpm install --frozen-lockfile --ignore-scripts
+          HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
           echo "✅ Lockfile is in sync with package.json"
-
-      - name: Install dependencies (no scripts)
-        run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
       - name: 'Debug: Verify TypeScript references configuration'
         run: node .github/scripts/verify-ts-references.mjs
@@ -256,6 +253,11 @@ jobs:
 
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
+
+      - name: Verify CLI bundle exists before pack
+        run: |
+          test -f packages/uimatch-cli/dist/cli/index.js
+          echo "✅ CLI bundle verified"
 
       - name: Pack all packages (pnpm9-safe loop to ${{ github.workspace }}/dist-packages)
         shell: bash
@@ -532,10 +534,10 @@ jobs:
         run: pnpm audit --audit-level=moderate
         continue-on-error: true
 
-  # Security: CodeQL analysis
+  # Security: CodeQL analysis (PR only to avoid blocking main branch CI)
   codeql-analysis:
     runs-on: ubuntu-latest
-    continue-on-error: true
+    if: github.event_name == 'pull_request'
     permissions:
       security-events: write
       actions: read
