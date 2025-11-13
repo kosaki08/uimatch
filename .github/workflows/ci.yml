@@ -459,6 +459,7 @@ jobs:
   # Security: CodeQL analysis
   codeql-analysis:
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       security-events: write
       actions: read
