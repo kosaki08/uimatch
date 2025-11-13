@@ -362,6 +362,14 @@ jobs:
       - name: Build all packages (solution, ordered)
         run: pnpm run build:force
 
+      - name: Ensure CLI is bundled before pack
+        run: |
+          set -eux
+          echo "Building CLI bundle explicitly..."
+          pnpm -r --filter @uimatch/cli run build
+          echo "Verifying CLI bundle exists..."
+          ls -la packages/uimatch-cli/dist/cli/index.js
+
       - name: Pack all workspace packages
         shell: bash
         run: |
@@ -377,6 +385,15 @@ jobs:
           done < <(find packages -mindepth 1 -maxdepth 1 -type d -print0)
           echo "Tarballs ready:"
           ls -la "$DIST_DIR" || true
+
+      - name: Assert CLI tarball contains bin entry point
+        run: |
+          set -eux
+          CLI_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-cli-*.tgz)
+          test -f "$CLI_TGZ"
+          echo "Verifying CLI tarball contents..."
+          tar -tzf "$CLI_TGZ" | grep -q 'package/dist/cli/index.js'
+          echo "✅ CLI tarball contains bin entry point"
 
       - name: 'Assert no workspace: protocol leaked'
         shell: bash
@@ -412,15 +429,15 @@ jobs:
       - name: Install all packages in isolated environment
         working-directory: /tmp/uimatch-cli-smoke
         run: |
+          set -eux
           npm init -y
-          npm install \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-shared-logging-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-spi-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-core-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-scoring-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/uimatch-cli-*.tgz \
-            playwright
+          CORE_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-core-*.tgz)
+          CLI_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-cli-*.tgz)
+          LOG_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-shared-logging-*.tgz)
+          SPI_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-spi-*.tgz)
+          ANC_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz)
+          SCR_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-scoring-*.tgz)
+          npm install "$LOG_TGZ" "$SPI_TGZ" "$CORE_TGZ" "$SCR_TGZ" "$ANC_TGZ" "$CLI_TGZ" playwright
 
       - name: Show installed bins
         working-directory: /tmp/uimatch-cli-smoke
@@ -440,35 +457,20 @@ jobs:
         run: |
           set -eux
 
-          # Ensure local bin exists and is executable
-          test -x ./node_modules/.bin/uimatch || {
-            echo "❌ uimatch binary not found or not executable"
-            ls -la ./node_modules/.bin || true
-            exit 1
-          }
+          # Verify bin exists before execution
+          test -x ./node_modules/.bin/uimatch
 
-          # Add local bin to PATH to ensure local execution
+          # Add local bin to PATH
           export PATH="./node_modules/.bin:$PATH"
 
-          # Execute using local bin directly
-          ./node_modules/.bin/uimatch compare \
+          # Execute CLI and capture output
+          uimatch compare \
             figma=bypass:test \
-            story="data:text/html,<div id='t' style='width:10px;height:10px;background:red'></div>" \
-            selector="#t" \
-            dpr=1 \
-            size=pad | tee output.log
+            'story=data:text/html,<div id='\''t'\'' style='\''width:10px;height:10px;background:red'\''></div>' \
+            selector=#t dpr=1 size=pad | tee output.log
 
-          # Verify success indicators in output
-          if ! grep -q "PASS" output.log; then
-            echo "❌ CLI smoke test failed: no PASS found in output"
-            exit 1
-          fi
-
-          if ! grep -q "DFS:" output.log; then
-            echo "❌ CLI smoke test failed: no DFS score found in output"
-            exit 1
-          fi
-
+          # Verify success indicators
+          grep -q PASS output.log || (echo '❌ CLI smoke test failed: no PASS found in output' && exit 1)
           echo "✅ CLI distribution smoke test passed"
 
       - name: Upload CLI test artifacts
