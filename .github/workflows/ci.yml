@@ -43,6 +43,17 @@ jobs:
       - name: 'Debug: TypeScript build plan (verbose)'
         run: npx tsc -b -v tsconfig.build.json | tee tsc-build-plan.log
 
+      - name: 'Debug: Dump TypeScript project graphs'
+        run: |
+          echo ">>> tsc --showConfig (root)"
+          npx tsc --showConfig > tsc-root.json || true
+          echo ">>> tsc --listFilesOnly (scoring)"
+          (cd packages/uimatch-scoring && ../../node_modules/.bin/tsc --listFilesOnly) || true
+          echo ">>> ls -la dist of built libs"
+          ls -la packages/uimatch-core/dist || true
+          ls -la packages/shared-logging/dist || true
+          ls -la packages/uimatch-selector-spi/dist || true
+
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
 
