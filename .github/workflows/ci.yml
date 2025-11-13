@@ -410,13 +410,14 @@ jobs:
         working-directory: /tmp/uimatch-cli-smoke
         run: |
           npm init -y
+          ls -la ${GITHUB_WORKSPACE}/dist-packages
           npm install \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-shared-logging-*.tgz \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-spi-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/@uimatch/core-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/@uimatch/scoring-*.tgz \
+            ${GITHUB_WORKSPACE}/dist-packages/uimatch-core-*.tgz \
+            ${GITHUB_WORKSPACE}/dist-packages/uimatch-scoring-*.tgz \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz \
-            ${GITHUB_WORKSPACE}/dist-packages/@uimatch/cli-*.tgz \
+            ${GITHUB_WORKSPACE}/dist-packages/uimatch-cli-*.tgz \
             playwright
 
       - name: Install Playwright browsers
