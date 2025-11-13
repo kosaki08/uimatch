@@ -431,7 +431,7 @@ jobs:
           UIMATCH_HEADLESS: 'true'
         run: |
           set -eux
-          npx uimatch compare \
+          npx --no-install uimatch compare \
             figma=bypass:test \
             story="data:text/html,<div id='t' style='width:10px;height:10px;background:red'></div>" \
             selector="#t" \
