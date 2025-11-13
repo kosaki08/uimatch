@@ -406,11 +406,13 @@ jobs:
       - name: Create isolated test environment
         run: mkdir -p /tmp/uimatch-cli-smoke
 
+      - name: List packed tarballs
+        run: ls -la ${GITHUB_WORKSPACE}/dist-packages
+
       - name: Install all packages in isolated environment
         working-directory: /tmp/uimatch-cli-smoke
         run: |
           npm init -y
-          ls -la ${GITHUB_WORKSPACE}/dist-packages
           npm install \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-shared-logging-*.tgz \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-spi-*.tgz \
@@ -419,6 +421,12 @@ jobs:
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz \
             ${GITHUB_WORKSPACE}/dist-packages/uimatch-cli-*.tgz \
             playwright
+
+      - name: Show installed bins
+        working-directory: /tmp/uimatch-cli-smoke
+        run: |
+          ls -la ./node_modules/.bin || true
+          npm ls --depth=0 || true
 
       - name: Install Playwright browsers
         working-directory: /tmp/uimatch-cli-smoke
@@ -431,7 +439,19 @@ jobs:
           UIMATCH_HEADLESS: 'true'
         run: |
           set -eux
-          npx --no-install uimatch compare \
+
+          # Ensure local bin exists and is executable
+          test -x ./node_modules/.bin/uimatch || {
+            echo "❌ uimatch binary not found or not executable"
+            ls -la ./node_modules/.bin || true
+            exit 1
+          }
+
+          # Add local bin to PATH to ensure local execution
+          export PATH="./node_modules/.bin:$PATH"
+
+          # Execute using local bin directly
+          ./node_modules/.bin/uimatch compare \
             figma=bypass:test \
             story="data:text/html,<div id='t' style='width:10px;height:10px;background:red'></div>" \
             selector="#t" \
