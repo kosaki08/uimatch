@@ -54,6 +54,8 @@ export default [
       '**/fixtures/**',
       'docs/**',
       'docs-temp/**',
+      '**/*.d.ts', // Generated declaration files
+      '**/src/**/*.js', // Generated JS files in src directories
     ],
   },
 ];
