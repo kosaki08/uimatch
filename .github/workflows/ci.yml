@@ -28,6 +28,11 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Check lockfile sync
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          echo "✅ Lockfile is in sync with package.json"
+
       - name: Install dependencies (no scripts)
         run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
@@ -49,10 +54,13 @@ jobs:
           npx tsc --showConfig > tsc-root.json || true
           echo ">>> tsc --listFilesOnly (scoring)"
           (cd packages/uimatch-scoring && ../../node_modules/.bin/tsc --listFilesOnly) || true
+          echo ">>> tsc --listFilesOnly (core)"
+          (cd packages/uimatch-core && ../../node_modules/.bin/tsc --listFilesOnly) || true
           echo ">>> ls -la dist of built libs"
           ls -la packages/uimatch-core/dist || true
           ls -la packages/shared-logging/dist || true
           ls -la packages/uimatch-selector-spi/dist || true
+          ls -la packages/uimatch-scoring/dist || true
 
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
@@ -107,6 +115,14 @@ jobs:
       - name: 'Debug: Show full build plan on failure'
         if: failure()
         run: npx tsc -b -v tsconfig.build.json
+
+      - name: 'Debug: TS listFiles (scoring) on failure'
+        if: failure()
+        run: (cd packages/uimatch-scoring && ../../node_modules/.bin/tsc --listFilesOnly) || true
+
+      - name: 'Debug: TS listFiles (core) on failure'
+        if: failure()
+        run: (cd packages/uimatch-core && ../../node_modules/.bin/tsc --listFilesOnly) || true
 
   e2e-playwright:
     runs-on: ubuntu-latest
