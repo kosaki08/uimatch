@@ -1,12 +1,11 @@
 # @uimatch/cli
 
-Claude Code plugin and CLI for comparing Figma designs with implementation. Provides commands for visual comparison, iterative improvement loops, and settings management.
+Claude Code plugin and CLI for comparing Figma designs with implementation. Provides commands for visual comparison and settings management.
 
 ## Features
 
 - **Figma Integration**: Direct integration with Figma API and MCP server
 - **Quality Scoring**: Design Fidelity Score (DFS) with configurable thresholds
-- **Iterative Loops**: Automatic retry with quality gates
 - **LLM-Friendly Output**: Formatted results for AI assistant consumption
 - **CLI Tools**: Standalone command-line interface
 - **Settings Management**: Persistent configuration with validation
@@ -39,7 +38,7 @@ npx playwright install chromium
 
 ### Claude Code Commands
 
-The plugin provides three commands:
+The plugin provides two commands:
 
 #### /uiMatch compare
 
@@ -83,48 +82,6 @@ Compare a Figma design with implementation:
 - Pixel and style difference details
 - Visual diff image (if outDir specified)
 - LLM-formatted suggestions for improvements
-
-#### /uiMatch loop
-
-Iterative comparison with automatic retries:
-
-```bash
-/uiMatch loop figma=<fileKey>:<nodeId> story=<url> selector=<css> maxIters=5
-```
-
-**Examples**:
-
-```bash
-# Basic loop with 5 iterations
-/uiMatch loop figma=AbCdEf123:456-789 story=http://localhost:6006 selector="#button" maxIters=5
-
-# Custom quality profile
-/uiMatch loop figma=... story=... selector=... profile=development maxIters=10
-
-# With output directory
-/uiMatch loop figma=... story=... selector=... outDir=./iterations maxIters=3
-```
-
-**Parameters**:
-
-- Same as `compare` command
-- `maxIters`: Maximum number of iterations (default: 5)
-- `profile`: Quality gate profile (`component/strict` | `component/dev` | `page-vs-component` | `lenient` | `custom`, default: `component/strict`)
-
-**Behavior**:
-
-1. Performs initial comparison
-2. If quality gates fail, provides improvement suggestions
-3. Waits for user to make changes
-4. Repeats comparison up to `maxIters` times
-5. Stops when quality gates pass or max iterations reached
-
-**Features**:
-
-- Browser instance reuse for faster iterations (~500ms vs ~2s)
-- Automatic quality gate evaluation
-- Iteration-specific output directory structure
-- Cumulative improvement tracking
 
 #### /uiMatch settings
 
@@ -175,14 +132,12 @@ uimatch suite suite-config.json
 uimatch doctor
 ```
 
-**Note:** The `loop` command is available only as a Claude Code plugin command (`/uiMatch loop`), not in standalone CLI.
-
 For detailed CLI usage, available options, and advanced features (size handling, content basis modes, auto-ROI, suite testing, etc.), see [**CLI Usage Documentation**](../../docs/cli-usage.md).
 
 ### Programmatic API
 
 ```typescript
-import { uiMatchCompare, uiMatchLoop, getSettings, updateSettings } from '@uimatch/cli';
+import { uiMatchCompare, getSettings, updateSettings } from '@uimatch/cli';
 
 // Run comparison
 const result = await uiMatchCompare({
@@ -195,15 +150,6 @@ const result = await uiMatchCompare({
 
 console.log(`DFS: ${result.dfs}`);
 console.log(`Status: ${result.status}`);
-
-// Run iterative loop
-await uiMatchLoop({
-  figma: 'AbCdEf123:456-789',
-  story: 'http://localhost:6006',
-  selector: '#button',
-  maxIters: 5,
-  profile: 'development',
-});
 
 // Settings management
 const settings = await getSettings();
@@ -424,29 +370,6 @@ export FIGMA_ACCESS_TOKEN=your-personal-access-token
   selector="#root button"
 ```
 
-### Iterative Development Loop
-
-```bash
-# Start iterative improvement loop
-/uiMatch loop \
-  figma=AbCdEf123:1-23 \
-  story=http://localhost:6006/?path=/story/card \
-  selector=".card" \
-  maxIters=10 \
-  profile=development \
-  outDir=./iterations
-
-# Output directory structure:
-# ./iterations/
-#   iter-1/
-#     figma.png
-#     impl.png
-#     diff.png
-#     result.json
-#   iter-2/
-#     ...
-```
-
 ### Custom Thresholds
 
 ```bash
@@ -557,14 +480,7 @@ Internal imports use `#plugin/*`:
 ## Type Definitions
 
 ```typescript
-import type {
-  CompareOptions,
-  CompareResult,
-  LoopOptions,
-  LoopResult,
-  Settings,
-  QualityGateProfile,
-} from '@uimatch/cli';
+import type { CompareOptions, CompareResult, Settings, QualityGateProfile } from '@uimatch/cli';
 ```
 
 ## License

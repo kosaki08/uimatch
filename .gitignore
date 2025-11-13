@@ -9,9 +9,11 @@ bun.lockb
 # output
 out
 dist
+dist-types
 dist-packages
 dist-test
 packages/**/dist
+packages/**/dist-types
 *.tgz
 
 # code coverage
@@ -42,6 +44,11 @@ packages/*/src/**/*.js
 !packages/*/src/**/*.test.js
 !packages/*/src/**/*.spec.js
 
+# TypeScript generated files for config files
+packages/**/tsup.config.d.ts
+packages/**/tsup.config.d.ts.map
+packages/**/tsup.config.js
+
 # IntelliJ based IDEs
 .idea
 
@@ -71,3 +78,6 @@ docs/api/
 docs/docs/api/
 docs/static/api/
 docs-temp/
+
+# Claude Code documentation
+claudedocs/

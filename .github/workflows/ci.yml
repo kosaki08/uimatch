@@ -31,8 +31,17 @@ jobs:
       - name: Install dependencies (no scripts)
         run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: 'Debug: Verify TypeScript references configuration'
+        run: node .github/scripts/verify-ts-references.mjs
+
+      - name: 'Debug: Show TypeScript compiler flags per package'
+        run: node .github/scripts/print-ts-flags.mjs
+
       - name: Bootstrap workspace (pre-build local packages)
         run: pnpm run bootstrap
+
+      - name: 'Debug: TypeScript build plan (verbose)'
+        run: npx tsc -b -v tsconfig.build.json | tee tsc-build-plan.log
 
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
@@ -73,7 +82,18 @@ jobs:
       - name: Run unit tests (CI)
         run: pnpm run test:ci
 
-      - name: tsc build plan (verbose)
+      - name: 'Debug: Upload TypeScript diagnostics on failure'
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-diagnostics
+          path: |
+            tsc-build-plan.log
+            **/tsconfig.json
+            **/tsconfig.tsbuildinfo
+          retention-days: 7
+
+      - name: 'Debug: Show full build plan on failure'
         if: failure()
         run: npx tsc -b -v tsconfig.build.json
 

@@ -3,8 +3,11 @@
   "compilerOptions": {
     "composite": true,
     "noEmit": false,
+    "emitDeclarationOnly": true,
     "declaration": true,
     "declarationMap": true,
+    "rootDir": "src",
+    "outDir": "dist-types",
     "allowImportingTsExtensions": false,
     "lib": ["esnext", "dom"],
     "baseUrl": ".",
@@ -14,5 +17,5 @@
   },
   "references": [{ "path": "../shared-logging" }],
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/__tests__/**"]
+  "exclude": ["node_modules", "dist", "dist-types", "**/*.test.ts", "**/__tests__/**"]
 }

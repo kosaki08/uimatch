@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "author": "uiMatch Contributors",
   "repository": "https://github.com/your-org/ui-match",
-  "commands": ["./commands/compare.md", "./commands/loop.md", "./commands/settings.md"],
+  "commands": ["./commands/compare.md", "./commands/settings.md"],
   "mcp": "./mcp.json"
 }
