@@ -20,16 +20,5 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "eslint.useFlatConfig": true,
-  "eslint.workingDirectories": [{ "mode": "auto" }],
-  "files.exclude": {
-    "**/dist": true,
-    "**/dist-types": true,
-    "**/dist-packages": true,
-    "**/dist-test": true,
-    "**/test-result": true,
-    "**/test-results": true,
-    "**/playwright-report": true,
-    "**/coverage": true,
-    "**/.docusaurus": true
-  }
+  "eslint.workingDirectories": [{ "mode": "auto" }]
 }

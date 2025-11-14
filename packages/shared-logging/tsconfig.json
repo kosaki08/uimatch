@@ -1,16 +1,9 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.packages.base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "noEmit": false,
-    "emitDeclarationOnly": false,
-    "allowImportingTsExtensions": false,
-    "paths": {}
+    "emitDeclarationOnly": false
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "dist-types", "**/*.test.ts", "**/__tests__/**"]
+  "include": ["src/**/*"]
 }
