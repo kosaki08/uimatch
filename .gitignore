@@ -67,6 +67,7 @@ packages/**/tsup.config.js
 **/__tests__/fixtures/test-out/
 
 # Playwright test results
+test-result/
 test-results/
 playwright-report/
 playwright/.cache/

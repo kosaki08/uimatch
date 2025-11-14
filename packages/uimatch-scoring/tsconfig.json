@@ -1,9 +1,17 @@
 {
-  "extends": "../../tsconfig.packages.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": false,
+    "emitDeclarationOnly": false,
+    "allowImportingTsExtensions": false,
     "lib": ["esnext", "dom"],
     "paths": {}
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "dist-types", "**/*.test.ts", "**/__tests__/**"]
 }
