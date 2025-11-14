@@ -221,7 +221,7 @@ Smoke test without Figma/Storybook (expects `DFS: X.XX`):
 
 ```bash
 pnpm build
-node packages/@uimatch/cli/dist/cli/index.js compare \
+node packages/uimatch-cli/dist/cli/index.js compare \
   figma=bypass:test \
   story="data:text/html,<div style='width:10px;height:10px;background:red'></div>" \
   selector="div" dpr=1 size=pad
@@ -292,10 +292,10 @@ pnpm build
 mkdir -p dist-packages
 pnpm -C packages/shared-logging pack --pack-destination ../../dist-packages
 pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
-pnpm -C packages/@uimatch/core pack --pack-destination ../../dist-packages
-pnpm -C packages/@uimatch/scoring pack --pack-destination ../../dist-packages
+pnpm -C packages/uimatch-core pack --pack-destination ../../dist-packages
+pnpm -C packages/uimatch-scoring pack --pack-destination ../../dist-packages
 pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
-pnpm -C packages/@uimatch/cli pack --pack-destination ../../dist-packages
+pnpm -C packages/uimatch-cli pack --pack-destination ../../dist-packages
 
 # Test in isolated environment
 mkdir -p /tmp/uimatch-test && cd /tmp/uimatch-test
@@ -303,10 +303,10 @@ npm init -y
 npm install \
   /path/to/ui-match/dist-packages/uimatch-shared-logging-*.tgz \
   /path/to/ui-match/dist-packages/uimatch-selector-spi-*.tgz \
-  /path/to/ui-match/dist-packages/@uimatch/core-*.tgz \
-  /path/to/ui-match/dist-packages/@uimatch/scoring-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-core-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-scoring-*.tgz \
   /path/to/ui-match/dist-packages/uimatch-selector-anchors-*.tgz \
-  /path/to/ui-match/dist-packages/@uimatch/cli-*.tgz \
+  /path/to/ui-match/dist-packages/uimatch-cli-*.tgz \
   playwright
 
 npx playwright install chromium
@@ -326,10 +326,10 @@ npx uimatch compare figma=bypass:test \
 # Register packages globally
 cd packages/shared-logging && pnpm link --global && cd ../..
 cd packages/uimatch-selector-spi && pnpm link --global && cd ../..
-cd packages/@uimatch/core && pnpm link --global && cd ../..
-cd packages/@uimatch/scoring && pnpm link --global && cd ../..
+cd packages/uimatch-core && pnpm link --global && cd ../..
+cd packages/uimatch-scoring && pnpm link --global && cd ../..
 cd packages/uimatch-selector-anchors && pnpm link --global && cd ../..
-cd packages/@uimatch/cli && pnpm link --global && cd ../..
+cd packages/uimatch-cli && pnpm link --global && cd ../..
 
 # Link in consumer project
 cd /path/to/consumer
@@ -342,7 +342,7 @@ pnpm link --global @uimatch/cli
 
 # Unlink when done
 pnpm unlink --global @uimatch/cli  # in consumer
-cd packages/@uimatch/cli && pnpm unlink --global  # in source
+cd packages/uimatch-cli && pnpm unlink --global  # in source
 ```
 
 **Note**: Links persist across shell restarts but break if source paths move or `node_modules` is regenerated.
@@ -443,10 +443,10 @@ pnpm build
 # 3. Publish in dependency order
 pnpm -C packages/shared-logging publish --access public
 pnpm -C packages/uimatch-selector-spi publish --access public
-pnpm -C packages/@uimatch/core publish --access public
-pnpm -C packages/@uimatch/scoring publish --access public
+pnpm -C packages/uimatch-core publish --access public
+pnpm -C packages/uimatch-scoring publish --access public
 pnpm -C packages/uimatch-selector-anchors publish --access public
-pnpm -C packages/@uimatch/cli publish --access public
+pnpm -C packages/uimatch-cli publish --access public
 ```
 
 **Important**: pnpm automatically resolves `workspace:*` to actual versions during publish. No manual script needed.
@@ -461,8 +461,8 @@ pnpm build
 # ... run full pack verification from Local Testing section
 
 # Or quick smoke test
-pnpm -C packages/@uimatch/cli pack --pack-destination ../../
-npm i -g ./@uimatch/cli-*.tgz
+pnpm -C packages/uimatch-cli pack --pack-destination ../../
+npm i -g ./uimatch-cli-*.tgz
 npx uimatch compare figma=bypass:test story="..." selector="..."
 ```
 

@@ -9,7 +9,7 @@
   "scripts": {
     "prepare": "husky",
     "ci:postinstall": "pnpm exec playwright install --with-deps chromium",
-    "doctor": "bun run packages/@uimatch/cli/src/cli/index.ts doctor",
+    "doctor": "bun run packages/uimatch-cli/src/cli/index.ts doctor",
     "clean:tsbuild": "rimraf \"packages/**/tsconfig.tsbuildinfo\"",
     "build:force": "pnpm run clean:tsbuild && tsc -b --force tsconfig.build.json",
     "bootstrap": "node -e \"const fs=require('fs');process.exit(fs.existsSync('node_modules')?0:1)\" || pnpm install --frozen-lockfile; pnpm run build:types",
