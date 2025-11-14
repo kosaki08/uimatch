@@ -26,13 +26,13 @@ export function sanitizeFigmaRef(input: string): string {
 /**
  * Mask sensitive tokens/credentials
  * @param token - Sensitive string to mask
- * @param visibleChars - Number of characters to show at end (default: 4)
- * @returns Masked string (e.g., "***xyz")
+ * @param visibleChars - Number of characters to show at start and end (default: 4)
+ * @returns Masked string (e.g., "abcd...wxyz" or "***")
  */
 export function maskToken(token: string | undefined, visibleChars = 4): string {
-  if (!token) return 'not set';
-  if (token.length <= visibleChars) return '***';
-  return '***' + token.slice(-visibleChars);
+  if (!token) return '';
+  if (token.length <= 8) return '***';
+  return `${token.slice(0, visibleChars)}...${token.slice(-visibleChars)}`;
 }
 
 /**
@@ -50,15 +50,35 @@ export function relativizePath(absolutePath: string): string {
 }
 
 /**
- * Sanitize URL by removing query parameters (may contain tokens)
+ * Sanitize URL by removing query parameters and fragments (may contain tokens)
  * @param url - URL string
- * @returns URL without query parameters
+ * @returns URL without query parameters or fragments, or '[invalid-url]' if parsing fails
  */
 export function sanitizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
-    return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+    return `${parsed.origin}${parsed.pathname}`;
   } catch {
-    return url;
+    return '[invalid-url]';
   }
+}
+
+/**
+ * Sanitize Figma reference objects to avoid leaking tokens in logs
+ * @param ref - Object potentially containing sensitive fields (token, url)
+ * @returns Sanitized object with masked tokens and sanitized URLs
+ */
+export function sanitizeFigmaRefObject(ref: unknown): unknown {
+  if (typeof ref !== 'object' || ref === null) return ref;
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(ref)) {
+    if (key === 'token' && typeof value === 'string') {
+      sanitized[key] = maskToken(value);
+    } else if (key === 'url' && typeof value === 'string') {
+      sanitized[key] = sanitizeUrl(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
 }

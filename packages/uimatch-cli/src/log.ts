@@ -1,49 +1,11 @@
 import type { Logger, LogLevel } from '@uimatch/shared-logging';
 import pino from 'pino';
+import { maskToken, sanitizeFigmaRefObject, sanitizeUrl } from './utils/sanitize.js';
 
 interface LoggerOptions {
   level?: LogLevel;
   format?: 'json' | 'pretty' | 'silent';
   file?: string;
-}
-
-/**
- * Sanitize URL by removing query parameters and fragments that may contain tokens.
- */
-function sanitizeUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    return `${u.origin}${u.pathname}`;
-  } catch {
-    return '[invalid-url]';
-  }
-}
-
-/**
- * Mask token strings in headers or auth objects.
- */
-function maskToken(value: string): string {
-  if (!value) return '';
-  if (value.length <= 8) return '***';
-  return `${value.slice(0, 4)}...${value.slice(-4)}`;
-}
-
-/**
- * Sanitize Figma reference objects to avoid leaking tokens.
- */
-function sanitizeFigmaRef(ref: unknown): unknown {
-  if (typeof ref !== 'object' || ref === null) return ref;
-  const sanitized: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(ref)) {
-    if (key === 'token' && typeof value === 'string') {
-      sanitized[key] = maskToken(value);
-    } else if (key === 'url' && typeof value === 'string') {
-      sanitized[key] = sanitizeUrl(value);
-    } else {
-      sanitized[key] = value;
-    }
-  }
-  return sanitized;
 }
 
 /**
@@ -111,9 +73,10 @@ export function createLogger(options?: LoggerOptions): Logger {
 
 /**
  * Export sanitization utilities for external use.
+ * Re-exports from centralized sanitize module to maintain backward compatibility.
  */
 export const sanitize = {
   url: sanitizeUrl,
   token: maskToken,
-  figmaRef: sanitizeFigmaRef,
+  figmaRef: sanitizeFigmaRefObject,
 };
