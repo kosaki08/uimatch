@@ -19,8 +19,19 @@ fi
 
 echo "Found tarball: $CLI_TGZ"
 
-# Check bin entry point exists
-if ! tar -tzf "$CLI_TGZ" | grep -q 'package/dist/cli/index.js'; then
+#
+# Check bin entry point exists.
+# NOTE: Temporarily disable pipefail to avoid tar|grep -q SIGPIPE issue.
+# When grep -q finds a match, it exits immediately, causing tar to receive
+# SIGPIPE and exit with status 141. With pipefail enabled, this causes the
+# entire pipeline to fail even though grep succeeded.
+#
+set +o pipefail
+tar -tzf "$CLI_TGZ" | grep -q 'package/dist/cli/index.js'
+TAR_GREP_STATUS=$?
+set -o pipefail
+
+if [ "$TAR_GREP_STATUS" -ne 0 ]; then
   echo "❌ CLI tarball missing bin entry point: package/dist/cli/index.js"
   echo "Tarball contents:"
   tar -tzf "$CLI_TGZ"

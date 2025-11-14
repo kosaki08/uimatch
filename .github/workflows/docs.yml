@@ -1,13 +1,15 @@
 name: Deploy Documentation
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'docs/**'
-      - 'packages/*/src/**/*.ts'
-      - '.github/workflows/docs.yml'
+  # Temporarily disabled automatic deployment until GitHub Pages is configured
+  # To enable: Go to Settings → Pages → Source: GitHub Actions
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'docs/**'
+  #     - 'packages/*/src/**/*.ts'
+  #     - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages

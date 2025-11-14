@@ -254,9 +254,11 @@ jobs:
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
 
-      - name: Verify CLI bundle exists before pack
+      - name: Ensure CLI bundle is built
         run: |
-          test -f packages/uimatch-cli/dist/cli/index.js
+          set -eux
+          echo "Verifying CLI bundle exists after build..."
+          ls -la packages/uimatch-cli/dist/cli/index.js
           echo "✅ CLI bundle verified"
 
       - name: Pack all packages (pnpm9-safe loop to ${{ github.workspace }}/dist-packages)
@@ -355,6 +357,12 @@ jobs:
               process.exit(1);
             }
           "
+
+      - name: Run library import smoke tests
+        run: |
+          set -eux
+          echo "Running library import smoke tests..."
+          bun test --bail --timeout 60000 e2e/lib-import-smoke.e2e.test.ts
 
       - name: Upload packed artifacts
         uses: actions/upload-artifact@v4
