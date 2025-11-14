@@ -104,6 +104,20 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 - **Package Manager**: pnpm 9.15.4+ (for development)
 - **Browser**: Playwright Chromium (peer dependency, install once)
 
+## Public Packages
+
+**Ready for publish:**
+
+- `@uimatch/cli` - CLI entry point and commands
+- `@uimatch/selector-anchors` - AST-based selector resolution plugin
+- `@uimatch/selector-spi` - Plugin interface types
+- `@uimatch/shared-logging` - Logging utilities
+
+**Internal (private: true):**
+
+- `@uimatch/core` - Comparison engine
+- `@uimatch/scoring` - Design Fidelity Score calculator
+
 ## Installation
 
 ```bash
@@ -431,16 +445,25 @@ $ npx uimatch doctor
 
 ### Publishing to npm
 
-**Workspace protocol resolution**: `workspace:*` dependencies are automatically converted to semver ranges by pnpm during pack/publish.
+**Primary method**: Changesets for version management and coordinated releases.
 
 ```bash
-# 1. Version all packages (consider using Changesets for coordinated releases)
-pnpm -r exec -- npm version patch
+# 1. Create changeset for changes
+pnpm changeset
 
-# 2. Build all packages
+# 2. Version packages (updates versions and CHANGELOG)
+pnpm changeset version
+
+# 3. Build all packages
 pnpm build
 
-# 3. Publish in dependency order
+# 4. Publish all changed packages
+pnpm publish -r
+```
+
+**Manual publish** (if needed):
+
+```bash
 pnpm -C packages/shared-logging publish --access public
 pnpm -C packages/uimatch-selector-spi publish --access public
 pnpm -C packages/uimatch-core publish --access public
@@ -449,7 +472,7 @@ pnpm -C packages/uimatch-selector-anchors publish --access public
 pnpm -C packages/uimatch-cli publish --access public
 ```
 
-**Important**: pnpm automatically resolves `workspace:*` to actual versions during publish. No manual script needed.
+**Note**: pnpm resolves `workspace:*` to actual versions automatically during publish.
 
 ### Pre-Publish Checklist
 

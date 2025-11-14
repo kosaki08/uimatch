@@ -254,7 +254,10 @@ jobs:
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
 
-      - name: Ensure CLI bundle is built
+      - name: Build CLI bundle (@uimatch/cli)
+        run: pnpm -C packages/uimatch-cli run build
+
+      - name: Verify CLI bundle exists
         run: |
           set -eux
           echo "Verifying CLI bundle exists after build..."

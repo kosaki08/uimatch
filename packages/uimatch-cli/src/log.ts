@@ -12,7 +12,7 @@ interface LoggerOptions {
  * Create a pino-based logger with redaction and sanitization.
  * Supports JSON, pretty, or silent output.
  */
-export function createLogger(options?: LoggerOptions): Logger {
+export function createCliLogger(options?: LoggerOptions): Logger {
   const level = options?.level ?? (process.env.UIMATCH_LOG_LEVEL as LogLevel) ?? 'info';
   const format = options?.format ?? process.env.UIMATCH_LOG_FORMAT ?? 'pretty';
   const file = options?.file ?? process.env.UIMATCH_LOG_FILE;

@@ -3,7 +3,7 @@
  * Initialized lazily based on CLI options and environment variables.
  */
 import { type Logger, type LogLevel, silentLogger } from '@uimatch/shared-logging';
-import { createLogger } from '../log.js';
+import { createCliLogger } from '../log.js';
 
 let globalLogger: Logger | undefined;
 
@@ -36,7 +36,7 @@ export function parseLogOptions(args: string[]): {
  */
 export function initLogger(args: string[]): Logger {
   const options = parseLogOptions(args);
-  globalLogger = createLogger(options);
+  globalLogger = createCliLogger(options);
   return globalLogger;
 }
 
