@@ -466,8 +466,10 @@ pnpm publish -r
 ```bash
 pnpm -C packages/shared-logging publish --access public
 pnpm -C packages/uimatch-selector-spi publish --access public
-pnpm -C packages/uimatch-core publish --access public
-pnpm -C packages/uimatch-scoring publish --access public
+# Note: uimatch-core and uimatch-scoring are currently private
+# Remove "private": true from package.json before publishing:
+# pnpm -C packages/uimatch-core publish --access public
+# pnpm -C packages/uimatch-scoring publish --access public
 pnpm -C packages/uimatch-selector-anchors publish --access public
 pnpm -C packages/uimatch-cli publish --access public
 ```

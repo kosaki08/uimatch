@@ -90,7 +90,7 @@ export {};
 
       // Install packages
       await execAsync(`npm install ${spiTgzPath} ${anchorsTgzPath} typescript`, {
-        cwd: tmpDir
+        cwd: tmpDir,
       });
 
       // Type check
