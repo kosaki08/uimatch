@@ -84,8 +84,8 @@ This checks:
 1. **Use flexible size matching:**
 
    ```bash
-   size=pad          # Pad smaller image with letterboxing (default for profiles)
-   size=strict       # Sizes must match exactly
+   size=pad          # Pad smaller image with letterboxing (useful for page-vs-component)
+   size=strict       # Sizes must match exactly (default)
    size=crop         # Compare common area only
    size=scale        # Scale implementation to Figma size
    ```

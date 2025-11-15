@@ -171,14 +171,18 @@ UIMATCH_HEADLESS=true|false              # Playwright headless mode (default: tr
 
 ## Advanced Usage
 
-### Content Basis (Intrinsic vs Extrinsic)
+### Content Basis
 
-Control whether to use intrinsic (natural) or extrinsic (specified) dimensions:
+Control which area to use for calculating pixel difference ratio:
 
 ```bash
---contentBasis intrinsic    # Use natural element size
---contentBasis extrinsic    # Use specified size (default)
+contentBasis=union          # Union of both content areas (default)
+contentBasis=intersection   # Intersection of both areas (recommended for pad mode)
+contentBasis=figma          # Use Figma's content area only
+contentBasis=impl           # Use implementation's content area only
 ```
+
+**Best Practice:** Use `intersection` with `size=pad` to exclude letterboxing from metrics.
 
 ### Custom Anchor Plugins
 

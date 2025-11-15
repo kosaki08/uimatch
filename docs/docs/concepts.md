@@ -127,37 +127,9 @@ Current implementation supports:
 - **Layout issue detection** - Flags high-severity layout problems
 - **Automatic re-evaluation** - Smart re-checking with adjusted content basis
 
-## Content Basis
+## Size Handling
 
-Content Basis determines how element sizes are handled during comparison.
-
-### Intrinsic vs Extrinsic
-
-**Intrinsic** (natural size):
-
-- Uses the element's natural dimensions
-- Content determines size
-- Example: Text wrapping, image natural size
-
-**Extrinsic** (specified size):
-
-- Uses explicitly set dimensions
-- Container determines size
-- Example: Fixed-width containers, flex layouts
-
-### When to Use Each
-
-```bash
-# Use intrinsic for content-driven elements
---contentBasis intrinsic
-# Example: Blog posts, dynamic text
-
-# Use extrinsic (default) for layout-driven elements
---contentBasis extrinsic
-# Example: Navigation bars, cards with fixed dimensions
-```
-
-### Size Handling Options
+### Size Mode Options
 
 Control size matching behavior:
 
@@ -176,10 +148,23 @@ npx uimatch compare \
   story=http://localhost:3000 \
   selector="#responsive-card" \
   size=pad \
-  contentBasis=intrinsic
+  contentBasis=intersection
 ```
 
-This pads the smaller image and allows the card to size naturally.
+This pads the smaller image and uses intersection for content-only comparison (excludes padding noise).
+
+### Content Basis
+
+Control which area to use for calculating pixel difference ratio denominator:
+
+```bash
+contentBasis=union          # Union of both content areas (default)
+contentBasis=intersection   # Intersection (recommended for pad mode)
+contentBasis=figma          # Use Figma's content area only
+contentBasis=impl           # Use implementation's content area only
+```
+
+**Best Practice:** Use `intersection` with `size=pad` to exclude letterboxing from pixel difference metrics.
 
 ## Comparison Workflow
 
