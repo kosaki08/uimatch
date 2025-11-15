@@ -54,19 +54,12 @@ This checks:
 1. **Run with visible browser:**
 
    ```bash
-   npx uimatch compare ... --headless false
+   UIMATCH_HEADLESS=false npx uimatch compare ...
    ```
 
    Watch the browser to see what's happening.
 
-2. **Wait for element to load:**
-
-   ```bash
-   --waitFor "#my-component"
-   --timeout 5000
-   ```
-
-3. **Check selector specificity:**
+2. **Check selector specificity:**
 
    ```bash
    # Try more specific selector
@@ -76,7 +69,7 @@ This checks:
    selector="[data-testid='my-component']"
    ```
 
-4. **Verify URL is correct:**
+3. **Verify URL is correct:**
    ```bash
    # Check the page actually loads
    curl -I http://localhost:3000/your-page
@@ -91,33 +84,30 @@ This checks:
 1. **Use flexible size matching:**
 
    ```bash
-   --size contain    # Default, usually works
-   --size figma      # Force Figma dimensions
-   --size story      # Force implementation dimensions
+   size=pad          # Pad smaller image with letterboxing (default for profiles)
+   size=strict       # Sizes must match exactly
+   size=crop         # Compare common area only
+   size=scale        # Scale implementation to Figma size
    ```
 
 2. **Check viewport settings:**
 
    ```bash
-   --viewport 1920x1080   # Match your design specs
+   viewport=1920x1080   # Match your design specs
    ```
 
-3. **Account for responsive design:**
-   ```bash
-   --contentBasis intrinsic   # Let content determine size
-   ```
+### Low Quality Gate Scores
 
-### Low Similarity Scores
-
-**Error:** `Similarity 0.82 below threshold 0.95`
+**Error:** `Quality gate failed: pixelDiffRatio 0.12 exceeds threshold 0.08`
 
 **Solutions:**
 
 1. **Generate diff image to investigate:**
 
    ```bash
-   # Check uimatch-output/diff-*.png
-   # Red areas show differences
+   # Specify output directory to save diff images
+   outDir=./comparison-results
+   # Check comparison-results/diff.png - red areas show differences
    ```
 
 2. **Common causes:**
@@ -126,11 +116,14 @@ This checks:
    - **Images** - Check image loading and quality
    - **Colors** - Verify CSS color values match Figma
 
-3. **Adjust threshold if differences are acceptable:**
+3. **Use more relaxed profile if differences are acceptable:**
 
    ```bash
-   # Loosen for minor rendering differences
-   --threshold 0.90
+   # For development iteration
+   profile=component/dev    # pixelDiffRatio: 0.08, deltaE: 5.0
+
+   # For lenient comparison
+   profile=lenient          # pixelDiffRatio: 0.15, deltaE: 8.0
    ```
 
 4. **Fix the implementation:**
@@ -150,22 +143,16 @@ This checks:
    npx playwright install chromium
    ```
 
-2. **Increase timeout:**
-
-   ```bash
-   --timeout 10000    # 10 seconds
-   ```
-
-3. **Check for port conflicts:**
+2. **Check for port conflicts:**
 
    ```bash
    # Ensure your dev server is actually running
    lsof -i :3000
    ```
 
-4. **Disable headless for debugging:**
+3. **Disable headless for debugging:**
    ```bash
-   --headless false
+   UIMATCH_HEADLESS=false npx uimatch compare ...
    ```
 
 ### Environment Variable Issues
@@ -253,7 +240,7 @@ UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 1. **Run comparisons in parallel:**
 
    ```bash
-   npx uimatch suite tests.json --parallel 4
+   npx uimatch suite path=tests.json concurrency=4
    ```
 
 2. **Cache browser binaries:**
@@ -281,8 +268,18 @@ UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 1. **Check plugin export:**
 
    ```typescript
-   // Must export SelectorPlugin interface
-   export const myPlugin: SelectorPlugin = { ... };
+   // Must export SelectorResolverPlugin interface
+   import type { SelectorResolverPlugin } from '@uimatch/selector-spi';
+
+   export const myPlugin: SelectorResolverPlugin = {
+     name: 'my-plugin',
+     version: '1.0.0',
+     async resolve(context) {
+       /* ... */
+     },
+   };
+
+   export default myPlugin;
    ```
 
 2. **Verify plugin path:**
@@ -295,10 +292,16 @@ UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 
 3. **Check async/await:**
    ```typescript
-   resolve: async (selector, page) => {
-     // Must return Promise<Locator>
-     return page.locator(selector);
-   };
+   async resolve(context) {
+     // Must return Promise<Resolution>
+     const { initialSelector, probe } = context;
+     const result = await probe.check(initialSelector);
+     return {
+       selector: initialSelector,
+       stabilityScore: result.isValid ? 80 : 0,
+       reasons: [result.isValid ? 'Found' : 'Not found'],
+     };
+   }
    ```
 
 ## Getting Help
@@ -329,7 +332,9 @@ Still stuck? Here's how to get help:
 1. **Use headless mode in CI:**
 
    ```bash
-   --headless true
+   # Headless is true by default
+   # Explicitly set if needed:
+   UIMATCH_HEADLESS=true npx uimatch compare ...
    ```
 
 2. **Reduce screenshot area:**
@@ -341,18 +346,12 @@ Still stuck? Here's how to get help:
 
 3. **Parallel execution:**
    ```bash
-   npx uimatch suite tests.json --parallel 4
+   npx uimatch suite path=tests.json concurrency=4
    ```
 
 ### Reduce Flakiness
 
-1. **Wait for animations:**
-
-   ```bash
-   --waitFor "#component.ready"
-   ```
-
-2. **Disable animations in test:**
+1. **Disable animations in test:**
 
    ```css
    /* In your test environment CSS */
@@ -362,10 +361,14 @@ Still stuck? Here's how to get help:
    }
    ```
 
-3. **Use stable thresholds:**
+2. **Use appropriate quality profiles:**
+
    ```bash
-   # 0.95 is usually stable across environments
-   --threshold 0.95
+   # Strict for pixel-perfect comparison
+   profile=component/strict
+
+   # Development for stable CI environments
+   profile=component/dev
    ```
 
 ## See Also

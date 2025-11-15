@@ -52,10 +52,26 @@ export const testIdAnchor: SelectorResolverPlugin = {
   name: 'test-id-anchor',
   version: '1.0.0',
   async resolve(context) {
-    const { selector, page } = context;
-    // Resolve using data-testid
-    const locator = page.locator(`[data-testid="${selector}"]`);
-    return { locator };
+    const { initialSelector, probe } = context;
+
+    // Transform selector to use data-testid attribute
+    const selector = `[data-testid="${initialSelector}"]`;
+
+    // Optionally verify the selector is valid
+    const probeResult = await probe.check(selector);
+    if (!probeResult.isValid) {
+      return {
+        selector: initialSelector, // fallback to original
+        reasons: ['data-testid selector not found, using original'],
+        stabilityScore: 50,
+      };
+    }
+
+    return {
+      selector,
+      reasons: ['Resolved via data-testid anchor'],
+      stabilityScore: 80,
+    };
   },
 };
 ```

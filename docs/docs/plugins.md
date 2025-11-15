@@ -43,15 +43,33 @@ Plugins let you use **your existing selectors** without changing your codebase.
 Create a file `my-test-id-plugin.ts`:
 
 ```typescript
-import { SelectorPlugin } from '@uimatch/selector-spi';
-import { Page, Locator } from 'playwright';
+import type { SelectorResolverPlugin } from '@uimatch/selector-spi';
 
-export const testIdPlugin: SelectorPlugin = {
+export const testIdPlugin: SelectorResolverPlugin = {
   name: 'test-id-selector',
+  version: '1.0.0',
 
-  resolve: async (selector: string, page: Page): Promise<Locator> => {
+  async resolve(context) {
+    const { initialSelector, probe } = context;
+
     // Convert simple name to data-testid selector
-    return page.locator(`[data-testid="${selector}"]`);
+    const selector = `[data-testid="${initialSelector}"]`;
+
+    // Verify selector is valid
+    const probeResult = await probe.check(selector);
+    if (!probeResult.isValid) {
+      return {
+        selector: initialSelector, // fallback to original
+        reasons: ['data-testid selector not found, using original'],
+        stabilityScore: 50,
+      };
+    }
+
+    return {
+      selector,
+      reasons: ['Resolved via data-testid'],
+      stabilityScore: 80,
+    };
   },
 };
 
@@ -77,8 +95,7 @@ Now `selector=submit-button` resolves to `[data-testid="submit-button"]`.
 Emulate Testing Library's query methods:
 
 ```typescript
-import { SelectorPlugin } from '@uimatch/selector-spi';
-import { Page, Locator } from 'playwright';
+import type { SelectorResolverPlugin } from '@uimatch/selector-spi';
 
 interface TestingLibraryQuery {
   type: 'role' | 'text' | 'labelText' | 'testId';
@@ -86,24 +103,51 @@ interface TestingLibraryQuery {
   options?: Record<string, any>;
 }
 
-export const testingLibraryPlugin: SelectorPlugin = {
+export const testingLibraryPlugin: SelectorResolverPlugin = {
   name: 'testing-library-selector',
+  version: '1.0.0',
 
-  resolve: async (selector: string, page: Page): Promise<Locator> => {
-    const query = parseSelector(selector);
+  async resolve(context) {
+    const { initialSelector, probe } = context;
+    const query = parseSelector(initialSelector);
 
+    // Build appropriate selector based on query type
+    let selector: string;
     switch (query.type) {
       case 'role':
-        return page.getByRole(query.value as any, query.options);
+        selector = `[role="${query.value}"]`;
+        break;
       case 'text':
-        return page.getByText(query.value, query.options);
+        selector = `:text("${query.value}")`;
+        break;
       case 'labelText':
-        return page.getByLabel(query.value, query.options);
+        selector = `label:has-text("${query.value}")`;
+        break;
       case 'testId':
-        return page.getByTestId(query.value);
+        selector = `[data-testid="${query.value}"]`;
+        break;
       default:
-        throw new Error(`Unknown query type: ${query.type}`);
+        return {
+          selector: initialSelector,
+          reasons: [`Unknown query type: ${query.type}`],
+          stabilityScore: 0,
+        };
     }
+
+    const probeResult = await probe.check(selector);
+    if (!probeResult.isValid) {
+      return {
+        selector: initialSelector,
+        reasons: ['Testing Library selector not found'],
+        stabilityScore: 30,
+      };
+    }
+
+    return {
+      selector,
+      reasons: [`Resolved via Testing Library ${query.type} query`],
+      stabilityScore: 85,
+    };
   },
 };
 
@@ -149,24 +193,38 @@ selector="labelText:Email address"
 Target specific component library attributes:
 
 ```typescript
-import { SelectorPlugin } from '@uimatch/selector-spi';
-import { Page, Locator } from 'playwright';
+import type { SelectorResolverPlugin } from '@uimatch/selector-spi';
 
-export const muiPlugin: SelectorPlugin = {
+export const muiPlugin: SelectorResolverPlugin = {
   name: 'material-ui-selector',
+  version: '1.0.0',
 
-  resolve: async (selector: string, page: Page): Promise<Locator> => {
+  async resolve(context) {
+    const { initialSelector, probe } = context;
+
     // Parse: "Button.contained.primary"
-    const [component, ...variants] = selector.split('.');
+    const [component, ...variants] = initialSelector.split('.');
 
-    let locator = page.locator(`[data-mui-component="${component}"]`);
-
-    // Apply variant filters
+    // Build selector with component and variants
+    let selector = `[data-mui-component="${component}"]`;
     for (const variant of variants) {
-      locator = locator.filter({ has: page.locator(`[variant="${variant}"]`) });
+      selector += `[variant="${variant}"]`;
     }
 
-    return locator;
+    const probeResult = await probe.check(selector);
+    if (!probeResult.isValid) {
+      return {
+        selector: initialSelector,
+        reasons: ['MUI component not found'],
+        stabilityScore: 40,
+      };
+    }
+
+    return {
+      selector,
+      reasons: [`Resolved via MUI component: ${component}`],
+      stabilityScore: 75,
+    };
   },
 };
 
@@ -188,27 +246,38 @@ selector="TextField.outlined"
 Try multiple resolution strategies:
 
 ```typescript
-import { SelectorPlugin } from '@uimatch/selector-spi';
-import { Page, Locator } from 'playwright';
+import type { SelectorResolverPlugin } from '@uimatch/selector-spi';
 
-export const fallbackPlugin: SelectorPlugin = {
+export const fallbackPlugin: SelectorResolverPlugin = {
   name: 'fallback-selector',
+  version: '1.0.0',
 
-  resolve: async (selector: string, page: Page): Promise<Locator> => {
+  async resolve(context) {
+    const { initialSelector, probe } = context;
+
     // Try strategies in order
     const strategies = [
-      () => page.locator(`[data-testid="${selector}"]`),
-      () => page.locator(`[aria-label="${selector}"]`),
-      () => page.locator(selector), // Fallback to CSS
+      { selector: `[data-testid="${initialSelector}"]`, name: 'data-testid', score: 90 },
+      { selector: `[aria-label="${initialSelector}"]`, name: 'aria-label', score: 85 },
+      { selector: initialSelector, name: 'CSS', score: 70 }, // Fallback to CSS
     ];
 
     for (const strategy of strategies) {
-      const locator = strategy();
-      const count = await locator.count();
-      if (count > 0) return locator;
+      const probeResult = await probe.check(strategy.selector);
+      if (probeResult.isValid) {
+        return {
+          selector: strategy.selector,
+          reasons: [`Resolved via ${strategy.name} strategy`],
+          stabilityScore: strategy.score,
+        };
+      }
     }
 
-    throw new Error(`No element found for selector: ${selector}`);
+    return {
+      selector: initialSelector,
+      reasons: ['No element found with any strategy'],
+      stabilityScore: 0,
+    };
   },
 };
 
@@ -217,82 +286,143 @@ export default fallbackPlugin;
 
 ## Plugin API Reference
 
-### SelectorPlugin Interface
+### SelectorResolverPlugin Interface
 
 ```typescript
-interface SelectorPlugin {
+interface SelectorResolverPlugin {
   /**
-   * Unique plugin identifier
+   * Plugin name/identifier
    */
   name: string;
 
   /**
-   * Resolve a selector string to a Playwright Locator
+   * Plugin version
+   */
+  version: string;
+
+  /**
+   * Resolve a selector using the plugin's strategy
    *
-   * @param selector - The selector string from CLI
-   * @param page - Playwright Page instance
-   * @returns Locator pointing to the target element
+   * @param context - Resolution context
+   * @returns Resolution result
    */
-  resolve: (selector: string, page: Page) => Promise<Locator>;
+  resolve(context: ResolveContext): Promise<Resolution>;
 
   /**
-   * Optional: Validate selector format before resolution
+   * Optional: Check if the plugin is available and properly configured
    */
-  validate?: (selector: string) => boolean | string;
+  healthCheck?(): Promise<HealthCheckResult>;
+}
 
+interface ResolveContext {
+  /** URL of the page being tested */
+  url: string;
+
+  /** Initial selector provided by the user */
+  initialSelector: string;
+
+  /** Path to anchors JSON file (optional) */
+  anchorsPath?: string;
+
+  /** Whether to write back resolved selectors */
+  writeBack?: boolean;
+
+  /** Probe for lightweight liveness checks */
+  probe: Probe;
+}
+
+interface Resolution {
+  /** The resolved selector */
+  selector: string;
+
+  /** Stability score for the resolved selector (0-100) */
+  stabilityScore?: number;
+
+  /** Human-readable reasons for the resolution choice */
+  reasons?: string[];
+}
+
+interface Probe {
   /**
-   * Optional: Transform selector before resolution
+   * Check if a selector is alive (exists and optionally visible)
    */
-  transform?: (selector: string) => string;
+  check(selector: string, options?: ProbeOptions): Promise<ProbeResult>;
 }
 ```
 
 ### Best Practices
 
-#### 1. Error Handling
+#### 1. Always Use Probe for Validation
 
 ```typescript
-resolve: async (selector, page) => {
-  try {
-    const locator = page.locator(transformSelector(selector));
+async resolve(context) {
+  const { initialSelector, probe } = context;
+  const selector = transformSelector(initialSelector);
 
-    // Validate element exists
-    const count = await locator.count();
-    if (count === 0) {
-      throw new Error(`Element not found: ${selector}`);
-    }
-    if (count > 1) {
-      console.warn(`Multiple elements found for: ${selector}`);
-    }
-
-    return locator;
-  } catch (error) {
-    throw new Error(`Failed to resolve ${selector}: ${error.message}`);
+  // Validate element exists using probe
+  const probeResult = await probe.check(selector);
+  if (!probeResult.isValid) {
+    return {
+      selector: initialSelector,
+      reasons: [`Element not found: ${selector}`],
+      stabilityScore: 0,
+    };
   }
-};
+
+  return {
+    selector,
+    reasons: ['Successfully resolved'],
+    stabilityScore: 80,
+  };
+}
 ```
 
-#### 2. Validation
+#### 2. Provide Meaningful Reasons
 
 ```typescript
-validate: (selector) => {
+async resolve(context) {
+  const { initialSelector } = context;
+
   // Check format
-  if (!selector.match(/^role:.+/)) {
-    return `Invalid format. Expected "role:rolename", got "${selector}"`;
+  if (!initialSelector.match(/^role:.+/)) {
+    return {
+      selector: initialSelector,
+      reasons: [`Invalid format. Expected "role:rolename", got "${initialSelector}"`],
+      stabilityScore: 0,
+    };
   }
-  return true;
-};
+
+  // ... rest of resolution logic
+}
 ```
 
-#### 3. Async Resolution
+#### 3. Use Stability Scores
 
 ```typescript
-resolve: async (selector, page) => {
-  // Wait for element to appear
-  const locator = page.locator(selector);
-  await locator.waitFor({ state: 'visible', timeout: 5000 });
-  return locator;
-};
+async resolve(context) {
+  const strategies = [
+    { selector: `[data-testid="${context.initialSelector}"]`, score: 95 }, // Most stable
+    { selector: `#${context.initialSelector}`, score: 80 },                // ID selector
+    { selector: context.initialSelector, score: 60 },                      // Generic CSS
+  ];
+
+  for (const strategy of strategies) {
+    const result = await context.probe.check(strategy.selector);
+    if (result.isValid) {
+      return {
+        selector: strategy.selector,
+        stabilityScore: strategy.score,
+        reasons: [`Resolved with stability score ${strategy.score}`],
+      };
+    }
+  }
+
+  return {
+    selector: context.initialSelector,
+    stabilityScore: 0,
+    reasons: ['No valid selector found'],
+  };
+}
 ```
 
 ## Publishing Plugins
@@ -358,30 +488,57 @@ test('plugin resolves data-testid', async ({ page }) => {
 ### Dynamic Selector Generation
 
 ```typescript
-resolve: async (selector, page) => {
+async resolve(context) {
+  const { initialSelector, probe } = context;
+
   // Support templates: "button:{id}"
-  const template = selector.replace(/{(\w+)}/g, (_, key) => {
+  const selector = initialSelector.replace(/{(\w+)}/g, (_, key) => {
     return process.env[`SELECTOR_${key.toUpperCase()}`] || '';
   });
 
-  return page.locator(template);
-};
+  const result = await probe.check(selector);
+  if (!result.isValid) {
+    return {
+      selector: initialSelector,
+      reasons: ['Template expansion failed'],
+      stabilityScore: 0,
+    };
+  }
+
+  return {
+    selector,
+    reasons: ['Resolved via template expansion'],
+    stabilityScore: 70,
+  };
+}
 ```
 
 ### Contextual Selection
 
 ```typescript
-resolve: async (selector, page) => {
-  // Support scoped selectors: "modal>button"
-  const [scope, target] = selector.split('>');
+async resolve(context) {
+  const { initialSelector, probe } = context;
 
-  if (target) {
-    const scopeLocator = page.locator(scope);
-    return scopeLocator.locator(target);
+  // Support scoped selectors: "modal>button"
+  const [scope, target] = initialSelector.split('>');
+
+  const selector = target ? `${scope} ${target}` : initialSelector;
+
+  const result = await probe.check(selector);
+  if (!result.isValid) {
+    return {
+      selector: initialSelector,
+      reasons: ['Scoped selector not found'],
+      stabilityScore: 0,
+    };
   }
 
-  return page.locator(selector);
-};
+  return {
+    selector,
+    reasons: target ? ['Resolved with scope'] : ['Direct selector'],
+    stabilityScore: target ? 75 : 65,
+  };
+}
 ```
 
 ## Examples Repository
