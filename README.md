@@ -506,10 +506,8 @@ npx uimatch compare figma=bypass:test story="..." selector="..."
 | -------------------------- | ------------------------------- | ------------------------------------------ |
 | `size`                     | `strict/pad/crop/scale`         | Size handling strategy                     |
 | `contentBasis`             | `union/intersection/figma/impl` | Content-aware comparison basis             |
-| `qualityGateMode`          | `v2/v1/off`                     | Quality gate version (v2 recommended)      |
 | `selectors`                | `path/to/anchors.json`          | Use selector anchors plugin                |
 | `selectorsPlugin`          | `@uimatch/selector-anchors`     | Custom selector resolution plugin          |
-| `targetDFS`                | `95`                            | Loop mode target DFS (0-100)               |
 | `acceptancePixelDiffRatio` | `0.01`                          | Quality gate v2 threshold (1% recommended) |
 
 **Full options**: Run `npx uimatch compare --help`

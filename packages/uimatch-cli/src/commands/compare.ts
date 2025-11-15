@@ -3,9 +3,9 @@
  */
 
 import { FigmaRestClient } from '#plugin/adapters/figma-rest';
-import { FigmaMcpClient, parseFigmaRef } from '#plugin/experimental/index.js';
 import { loadFigmaMcpConfig, loadSkillConfig } from '#plugin/config/index';
 import { buildExpectedSpecFromFigma } from '#plugin/expected/from-figma';
+import { FigmaMcpClient, parseFigmaRef } from '#plugin/experimental/index.js';
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
 import type { CaptureResult, CompareImageResult } from '@uimatch/core';
 import {
