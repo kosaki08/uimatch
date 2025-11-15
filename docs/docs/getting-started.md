@@ -58,10 +58,17 @@ npx uimatch compare \
 
 ### Output
 
-By default, comparison results are saved to:
+By default, UI Match outputs results to the console. To save comparison artifacts (screenshots, diff images, reports), specify an output directory:
 
-- `uimatch-output/` - Screenshots and diff images
-- Console output with similarity score
+```bash
+npx uimatch compare \
+  figma=... \
+  story=... \
+  selector=... \
+  outDir=./results
+```
+
+For `suite` command, the default output directory is `.uimatch-suite`.
 
 ## Next Steps
 
@@ -84,7 +91,7 @@ npx uimatch compare \
 ### CI/CD Pipeline
 
 ```bash
-npx uimatch suite suite.json --threshold 0.95
+npx uimatch suite path=suite.json
 ```
 
 See the [CLI Reference](./cli-reference.md) for more examples.

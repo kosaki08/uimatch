@@ -46,13 +46,16 @@ npx uimatch compare \
 Create your own anchor to match your testing strategy:
 
 ```typescript
-import { SelectorPlugin } from '@uimatch/selector-spi';
+import type { SelectorResolverPlugin } from '@uimatch/selector-spi';
 
-export const testIdAnchor: SelectorPlugin = {
+export const testIdAnchor: SelectorResolverPlugin = {
   name: 'test-id-anchor',
-  resolve: async (selector, page) => {
+  version: '1.0.0',
+  async resolve(context) {
+    const { selector, page } = context;
     // Resolve using data-testid
-    return page.locator(`[data-testid="${selector}"]`);
+    const locator = page.locator(`[data-testid="${selector}"]`);
+    return { locator };
   },
 };
 ```
@@ -73,36 +76,40 @@ See [Plugins](./plugins.md) for complete plugin development guide.
 
 Quality Gates define what "matching" means for your comparisons. They enforce consistency standards.
 
-### Similarity Threshold
+### Quality Gate Profiles
 
-The most common quality gate is the similarity threshold:
+UI Match uses profiles to manage thresholds:
 
 ```bash
---threshold 0.95  # 95% similarity required
+profile=component/strict  # Pixel-perfect comparison
+profile=component/dev     # Relaxed for development
+profile=page-vs-component # Accounts for padding
+profile=lenient           # Very relaxed for prototyping
 ```
 
 **How it works:**
 
-- Compares each pixel between Figma and implementation
-- Calculates similarity score (0.0 to 1.0)
-- Fails if score is below threshold
+- Each profile has predefined thresholds for pixel differences and color variations
+- Profiles include `pixelDiffRatio` (acceptable pixel difference ratio) and `deltaE` (color difference threshold)
+- Fails if comparison exceeds profile thresholds
 
-### Choosing a Threshold
+### Choosing a Profile
 
-| Threshold   | Use Case                                                             |
-| ----------- | -------------------------------------------------------------------- |
-| `0.90-0.93` | **Loose** - Allow minor rendering differences (anti-aliasing, fonts) |
-| `0.94-0.96` | **Standard** - Catch significant visual issues                       |
-| `0.97-0.99` | **Strict** - Pixel-perfect designs (marketing pages)                 |
-| `1.00`      | **Exact** - Rarely useful due to browser rendering variations        |
+| Profile             | pixelDiffRatio | deltaE | Use Case                                     |
+| ------------------- | -------------- | ------ | -------------------------------------------- |
+| `component/strict`  | 0.01 (1%)      | 3.0    | **Pixel-perfect** - Design system components |
+| `component/dev`     | 0.08 (8%)      | 5.0    | **Development** - Iterative work             |
+| `page-vs-component` | 0.12 (12%)     | 5.0    | **Padded** - Letterboxed comparisons         |
+| `lenient`           | 0.15 (15%)     | 8.0    | **Prototyping** - Early drafts               |
 
-### Advanced Quality Gates
+### Advanced Features
 
-Future versions will support:
+Current implementation supports:
 
-- **Color difference thresholds** - Ignore minor color variations
-- **Layout shift detection** - Flag position changes
-- **Accessibility requirements** - Enforce WCAG compliance
+- **Pixel difference ratio** - Percentage of acceptable pixel differences
+- **Color difference (deltaE)** - Perceptual color difference threshold
+- **Layout issue detection** - Flags high-severity layout problems
+- **Automatic re-evaluation** - Smart re-checking with adjusted content basis
 
 ## Content Basis
 
@@ -139,10 +146,10 @@ Content Basis determines how element sizes are handled during comparison.
 Control size matching behavior:
 
 ```bash
---size exact      # Sizes must match exactly
---size figma      # Use Figma's dimensions
---size story      # Use implementation's dimensions
---size contain    # Fit within bounds (default)
+size=strict      # Sizes must match exactly (default)
+size=pad         # Pad smaller image with letterboxing
+size=crop        # Compare common area only
+size=scale       # Scale implementation to Figma size
 ```
 
 **Example:**
@@ -152,11 +159,11 @@ npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector="#responsive-card" \
-  --size contain \
-  --contentBasis intrinsic
+  size=pad \
+  contentBasis=intrinsic
 ```
 
-This allows the card to size naturally while ensuring it fits within Figma's defined bounds.
+This pads the smaller image and allows the card to size naturally.
 
 ## Comparison Workflow
 
@@ -187,11 +194,11 @@ graph LR
 ### 1. Start Broad, Refine Later
 
 ```bash
-# Initial setup - loose threshold
---threshold 0.90
+# Initial setup - lenient profile
+profile=lenient
 
-# After stabilization - tighter threshold
---threshold 0.96
+# After stabilization - tighter profile
+profile=component/strict
 ```
 
 ### 2. Use Meaningful Selectors
@@ -211,10 +218,13 @@ Create suite files for logical groupings:
 ```json
 {
   "name": "Authentication Flow",
-  "comparisons": [
-    { "name": "Login Form", "figma": "...", "selector": "#login" },
-    { "name": "Signup Form", "figma": "...", "selector": "#signup" },
-    { "name": "Password Reset", "figma": "...", "selector": "#reset" }
+  "defaults": {
+    "profile": "component/dev"
+  },
+  "items": [
+    { "name": "Login Form", "figma": "...", "story": "...", "selector": "#login" },
+    { "name": "Signup Form", "figma": "...", "story": "...", "selector": "#signup" },
+    { "name": "Password Reset", "figma": "...", "story": "...", "selector": "#reset" }
   ]
 }
 ```
