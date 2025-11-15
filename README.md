@@ -203,9 +203,6 @@ pnpm uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/sto
 # Compare command
 /uiMatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
 
-# Iterative comparison loop
-/uiMatch loop figma=... story=... selector=... maxIters=5
-
 # Configure settings
 /uiMatch settings
 ```

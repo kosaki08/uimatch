@@ -31,12 +31,14 @@ export async function runExperimentalClaudeReport(args: string[]): Promise<void>
   // Run standard compare but capture result
   let result: CompareResult | undefined;
 
-  // Temporarily override process.exit to capture result
-  const originalExit = process.exit.bind(process);
-  (process.exit as unknown) = ((code?: number) => {
+  // Temporarily override process.exit to suppress early exits from runCompare
+  const originalExit: (this: void, code?: number) => never = process.exit.bind(process);
+  (process.exit as unknown) = ((code?: number): never => {
     if (code !== 0 && code !== undefined) {
       originalExit(code);
     }
+    // Allow continuing if exit code is 0 or undefined
+    return undefined as never;
   }) as typeof process.exit;
 
   try {

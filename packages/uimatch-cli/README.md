@@ -556,6 +556,55 @@ import type { CompareOptions, CompareResult, Settings, QualityGateProfile } from
 
 See root project LICENSE.
 
+## Experimental Features
+
+### Claude Integration (WIP)
+
+The CLI includes experimental commands for future Claude Code integration. These features are under active development and subject to change.
+
+```bash
+# Work-in-progress command for Claude-optimized output
+uimatch experimental claude-report --figma current --url http://localhost:6006
+
+# Currently outputs standard compare results with experimental annotations
+# Full structured output support coming in future releases
+```
+
+**Configuration**:
+
+Experimental features can be configured via `.uimatchrc.json`:
+
+```json
+{
+  "experimental": {
+    "claude": {
+      "format": "prompt",
+      "includeRawDiffs": false
+    },
+    "mcp": {
+      "enabled": false
+    }
+  }
+}
+```
+
+**TypeScript API** (Experimental):
+
+```typescript
+import { experimental } from '@uimatch/cli';
+
+// Format comparison result for LLM consumption
+const payload = experimental.formatForLLM(result, { preferTokens: true });
+
+// Generate Claude-optimized prompt
+const prompt = experimental.generateLLMPrompt(payload);
+
+// Figma MCP client
+const mcpClient = new experimental.FigmaMcpClient(config);
+```
+
+**Note**: All experimental features are subject to breaking changes without prior notice. Use at your own risk in production environments.
+
 ## Related
 
 - [@uimatch/core](../@uimatch/core) - Core comparison library
