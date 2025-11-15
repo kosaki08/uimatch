@@ -310,27 +310,36 @@ function calculateOffset(
  * @returns Number of diff pixels within the content area
  */
 function countDiffPixelsInRect(
-  diffPng: PNG,
+  figmaPng: PNG,
+  implPng: PNG,
   contentRect: { x1: number; y1: number; x2: number; y2: number },
-  canvasWidth: number
+  canvasWidth: number,
+  threshold: number
 ): number {
   let diffCount = 0;
 
-  // Iterate through the content rectangle and count diff pixels
+  // Iterate through the content rectangle and directly compare pixels
   for (let y = contentRect.y1; y < contentRect.y2; y++) {
     for (let x = contentRect.x1; x < contentRect.x2; x++) {
       const idx = (canvasWidth * y + x) * 4;
 
-      // pixelmatch marks diff pixels with non-black colors:
-      // - red (255, 0, 0) for primary diffs
-      // - yellow for AA (anti-aliasing) pixels
-      // - other colors for alternative diff modes
-      // Check if any RGB channel is non-zero to detect all diff types
-      const r = diffPng.data[idx] ?? 0;
-      const g = diffPng.data[idx + 1] ?? 0;
-      const b = diffPng.data[idx + 2] ?? 0;
+      // Get pixel values from both images
+      const r1 = figmaPng.data[idx] ?? 0;
+      const g1 = figmaPng.data[idx + 1] ?? 0;
+      const b1 = figmaPng.data[idx + 2] ?? 0;
 
-      if ((r | g | b) !== 0) {
+      const r2 = implPng.data[idx] ?? 0;
+      const g2 = implPng.data[idx + 1] ?? 0;
+      const b2 = implPng.data[idx + 2] ?? 0;
+
+      // Calculate color difference (simple Euclidean distance)
+      const delta = Math.sqrt(Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2));
+
+      // Normalize to 0-1 range (max distance is sqrt(3 * 255^2) ≈ 441)
+      const normalizedDelta = delta / 441;
+
+      // Count as different if above threshold
+      if (normalizedDelta > threshold) {
         diffCount++;
       }
     }
@@ -714,9 +723,11 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     // Calculate content-only pixel diff ratio by counting diff pixels within content rect
     if (contentMetrics.contentPixels > 0) {
       const diffPixelCountInContent = countDiffPixelsInRect(
-        diff,
+        figmaPng,
+        implPng,
         contentMetrics.contentRect,
-        width
+        width,
+        opts.threshold ?? 0.1
       );
       result.pixelDiffRatioContent = diffPixelCountInContent / contentMetrics.contentPixels;
     }
