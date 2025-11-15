@@ -22,11 +22,13 @@ UI Match is a visual regression testing tool that compares your Figma designs wi
 ### Installation
 
 ```bash
-npm install -D @uimatch/cli
-# or
-pnpm add -D @uimatch/cli
-# or
-bun add -D @uimatch/cli
+# As npm package (recommended)
+npm install -g @uimatch/cli playwright
+npx playwright install chromium
+
+# Or as dev dependency
+npm install -D @uimatch/cli playwright
+npx playwright install chromium
 ```
 
 ### Environment Setup

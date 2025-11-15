@@ -195,12 +195,20 @@ npx uimatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
 # With selector anchors plugin
 npx uimatch compare figma=... story=... selector=... selectors=./anchors.json
 
+# Batch comparison (suite mode)
+npx uimatch suite path=suite-config.json
+
 # Verify installation (smoke test)
 npx uimatch doctor
 
 # Development (from repository)
 pnpm uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button"
 ```
+
+**Output directory defaults:**
+
+- `compare`: No default (prints to stdout unless `outDir` specified)
+- `suite`: `.uimatch-suite` (can be overridden with `outDir=<path>`)
 
 ### Claude Code Plugin
 
@@ -228,7 +236,11 @@ Create `.uimatchrc.json` in your project root:
 
 **Environment variables:**
 
+- `FIGMA_ACCESS_TOKEN` - Required for Figma API access
 - `UIMATCH_HEADLESS` - Control browser headless mode (default: `true`)
+  - Set to `false` to show browser window during execution (useful for debugging)
+  - Applies to `compare`, `suite`, and `doctor` commands
+- `UIMATCH_LOG_LEVEL` - Logging verbosity: `info` | `debug` | `silent` (default: `info`)
 - `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` - Basic auth credentials for target URLs
 
 ## Quick Verification
@@ -440,6 +452,7 @@ $ npx uimatch doctor
 | Browser not found          | ❌ Playwright: Chromium not installed          | `npx playwright install chromium`                        |
 | Figma token missing        | ❌ FIGMA_ACCESS_TOKEN not set                  | `export FIGMA_ACCESS_TOKEN="figd_..."`                   |
 | TypeScript missing         | ⚠️ TypeScript: not found                       | `npm install -g typescript` (for anchors plugin)         |
+| Browser window needed      | Want to see browser during execution           | `export UIMATCH_HEADLESS=false`                          |
 | Storybook wrong URL        | Canvas URL instead of iframe                   | Use `iframe.html?id=...` not `?path=/story/...`          |
 | Bypass mode fails          | `UIMATCH_FIGMA_PNG_B64` not set                | Export base64-encoded PNG (10x10 red square for testing) |
 | Runtime dependency missing | Package installed with wrong dependency type   | Check `package.json`: runtime deps → `dependencies`      |
@@ -505,15 +518,39 @@ npx uimatch compare figma=bypass:test story="..." selector="..."
 
 ## Common Options
 
-| Option                     | Values                          | Use Case                                   |
-| -------------------------- | ------------------------------- | ------------------------------------------ |
-| `size`                     | `strict/pad/crop/scale`         | Size handling strategy                     |
-| `contentBasis`             | `union/intersection/figma/impl` | Content-aware comparison basis             |
-| `selectors`                | `path/to/anchors.json`          | Use selector anchors plugin                |
-| `selectorsPlugin`          | `@uimatch/selector-anchors`     | Custom selector resolution plugin          |
-| `acceptancePixelDiffRatio` | `0.01`                          | Quality gate v2 threshold (1% recommended) |
+| Option                     | Values                          | Use Case                                        |
+| -------------------------- | ------------------------------- | ----------------------------------------------- |
+| `size`                     | `strict/pad/crop/scale`         | Size handling strategy                          |
+| `contentBasis`             | `union/intersection/figma/impl` | Content-aware comparison basis (default: union) |
+| `selectors`                | `path/to/anchors.json`          | Use selector anchors plugin                     |
+| `selectorsPlugin`          | `@uimatch/selector-anchors`     | Custom selector resolution plugin               |
+| `acceptancePixelDiffRatio` | `0.01`                          | Quality gate v2 threshold (1% recommended)      |
 
 **Full options**: Run `npx uimatch compare --help`
+
+## Quality Gate Profiles
+
+UI Match uses quality gate profiles to manage thresholds instead of individual CLI flags.
+
+| Profile             | Use Case                 | pixelDiffRatio | deltaE | Description               |
+| ------------------- | ------------------------ | -------------- | ------ | ------------------------- |
+| `component/strict`  | Design system components | 0.01 (1%)      | 3.0    | Pixel-perfect comparison  |
+| `component/dev`     | Development workflow     | 0.08 (8%)      | 5.0    | Relaxed for iteration     |
+| `page-vs-component` | Padded comparisons       | 0.12 (12%)     | 5.0    | Accounts for letterboxing |
+| `lenient`           | Prototyping              | 0.15 (15%)     | 8.0    | Very relaxed thresholds   |
+| `custom`            | Custom settings          | -              | -      | Uses `.uimatchrc.json`    |
+
+**Usage:**
+
+```bash
+# Pixel-perfect comparison
+npx uimatch compare figma=... story=... selector=... profile=component/strict
+
+# Development workflow
+npx uimatch compare figma=... story=... selector=... profile=component/dev
+```
+
+For more details, see the [CLI Reference](docs/docs/cli-reference.md#quality-gate-profiles).
 
 ## Experimental Features
 
