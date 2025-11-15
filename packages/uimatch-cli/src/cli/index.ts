@@ -2,7 +2,7 @@
  * uiMatch CLI entry point
  */
 
-import { uiMatchSettings } from '#plugin/commands/settings.js';
+import { getSettings, resetSettings } from '#plugin/commands/settings.js';
 import { runCompare } from './compare.js';
 import { runDoctor } from './doctor/index.js';
 import { initLogger } from './logger.js';
@@ -67,8 +67,19 @@ async function main(): Promise<void> {
     await runDoctor(args);
   } else if (command === 'settings') {
     // Parse settings action from args
-    const action = (args[0] as 'get' | 'set' | 'reset') || 'get';
-    uiMatchSettings(action);
+    const action = args[0] || 'get';
+    if (action === 'get') {
+      const config = getSettings();
+      outln(JSON.stringify(config, null, 2));
+    } else if (action === 'reset') {
+      const config = resetSettings();
+      outln('Settings reset to defaults:');
+      outln(JSON.stringify(config, null, 2));
+    } else {
+      errln(`Unknown settings action: ${action}`);
+      errln('Available actions: get, reset');
+      process.exit(2);
+    }
   } else {
     errln(`Unknown command: ${command}`);
     errln('Run "uimatch help" to see available commands');

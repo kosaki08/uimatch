@@ -1,2 +1,2 @@
 export { uiMatchCompare } from './compare';
-export { getSettings, resetSettings, uiMatchSettings, updateSettings } from './settings';
+export { getSettings, resetSettings } from './settings';
