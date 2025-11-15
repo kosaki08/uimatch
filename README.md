@@ -138,13 +138,18 @@ npm install -g @uimatch/cli playwright
 npx playwright install chromium
 export FIGMA_ACCESS_TOKEN="figd_..."
 
-# Run comparison
+# Run comparison (prints results to stdout)
 npx uimatch compare \
   figma=<fileKey>:<nodeId> \
   story=http://localhost:6006/?path=/story/button \
   selector="#root button"
 
-# Check ./uimatch-reports/
+# Save artifacts to directory (optional)
+npx uimatch compare \
+  figma=<fileKey>:<nodeId> \
+  story=http://localhost:6006/?path=/story/button \
+  selector="#root button" \
+  outDir=./uimatch-reports
 ```
 
 **Option B: With Anchors** (stable selectors)
@@ -174,7 +179,7 @@ npx uimatch compare figma=... story=... selector=... \
   size=pad contentBasis=intersection
 
 # Suite mode (batch comparison)
-npx uimatch suite suite-config.json
+npx uimatch suite path=suite-config.json
 ```
 
 **See also**: [Examples](docs/examples/) | [Common Options](#common-options)
@@ -272,7 +277,8 @@ jobs:
           npx uimatch compare \
             figma=${{ secrets.FIGMA_FILE }}:${{ secrets.FIGMA_NODE }} \
             story=https://your-storybook.com/?path=/story/button \
-            selector="#root button"
+            selector="#root button" \
+            outDir=uimatch-reports
 
       - name: Upload reports
         if: always()
