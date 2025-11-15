@@ -11,11 +11,11 @@ const config: Config = {
   // Set the production url of your site here
   url: 'https://kosaki08.github.io',
   // For GitHub pages deployment
-  baseUrl: '/ui-match/',
+  baseUrl: '/uimatch/',
 
   // GitHub pages deployment config
   organizationName: 'kosaki08', // Your GitHub org/user name
-  projectName: 'ui-match', // Your repo name
+  projectName: 'uimatch', // Your repo name
 
   onBrokenLinks: 'warn',
 
@@ -37,7 +37,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/kosaki08/ui-match/tree/main/docs/',
+          editUrl: 'https://github.com/kosaki08/uimatch/tree/main/docs/',
         },
         blog: false, // Disable blog for MVP
         theme: {
@@ -96,7 +96,7 @@ const config: Config = {
           label: 'Guide',
         },
         {
-          href: 'https://github.com/kosaki08/ui-match',
+          href: 'https://github.com/kosaki08/uimatch',
           label: 'GitHub',
           position: 'right',
         },
@@ -123,7 +123,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/kosaki08/ui-match',
+              href: 'https://github.com/kosaki08/uimatch',
             },
           ],
         },

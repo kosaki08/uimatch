@@ -1,7 +1,7 @@
 # uiMatch
 
-[![CI](https://github.com/kosaki08/ui-match/actions/workflows/ci.yml/badge.svg)](https://github.com/kosaki08/ui-match/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/kosaki08/ui-match/branch/main/graph/badge.svg)](https://codecov.io/gh/kosaki08/ui-match)
+[![CI](https://github.com/kosaki08/uimatch/actions/workflows/ci.yml/badge.svg)](https://github.com/kosaki08/uimatch/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/kosaki08/uimatch/branch/main/graph/badge.svg)](https://codecov.io/gh/kosaki08/uimatch)
 
 **TL;DR**: uiMatch automates Figma-to-implementation comparison with Playwright, calculating pixel-level color differences (ΔE), dimensional accuracy, spacing, typography, and layout discrepancies. Reports are generated with numerical scores, annotated screenshots, and CI integration support.
 
@@ -318,12 +318,12 @@ pnpm -C packages/uimatch-cli pack --pack-destination ../../dist-packages
 mkdir -p /tmp/uimatch-test && cd /tmp/uimatch-test
 npm init -y
 npm install \
-  /path/to/ui-match/dist-packages/uimatch-shared-logging-*.tgz \
-  /path/to/ui-match/dist-packages/uimatch-selector-spi-*.tgz \
-  /path/to/ui-match/dist-packages/uimatch-core-*.tgz \
-  /path/to/ui-match/dist-packages/uimatch-scoring-*.tgz \
-  /path/to/ui-match/dist-packages/uimatch-selector-anchors-*.tgz \
-  /path/to/ui-match/dist-packages/uimatch-cli-*.tgz \
+  /path/to/uimatch/dist-packages/uimatch-shared-logging-*.tgz \
+  /path/to/uimatch/dist-packages/uimatch-selector-spi-*.tgz \
+  /path/to/uimatch/dist-packages/uimatch-core-*.tgz \
+  /path/to/uimatch/dist-packages/uimatch-scoring-*.tgz \
+  /path/to/uimatch/dist-packages/uimatch-selector-anchors-*.tgz \
+  /path/to/uimatch/dist-packages/uimatch-cli-*.tgz \
   playwright
 
 npx playwright install chromium
@@ -587,7 +587,7 @@ const ref = await mcpClient.getCurrentSelectionRef();
 ## Project Structure
 
 ```
-ui-match/
+uimatch/
 ├── .claude-plugin/             # Plugin definition
 ├── packages/
 │   ├── @uimatch/core/           # Core comparison library

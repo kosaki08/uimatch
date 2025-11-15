@@ -141,7 +141,7 @@ export function formatSARIF(report: DoctorReport): string {
           driver: {
             name: report.generator.name,
             version: report.generator.version,
-            informationUri: 'https://github.com/your-org/ui-match',
+            informationUri: 'https://github.com/kosaki08/uimatch',
           },
         },
         results: report.checks

@@ -430,7 +430,7 @@ async resolve(context) {
 ### Package Structure
 
 ```
-my-@uimatch/cli/
+my-uimatch-plugin/
 ├── package.json
 ├── src/
 │   └── index.ts
@@ -543,7 +543,7 @@ async resolve(context) {
 
 ## Examples Repository
 
-See the [examples directory](https://github.com/your-username/ui-match/tree/main/examples/plugins) for more plugin examples:
+See the [examples directory](https://github.com/kosaki08/uimatch/tree/main/examples/plugins) for more plugin examples:
 
 - **Storybook Plugin** - Target Storybook-specific selectors
 - **Accessibility Plugin** - Use ARIA roles and labels

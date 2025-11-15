@@ -3,7 +3,7 @@
   "description": "Design-to-implementation comparison tool for Figma designs",
   "version": "0.1.0",
   "author": "uiMatch Contributors",
-  "repository": "https://github.com/your-org/ui-match",
+  "repository": "https://github.com/kosaki08/uimatch",
   "commands": ["./commands/compare.md", "./commands/settings.md"],
   "mcp": "./mcp.json"
 }
