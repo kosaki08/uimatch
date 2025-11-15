@@ -17,7 +17,6 @@ const CONFIG_FILE = '.uimatchrc.json';
  * Get current configuration
  *
  * Reads from .uimatchrc.json if it exists, otherwise returns defaults.
- * This ensures that settings written via updateSettings() are properly loaded.
  */
 export function getSettings(): AppConfig {
   const configPath = path.join(process.cwd(), CONFIG_FILE);

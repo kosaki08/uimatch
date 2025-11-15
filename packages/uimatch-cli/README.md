@@ -88,18 +88,16 @@ Compare a Figma design with implementation:
 Manage plugin configuration:
 
 ```bash
-# View current settings
+# View current settings (outputs full config as JSON)
 /uiMatch settings
-
-# Get specific setting
-/uiMatch settings get comparison.acceptancePixelDiffRatio
-
-# Set a setting
-/uiMatch settings set comparison.acceptancePixelDiffRatio=0.05
+# or explicitly:
+/uiMatch settings get
 
 # Reset to defaults
 /uiMatch settings reset
 ```
+
+To modify settings, edit `.uimatchrc.json` in your project root directly.
 
 **Available Settings**:
 
@@ -192,7 +190,7 @@ For detailed CLI usage, available options, and advanced features (size handling,
 ### Programmatic API
 
 ```typescript
-import { uiMatchCompare, getSettings, updateSettings } from '@uimatch/cli';
+import { uiMatchCompare, getSettings, resetSettings } from '@uimatch/cli';
 
 // Run comparison
 const result = await uiMatchCompare({
@@ -207,8 +205,24 @@ console.log(`DFS: ${result.dfs}`);
 console.log(`Status: ${result.status}`);
 
 // Settings management
-const settings = await getSettings();
-await updateSettings({ comparison: { acceptancePixelDiffRatio: 0.05 } });
+const settings = getSettings(); // Read current settings from .uimatchrc.json
+console.log(settings);
+
+// Reset to defaults (removes .uimatchrc.json)
+const defaults = resetSettings();
+
+// To modify settings, edit .uimatchrc.json directly or create/update it programmatically:
+import fs from 'node:fs';
+fs.writeFileSync(
+  '.uimatchrc.json',
+  JSON.stringify(
+    {
+      comparison: { acceptancePixelDiffRatio: 0.05 },
+    },
+    null,
+    2
+  )
+);
 ```
 
 ## Configuration
