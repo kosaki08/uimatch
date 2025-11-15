@@ -102,6 +102,11 @@ export interface StyleDiff {
   severity: 'low' | 'medium' | 'high';
   /** Patch hints for fixing the differences */
   patchHints?: PatchHint[];
+  /**
+   * Whether this diff can be automatically fixed
+   * Computed from patchHints availability (true if patchHints.length > 0)
+   */
+  autoFixable?: boolean;
   /** DOM element metadata for generating precise selectors */
   meta?: {
     tag: string;

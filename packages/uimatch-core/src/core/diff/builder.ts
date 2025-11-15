@@ -687,6 +687,7 @@ export function buildStyleDiffs(
       properties: propDiffs,
       severity,
       patchHints,
+      autoFixable: patchHints !== undefined && patchHints.length > 0,
       meta: opts.meta?.[sel],
       priorityScore,
       scope,

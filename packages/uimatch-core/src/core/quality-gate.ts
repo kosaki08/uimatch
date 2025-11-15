@@ -59,6 +59,34 @@ export interface CQIParams {
 }
 
 /**
+ * Individual component breakdown for CQI calculation
+ */
+export interface CQIBreakdownComponent {
+  /** Component name: pixel, color, area, or severity */
+  name: 'pixel' | 'color' | 'area' | 'severity';
+  /** Raw metric value (e.g., pixelDiffRatioContent, colorDeltaEAvg, areaGap) */
+  rawValue: number;
+  /** Threshold for this component */
+  threshold: number;
+  /** Penalty contribution (0-100) */
+  penalty: number;
+  /** Weight factor (0-1) */
+  weight: number;
+}
+
+/**
+ * Detailed breakdown of CQI calculation
+ */
+export interface CQIBreakdown {
+  /** Individual component contributions */
+  components: CQIBreakdownComponent[];
+  /** Total penalty sum (0-100) */
+  totalPenalty: number;
+  /** Base score before penalties (always 100) */
+  baseScore: number;
+}
+
+/**
  * Quality gate result
  */
 export interface QualityGateResult {
@@ -66,6 +94,8 @@ export interface QualityGateResult {
   pass: boolean;
   /** Composite Quality Indicator (0-100, higher is better) */
   cqi: number;
+  /** Detailed breakdown of CQI calculation (optional, for transparency) */
+  cqiBreakdown?: CQIBreakdown;
   /** Hard gate violations (immediate fail) */
   hardGateViolations: HardGateViolation[];
   /** Suspicion detection results */
@@ -200,11 +230,12 @@ export function shouldReEvaluate(result: CompareImageResult, contentBasis: strin
 }
 
 /**
- * Calculate Composite Quality Indicator (CQI) score
+ * Calculate Composite Quality Indicator (CQI) score with optional breakdown
  * @param metrics - Comparison metrics
  * @param thresholds - Quality gate thresholds
  * @param params - CQI calculation parameters
- * @returns CQI score (0-100, higher is better)
+ * @param includeBreakdown - Whether to include detailed breakdown (default: false)
+ * @returns CQI score (0-100, higher is better) and optional breakdown
  */
 export function calculateCQI(
   metrics: {
@@ -215,8 +246,9 @@ export function calculateCQI(
     hasHighSeverity: boolean;
   },
   thresholds: QualityGateThresholds,
-  params: CQIParams = {}
-): number {
+  params: CQIParams = {},
+  includeBreakdown = false
+): { cqi: number; breakdown?: CQIBreakdown } {
   const { pixelWeight = 0.6, colorWeight = 0.2, areaWeight = 0.15, severityWeight = 0.05 } = params;
 
   // Use content-only ratio when available
@@ -228,15 +260,62 @@ export function calculateCQI(
   const areaPenalty = metrics.areaGap; // Already 0-1
   const severityPenalty = metrics.hasHighSeverity ? 1 : 0;
 
-  // Calculate weighted penalty (0-100 scale)
+  // Calculate weighted penalty contributions (0-100 scale)
+  const pixelContribution = pixelPenalty * pixelWeight * 100;
+  const colorContribution = colorPenalty * colorWeight * 100;
+  const areaContribution = areaPenalty * areaWeight * 100;
+  const severityContribution = severityPenalty * severityWeight * 100;
+
   const totalPenalty =
-    pixelPenalty * pixelWeight * 100 +
-    colorPenalty * colorWeight * 100 +
-    areaPenalty * areaWeight * 100 +
-    severityPenalty * severityWeight * 100;
+    pixelContribution + colorContribution + areaContribution + severityContribution;
 
   // CQI = 100 - penalty
-  return Math.max(0, Math.min(100, Math.round(100 - totalPenalty)));
+  const cqi = Math.max(0, Math.min(100, Math.round(100 - totalPenalty)));
+
+  if (!includeBreakdown) {
+    return { cqi };
+  }
+
+  // Build detailed breakdown
+  const components: CQIBreakdownComponent[] = [
+    {
+      name: 'pixel',
+      rawValue: effectivePixelRatio,
+      threshold: thresholds.pixelDiffRatio,
+      penalty: Math.round(pixelContribution * 10) / 10,
+      weight: pixelWeight,
+    },
+    {
+      name: 'color',
+      rawValue: metrics.colorDeltaEAvg,
+      threshold: thresholds.deltaE,
+      penalty: Math.round(colorContribution * 10) / 10,
+      weight: colorWeight,
+    },
+    {
+      name: 'area',
+      rawValue: metrics.areaGap,
+      threshold: thresholds.areaGapCritical ?? 0.15,
+      penalty: Math.round(areaContribution * 10) / 10,
+      weight: areaWeight,
+    },
+    {
+      name: 'severity',
+      rawValue: metrics.hasHighSeverity ? 1 : 0,
+      threshold: 0, // Binary: 0 or 1
+      penalty: Math.round(severityContribution * 10) / 10,
+      weight: severityWeight,
+    },
+  ];
+
+  return {
+    cqi,
+    breakdown: {
+      components,
+      totalPenalty: Math.round(totalPenalty * 10) / 10,
+      baseScore: 100,
+    },
+  };
 }
 
 /**
@@ -317,8 +396,8 @@ export function evaluateQualityGate(
   const colorDeltaEAvg = result.colorDeltaEAvg ?? 0;
   const effectivePixelRatio = result.pixelDiffRatioContent ?? result.pixelDiffRatio;
 
-  // Calculate CQI
-  const cqi = calculateCQI(
+  // Calculate CQI with breakdown
+  const { cqi, breakdown: cqiBreakdown } = calculateCQI(
     {
       pixelDiffRatioContent: result.pixelDiffRatioContent,
       pixelDiffRatio: result.pixelDiffRatio,
@@ -327,7 +406,8 @@ export function evaluateQualityGate(
       hasHighSeverity,
     },
     thresholds,
-    cqiParams
+    cqiParams,
+    true // Always include breakdown for transparency
   );
 
   // Determine pass/fail
@@ -377,6 +457,7 @@ export function evaluateQualityGate(
   return {
     pass,
     cqi,
+    cqiBreakdown,
     hardGateViolations,
     suspicions,
     reEvaluated,
