@@ -514,6 +514,56 @@ npx uimatch compare figma=bypass:test story="..." selector="..."
 
 **Full options**: Run `npx uimatch compare --help`
 
+## Experimental Features
+
+⚠️ **Warning**: The following features are **experimental** and may change or be removed without notice.
+
+These are primarily intended for Claude Code / MCP integration experiments. Please avoid relying on them in long-term CI/CD pipelines yet.
+
+### Experimental Commands
+
+- `uimatch experimental claude-report` - Generate Claude-optimized comparison report
+  - `--format=prompt` - Output as LLM prompt (default)
+  - `--format=json` - Output as structured JSON
+
+**Example**:
+
+```bash
+uimatch experimental claude-report --figma current --url http://localhost:3000 --format=json
+```
+
+### Experimental Configuration
+
+In `.uimatchrc.json`:
+
+```json
+{
+  "experimental": {
+    "claude": {
+      "format": "prompt",
+      "includeRawDiffs": false
+    },
+    "mcp": {
+      "enabled": false
+    }
+  }
+}
+```
+
+### Experimental TypeScript API
+
+```typescript
+import { experimental } from '@uimatch/cli';
+
+// Claude-specific formatting
+const payload = experimental.formatForLLM(result, { preferTokens: true });
+const prompt = experimental.generateLLMPrompt(payload);
+
+// Figma MCP client (requires MCP server running)
+const mcpClient = new experimental.FigmaMcpClient(config);
+const ref = await mcpClient.getCurrentSelectionRef();
+```
+
 ## Documentation
 
 ### Quick Start

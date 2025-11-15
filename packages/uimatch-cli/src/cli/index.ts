@@ -3,6 +3,7 @@
  */
 
 import { getSettings, resetSettings } from '#plugin/commands/settings.js';
+import { runExperimentalClaudeReport } from '#plugin/experimental/claude-report.js';
 import { runCompare } from './compare.js';
 import { runDoctor } from './doctor/index.js';
 import { initLogger } from './logger.js';
@@ -36,11 +37,12 @@ function printHelp(): void {
   outln('Usage: uimatch <command> [options]');
   outln('');
   outln('Commands:');
-  outln('  compare    Compare Figma design with web implementation');
-  outln('  suite      Run multiple compares from a JSON suite file');
-  outln('  doctor     Check environment and configuration');
-  outln('  settings   Manage plugin configuration (get|set|reset)');
-  outln('  help       Show this help message');
+  outln('  compare       Compare Figma design with web implementation');
+  outln('  suite         Run multiple compares from a JSON suite file');
+  outln('  doctor        Check environment and configuration');
+  outln('  settings      Manage plugin configuration (get|set|reset)');
+  outln('  experimental  Experimental commands (unstable, may change)');
+  outln('  help          Show this help message');
   outln('');
   outln('Global Options:');
   outln('  --log-level <level>     Set log level (silent|debug|info|warn|error)');
@@ -59,7 +61,27 @@ async function main(): Promise<void> {
   // Initialize logger before running commands
   initLogger(args);
 
-  if (command === 'compare') {
+  if (command === 'experimental') {
+    const subcommand = args[0];
+    if (!subcommand) {
+      errln('⚠️  Experimental commands are unstable and may change or be removed.');
+      errln('');
+      errln('Available experimental commands:');
+      errln('  claude-report  - Generate Claude-optimized comparison report');
+      errln('');
+      errln('Example:');
+      errln('  uimatch experimental claude-report --figma current --url http://localhost:3000');
+      process.exit(2);
+    }
+
+    if (subcommand === 'claude-report') {
+      await runExperimentalClaudeReport(args.slice(1));
+    } else {
+      errln(`Unknown experimental command: ${subcommand}`);
+      errln('Run "uimatch experimental" to see available commands');
+      process.exit(2);
+    }
+  } else if (command === 'compare') {
     await runCompare(args);
   } else if (command === 'suite') {
     await runSuite(args);
@@ -77,7 +99,15 @@ async function main(): Promise<void> {
       outln(JSON.stringify(config, null, 2));
     } else {
       errln(`Unknown settings action: ${action}`);
-      errln('Available actions: get, reset');
+      errln('');
+      errln('Available actions:');
+      errln('  get    - View current settings (default)');
+      errln('  reset  - Reset settings to defaults');
+      errln('');
+      errln('Examples:');
+      errln('  uimatch settings');
+      errln('  uimatch settings get');
+      errln('  uimatch settings reset');
       process.exit(2);
     }
   } else {

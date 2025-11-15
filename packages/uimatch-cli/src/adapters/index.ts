@@ -1,2 +1,1 @@
-export { FigmaMcpClient, parseFigmaRef } from './figma-mcp';
-export { FigmaRestClient } from './figma-rest';
+export { FigmaRestClient } from './figma-rest.js';

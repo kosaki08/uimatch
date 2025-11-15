@@ -547,7 +547,7 @@ export async function runCompare(argv: string[]): Promise<void> {
       // The compare command doesn't return expectedSpec directly; reconstruct it
       // from quality report when possible. If unavailable, re-bootstrap here as a fallback.
       try {
-        const { parseFigmaRef } = await import('../adapters/figma-mcp.js');
+        const { parseFigmaRef } = await import('../experimental/figma-mcp.js');
         const { FigmaRestClient } = await import('../adapters/figma-rest.js');
         const { buildExpectedSpecFromFigma } = await import('../expected/from-figma.js');
 
@@ -648,7 +648,7 @@ export async function runCompare(argv: string[]): Promise<void> {
 
         // Save LLM-formatted output if requested
         if (args.format === 'claude') {
-          const { formatForLLM, generateLLMPrompt } = await import('../utils/llm-formatter.js');
+          const { formatForLLM, generateLLMPrompt } = await import('../experimental/claude-formatter.js');
 
           // Deprecation warning for patchTarget parameter
           if (args.patchTarget) {
@@ -688,7 +688,7 @@ export async function runCompare(argv: string[]): Promise<void> {
 
     // Output format handling
     if (args.format === 'claude') {
-      const { formatForLLM, generateLLMPrompt } = await import('../utils/llm-formatter.js');
+      const { formatForLLM, generateLLMPrompt } = await import('../experimental/claude-formatter.js');
 
       // Deprecation warning for patchTarget parameter
       if (args.patchTarget) {

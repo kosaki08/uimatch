@@ -1,10 +1,13 @@
 /**
- * Figma MCP adapter for fetching design data
+ * Figma MCP adapter for fetching design data.
+ *
+ * @experimental
+ * This API is not stable and may change or be removed without notice.
  */
 
-import type { FigmaMcpConfig } from '#plugin/config/index';
-import type { FigmaRef, FigmaVariable } from '#plugin/types/index';
-import { errorMessage, getStringProp, isObject } from '#plugin/utils/error';
+import type { FigmaMcpConfig } from '#plugin/config/index.js';
+import type { FigmaRef, FigmaVariable } from '#plugin/types/index.js';
+import { errorMessage, getStringProp, isObject } from '#plugin/utils/error.js';
 import { z } from 'zod';
 
 /**

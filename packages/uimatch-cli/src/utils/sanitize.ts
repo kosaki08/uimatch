@@ -2,7 +2,7 @@
  * Sanitization utilities for safe logging and artifact output
  */
 
-import { parseFigmaRef } from '#plugin/adapters/figma-mcp';
+import { parseFigmaRef } from '#plugin/experimental/figma-mcp.js';
 
 /**
  * Make Figma refs safe/compact for logs by reusing exact parsing logic:

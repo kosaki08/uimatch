@@ -129,7 +129,7 @@ describe('E2E: settings command', () => {
     expect(existsSync(configPath)).toBe(false);
   });
 
-  test('settings <unknown>: exits with error code 2', () => {
+  test('settings <unknown>: exits with error code 2 and shows usage', () => {
     expect(() => {
       execSync(`bun ${CLI_PATH} settings unknown-action`, {
         cwd: testDir,
@@ -150,7 +150,11 @@ describe('E2E: settings command', () => {
 
       const stderr = execError.stderr?.toString() ?? '';
       expect(stderr).toContain('Unknown settings action');
-      expect(stderr).toContain('Available actions: get, reset');
+      expect(stderr).toContain('Available actions:');
+      expect(stderr).toContain('get');
+      expect(stderr).toContain('reset');
+      expect(stderr).toContain('Examples:');
+      expect(stderr).toContain('uimatch settings');
     }
   });
 

@@ -1,10 +1,13 @@
 /**
- * LLM-friendly output formatter for Claude Code
- * Transforms comparison results into actionable patch suggestions
+ * LLM-friendly output formatter for Claude Code.
+ * Transforms comparison results into actionable patch suggestions.
+ *
+ * @experimental
+ * This API is not stable and may change or be removed without notice.
  */
 
-import type { CompareResult } from '#plugin/types/index';
-import { dedupKey, scoreIssue, type Issue, type ScoredIssue } from '#plugin/utils/scoring';
+import type { CompareResult } from '#plugin/types/index.js';
+import { dedupKey, scoreIssue, type Issue, type ScoredIssue } from '#plugin/utils/scoring.js';
 import type { StyleDiff } from '@uimatch/core';
 
 /**
