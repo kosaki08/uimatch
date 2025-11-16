@@ -1,6 +1,6 @@
 {
   "name": "@uimatch/selector-spi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Service Provider Interface types for uiMatch selector resolution plugins",
   "type": "module",
   "typedoc": {
