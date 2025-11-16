@@ -16,6 +16,12 @@ These are primarily intended for MCP / AI assistant integration experiments. Ple
 
 Generate Claude-optimized comparison report.
 
+:::warning Work in Progress
+This command is currently a **proof-of-concept** and not fully functional. The `--format` option does not produce formatted output due to architectural limitations (the underlying `runCompare` function does not return `CompareResult`).
+
+For now, use the standard `uimatch compare` command output instead.
+:::
+
 **Syntax**:
 
 ```bash
@@ -24,12 +30,13 @@ uimatch experimental claude-report --figma <reference> --url <url> [options]
 
 **Options**:
 
-- `--format=prompt` - Output as LLM prompt (default)
-- `--format=json` - Output as structured JSON
+- `--format=prompt` - Output as LLM prompt (default) **[Not yet functional]**
+- `--format=json` - Output as structured JSON **[Not yet functional]**
 
 **Example**:
 
 ```bash
+# Currently shows standard compare output with a PoC notice
 uimatch experimental claude-report \
   --figma current \
   --url http://localhost:3000 \

@@ -7,9 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * Configuration file path
- * TODO: Consider searching parent directories for .uimatchrc.json
- * to support monorepo setups where config may be in workspace root
+ * Configuration file path (currently looks in working directory only)
  */
 const CONFIG_FILE = '.uimatchrc.json';
 
