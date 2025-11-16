@@ -57,6 +57,12 @@ export function relativizePath(absolutePath: string): string {
 export function sanitizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
+    // Handle data URLs specially (origin is "null" for data URLs)
+    if (parsed.protocol === 'data:') {
+      // Truncate data URLs to avoid logging large base64 content
+      const maxLength = 64;
+      return url.length > maxLength ? url.slice(0, maxLength) + '...' : url;
+    }
     return `${parsed.origin}${parsed.pathname}`;
   } catch {
     return '[invalid-url]';
