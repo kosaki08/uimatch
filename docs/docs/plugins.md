@@ -78,7 +78,7 @@ export default testIdPlugin;
 
 ### Using Your Plugin
 
-```bash
+```shell
 npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
@@ -177,7 +177,7 @@ export default testingLibraryPlugin;
 
 **Usage:**
 
-```bash
+```shell
 # Using role queries
 selector="role:button[name=Submit]"
 
@@ -233,7 +233,7 @@ export default muiPlugin;
 
 **Usage:**
 
-```bash
+```shell
 # Target MUI Button with contained variant
 selector="Button.contained"
 
@@ -457,7 +457,7 @@ my-uimatch-plugin/
 
 ### Usage by Others
 
-```bash
+```shell
 # Install
 npm install @my-company/uimatch-testing-library-plugin
 

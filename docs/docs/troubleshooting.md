@@ -10,7 +10,7 @@ Common issues and solutions when using uiMatch.
 
 Run the built-in health check:
 
-```bash
+```shell
 npx uimatch doctor
 ```
 
@@ -31,7 +31,7 @@ This checks:
 
 1. **Check your token:**
 
-   ```bash
+   ```shell
    # Verify token is set
    echo $FIGMA_ACCESS_TOKEN
    ```
@@ -53,7 +53,7 @@ This checks:
 
 1. **Run with visible browser:**
 
-   ```bash
+   ```shell
    UIMATCH_HEADLESS=false npx uimatch compare ...
    ```
 
@@ -61,7 +61,7 @@ This checks:
 
 2. **Check selector specificity:**
 
-   ```bash
+   ```shell
    # Try more specific selector
    selector="main #my-component"
 
@@ -70,7 +70,7 @@ This checks:
    ```
 
 3. **Verify URL is correct:**
-   ```bash
+   ```shell
    # Check the page actually loads
    curl -I http://localhost:3000/your-page
    ```
@@ -83,7 +83,7 @@ This checks:
 
 1. **Use flexible size matching:**
 
-   ```bash
+   ```shell
    size=pad          # Pad smaller image with letterboxing (useful for page-vs-component)
    size=strict       # Sizes must match exactly (default)
    size=crop         # Compare common area only
@@ -92,7 +92,7 @@ This checks:
 
 2. **Check viewport settings:**
 
-   ```bash
+   ```shell
    viewport=1920x1080   # Match your design specs
    ```
 
@@ -104,7 +104,7 @@ This checks:
 
 1. **Generate diff image to investigate:**
 
-   ```bash
+   ```shell
    # Specify output directory to save diff images
    outDir=./comparison-results
    # Check comparison-results/diff.png - red areas show differences
@@ -118,7 +118,7 @@ This checks:
 
 3. **Use more relaxed profile if differences are acceptable:**
 
-   ```bash
+   ```shell
    # For development iteration
    profile=component/dev    # pixelDiffRatio: 0.08, deltaE: 5.0
 
@@ -139,19 +139,19 @@ This checks:
 
 1. **Check browser installation:**
 
-   ```bash
+   ```shell
    npx playwright install chromium
    ```
 
 2. **Check for port conflicts:**
 
-   ```bash
+   ```shell
    # Ensure your dev server is actually running
    lsof -i :3000
    ```
 
 3. **Disable headless for debugging:**
-   ```bash
+   ```shell
    UIMATCH_HEADLESS=false npx uimatch compare ...
    ```
 
@@ -163,7 +163,7 @@ This checks:
 
 1. **Create `.env` file:**
 
-   ```bash
+   ```shell
    echo "FIGMA_ACCESS_TOKEN=your_token_here" > .env
    ```
 
@@ -185,13 +185,13 @@ This checks:
 
 Required:
 
-```bash
+```shell
 FIGMA_ACCESS_TOKEN=figd_xxx    # Get from Figma settings
 ```
 
 Optional:
 
-```bash
+```shell
 UIMATCH_LOG_LEVEL=debug        # silent | info | debug
 UIMATCH_HEADLESS=false         # Show browser during tests
 UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
@@ -213,7 +213,7 @@ UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 
 2. **Screen resolution:**
 
-   ```bash
+   ```shell
    # Set consistent viewport
    --viewport 1920x1080
    ```
@@ -239,7 +239,7 @@ UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 
 1. **Run comparisons in parallel:**
 
-   ```bash
+   ```shell
    npx uimatch suite path=tests.json concurrency=4
    ```
 
@@ -284,7 +284,7 @@ UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 
 2. **Verify plugin path:**
 
-   ```bash
+   ```shell
    # Use absolute or relative path
    --anchor ./src/plugins/my-anchor.js
    --anchor @my-company/anchor-plugin
@@ -310,7 +310,7 @@ Still stuck? Here's how to get help:
 
 1. **Enable debug logging:**
 
-   ```bash
+   ```shell
    UIMATCH_LOG_LEVEL=debug npx uimatch compare ...
    ```
 
@@ -331,7 +331,7 @@ Still stuck? Here's how to get help:
 
 1. **Use headless mode in CI:**
 
-   ```bash
+   ```shell
    # Headless is true by default
    # Explicitly set if needed:
    UIMATCH_HEADLESS=true npx uimatch compare ...
@@ -339,13 +339,13 @@ Still stuck? Here's how to get help:
 
 2. **Reduce screenshot area:**
 
-   ```bash
+   ```shell
    # Target specific elements, not full page
    selector="#specific-component"
    ```
 
 3. **Parallel execution:**
-   ```bash
+   ```shell
    npx uimatch suite path=tests.json concurrency=4
    ```
 
@@ -363,7 +363,7 @@ Still stuck? Here's how to get help:
 
 2. **Use appropriate quality profiles:**
 
-   ```bash
+   ```shell
    # Strict for pixel-perfect comparison
    profile=component/strict
 

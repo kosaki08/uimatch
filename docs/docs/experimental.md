@@ -24,7 +24,7 @@ For now, use the standard `uimatch compare` command output instead.
 
 **Syntax**:
 
-```bash
+```shell
 uimatch experimental claude-report --figma <reference> --url <url> [options]
 ```
 
@@ -35,7 +35,7 @@ uimatch experimental claude-report --figma <reference> --url <url> [options]
 
 **Example**:
 
-```bash
+```shell
 # Currently shows standard compare output with a PoC notice
 uimatch experimental claude-report \
   --figma current \
@@ -105,7 +105,7 @@ const ref = await mcpClient.getCurrentSelectionRef();
 
 Use the `claude-report` command to generate reports optimized for AI assistant consumption:
 
-```bash
+```shell
 # Generate prompt for Claude Code
 uimatch experimental claude-report \
   --figma current \

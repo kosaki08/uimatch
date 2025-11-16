@@ -17,7 +17,7 @@ The pack method simulates actual npm distribution and catches dependency issues 
 
 #### 1. Build All Packages
 
-```bash
+```shell
 pnpm build
 ```
 
@@ -25,7 +25,7 @@ pnpm build
 
 pnpm automatically resolves `workspace:*` dependencies to actual versions during pack:
 
-```bash
+```shell
 mkdir -p dist-packages
 pnpm -C packages/shared-logging pack --pack-destination ../../dist-packages
 pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
@@ -46,7 +46,7 @@ pnpm -C packages/uimatch-cli pack --pack-destination ../../dist-packages
 
 #### 3. Test in Isolated Environment
 
-```bash
+```shell
 # Create clean test environment
 mkdir -p /tmp/uimatch-test && cd /tmp/uimatch-test
 npm init -y
@@ -67,7 +67,7 @@ npx playwright install chromium
 
 #### 4. Verify with Smoke Test
 
-```bash
+```shell
 # Set bypass mode environment variable (10x10 red square PNG)
 export UIMATCH_FIGMA_PNG_B64="iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC"
 
@@ -124,13 +124,13 @@ The link method is faster for development but doesn't catch distribution issues.
 
 #### 1. Build Packages
 
-```bash
+```shell
 pnpm build
 ```
 
 #### 2. Register Packages Globally
 
-```bash
+```shell
 cd packages/shared-logging && pnpm link --global && cd ../..
 cd packages/uimatch-selector-spi && pnpm link --global && cd ../..
 cd packages/uimatch-core && pnpm link --global && cd ../..
@@ -141,7 +141,7 @@ cd packages/uimatch-cli && pnpm link --global && cd ../..
 
 #### 3. Link in Consumer Project
 
-```bash
+```shell
 cd /path/to/consumer
 pnpm link --global @uimatch/shared-logging
 pnpm link --global @uimatch/selector-spi
@@ -153,7 +153,7 @@ pnpm link --global @uimatch/cli
 
 #### 4. Test Changes
 
-```bash
+```shell
 # Make changes in source packages
 cd /path/to/uimatch/packages/uimatch-core
 # ... edit files ...
@@ -166,7 +166,7 @@ npx uimatch compare ...
 
 #### 5. Unlink When Done
 
-```bash
+```shell
 # In consumer project
 cd /path/to/consumer
 pnpm unlink --global @uimatch/cli
@@ -191,7 +191,7 @@ pnpm unlink --global
 
 Before publishing to npm, verify distribution integrity with the **Pack method**:
 
-```bash
+```shell
 # Full verification workflow
 pnpm build
 # ... run full pack verification from Method 1
@@ -213,7 +213,7 @@ npx uimatch compare figma=bypass:test story="..." selector="..."
 
 ### Example Verification Script
 
-```bash
+```shell
 #!/bin/bash
 # verify-distribution.sh
 

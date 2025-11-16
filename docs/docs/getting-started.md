@@ -21,7 +21,7 @@ uiMatch is a visual regression testing tool that compares your Figma designs wit
 
 ### Installation
 
-```bash
+```shell
 # Global install (for CLI usage)
 npm install -g @uimatch/cli playwright
 npx playwright install chromium
@@ -35,7 +35,7 @@ npx playwright install chromium
 
 Create a `.env` file with your Figma access token:
 
-```bash
+```shell
 FIGMA_ACCESS_TOKEN=your_figma_token_here
 ```
 
@@ -45,7 +45,7 @@ Get your token from [Figma Settings > Personal Access Tokens](https://www.figma.
 
 Run a simple comparison between a Figma design and your implementation:
 
-```bash
+```shell
 npx uimatch compare \
   figma=https://www.figma.com/file/YOUR_FILE_KEY?node-id=YOUR_NODE_ID \
   story=http://localhost:3000/your-page \
@@ -62,7 +62,7 @@ npx uimatch compare \
 
 By default, UI Match outputs results to the console. To save comparison artifacts (screenshots, diff images, reports), specify an output directory:
 
-```bash
+```shell
 npx uimatch compare \
   figma=... \
   story=... \
@@ -83,7 +83,7 @@ For the `suite` command, the default output directory is `.uimatch-suite`.
 
 ### Storybook Integration
 
-```bash
+```shell
 npx uimatch compare \
   figma=FILE_KEY:NODE_ID \
   story=http://localhost:6006/iframe.html?id=button--primary \
@@ -92,7 +92,7 @@ npx uimatch compare \
 
 ### CI/CD Pipeline
 
-```bash
+```shell
 npx uimatch suite path=suite.json
 ```
 
@@ -100,7 +100,7 @@ npx uimatch suite path=suite.json
 
 For text-only validation without pixel comparison, use the `text-diff` command:
 
-```bash
+```shell
 npx uimatch text-diff "Sign in" "SIGN  IN"
 # → kind: 'whitespace-or-case-only', similarity: 1.0
 

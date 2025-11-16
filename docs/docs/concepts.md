@@ -34,7 +34,7 @@ Anchors let you plug in the selector strategy that matches your project.
 
 uiMatch includes a default CSS selector anchor:
 
-```bash
+```shell
 npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
@@ -78,7 +78,7 @@ export const testIdAnchor: SelectorResolverPlugin = {
 
 Then use it:
 
-```bash
+```shell
 npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
@@ -96,7 +96,7 @@ Quality Gates define what "matching" means for your comparisons. They enforce co
 
 uiMatch uses profiles to manage thresholds:
 
-```bash
+```shell
 profile=component/strict  # Pixel-perfect comparison
 profile=component/dev     # Relaxed for development
 profile=page-vs-component # Accounts for padding
@@ -133,7 +133,7 @@ Current implementation supports:
 
 Control size matching behavior:
 
-```bash
+```shell
 size=strict      # Sizes must match exactly (default)
 size=pad         # Pad smaller image with letterboxing
 size=crop        # Compare common area only
@@ -142,7 +142,7 @@ size=scale       # Scale implementation to Figma size
 
 **Example:**
 
-```bash
+```shell
 npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
@@ -157,7 +157,7 @@ This pads the smaller image and uses intersection for content-only comparison (e
 
 Control which area to use for calculating pixel difference ratio denominator:
 
-```bash
+```shell
 contentBasis=union          # Union of both content areas (default)
 contentBasis=intersection   # Intersection (recommended for pad mode)
 contentBasis=figma          # Use Figma's content area only
@@ -251,7 +251,7 @@ graph LR
 
 ### 1. Start Broad, Refine Later
 
-```bash
+```shell
 # Initial setup - lenient profile
 profile=lenient
 
@@ -261,7 +261,7 @@ profile=component/strict
 
 ### 2. Use Meaningful Selectors
 
-```bash
+```shell
 # ✅ Good: Semantic, stable selector
 selector="[data-testid='checkout-button']"
 
@@ -415,7 +415,7 @@ For texts that don't match exactly after normalization, similarity is calculated
 
 Compare text labels from Figma designs with implementation:
 
-```bash
+```shell
 npx uimatch text-diff "Sign in" "SIGN IN"
 # → whitespace-or-case-only (minor formatting difference)
 ```
@@ -424,7 +424,7 @@ npx uimatch text-diff "Sign in" "SIGN IN"
 
 Verify translated text maintains similarity to original:
 
-```bash
+```shell
 npx uimatch text-diff "Submit Form" "Submit Form (送信)" --threshold=0.7
 # → normalized-match (acceptable localization difference)
 ```
@@ -433,7 +433,7 @@ npx uimatch text-diff "Submit Form" "Submit Form (送信)" --threshold=0.7
 
 Identify subtle text differences affecting rendering:
 
-```bash
+```shell
 npx uimatch text-diff "Button123" "Button１２３"
 # → whitespace-or-case-only (full-width digits normalized)
 ```

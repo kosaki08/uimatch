@@ -103,7 +103,7 @@ For CI environments where API rate limits are a concern, use **bypass mode** wit
 
 1. Extract Figma design as base64-encoded PNG locally:
 
-```bash
+```shell
 # Option 1: Use browser DevTools
 # 1. Open Figma file in browser
 # 2. Right-click node → Inspect → Network tab
@@ -170,7 +170,7 @@ Headless browsers may render fonts differently than local environments. Solution
 
 Ensure CI viewport matches local testing:
 
-```bash
+```shell
 # Explicitly set viewport in comparison command
 npx uimatch compare \
   figma=... story=... selector=... \

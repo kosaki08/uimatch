@@ -21,7 +21,7 @@ Compare a Figma design with your implementation.
 
 ### Basic Syntax
 
-```bash
+```shell
 npx uimatch compare \
   figma=<FIGMA_REFERENCE> \
   story=<URL> \
@@ -41,13 +41,13 @@ npx uimatch compare \
 
 #### Output Control
 
-```bash
+```shell
 outDir=<path>            # Output directory (files not saved by default)
 ```
 
 #### Size Handling
 
-```bash
+```shell
 size=strict              # Sizes must match exactly (default)
 size=pad                 # Pad smaller image with letterboxing
 size=crop                # Compare common area only
@@ -56,7 +56,7 @@ size=scale               # Scale implementation to Figma size
 
 #### Quality Gates
 
-```bash
+```shell
 profile=component/strict # Pixel-perfect (pixelDiffRatio: 0.01, deltaE: 3.0)
 profile=component/dev    # Development (pixelDiffRatio: 0.08, deltaE: 5.0)
 profile=page-vs-component # Padded comparison (pixelDiffRatio: 0.12)
@@ -67,7 +67,7 @@ See [Quality Gate Profiles](#quality-gate-profiles) for detailed threshold setti
 
 #### Browser Options
 
-```bash
+```shell
 viewport=<WxH>           # Custom viewport size (e.g., "1920x1080")
 ```
 
@@ -77,7 +77,7 @@ Use environment variable `UIMATCH_HEADLESS=false` to show browser window during 
 
 #### Basic Comparison
 
-```bash
+```shell
 npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
@@ -86,7 +86,7 @@ npx uimatch compare \
 
 #### With Strict Quality Profile
 
-```bash
+```shell
 npx uimatch compare \
   figma=https://figma.com/file/abc123?node-id=1-2 \
   story=http://localhost:6006/?path=/story/button--primary \
@@ -96,7 +96,7 @@ npx uimatch compare \
 
 #### Mobile Viewport
 
-```bash
+```shell
 npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
@@ -110,7 +110,7 @@ Run multiple comparisons from a JSON configuration file.
 
 ### Basic Syntax
 
-```bash
+```shell
 npx uimatch suite path=<suite-file.json> [options]
 ```
 
@@ -141,7 +141,7 @@ npx uimatch suite path=<suite-file.json> [options]
 
 ### Options
 
-```bash
+```shell
 path=<suite.json>        # Path to suite file
 outDir=<path>            # Output directory (default: .uimatch-suite)
 concurrency=<number>     # Run comparisons in parallel (default: 4)
@@ -149,7 +149,7 @@ concurrency=<number>     # Run comparisons in parallel (default: 4)
 
 ### Example
 
-```bash
+```shell
 npx uimatch suite path=tests/visual-regression.json concurrency=3
 ```
 
@@ -159,7 +159,7 @@ Compare two text strings and show similarity score with classification.
 
 ### Basic Syntax
 
-```bash
+```shell
 npx uimatch text-diff <expected> <actual> [options]
 ```
 
@@ -172,7 +172,7 @@ npx uimatch text-diff <expected> <actual> [options]
 
 ### Options
 
-```bash
+```shell
 --case-sensitive         # Perform case-sensitive comparison (default: case-insensitive)
 --threshold=<number>     # Similarity threshold (0-1, default: 0.9)
 ```
@@ -218,7 +218,7 @@ The comparison applies the following normalization steps:
 
 #### Basic Comparison
 
-```bash
+```shell
 npx uimatch text-diff "Sign in" "SIGN  IN"
 ```
 
@@ -235,7 +235,7 @@ Output:
 
 #### Case-Sensitive Comparison
 
-```bash
+```shell
 npx uimatch text-diff "Submit" "submit" --case-sensitive
 ```
 
@@ -252,7 +252,7 @@ Output:
 
 #### With Custom Threshold
 
-```bash
+```shell
 npx uimatch text-diff "Hello World" "Helo World" --threshold=0.6
 ```
 
@@ -269,7 +269,7 @@ Output:
 
 #### Full-Width Character Handling
 
-```bash
+```shell
 npx uimatch text-diff "Button123" "Button１２３"
 ```
 
@@ -313,7 +313,7 @@ See [API Reference](./api-reference.md) for details.
 
 Set these in `.env` or your environment:
 
-```bash
+```shell
 FIGMA_ACCESS_TOKEN=your_token_here       # Required for Figma API access
 UIMATCH_LOG_LEVEL=info|debug|silent      # Logging verbosity (default: info)
 UIMATCH_HEADLESS=true|false              # Playwright headless mode (default: true)
@@ -333,7 +333,7 @@ UIMATCH_HEADLESS=true|false              # Playwright headless mode (default: tr
 
 Control which area to use for calculating pixel difference ratio:
 
-```bash
+```shell
 contentBasis=union          # Union of both content areas (default)
 contentBasis=intersection   # Intersection of both areas (recommended for pad mode)
 contentBasis=figma          # Use Figma's content area only
@@ -346,7 +346,7 @@ contentBasis=impl           # Use implementation's content area only
 
 Use custom selector resolution plugins:
 
-```bash
+```shell
 selectorsPlugin=@my-company/custom-anchor-plugin
 ```
 
@@ -366,7 +366,7 @@ uiMatch uses quality gate profiles to manage thresholds instead of individual CL
 
 ### Using Profiles
 
-```bash
+```shell
 # Pixel-perfect comparison
 npx uimatch compare figma=... story=... selector=... profile=component/strict
 
