@@ -1,5 +1,14 @@
 # @uimatch/cli
 
+## 1.0.1
+
+### Patch Changes
+
+- cafdf34: Enable npm publish for all packages with @uimatch scope
+- Updated dependencies [cafdf34]
+  - @uimatch/selector-anchors@1.0.1
+  - @uimatch/shared-logging@1.0.1
+
 ## 1.0.0
 
 ### Minor Changes

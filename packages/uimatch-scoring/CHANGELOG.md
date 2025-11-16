@@ -1,5 +1,13 @@
 # @uimatch/scoring
 
+## 0.2.1
+
+### Patch Changes
+
+- cafdf34: Enable npm publish for all packages with @uimatch scope
+- Updated dependencies [cafdf34]
+  - @uimatch/core@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
