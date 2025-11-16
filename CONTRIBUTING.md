@@ -1,6 +1,6 @@
 # Contributing to uiMatch
 
-Quick reference for contributors. See [AI Assistant Guidelines](docs/ai-assistant/index.md) for detailed project rules.
+Quick reference for contributors. See the [full documentation](https://kosaki08.github.io/uimatch/) for detailed guides and API reference.
 
 ## Setup
 
@@ -38,11 +38,13 @@ test: add content basis test cases
 - **Test coverage**: Add tests for new features
 - **No network in unit tests**: Mock adapters
 
-## Key Files
+## Key Documentation
 
-- `docs/ai-assistant/` - AI assistant guidelines
-- `docs/specs/v0.1.md` - MVP specification
+- [Full Documentation](https://kosaki08.github.io/uimatch/) - Complete guides and API reference
+- [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) - Quick start guide
+- [Concepts](https://kosaki08.github.io/uimatch/docs/concepts) - Core concepts and architecture
+- [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) - Command-line interface guide
 
 ## Questions?
 
-See [AI Assistant Guidelines](docs/ai-assistant/index.md) for detailed guidelines or open an issue.
+See the [full documentation](https://kosaki08.github.io/uimatch/) or open an issue.
