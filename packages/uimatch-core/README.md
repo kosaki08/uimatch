@@ -538,7 +538,7 @@ Not published independently (`private: true`). Bundled into `@uimatch/cli`.
 
 ## License
 
-See root project LICENSE.
+MIT
 
 ## Related
 

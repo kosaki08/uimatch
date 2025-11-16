@@ -1,6 +1,7 @@
 import type * as Preset from '@docusaurus/preset-classic';
 import type { Config } from '@docusaurus/types';
 import { themes as prismThemes } from 'prism-react-renderer';
+import packageJson from '../packages/uimatch-cli/package.json';
 
 const config: Config = {
   title: 'UI Match',
@@ -38,13 +39,6 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/kosaki08/uimatch/tree/main/docs/',
-          lastVersion: 'current',
-          versions: {
-            current: {
-              label: '0.1.0 (Latest)',
-              path: '',
-            },
-          },
         },
         blog: false, // Disable blog for MVP
         theme: {
@@ -103,9 +97,9 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          type: 'docsVersionDropdown',
+          type: 'html',
           position: 'right',
-          dropdownActiveClassDisabled: true,
+          value: `<span class="navbar__version">v${packageJson.version}</span>`,
         },
         {
           href: 'https://github.com/kosaki08/uimatch',

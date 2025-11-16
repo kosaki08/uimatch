@@ -47,3 +47,20 @@
 .header-github-link:hover {
   opacity: 0.6;
 }
+
+/* Version badge in navbar */
+.navbar__version {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ifm-color-primary);
+  background-color: var(--ifm-color-primary-lightest);
+  border-radius: 0.375rem;
+}
+
+[data-theme='dark'] .navbar__version {
+  color: var(--ifm-color-primary-lightest);
+  background-color: var(--ifm-color-primary-darkest);
+}

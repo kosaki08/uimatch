@@ -262,4 +262,4 @@ Contributions welcome! See [Local Testing](https://kosaki08.github.io/uimatch/do
 
 ## License
 
-MIT © 2025 Kazunori Osaki
+MIT

@@ -178,4 +178,4 @@ For complete documentation, see the [uiMatch Documentation Site](https://kosaki0
 
 ## License
 
-MIT © 2025 Kazunori Osaki
+MIT
