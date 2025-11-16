@@ -247,6 +247,61 @@ tests/
 - **[Troubleshooting](./troubleshooting.md)** - Debug common issues
 - **[Plugins](./plugins.md)** - Build custom anchor plugins
 
+## Scoring and Threshold Layers
+
+Understanding how UI Match processes comparisons through multiple layers:
+
+### Layer 1: Detection Thresholds
+
+Controls **which differences are detected** at the pixel/style level:
+
+| Setting               | Purpose                                      | Default | Configuration     |
+| --------------------- | -------------------------------------------- | ------- | ----------------- |
+| `pixelmatchThreshold` | Pixelmatch sensitivity (0=strict, 1=lenient) | 0.1     | Internal          |
+| `thresholds.deltaE`   | Color difference detection (ΔE2000)          | 5.0     | `.uimatchrc.json` |
+| `minDeltaForDiff`     | Minimum ΔE to report as difference           | 1.0     | Internal          |
+
+**Purpose**: Fine-tune what constitutes a "difference" in pixel/color comparison.
+
+### Layer 2: Acceptance Thresholds (Quality Gate)
+
+Controls **pass/fail decision** for the overall comparison:
+
+| Setting                    | Purpose                          | Default   | Configuration    |
+| -------------------------- | -------------------------------- | --------- | ---------------- |
+| `acceptancePixelDiffRatio` | Max pixel difference ratio (0-1) | 0.01 (1%) | Quality profiles |
+| `acceptanceColorDeltaE`    | Max average color ΔE             | 3.0       | Quality profiles |
+| `areaGapRatio`             | Max dimension mismatch ratio     | 0.05 (5%) | Internal         |
+
+**Purpose**: Define pass/fail criteria based on detected differences.
+
+### Layer 3: Scoring (Design Fidelity Score)
+
+Numerical score (0-100) combining multiple factors:
+
+- Pixel accuracy (from Layer 1 detections)
+- Style accuracy (color, spacing, typography)
+- Layout accuracy (dimension, positioning)
+- Quality gate status (from Layer 2)
+
+**Output**: DFS score shown in comparison results.
+
+### Processing Workflow
+
+```
+Detection (Layer 1) → Differences detected with thresholds
+                      ↓
+Acceptance (Layer 2) → Pass/fail based on acceptance thresholds
+                      ↓
+Scoring (Layer 3)   → DFS score calculated (0-100)
+```
+
+**Example:**
+
+- Layer 1 detects 100 different pixels with `pixelmatchThreshold=0.1`
+- Layer 2 checks if `pixelDiffRatio < acceptancePixelDiffRatio` (0.01)
+- Layer 3 calculates DFS combining all factors
+
 ## Advanced Topics
 
 For more details, see the API Reference (available in the navigation menu - auto-generated from TypeScript types).

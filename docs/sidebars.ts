@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
     'concepts',
     'troubleshooting',
     'plugins',
+    'experimental',
     {
       type: 'category',
       label: 'API',

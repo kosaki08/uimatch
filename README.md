@@ -521,95 +521,32 @@ npx uimatch compare figma=bypass:test story="..." selector="..."
 
 ## Quality Gate Profiles
 
-UI Match uses quality gate profiles to manage thresholds instead of individual CLI flags.
+UI Match uses quality gate profiles (`component/strict`, `component/dev`, `page-vs-component`, `lenient`, `custom`) to manage thresholds.
 
-| Profile             | Use Case                 | pixelDiffRatio | deltaE | Description               |
-| ------------------- | ------------------------ | -------------- | ------ | ------------------------- |
-| `component/strict`  | Design system components | 0.01 (1%)      | 3.0    | Pixel-perfect comparison  |
-| `component/dev`     | Development workflow     | 0.08 (8%)      | 5.0    | Relaxed for iteration     |
-| `page-vs-component` | Padded comparisons       | 0.12 (12%)     | 5.0    | Accounts for letterboxing |
-| `lenient`           | Prototyping              | 0.15 (15%)     | 8.0    | Very relaxed thresholds   |
-| `custom`            | Custom settings          | -              | -      | Uses `.uimatchrc.json`    |
-
-**Usage:**
+**Example:**
 
 ```bash
 # Pixel-perfect comparison
 npx uimatch compare figma=... story=... selector=... profile=component/strict
-
-# Development workflow
-npx uimatch compare figma=... story=... selector=... profile=component/dev
 ```
 
-For more details, see the [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference#quality-gate-profiles).
+For profile details and thresholds, see the [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference#quality-gate-profiles).
 
 ## Experimental Features
 
-⚠️ **Warning**: The following features are **experimental** and may change or be removed without notice.
-
-These are primarily intended for MCP / AI assistant integration experiments. Please avoid relying on them in long-term CI/CD pipelines yet.
-
-### Experimental Commands
-
-- `uimatch experimental claude-report` - Generate Claude-optimized comparison report
-  - `--format=prompt` - Output as LLM prompt (default)
-  - `--format=json` - Output as structured JSON
-
-**Example**:
-
-```bash
-uimatch experimental claude-report --figma current --url http://localhost:3000 --format=json
-```
-
-### Experimental Configuration
-
-In `.uimatchrc.json`:
-
-```json
-{
-  "experimental": {
-    "claude": {
-      "format": "prompt",
-      "includeRawDiffs": false
-    },
-    "mcp": {
-      "enabled": false
-    }
-  }
-}
-```
-
-### Experimental TypeScript API
-
-```typescript
-import { experimental } from '@uimatch/cli';
-
-// Claude-specific formatting
-const payload = experimental.formatForLLM(result, { preferTokens: true });
-const prompt = experimental.generateLLMPrompt(payload);
-
-// Figma MCP client (requires MCP server running)
-const mcpClient = new experimental.FigmaMcpClient(config);
-const ref = await mcpClient.getCurrentSelectionRef();
-```
+⚠️ Experimental features for MCP / AI assistant integration. See [Experimental Features](https://kosaki08.github.io/uimatch/docs/experimental) for details.
 
 ## Documentation
 
-For comprehensive documentation, visit the [uiMatch Documentation Site](https://kosaki08.github.io/uimatch/).
+Visit the [uiMatch Documentation Site](https://kosaki08.github.io/uimatch/) for comprehensive guides:
 
-### Quick Start
-
-- [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) - Installation and quickstart guide
-- [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) - Detailed command reference
-
-### Core Concepts
-
-- [Concepts](https://kosaki08.github.io/uimatch/docs/concepts) - Anchors, Quality Gates, and Content Basis
-
-### Advanced
-
-- [Plugins](https://kosaki08.github.io/uimatch/docs/plugins) - Plugin development guide
-- [Troubleshooting](https://kosaki08.github.io/uimatch/docs/troubleshooting) - Common issues and solutions
+- **[Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started)** - Installation and quickstart
+- **[CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference)** - Complete command reference
+- **[Concepts](https://kosaki08.github.io/uimatch/docs/concepts)** - Anchors, quality gates, content basis
+- **[Troubleshooting](https://kosaki08.github.io/uimatch/docs/troubleshooting)** - Common issues and solutions
+- **[Plugins](https://kosaki08.github.io/uimatch/docs/plugins)** - Plugin development guide
+- **[Experimental Features](https://kosaki08.github.io/uimatch/docs/experimental)** - MCP and AI integration
+- **[API Reference](https://kosaki08.github.io/uimatch/docs/api)** - TypeScript API documentation
 
 ## Project Structure
 

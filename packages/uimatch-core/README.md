@@ -328,6 +328,93 @@ const finalConfig = mergeConfig(config, {
 
 ## Utilities
 
+### Text Comparison
+
+Compare two text strings to detect matching, normalization differences, or mismatches.
+
+```typescript
+import { compareText } from '@uimatch/core';
+
+// Compare Figma text with DOM textContent
+const figmaText = 'Sign in';
+const domText = element.textContent ?? '';
+
+const diff = compareText(figmaText, domText, {
+  caseSensitive: false, // default: false
+  similarityThreshold: 0.9, // default: 0.9 (0-1 range)
+});
+
+console.log(diff.kind); // 'exact-match' | 'whitespace-or-case-only' | 'normalized-match' | 'mismatch'
+console.log(diff.similarity); // similarity score (0-1)
+```
+
+**Options**:
+
+```typescript
+interface TextCompareOptions {
+  caseSensitive?: boolean; // Enable case-sensitive comparison (default: false)
+  similarityThreshold?: number; // Similarity threshold for match (0-1, default: 0.9)
+}
+```
+
+**Result**:
+
+```typescript
+interface TextDiff {
+  kind: 'exact-match' | 'whitespace-or-case-only' | 'normalized-match' | 'mismatch';
+  similarity: number; // similarity score (0-1)
+  normalizedExpected: string; // normalized expected text
+  normalizedActual: string; // normalized actual text
+}
+```
+
+**Match Types**:
+
+- `exact-match`: Completely identical strings (raw comparison)
+- `whitespace-or-case-only`: Same after normalization (NFKC, whitespace, case)
+- `normalized-match`: Similar enough to pass threshold (default 0.9)
+- `mismatch`: Different strings below threshold
+
+**Normalization**:
+
+The comparison applies NFKC normalization, trims whitespace, collapses consecutive spaces, and optionally normalizes case. The similarity score combines:
+
+- Position-based prefix matching (0.2 weight)
+- Token overlap ratio (0.8 weight)
+
+**Examples**:
+
+```typescript
+// Exact match
+compareText('Submit', 'Submit');
+// { kind: 'exact-match', similarity: 1.0, ... }
+
+// Whitespace/case difference
+compareText('Sign  in', 'sign in');
+// { kind: 'whitespace-or-case-only', similarity: 1.0, ... }
+
+// Typo with high similarity
+compareText('Submit', 'Submt', { similarityThreshold: 0.5 });
+// { kind: 'normalized-match', similarity: ~0.7, ... }
+
+// Complete mismatch
+compareText('Login', 'Register');
+// { kind: 'mismatch', similarity: ~0.0, ... }
+```
+
+**CLI Usage**:
+
+```bash
+# Compare two text strings
+uimatch text-diff "Sign in" "Sign  in"
+
+# Case-sensitive comparison
+uimatch text-diff "Submit" "submit" --case-sensitive
+
+# Custom threshold
+uimatch text-diff "Hello" "Helo" --threshold=0.6
+```
+
 ### Color Utilities
 
 ```typescript
