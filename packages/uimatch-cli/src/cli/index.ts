@@ -9,6 +9,7 @@ import { runDoctor } from './doctor/index.js';
 import { initLogger } from './logger.js';
 import { errln, outln } from './print.js';
 import { runSuite } from './suite.js';
+import { runTextDiff } from './text-diff.js';
 
 // P0 Guard: Exception handlers to catch runtime errors
 // Note: Module loading errors cannot be caught here per ESM specification
@@ -39,6 +40,7 @@ function printHelp(): void {
   outln('Commands:');
   outln('  compare       Compare Figma design with web implementation');
   outln('  suite         Run multiple compares from a JSON suite file');
+  outln('  text-diff     Compare two text strings and show similarity');
   outln('  doctor        Check environment and configuration');
   outln('  settings      Manage plugin configuration (get|set|reset)');
   outln('  experimental  Experimental commands (unstable, may change)');
@@ -85,6 +87,8 @@ async function main(): Promise<void> {
     await runCompare(args);
   } else if (command === 'suite') {
     await runSuite(args);
+  } else if (command === 'text-diff') {
+    runTextDiff(args);
   } else if (command === 'doctor') {
     await runDoctor(args);
   } else if (command === 'settings') {
