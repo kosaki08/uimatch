@@ -38,6 +38,13 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/kosaki08/uimatch/tree/main/docs/',
+          lastVersion: 'current',
+          versions: {
+            current: {
+              label: '0.1.0 (Latest)',
+              path: '',
+            },
+          },
         },
         blog: false, // Disable blog for MVP
         theme: {
@@ -94,6 +101,11 @@ const config: Config = {
           sidebarId: 'tutorialSidebar',
           position: 'left',
           label: 'Docs',
+        },
+        {
+          type: 'docsVersionDropdown',
+          position: 'right',
+          dropdownActiveClassDisabled: true,
         },
         {
           href: 'https://github.com/kosaki08/uimatch',
