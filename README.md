@@ -183,7 +183,7 @@ npx uimatch compare figma=... story=... selector=... \
 npx uimatch suite path=suite-config.json
 ```
 
-**See also**: [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) | [Common Options](#common-options)
+**See also**: [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) | [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) | [Common Options](#common-options)
 
 ## Usage
 

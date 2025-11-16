@@ -72,7 +72,7 @@ npx uimatch compare figma=... story=... selector=... outDir=./comparison-results
 - Visual diff image (if outDir specified)
 - LLM-formatted suggestions for improvements
 
-For detailed CLI usage and advanced features (size handling, content basis modes, auto-ROI, suite testing, etc.), see [**CLI Usage Documentation**](../../docs/cli-usage.md).
+For detailed CLI usage and advanced features (size handling, content basis modes, quality gates, suite testing, etc.), see the [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference).
 
 ## Scoring and Threshold Layer Structure
 
