@@ -778,7 +778,7 @@ export async function runCompare(argv: string[]): Promise<void> {
       outln(`Pixel diff ratio: ${result.report.metrics.pixelDiffRatio.toFixed(4)}`);
       outln(`Color delta E (avg): ${result.report.metrics.colorDeltaEAvg.toFixed(2)}`);
 
-      // === V2 Features (optional display) ===
+      // === Quality gate metrics (optional display) ===
       const gate = result.report.qualityGate;
       const showCqi = parseBool(args.showCqi) !== false; // Default: true
       const showSuspicions = parseBool(args.showSuspicions) !== false; // Default: true

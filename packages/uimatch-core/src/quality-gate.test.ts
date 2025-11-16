@@ -3,7 +3,7 @@ import type { CompareImageResult } from './core/compare';
 import { evaluateQualityGate } from './core/quality-gate';
 import type { StyleDiff } from './types/index';
 
-describe('Unified Quality Gate (V2)', () => {
+describe('Quality Gate', () => {
   test('should maintain core interface', () => {
     const result: CompareImageResult = {
       pixelDiffRatio: 0.005,
@@ -32,7 +32,7 @@ describe('Unified Quality Gate (V2)', () => {
     expect(gate.thresholds.deltaE).toBe(3.0);
   });
 
-  test('should include V2 features', () => {
+  test('should include advanced quality metrics', () => {
     const result: CompareImageResult = {
       pixelDiffRatio: 0.005,
       colorDeltaEAvg: 2.0,
@@ -60,7 +60,7 @@ describe('Unified Quality Gate (V2)', () => {
       'union'
     );
 
-    // V2 fields should be present
+    // Advanced metrics fields should be present
     expect(gate.cqi).toBeDefined();
     expect(gate.hardGateViolations).toBeDefined();
     expect(gate.suspicions).toBeDefined();

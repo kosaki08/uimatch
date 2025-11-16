@@ -48,8 +48,8 @@ function readPngSize(buffer: Buffer): { width: number; height: number } | null {
 }
 
 /**
- * V2: Strict report.json compression with delta=0 exclusion and meta/hints reduction
- * - Excludes delta===0 (perfect match)
+ * Report JSON compression strategy:
+ * - Excludes delta===0 entries (perfect matches)
  * - Categorical properties: only keeps mismatches (actual!==expected)
  * - patchHints: high severity only (unless verbose=true)
  * - meta: minimal { tag, cssSelector } (unless verbose=true)
@@ -599,7 +599,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     contentBasis: effectiveContentBasis,
   });
 
-  // 3.5) V2: Strict pruning with delta=0 exclusion and meta/hints compression
+  // 3.5) Final pruning: delta=0 exclusion and meta/hints compression
   // - Excludes delta===0 (perfect match)
   // - patchHints: high only (unless verbose=true)
   // - meta: minimal { tag, cssSelector } (unless verbose=true)
@@ -613,7 +613,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   const tPix = args.thresholds?.pixelDiffRatio ?? settings.comparison.acceptancePixelDiffRatio;
   const tDe = args.thresholds?.deltaE ?? settings.comparison.acceptanceColorDeltaE;
 
-  // Use unified quality gate (V2 logic)
+  // Evaluate quality gate with recommended thresholds
   const { evaluateQualityGate } = await import('@uimatch/core');
   const qualityGateResult = evaluateQualityGate(
     result,
@@ -621,7 +621,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     {
       pixelDiffRatio: tPix,
       deltaE: tDe,
-      areaGapCritical: 0.15, // V2 thresholds
+      areaGapCritical: 0.15, // Recommended thresholds
       areaGapWarning: 0.05,
     },
     effectiveContentBasis ?? 'union'
@@ -825,7 +825,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     dimensions: result.dimensions,
     styleDiffs,
     styleSummary,
-    qualityGate: qualityGateResult, // Use the full V2 result
+    qualityGate: qualityGateResult, // Quality gate evaluation result
     meta: {
       figmaAutoRoi: roiMeta,
     },

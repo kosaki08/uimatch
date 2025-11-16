@@ -57,7 +57,7 @@ Design-to-implementation comparison tool that evaluates how closely an implement
   │  │ Color ΔE2000 (perceptual)         │  │          │
   │  └───────────────────────────────────┘  │          │
   │  ┌───────────────────────────────────┐  │          │
-  │  │ Quality Gate V2                   │  │          │
+  │  │ Quality Gate                      │  │          │
   │  │ • pixelDiffRatioContent < 1%      │◄─┼──────────┘
   │  │ • areaGapRatio < 5%               │  │ Stable selectors
   │  │ • CQI (content quality index)     │  │ reduce drift
@@ -87,7 +87,7 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 - **@uimatch/cli**: CLI entry point (`npx uimatch compare`)
 - **@uimatch/core**: Comparison engine (pixelmatch, color ΔE, scoring)
 - **@uimatch/selector-anchors**: Optional plugin for stable selector resolution
-- **Quality Gate V2**: Content-aware pass/fail criteria (recommended)
+- **Quality Gate**: Content-aware pass/fail criteria
 
 ## Features
 
@@ -515,7 +515,7 @@ npx uimatch compare figma=bypass:test story="..." selector="..."
 | `contentBasis`             | `union/intersection/figma/impl` | Content-aware comparison basis (default: union) |
 | `selectors`                | `path/to/anchors.json`          | Use selector anchors plugin                     |
 | `selectorsPlugin`          | `@uimatch/selector-anchors`     | Custom selector resolution plugin               |
-| `acceptancePixelDiffRatio` | `0.01`                          | Quality gate v2 threshold (1% recommended)      |
+| `acceptancePixelDiffRatio` | `0.01`                          | Quality gate threshold (1% recommended)         |
 
 **Full options**: Run `npx uimatch compare --help`
 

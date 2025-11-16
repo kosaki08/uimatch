@@ -353,7 +353,8 @@ export interface CompareResult {
     styleSummary?: StyleSummary;
 
     /**
-     * Quality gate evaluation result (V1-compatible with V2 extensions)
+     * Quality gate evaluation result.
+     * Backwards-compatible JSON structure with additional fields for advanced metrics.
      */
     qualityGate?: QualityGateResult;
 
