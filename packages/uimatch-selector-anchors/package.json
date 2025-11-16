@@ -1,6 +1,6 @@
 {
   "name": "@uimatch/selector-anchors",
-  "version": "1.0.1",
+  "version": "0.1.0",
   "description": "Selector resolution plugin for uiMatch using AST-based anchors",
   "type": "module",
   "main": "./dist/index.js",
@@ -55,7 +55,7 @@
     "re2": "^1.21.4"
   },
   "peerDependencies": {
-    "@uimatch/selector-spi": ">=1.0.1"
+    "@uimatch/selector-spi": ">=0.1.0"
   },
   "peerDependenciesMeta": {
     "@uimatch/selector-spi": {
