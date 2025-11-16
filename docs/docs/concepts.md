@@ -302,6 +302,130 @@ Scoring (Layer 3)   → DFS score calculated (0-100)
 - Layer 2 checks if `pixelDiffRatio < acceptancePixelDiffRatio` (0.01)
 - Layer 3 calculates DFS combining all factors
 
+## Text Matching
+
+While UI Match primarily performs pixel-based comparison, text fidelity is equally important for validating design-implementation alignment. Text matching helps identify subtle differences that may not be visible in pixel comparison alone.
+
+### Why Text Matching?
+
+Text differences can occur due to:
+
+- **Typography variations** - Different fonts or font rendering
+- **Whitespace handling** - Extra spaces, tabs, or line breaks
+- **Case sensitivity** - Uppercase vs lowercase differences
+- **Unicode variations** - Full-width vs half-width characters (e.g., `１２３` vs `123`)
+- **Localization** - Translation differences or missing translations
+
+### Text Matching Capabilities
+
+UI Match provides text comparison through the `compareText` utility and `text-diff` CLI command.
+
+#### Four Classification Levels
+
+Text differences are classified into four categories:
+
+| Classification            | Description                                             | Example                        |
+| ------------------------- | ------------------------------------------------------- | ------------------------------ |
+| `exact-match`             | Texts are identical without modification                | `"Login"` = `"Login"`          |
+| `whitespace-or-case-only` | Only whitespace, case, or Unicode normalization differs | `"Sign in"` ≈ `"SIGN  IN"`     |
+| `normalized-match`        | Similar after normalization (above threshold)           | `"Submit"` ≈ `"Submitt"` (92%) |
+| `mismatch`                | Fundamentally different (below threshold)               | `"Login"` ≠ `"Sign in"` (45%)  |
+
+#### Normalization Process
+
+Text comparison applies multi-level normalization:
+
+1. **NFKC Unicode normalization** - Converts full-width characters to half-width equivalents
+   - Example: `"Button１２３"` → `"Button123"`
+2. **Whitespace collapsing** - Collapses consecutive whitespace into single space
+   - Example: `"Sign   in"` → `"Sign in"`
+3. **Trim** - Removes leading/trailing whitespace
+   - Example: `"  Login  "` → `"Login"`
+4. **Case normalization** - Converts to lowercase (unless case-sensitive mode)
+   - Example: `"SUBMIT"` → `"submit"`
+
+#### Similarity Scoring
+
+For texts that don't match exactly after normalization, similarity is calculated using token overlap and character position matching.
+
+- **Range**: 0.0 (completely different) to 1.0 (identical)
+- **Default threshold**: 0.9 (90% similarity)
+- **Configurable**: Adjust threshold based on use case
+
+### Use Cases
+
+#### Design Label Validation
+
+Compare text labels from Figma designs with implementation:
+
+```bash
+npx uimatch text-diff "Sign in" "SIGN IN"
+# → whitespace-or-case-only (minor formatting difference)
+```
+
+#### Localization Testing
+
+Verify translated text maintains similarity to original:
+
+```bash
+npx uimatch text-diff "Submit Form" "Submit Form (送信)" --threshold=0.7
+# → normalized-match (acceptable localization difference)
+```
+
+#### Typography Debugging
+
+Identify subtle text differences affecting rendering:
+
+```bash
+npx uimatch text-diff "Button123" "Button１２３"
+# → whitespace-or-case-only (full-width digits normalized)
+```
+
+#### Component Testing
+
+Validate text content in automated tests:
+
+```typescript
+import { compareText } from '@uimatch/core';
+
+const result = compareText(expectedLabel, actualElement.textContent, {
+  caseSensitive: false,
+  similarityThreshold: 0.9,
+});
+
+if (result.kind === 'mismatch') {
+  console.error('Text mismatch:', result);
+}
+```
+
+### Integration with Pixel Comparison
+
+Text matching complements pixel-based comparison by:
+
+- **Identifying content differences** - Detect text changes even when visual rendering is similar
+- **Debugging typography issues** - Pinpoint exact text differences causing visual discrepancies
+- **Supporting automation** - Enable programmatic validation of text content
+- **Enhancing quality gates** - Add text fidelity to comparison criteria
+
+### Programmatic Usage
+
+For programmatic use in tests or automation:
+
+```typescript
+import { compareText } from '@uimatch/core';
+
+const diff = compareText('Expected Text', 'Actual Text', {
+  caseSensitive: false,
+  similarityThreshold: 0.9,
+});
+
+console.log(diff.kind); // Classification type
+console.log(diff.similarity); // Similarity score (0-1)
+console.log(diff.equalNormalized); // True if normalized texts match
+```
+
+See [CLI Reference → text-diff Command](./cli-reference.md#text-diff-command) for CLI usage and [API Reference](./api-reference.md) for programmatic details.
+
 ## Advanced Topics
 
 For more details, see the API Reference (available in the navigation menu - auto-generated from TypeScript types).

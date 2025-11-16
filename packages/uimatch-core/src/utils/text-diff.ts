@@ -73,12 +73,12 @@ export interface TextDiff {
  *
  * @example
  * ```ts
- * const diff = compareText('Sign in', 'Sign-in');
+ * const diff = compareText('Sign in', 'SIGN  IN');
  * // {
  * //   kind: 'whitespace-or-case-only',
  * //   equalRaw: false,
  * //   equalNormalized: true,
- * //   similarity: 0.97
+ * //   similarity: 1.0
  * // }
  * ```
  *

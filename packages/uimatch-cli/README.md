@@ -82,6 +82,42 @@ Diagnose installation and configuration issues.
 npx uimatch doctor
 ```
 
+### `text-diff`
+
+Compare two text strings and show similarity score with classification.
+
+```bash
+npx uimatch text-diff <expected> <actual> [options]
+```
+
+**Options:**
+
+- `--case-sensitive`: Perform case-sensitive comparison (default: case-insensitive)
+- `--threshold=<number>`: Similarity threshold (0-1, default: 0.9)
+
+**Output:**
+
+Returns a JSON object with:
+
+- `kind`: Classification (`exact-match` | `whitespace-or-case-only` | `normalized-match` | `mismatch`)
+- `similarity`: Similarity score (0-1)
+- `normalizedExpected` / `normalizedActual`: Normalized text values
+
+**Example:**
+
+```bash
+npx uimatch text-diff "Sign in" "SIGN  IN"
+# → kind: 'whitespace-or-case-only', similarity: 1.0
+
+npx uimatch text-diff "Submit" "submit" --case-sensitive
+# → kind: 'whitespace-or-case-only', similarity: 1.0
+
+npx uimatch text-diff "Hello" "Helo" --threshold=0.6
+# → kind: 'normalized-match', similarity: 0.8
+```
+
+For details, see [CLI Reference → Text Comparison](../../docs/docs/cli-reference.md#text-diff-command).
+
 ## Programmatic API
 
 ```typescript

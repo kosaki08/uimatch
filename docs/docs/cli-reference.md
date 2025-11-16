@@ -8,10 +8,12 @@ Complete reference for UI Match CLI commands and options.
 
 ## Commands Overview
 
-UI Match provides two main commands:
+UI Match provides the following commands:
 
 - **`compare`** - Compare a single Figma design with implementation
 - **`suite`** - Run multiple comparisons from a JSON suite file
+- **`text-diff`** - Compare two text strings and show similarity score
+- **`doctor`** - Diagnose installation and configuration issues
 
 ## `compare` Command
 
@@ -150,6 +152,162 @@ concurrency=<number>     # Run comparisons in parallel (default: 4)
 ```bash
 npx uimatch suite path=tests/visual-regression.json concurrency=3
 ```
+
+## `text-diff` Command
+
+Compare two text strings and show similarity score with classification.
+
+### Basic Syntax
+
+```bash
+npx uimatch text-diff <expected> <actual> [options]
+```
+
+### Positional Arguments
+
+| Argument   | Description                                 | Example      |
+| ---------- | ------------------------------------------- | ------------ |
+| `expected` | The expected text (e.g., from Figma design) | `"Sign in"`  |
+| `actual`   | The actual text (e.g., from implementation) | `"SIGN  IN"` |
+
+### Options
+
+```bash
+--case-sensitive         # Perform case-sensitive comparison (default: case-insensitive)
+--threshold=<number>     # Similarity threshold (0-1, default: 0.9)
+```
+
+**Note:** Options must use `=` syntax (e.g., `--threshold=0.8`). Space-separated format (`--threshold 0.8`) is not supported.
+
+### Output Format
+
+Returns a JSON object with the following fields:
+
+```typescript
+{
+  kind: 'exact-match' | 'whitespace-or-case-only' | 'normalized-match' | 'mismatch',
+  similarity: number,              // 0-1 range
+  expected: string,                // Original expected text
+  actual: string,                  // Original actual text
+  normalizedExpected: string,      // Normalized expected text
+  normalizedActual: string,        // Normalized actual text
+  equalRaw: boolean,               // True if raw texts are identical
+  equalNormalized: boolean         // True if normalized texts are identical
+}
+```
+
+### Classification Types
+
+| Kind                      | Description                                                  | Example                          |
+| ------------------------- | ------------------------------------------------------------ | -------------------------------- |
+| `exact-match`             | Texts are identical without any modification                 | `"Login"` vs `"Login"`           |
+| `whitespace-or-case-only` | Texts differ only in whitespace, case, or NFKC normalization | `"Sign in"` vs `"SIGN  IN"`      |
+| `normalized-match`        | Texts are similar after normalization (above threshold)      | `"Submit"` vs `"Submitt"` (0.92) |
+| `mismatch`                | Texts are fundamentally different (below threshold)          | `"Login"` vs `"Sign in"` (0.45)  |
+
+### Text Normalization
+
+The comparison applies the following normalization steps:
+
+1. **NFKC Unicode normalization** - Converts full-width characters to half-width
+2. **Whitespace collapsing** - Collapses consecutive whitespace into single space
+3. **Trim** - Removes leading/trailing whitespace
+4. **Case normalization** - Converts to lowercase (unless `--case-sensitive` is used)
+
+### Examples
+
+#### Basic Comparison
+
+```bash
+npx uimatch text-diff "Sign in" "SIGN  IN"
+```
+
+Output:
+
+```json
+{
+  "kind": "whitespace-or-case-only",
+  "similarity": 1.0,
+  "equalRaw": false,
+  "equalNormalized": true
+}
+```
+
+#### Case-Sensitive Comparison
+
+```bash
+npx uimatch text-diff "Submit" "submit" --case-sensitive
+```
+
+Output:
+
+```json
+{
+  "kind": "whitespace-or-case-only",
+  "similarity": 1.0,
+  "equalRaw": false,
+  "equalNormalized": false
+}
+```
+
+#### With Custom Threshold
+
+```bash
+npx uimatch text-diff "Hello World" "Helo World" --threshold=0.6
+```
+
+Output:
+
+```json
+{
+  "kind": "normalized-match",
+  "similarity": 0.91,
+  "equalRaw": false,
+  "equalNormalized": false
+}
+```
+
+#### Full-Width Character Handling
+
+```bash
+npx uimatch text-diff "Button123" "Button１２３"
+```
+
+Output:
+
+```json
+{
+  "kind": "whitespace-or-case-only",
+  "similarity": 1.0,
+  "equalRaw": false,
+  "equalNormalized": true
+}
+```
+
+### Use Cases
+
+- **Text label validation** - Compare Figma text labels with implementation
+- **Localization testing** - Verify translated text maintains similarity
+- **Typography debugging** - Identify subtle text differences (case, whitespace, unicode)
+- **Component testing** - Validate text content in UI components
+
+### Programmatic Usage
+
+For programmatic use, import `compareText` from `@uimatch/core`:
+
+```typescript
+import { compareText } from '@uimatch/core';
+
+const result = compareText('Expected', 'Actual', {
+  caseSensitive: false,
+  similarityThreshold: 0.9,
+});
+
+console.log(result.kind); // 'exact-match' | 'whitespace-or-case-only' | ...
+console.log(result.similarity); // 0.0 - 1.0
+```
+
+See [API Reference](./api-reference.md) for details.
 
 ## Environment Variables
 
