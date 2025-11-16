@@ -2,11 +2,10 @@
   "name": "@uimatch/scoring",
   "version": "0.1.0",
   "type": "module",
-  "private": true,
   "license": "MIT",
   "description": "Design Fidelity Score (DFS) calculation for uiMatch",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "typedoc": {
     "entryPoint": "src/index.ts"
   },
@@ -16,7 +15,26 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.19 <21 || >=22.12"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
   "scripts": {
+    "prepublishOnly": "npm run build",
     "build": "tsc --project tsconfig.json",
     "clean": "rimraf dist",
     "test": "bun test",

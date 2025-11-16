@@ -31,10 +31,19 @@ Design-to-implementation comparison tool that evaluates how closely an implement
 
 ### Installation
 
+**Global install (for CLI usage):**
+
 ```bash
 npm install -g @uimatch/cli playwright
 npx playwright install chromium
 export FIGMA_ACCESS_TOKEN="figd_..."
+```
+
+**Project install (for development/CI):**
+
+```bash
+npm install -D @uimatch/cli playwright
+npx playwright install chromium
 ```
 
 ### First Comparison
