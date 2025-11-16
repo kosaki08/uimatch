@@ -5,16 +5,13 @@
 
 **TL;DR**: uiMatch automates Figma-to-implementation comparison with Playwright, calculating pixel-level color differences (ΔE), dimensional accuracy, spacing, typography, and layout discrepancies. Reports are generated with numerical scores, annotated screenshots, and CI integration support.
 
-Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design. Distributed as a Claude Code plugin.
+Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design.
 
 ## Quick Navigation by Role
 
 **👤 Using uiMatch (CI/Local Testing)**
 → See [Installation](#installation) and [Quickstart](#quickstart) for getting started
 → See [CI Integration](#ci-integration) for GitHub Actions setup
-
-**🎨 Claude Code Plugin User**
-→ See [Claude Code Plugin](#claude-code-plugin) section for `/uiMatch` commands
 → See [Configuration](#configuration) for settings
 
 **👨‍💻 Contributing / OSS Development**
@@ -209,16 +206,6 @@ pnpm uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/sto
 
 - `compare`: No default (prints to stdout unless `outDir` specified)
 - `suite`: `.uimatch-suite` (can be overridden with `outDir=<path>`)
-
-### Claude Code Plugin
-
-```bash
-# Compare command
-/uiMatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
-
-# Configure settings
-/uiMatch settings
-```
 
 ## Configuration
 
@@ -556,7 +543,7 @@ For more details, see the [CLI Reference](docs/docs/cli-reference.md#quality-gat
 
 ⚠️ **Warning**: The following features are **experimental** and may change or be removed without notice.
 
-These are primarily intended for Claude Code / MCP integration experiments. Please avoid relying on them in long-term CI/CD pipelines yet.
+These are primarily intended for MCP / AI assistant integration experiments. Please avoid relying on them in long-term CI/CD pipelines yet.
 
 ### Experimental Commands
 
@@ -624,13 +611,17 @@ const ref = await mcpClient.getCurrentSelectionRef();
 ## Project Structure
 
 ```
-uimatch/
-├── .claude-plugin/             # Plugin definition
-├── packages/
-│   ├── @uimatch/core/           # Core comparison library
-│   ├── @uimatch/cli/         # Plugin integration
-│   └── uimatch-selector-anchors/ # Optional selector resolution plugin
-└── docs/                       # Documentation
+ui-match/
+├── .github/                      # CI workflows and utility scripts
+├── .claude-plugin/               # (optional) Claude Code / MCP plugin definition [experimental]
+├─┬ packages/
+│ ├── uimatch-core/               # Core comparison engine (image + style diff, quality gate)
+│ ├── uimatch-scoring/            # Design Fidelity Score (DFS) calculation (internal)
+│ ├── uimatch-selector-spi/       # Selector resolver plugin interface (public)
+│ ├── uimatch-selector-anchors/   # AST-based selector plugin (public)
+│ ├── uimatch-cli/                # CLI tool (+ optional AI / Claude Code integration)
+│ └── shared-logging/             # Shared logging utilities (public)
+└── docs/                         # Documentation site and examples
 ```
 
 ## License

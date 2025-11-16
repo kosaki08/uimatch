@@ -1,6 +1,6 @@
 # @uimatch/cli
 
-Claude Code plugin and CLI for comparing Figma designs with implementation. Provides commands for visual comparison and settings management.
+CLI tool for comparing Figma designs with implementation. Provides commands for visual comparison and settings management.
 
 ## Features
 
@@ -11,18 +11,6 @@ Claude Code plugin and CLI for comparing Figma designs with implementation. Prov
 - **Settings Management**: Persistent configuration with validation
 
 ## Installation
-
-### As Claude Code Plugin
-
-```bash
-# Add marketplace (if not already added)
-/plugin marketplace add <org>/uimatch
-
-# Install plugin
-/plugin install uimatch
-```
-
-### As Standalone CLI
 
 ```bash
 # Global installation (recommended)
@@ -36,32 +24,33 @@ npx playwright install chromium
 
 ## Usage
 
-### Claude Code Commands
-
-The plugin provides two commands:
-
-#### /uiMatch compare
-
-Compare a Figma design with implementation:
+### CLI Commands
 
 ```bash
-/uiMatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
+# Compare command
+uimatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
+
+# Suite command (batch comparison)
+uimatch suite suite-config.json
+
+# Doctor command (diagnostics)
+uimatch doctor
 ```
 
 **Examples**:
 
 ```bash
 # Basic comparison
-/uiMatch compare figma=AbCdEf123:456-789 story=http://localhost:6006/?path=/story/button selector="#root button"
+npx uimatch compare figma=AbCdEf123:456-789 story=http://localhost:6006/?path=/story/button selector="#root button"
 
-# With custom thresholds (using thresholds object)
-/uiMatch compare figma=AbCdEf123:456-789 story=http://localhost:6006 selector=".card" thresholds.pixelDiffRatio=0.05 thresholds.deltaE=5.0
+# With custom thresholds
+npx uimatch compare figma=AbCdEf123:456-789 story=http://localhost:6006 selector=".card" thresholds.pixelDiffRatio=0.05 thresholds.deltaE=5.0
 
 # With quality profile
-/uiMatch compare figma=AbCdEf123:456-789 story=http://localhost:6006 selector=".card" profile=development
+npx uimatch compare figma=AbCdEf123:456-789 story=http://localhost:6006 selector=".card" profile=development
 
 # With output directory
-/uiMatch compare figma=... story=... selector=... outDir=./comparison-results
+npx uimatch compare figma=... story=... selector=... outDir=./comparison-results
 ```
 
 **Parameters**:
@@ -83,37 +72,7 @@ Compare a Figma design with implementation:
 - Visual diff image (if outDir specified)
 - LLM-formatted suggestions for improvements
 
-#### /uiMatch settings
-
-Manage plugin configuration:
-
-```bash
-# View current settings (outputs full config as JSON)
-/uiMatch settings
-# or explicitly:
-/uiMatch settings get
-
-# Reset to defaults
-/uiMatch settings reset
-```
-
-To modify settings, edit `.uimatchrc.json` in your project root directly.
-
-**Available Settings**:
-
-```typescript
-{
-  comparison: {
-    pixelmatchThreshold: number; // 0-1, default: 0.1
-    acceptancePixelDiffRatio: number; // 0-1, default: 0.01
-    acceptanceColorDeltaE: number; // 0-50, default: 3.0
-    includeAA: boolean; // default: false
-  },
-  capture: {
-    defaultIdleWaitMs: number; // milliseconds, default: 150
-  }
-}
-```
+For detailed CLI usage and advanced features (size handling, content basis modes, auto-ROI, suite testing, etc.), see [**CLI Usage Documentation**](../../docs/cli-usage.md).
 
 ## Scoring and Threshold Layer Structure
 
@@ -170,24 +129,7 @@ Scoring (Layer 3)   → DFS score calculated (0-100)
 - Layer 2 checks if `pixelDiffRatio < acceptancePixelDiffRatio` (0.01)
 - Layer 3 calculates DFS combining all factors
 
-### Standalone CLI
-
-The plugin also provides a standalone CLI for use outside of Claude Code:
-
-```bash
-# Compare command
-uimatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
-
-# Suite command (batch comparison)
-uimatch suite suite-config.json
-
-# Doctor command (diagnostics)
-uimatch doctor
-```
-
-For detailed CLI usage, available options, and advanced features (size handling, content basis modes, auto-ROI, suite testing, etc.), see [**CLI Usage Documentation**](../../docs/cli-usage.md).
-
-### Programmatic API
+## Programmatic API
 
 ```typescript
 import { uiMatchCompare, getSettings, resetSettings } from '@uimatch/cli';
@@ -322,7 +264,7 @@ Suggested Improvements:
 
 ### LLM-Formatted Output
 
-When used within Claude Code, the output is formatted for AI assistant consumption:
+The output can be formatted for AI assistant consumption:
 
 ```markdown
 ## Comparison Result
@@ -386,22 +328,13 @@ textCheck: {
 
 ### Option 1: MCP Server (Recommended)
 
-Configure MCP via `.claude-plugin/mcp.json`:
-
-```json
-{
-  "figma": {
-    "url": "http://127.0.0.1:3845/mcp",
-    "token": "${FIGMA_MCP_TOKEN}"
-  }
-}
-```
+Configure MCP via your MCP configuration file.
 
 **Example with `figma=current` (requires Figma MCP)**:
 
 ```bash
 # Use currently selected node in Figma desktop app
-/uiMatch compare \
+npx uimatch compare \
   figma=current \
   story=http://localhost:6006/?path=/story/button \
   selector="#root button"
@@ -419,7 +352,7 @@ REST API mode requires `FIGMA_ACCESS_TOKEN` environment variable and supports al
 ```bash
 export FIGMA_ACCESS_TOKEN=your-personal-access-token
 
-/uiMatch compare \
+npx uimatch compare \
   figma=AbCdEf123:1-23 \
   story=http://localhost:6006 \
   selector="#root button"
@@ -433,7 +366,7 @@ export FIGMA_ACCESS_TOKEN=your-personal-access-token
 
 ```bash
 # Compare a button component
-/uiMatch compare \
+npx uimatch compare \
   figma=AbCdEf123:1-23 \
   story=http://localhost:6006/?path=/story/button--primary \
   selector="#root button"
@@ -443,13 +376,13 @@ export FIGMA_ACCESS_TOKEN=your-personal-access-token
 
 ```bash
 # Relaxed thresholds for exploration
-/uiMatch compare \
+npx uimatch compare \
   figma=... story=... selector=... \
   pixelThreshold=0.08 \
   colorThreshold=8.0
 
 # Strict thresholds for production
-/uiMatch compare \
+npx uimatch compare \
   figma=... story=... selector=... \
   pixelThreshold=0.01 \
   colorThreshold=2.0
@@ -558,9 +491,9 @@ See root project LICENSE.
 
 ## Experimental Features
 
-### Claude Integration (WIP)
+### AI Integration (Experimental)
 
-The CLI includes experimental commands for future Claude Code integration. These features are under active development and subject to change.
+The CLI includes experimental commands for AI assistant integration. These features are under active development and subject to change.
 
 ```bash
 # Work-in-progress command for Claude-optimized output
@@ -608,6 +541,5 @@ const mcpClient = new experimental.FigmaMcpClient(config);
 ## Related
 
 - [@uimatch/core](../@uimatch/core) - Core comparison library
-- [Claude Code](https://claude.com/claude-code) - AI-powered IDE integration
 - [Figma](https://figma.com) - Design tool
 - [Playwright](https://playwright.dev) - Browser automation
