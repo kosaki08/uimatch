@@ -272,10 +272,23 @@ Fail CI if design fidelity is below threshold:
 
 **Profiles:**
 
-- `component/strict` - Pixel-perfect (≤1% pixel diff, ΔE≤3.0, 0 high-severity issues)
-- `component/dev` - Development tolerance (≤8% pixel diff, ΔE≤5.0, 0 high-severity issues)
-- `page-vs-component` - Loose layout (≤12% pixel diff, ΔE≤5.0, ≤2 high-severity issues)
-- `lenient` - Prototyping (≤15% pixel diff, ΔE≤8.0, ≤5 high-severity issues)
+- `component/strict` - Pixel-perfect (≤1% pixel diff, ΔE≤3.0, 0 high/layout severity issues, 15% area gap critical, 5% area gap warning)
+- `component/dev` - Development tolerance (≤8% pixel diff, ΔE≤5.0, 0 high/layout severity issues, 20% area gap critical, 8% area gap warning)
+- `page-vs-component` - Loose layout with intersection basis (≤12% pixel diff content, ΔE≤5.0, ≤2 high-severity, 0 layout issues, 25% area gap critical, 12% area gap warning)
+- `lenient` - Prototyping (≤15% pixel diff, ΔE≤8.0, ≤5 high-severity, ≤2 layout issues, 30% area gap critical, 15% area gap warning)
+
+**Profile Parameters Explained:**
+
+| Parameter                 | Description                                                         | Values                    |
+| ------------------------- | ------------------------------------------------------------------- | ------------------------- |
+| **pixelDiffRatio**        | Maximum pixel difference ratio (uses content basis when available)  | 0.01-0.15 (1%-15%)        |
+| **deltaE**                | Maximum average color delta E (perceptual color difference)         | 3.0-8.0                   |
+| **maxHighSeverityIssues** | Maximum allowed high-severity style issues                          | 0-5                       |
+| **maxLayoutHighIssues**   | Maximum allowed high-severity layout-specific issues                | 0-2                       |
+| **areaGapCritical**       | Critical area difference threshold (immediate failure)              | 0.15-0.30 (15%-30%)       |
+| **areaGapWarning**        | Warning area difference threshold (adds warning to report)          | 0.05-0.15 (5%-15%)        |
+| **contentBasis**          | Content rectangle calculation method                                | `union` or `intersection` |
+| **autoReEvaluate**        | Enable automatic re-evaluation with intersection basis for pad mode | `true` or `false`         |
 
 See [quality-gate-profiles.ts](https://github.com/kosaki08/uimatch/blob/main/packages/uimatch-core/src/config/quality-gate-profiles.ts) for complete threshold definitions.
 

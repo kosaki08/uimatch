@@ -27,14 +27,27 @@ try {
  */
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
+    // 1. Getting Started - Initial setup and quick start
     'getting-started',
-    'cli-reference',
+
+    // 2. Concepts - Understanding what the tool does
     'concepts',
+
+    // 3. CLI Reference - Detailed options and configuration
+    'cli-reference',
+
+    // 4. Practical Usage - Plugins and integrations
+    'plugins',
     'ci-integration',
     'local-testing',
+
+    // 5. Help - Troubleshooting before experimental features
     'troubleshooting',
-    'plugins',
+
+    // 6. Advanced - Experimental features
     'experimental',
+
+    // 7. API Reference - Complete technical reference
     {
       type: 'category',
       label: 'API',
