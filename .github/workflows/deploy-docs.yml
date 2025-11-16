@@ -39,8 +39,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build types (required for docs)
-        run: pnpm run build:types
+      - name: Build packages (required for TypeDoc API docs)
+        run: pnpm run build
 
       - name: Build documentation
         run: pnpm run docs:build

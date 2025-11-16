@@ -4,11 +4,11 @@ sidebar_position: 2
 
 # CLI Reference
 
-Complete reference for UI Match CLI commands and options.
+Complete reference for uiMatch CLI commands and options.
 
 ## Commands Overview
 
-UI Match provides the following commands:
+uiMatch provides the following commands:
 
 - **`compare`** - Compare a single Figma design with implementation
 - **`suite`** - Run multiple comparisons from a JSON suite file
@@ -354,7 +354,7 @@ See [Plugins](./plugins.md) for details on creating custom plugins.
 
 ## Quality Gate Profiles
 
-UI Match uses quality gate profiles to manage thresholds instead of individual CLI flags.
+uiMatch uses quality gate profiles to manage thresholds instead of individual CLI flags.
 
 | Profile             | Use Case                 | pixelDiffRatio | deltaE | Description               |
 | ------------------- | ------------------------ | -------------- | ------ | ------------------------- |
@@ -398,4 +398,4 @@ For fine-grained control, create `.uimatchrc.json`:
 
 - [Concepts](./concepts.md) - Understanding anchors and quality gates
 - [Troubleshooting](./troubleshooting.md) - Common issues
-- [Plugins](./plugins.md) - Extending UI Match
+- [Plugins](./plugins.md) - Extending uiMatch

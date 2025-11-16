@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # Troubleshooting
 
-Common issues and solutions when using UI Match.
+Common issues and solutions when using uiMatch.
 
 ## Quick Diagnostics
 
@@ -320,7 +320,7 @@ Still stuck? Here's how to get help:
 
 3. **Include in bug reports:**
    - OS and Node.js version
-   - UI Match version
+   - uiMatch version
    - Complete error message
    - Debug logs
    - Minimal reproduction case

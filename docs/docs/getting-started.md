@@ -4,11 +4,11 @@ sidebar_position: 1
 
 # Getting Started
 
-Get up and running with UI Match in 3 minutes.
+Get up and running with uiMatch.
 
-## What is UI Match?
+## What is uiMatch?
 
-UI Match is a visual regression testing tool that compares your Figma designs with your actual implementation. It helps you catch visual inconsistencies early in development.
+uiMatch is a visual regression testing tool that compares your Figma designs with your actual implementation. It helps you catch visual inconsistencies early in development.
 
 **Key Features:**
 
@@ -22,11 +22,11 @@ UI Match is a visual regression testing tool that compares your Figma designs wi
 ### Installation
 
 ```bash
-# As npm package (recommended)
+# Global install (for CLI usage)
 npm install -g @uimatch/cli playwright
 npx playwright install chromium
 
-# Or as dev dependency
+# Or as dev dependency (for projects/CI)
 npm install -D @uimatch/cli playwright
 npx playwright install chromium
 ```
@@ -41,7 +41,7 @@ FIGMA_ACCESS_TOKEN=your_figma_token_here
 
 Get your token from [Figma Settings > Personal Access Tokens](https://www.figma.com/developers/api#access-tokens).
 
-### Your First Comparison
+### Your First Comparison (Local App)
 
 Run a simple comparison between a Figma design and your implementation:
 
@@ -52,7 +52,7 @@ npx uimatch compare \
   selector="#my-component"
 ```
 
-**That's it!** UI Match will:
+**That's it!** uiMatch will:
 
 1. Fetch the design from Figma
 2. Capture a screenshot of your implementation
@@ -70,14 +70,14 @@ npx uimatch compare \
   outDir=./results
 ```
 
-For `suite` command, the default output directory is `.uimatch-suite`.
+For the `suite` command, the default output directory is `.uimatch-suite`.
 
 ## Next Steps
 
-- **[CLI Reference](./cli-reference.md)** - Learn all CLI commands and options
-- **[Concepts](./concepts.md)** - Understand anchors, quality gates, and more
-- **[Troubleshooting](./troubleshooting.md)** - Common issues and solutions
-- **[Plugins](./plugins.md)** - Extend UI Match with custom selectors
+- **[CLI Reference](./cli-reference.md)** – Learn all CLI commands and options
+- **[Concepts](./concepts.md)** – Understand anchors, quality gates, and more
+- **[Troubleshooting](./troubleshooting.md)** – Common issues and solutions
+- **[Plugins](./plugins.md)** – Extend UI Match with custom selectors
 
 ## Common Use Cases
 
@@ -96,4 +96,17 @@ npx uimatch compare \
 npx uimatch suite path=suite.json
 ```
 
-See the [CLI Reference](./cli-reference.md) for more examples.
+### Text-only Checks (Copy Validation)
+
+For text-only validation without pixel comparison, use the `text-diff` command:
+
+```bash
+npx uimatch text-diff "Sign in" "SIGN  IN"
+# → kind: 'whitespace-or-case-only', similarity: 1.0
+
+npx uimatch text-diff "Submit" "Submt" --threshold=0.6
+# → kind: 'normalized-match', similarity: 0.7+
+```
+
+This is useful for comparing Figma text content with implementation `textContent`.
+See the [CLI Reference](./cli-reference.md#text-diff-command) for detailed options.

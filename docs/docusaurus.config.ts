@@ -4,7 +4,7 @@ import { themes as prismThemes } from 'prism-react-renderer';
 import packageJson from '../packages/uimatch-cli/package.json';
 
 const config: Config = {
-  title: 'UI Match',
+  title: 'uiMatch',
   tagline:
     'Compare Figma designs with your implementation—pixel diffs, quality gates, and selector anchors.',
   favicon: 'img/favicon.ico',
@@ -84,9 +84,9 @@ const config: Config = {
   themeConfig: {
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'UI Match',
+      title: 'uiMatch',
       logo: {
-        alt: 'UI Match Logo',
+        alt: 'uiMatch Logo',
         src: 'img/logo.svg',
       },
       items: [
@@ -99,7 +99,7 @@ const config: Config = {
         {
           type: 'html',
           position: 'right',
-          value: `<span class="navbar__version">v${packageJson.version}</span>`,
+          value: `v${packageJson.version}`,
         },
         {
           href: 'https://github.com/kosaki08/uimatch',
@@ -143,7 +143,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} UI Match. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} uiMatch. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

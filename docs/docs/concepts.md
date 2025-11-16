@@ -4,11 +4,11 @@ sidebar_position: 3
 
 # Core Concepts
 
-Understanding the key concepts behind UI Match.
+Understanding the key concepts behind uiMatch.
 
 ## Overview
 
-UI Match compares Figma designs with actual implementations by:
+uiMatch compares Figma designs with actual implementations by:
 
 1. **Fetching** the design from Figma
 2. **Resolving** the implementation element using selectors
@@ -32,7 +32,7 @@ Anchors let you plug in the selector strategy that matches your project.
 
 ### Built-in Anchors
 
-UI Match includes a default CSS selector anchor:
+uiMatch includes a default CSS selector anchor:
 
 ```bash
 npx uimatch compare \
@@ -94,7 +94,7 @@ Quality Gates define what "matching" means for your comparisons. They enforce co
 
 ### Quality Gate Profiles
 
-UI Match uses profiles to manage thresholds:
+uiMatch uses profiles to manage thresholds:
 
 ```bash
 profile=component/strict  # Pixel-perfect comparison
@@ -306,7 +306,7 @@ tests/
 
 ## Scoring and Threshold Layers
 
-Understanding how UI Match processes comparisons through multiple layers:
+Understanding how uiMatch processes comparisons through multiple layers:
 
 ### Layer 1: Detection Thresholds
 
@@ -361,7 +361,7 @@ Scoring (Layer 3)   → DFS score calculated (0-100)
 
 ## Text Matching
 
-While UI Match primarily performs pixel-based comparison, text fidelity is equally important for validating design-implementation alignment. Text matching helps identify subtle differences that may not be visible in pixel comparison alone.
+While uiMatch primarily performs pixel-based comparison, text fidelity is equally important for validating design-implementation alignment. Text matching helps identify subtle differences that may not be visible in pixel comparison alone.
 
 ### Why Text Matching?
 
@@ -375,7 +375,7 @@ Text differences can occur due to:
 
 ### Text Matching Capabilities
 
-UI Match provides text comparison through the `compareText` utility and `text-diff` CLI command.
+uiMatch provides text comparison through the `compareText` utility and `text-diff` CLI command.
 
 #### Four Classification Levels
 

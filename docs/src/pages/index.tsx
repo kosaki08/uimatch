@@ -39,8 +39,8 @@ function ExperimentalNotice() {
           marginBottom: '2rem',
         }}
       >
-        <strong>⚠️ Early Development (0.x):</strong> uiMatch is currently in early development. APIs and
-        behavior may change without notice and are not production-ready.
+        <strong>⚠️ Early Development (0.x):</strong> uiMatch is currently in early development. APIs
+        and behavior may change without notice and are not production-ready.
       </div>
     </div>
   );

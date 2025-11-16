@@ -4,11 +4,11 @@ sidebar_position: 5
 
 # Plugin Development
 
-Extend UI Match with custom selector plugins.
+Extend uiMatch with custom selector plugins.
 
 ## Overview
 
-Plugins allow you to customize how UI Match resolves selectors. This enables integration with:
+Plugins allow you to customize how uiMatch resolves selectors. This enables integration with:
 
 - Testing libraries (Testing Library, Playwright Test)
 - Component libraries (Material-UI, Chakra UI)
@@ -17,7 +17,7 @@ Plugins allow you to customize how UI Match resolves selectors. This enables int
 
 ## SPI (Selector Plugin Interface)
 
-UI Match uses a plugin system called SPI (Selector Plugin Interface) to resolve CSS selectors to DOM elements.
+uiMatch uses a plugin system called SPI (Selector Plugin Interface) to resolve CSS selectors to DOM elements.
 
 ### Why Plugins?
 
