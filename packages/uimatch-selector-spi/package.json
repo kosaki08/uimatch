@@ -30,7 +30,7 @@
     "selector"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "engines": {
     "node": ">=20.19 <21 || >=22.12"
   },

@@ -595,3 +595,7 @@ uimatch/
 │   └── uimatch-selector-anchors/ # Optional selector resolution plugin
 └── docs/                       # Documentation
 ```
+
+## License
+
+MIT © 2025 Kazunori Osaki
