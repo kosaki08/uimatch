@@ -3,6 +3,10 @@
 [![CI](https://github.com/kosaki08/uimatch/actions/workflows/ci.yml/badge.svg)](https://github.com/kosaki08/uimatch/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/kosaki08/uimatch/branch/main/graph/badge.svg)](https://codecov.io/gh/kosaki08/uimatch)
 
+> ⚠️ **Status: Experimental / 0.x**
+> This project is in early development. APIs may change without notice and are not production-ready.
+> Feedback and contributions are welcome!
+
 **TL;DR**: uiMatch automates Figma-to-implementation comparison with Playwright, calculating pixel-level color differences (ΔE), dimensional accuracy, spacing, typography, and layout discrepancies. Reports are generated with numerical scores, annotated screenshots, and CI integration support.
 
 Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design.
@@ -179,7 +183,7 @@ npx uimatch compare figma=... story=... selector=... \
 npx uimatch suite path=suite-config.json
 ```
 
-**See also**: [Examples](docs/examples/) | [Common Options](#common-options)
+**See also**: [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) | [Common Options](#common-options)
 
 ## Usage
 
@@ -537,7 +541,7 @@ npx uimatch compare figma=... story=... selector=... profile=component/strict
 npx uimatch compare figma=... story=... selector=... profile=component/dev
 ```
 
-For more details, see the [CLI Reference](docs/docs/cli-reference.md#quality-gate-profiles).
+For more details, see the [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference#quality-gate-profiles).
 
 ## Experimental Features
 
@@ -591,22 +595,21 @@ const ref = await mcpClient.getCurrentSelectionRef();
 
 ## Documentation
 
+For comprehensive documentation, visit the [uiMatch Documentation Site](https://kosaki08.github.io/uimatch/).
+
 ### Quick Start
 
-- [Examples](docs/examples/) - Common patterns and workflows
-- [CLI Usage](docs/cli-usage.md) - Detailed command reference
+- [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) - Installation and quickstart guide
+- [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) - Detailed command reference
 
 ### Core Concepts
 
-- [Quality Gate V2](docs/concepts/quality-gate-v2.md) - pixelDiffRatioContent, area gap, CQI
-- [Size Handling](docs/concepts/size-handling.md) - strict/pad/crop/scale strategies
-- [Selector Resolution](docs/concepts/selector-resolution.md) - Stability scoring and anchors
+- [Concepts](https://kosaki08.github.io/uimatch/docs/concepts) - Anchors, Quality Gates, and Content Basis
 
 ### Advanced
 
-- [Advanced Configuration](docs/advanced-config.md) - Internal algorithms and tuning
-- [v0.1 Specification](docs/specs/v0.1.md) - MVP implementation spec
-- [AI Assistant Guidelines](docs/ai-assistant/index.md) - Development guidelines
+- [Plugins](https://kosaki08.github.io/uimatch/docs/plugins) - Plugin development guide
+- [Troubleshooting](https://kosaki08.github.io/uimatch/docs/troubleshooting) - Common issues and solutions
 
 ## Project Structure
 

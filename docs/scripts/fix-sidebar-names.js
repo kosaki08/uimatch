@@ -16,7 +16,7 @@ let content = fs.readFileSync(sidebarPath, 'utf8');
 // Replace directory names with package names
 const replacements = {
   '"uimatch-core"': '"@uimatch/core"',
-  '"uimatch-plugin"': '"@uimatch/cli"',
+  '"uimatch-cli"': '"@uimatch/cli"',
   '"uimatch-scoring"': '"@uimatch/scoring"',
   '"uimatch-selector-spi"': '"@uimatch/selector-spi"',
   // selector-anchors already correct

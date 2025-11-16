@@ -99,7 +99,7 @@ npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector="#mobile-nav" \
-  --viewport 375x667
+  viewport=375x667
 ```
 
 ## `suite` Command
@@ -109,7 +109,7 @@ Run multiple comparisons from a JSON configuration file.
 ### Basic Syntax
 
 ```bash
-npx uimatch suite <suite-file.json> [options]
+npx uimatch suite path=<suite-file.json> [options]
 ```
 
 ### Suite File Format
@@ -189,7 +189,7 @@ contentBasis=impl           # Use implementation's content area only
 Use custom selector resolution plugins:
 
 ```bash
---anchor @my-company/custom-anchor-plugin
+selectorsPlugin=@my-company/custom-anchor-plugin
 ```
 
 See [Plugins](./plugins.md) for details on creating custom plugins.

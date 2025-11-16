@@ -11,32 +11,33 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: 'Pixel-Perfect Comparison',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and used to get your
-        website up and running quickly.
+        Compare Figma designs with actual implementations using pixel-level color differences (ΔE),
+        dimensional accuracy, and layout discrepancies. Get numerical scores with annotated
+        screenshots.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
+    title: 'Quality Gates & Profiles',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go ahead and move your
-        docs into the <code>docs</code> directory.
+        Flexible quality gate profiles from pixel-perfect to lenient. Configure thresholds for{' '}
+        <code>pixelDiffRatio</code>, <code>deltaE</code>, and more to match your workflow.
       </>
     ),
   },
   {
-    title: 'Powered by React',
+    title: 'CI/CD Ready',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can be extended while
-        reusing the same header and footer.
+        Built for automation with GitHub Actions support, exit codes, and batch suite mode.
+        Integrates seamlessly with Playwright for browser-based testing.
       </>
     ),
   },
