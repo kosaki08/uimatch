@@ -72,3 +72,5 @@ export {
   toPx,
 } from './utils/normalize';
 export type { BoxShadowParsed, RGB, TextNormalizeOptions } from './utils/normalize';
+export { compareText } from './utils/text-diff';
+export type { TextCompareOptions, TextDiff, TextDiffKind } from './utils/text-diff';

@@ -17,6 +17,12 @@ export {
   type SnippetHashOptions,
 } from './snippet-hash';
 export {
+  compareText,
+  type TextCompareOptions,
+  type TextDiff,
+  type TextDiffKind,
+} from './text-diff';
+export {
   analyzeLayoutAxis,
   checkLayoutMismatch,
   generateExpectedLayout,
