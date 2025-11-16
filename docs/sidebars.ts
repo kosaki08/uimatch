@@ -30,6 +30,8 @@ const sidebars: SidebarsConfig = {
     'getting-started',
     'cli-reference',
     'concepts',
+    'ci-integration',
+    'local-testing',
     'troubleshooting',
     'plugins',
     'experimental',

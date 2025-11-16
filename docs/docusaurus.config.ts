@@ -116,11 +116,19 @@ const config: Config = {
               label: 'CLI Reference',
               to: '/docs/cli-reference',
             },
+            {
+              label: 'CI Integration',
+              to: '/docs/ci-integration',
+            },
           ],
         },
         {
           title: 'More',
           items: [
+            {
+              label: 'Local Testing',
+              to: '/docs/local-testing',
+            },
             {
               label: 'GitHub',
               href: 'https://github.com/kosaki08/uimatch',

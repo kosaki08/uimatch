@@ -7,145 +7,48 @@
 > This project is in early development. APIs may change without notice and are not production-ready.
 > Feedback and contributions are welcome!
 
-**TL;DR**: uiMatch automates Figma-to-implementation comparison with Playwright, calculating pixel-level color differences (ΔE), dimensional accuracy, spacing, typography, and layout discrepancies. Reports are generated with numerical scores, annotated screenshots, and CI integration support.
+Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design with pixel-level precision, color accuracy (ΔE2000), and automated quality scoring.
 
-Design-to-implementation comparison tool that evaluates how closely an implemented UI matches a Figma design.
+---
 
-## Quick Navigation by Role
+## Documentation
 
-**👤 Using uiMatch (CI/Local Testing)**
-→ See [Installation](#installation) and [Quickstart](#quickstart) for getting started
-→ See [CI Integration](#ci-integration) for GitHub Actions setup
-→ See [Configuration](#configuration) for settings
+**📖 [Full Documentation](https://kosaki08.github.io/uimatch/)**
 
-**👨‍💻 Contributing / OSS Development**
-→ See [Development](#development) for local setup
-→ See [Local Testing](#local-testing) for pack/link workflows
-→ See [Project Structure](#project-structure) for codebase overview
+- [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) - Installation and quickstart
+- [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) - Complete command options
+- [Concepts](https://kosaki08.github.io/uimatch/docs/concepts) - Anchors, quality gates, content basis
+- [CI Integration](https://kosaki08.github.io/uimatch/docs/ci-integration) - GitHub Actions and CI setup
+- [Local Testing](https://kosaki08.github.io/uimatch/docs/local-testing) - Pack/link workflows for contributors
+- [Troubleshooting](https://kosaki08.github.io/uimatch/docs/troubleshooting) - Common issues and solutions
+- [Plugins](https://kosaki08.github.io/uimatch/docs/plugins) - Plugin development guide
+- [Experimental Features](https://kosaki08.github.io/uimatch/docs/experimental) - MCP and AI integration
+- [API Reference](https://kosaki08.github.io/uimatch/docs/api) - TypeScript API documentation
 
-## Architecture Overview
+---
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        uiMatch Workflow                         │
-└─────────────────────────────────────────────────────────────────┘
+## Quick Start
 
-  Figma Design           Implementation         Selector Engine
-  ────────────           ──────────────         ───────────────
-       │                       │                       │
-       │ 3 MODES:              │ Storybook/URL         │ Optional
-       │ • BYPASS (env var)    │                       │
-       │ • REST (token)        │                       │
-       │ • MCP (figma server)  │                       │
-       ▼                       ▼                       ▼
-  ┌─────────┐           ┌──────────┐          ┌──────────────┐
-  │ Figma   │           │ Playwright│          │  Anchors     │
-  │ API     │◄──────────┤ Browser  │◄─────────┤  Plugin      │
-  └────┬────┘           └────┬─────┘          │ (AST-based)  │
-       │                     │                 └──────────────┘
-       │  PNG Frame          │  Screenshot              │
-       │                     │  + CSS props             │
-       ▼                     ▼                          │
-  ┌─────────────────────────────────────────┐          │
-  │         @uimatch/core Engine             │          │
-  │  ┌───────────────────────────────────┐  │          │
-  │  │ Size Handler (strict/pad/crop)    │  │          │
-  │  │ Content Basis (union/intersection)│  │          │
-  │  └───────────────────────────────────┘  │          │
-  │  ┌───────────────────────────────────┐  │          │
-  │  │ Pixelmatch (content-aware)        │  │          │
-  │  │ Color ΔE2000 (perceptual)         │  │          │
-  │  └───────────────────────────────────┘  │          │
-  │  ┌───────────────────────────────────┐  │          │
-  │  │ Quality Gate                      │  │          │
-  │  │ • pixelDiffRatioContent < 1%      │◄─┼──────────┘
-  │  │ • areaGapRatio < 5%               │  │ Stable selectors
-  │  │ • CQI (content quality index)     │  │ reduce drift
-  │  └───────────────────────────────────┘  │
-  └──────────────────┬──────────────────────┘
-                     │
-                     │ JSON + Screenshots
-                     ▼
-            ┌─────────────────┐
-            │  DFS Score       │  Design Fidelity Score (0-100)
-            │  Reports         │  Pass/Fail + Annotated Images
-            └─────────────────┘
-                     │
-                     │
-                     ▼
-            [ CI/CD Integration ]
-```
-
-**Figma Integration Modes**:
-
-- **BYPASS**: Use `UIMATCH_FIGMA_PNG_B64` env var (useful for CI, avoids API rate limits)
-- **REST**: Use `FIGMA_ACCESS_TOKEN` for direct Figma API access
-- **MCP**: Use `figma=current` with MCP server for enhanced integration
-
-**Key Components:**
-
-- **@uimatch/cli**: CLI entry point (`npx uimatch compare`)
-- **@uimatch/core**: Comparison engine (pixelmatch, color ΔE, scoring)
-- **@uimatch/selector-anchors**: Optional plugin for stable selector resolution
-- **Quality Gate**: Content-aware pass/fail criteria
-
-## Features
-
-- **Pixel-perfect comparison**: Visual diff with pixelmatch
-- **Style analysis**: CSS property comparison with color ΔE2000
-- **Design tokens**: Token mapping for consistent design system
-- **Figma integration**: Direct Figma MCP integration for frame capture
-- **Quality scoring**: Design Fidelity Score (DFS 0-100)
-- **Selector Resolution**: Extensible plugin architecture for stable selector resolution
-- **Browser reuse**: Automatic browser pooling for faster iteration
-
-## Requirements
-
-- **Runtime**: Node.js 20.19+ / 22.12+ (ESM only)
-- **Package Manager**: pnpm 9.15.4+ (for development)
-- **Browser**: Playwright Chromium (peer dependency, install once)
-
-## Public Packages
-
-**Ready for publish:**
-
-- `@uimatch/cli` - CLI entry point and commands
-- `@uimatch/selector-anchors` - AST-based selector resolution plugin
-- `@uimatch/selector-spi` - Plugin interface types
-- `@uimatch/shared-logging` - Logging utilities
-
-**Internal (private: true):**
-
-- `@uimatch/core` - Comparison engine
-- `@uimatch/scoring` - Design Fidelity Score calculator
-
-## Installation
+### Installation
 
 ```bash
-# As npm package (recommended)
-npm install -g @uimatch/cli playwright
-npx playwright install chromium
-```
-
-## Quickstart
-
-### 10-Minute Setup
-
-**Option A: CLI-only** (fastest)
-
-```bash
-# Install and verify
 npm install -g @uimatch/cli playwright
 npx playwright install chromium
 export FIGMA_ACCESS_TOKEN="figd_..."
+```
 
-# Run comparison (prints results to stdout)
+### First Comparison
+
+```bash
 npx uimatch compare \
   figma=<fileKey>:<nodeId> \
   story=http://localhost:6006/?path=/story/button \
   selector="#root button"
+```
 
-# Save artifacts to directory (optional)
+### Save Artifacts
+
+```bash
 npx uimatch compare \
   figma=<fileKey>:<nodeId> \
   story=http://localhost:6006/?path=/story/button \
@@ -153,104 +56,62 @@ npx uimatch compare \
   outDir=./uimatch-reports
 ```
 
-**Option B: With Anchors** (stable selectors)
+**👉 See [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) for detailed setup**
+
+---
+
+## Features
+
+- **Pixel-perfect comparison** - Visual diff with content-aware pixelmatch
+- **Color accuracy** - Perceptual color difference with ΔE2000
+- **Design Fidelity Score** - Automated 0-100 quality scoring (DFS)
+- **Figma integration** - Direct API access, MCP server support, or bypass mode
+- **Quality gates** - Configurable pass/fail thresholds with profiles
+- **Stable selectors** - AST-based anchors plugin for refactor-resistant targeting
+- **CI-ready** - GitHub Actions integration with caching and artifacts
+
+---
+
+## Common Usage Patterns
+
+### Component vs Component (Strict)
 
 ```bash
-# Install with selector plugin
-npm install -g @uimatch/cli @uimatch/selector-anchors playwright
-npx playwright install chromium
+npx uimatch compare \
+  figma=... story=... selector=... \
+  size=strict profile=component/strict
+```
 
-# Create anchors.json (see examples/anchors-stabilization.md)
-npx uimatch-anchors --file src/Button.tsx --line 10 --id btn-primary
+### Page vs Component (Padded)
 
-# Run with anchors
+```bash
+npx uimatch compare \
+  figma=... story=... selector=... \
+  size=pad contentBasis=intersection
+```
+
+### With Selector Anchors
+
+```bash
+npm install -g @uimatch/selector-anchors
 npx uimatch compare \
   figma=... story=... selector=... \
   selectors=./anchors.json
 ```
 
-### Common Patterns
+### Batch Comparisons (Suite Mode)
 
 ```bash
-# Component vs Component (strict pixel-perfect)
-npx uimatch compare figma=... story=... selector=... size=strict
-
-# Page vs Component (pad + contentBasis to reduce noise)
-npx uimatch compare figma=... story=... selector=... \
-  size=pad contentBasis=intersection
-
-# Suite mode (batch comparison)
 npx uimatch suite path=suite-config.json
 ```
 
-**See also**: [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started) | [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) | [Common Options](#common-options)
+**👉 See [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) for all options**
 
-## Usage
-
-### CLI
-
-```bash
-# Compare Figma design with implementation
-npx uimatch compare figma=<fileKey>:<nodeId> story=<url> selector=<css>
-
-# With selector anchors plugin
-npx uimatch compare figma=... story=... selector=... selectors=./anchors.json
-
-# Batch comparison (suite mode)
-npx uimatch suite path=suite-config.json
-
-# Verify installation (smoke test)
-npx uimatch doctor
-
-# Development (from repository)
-pnpm uimatch:compare -- figma=AbCdEf:1-23 story=http://localhost:6006/?path=/story/button selector="#root button"
-```
-
-**Output directory defaults:**
-
-- `compare`: No default (prints to stdout unless `outDir` specified)
-- `suite`: `.uimatch-suite` (can be overridden with `outDir=<path>`)
-
-## Configuration
-
-Create `.uimatchrc.json` in your project root:
-
-```json
-{
-  "comparison": {
-    "pixelmatchThreshold": 0.1,
-    "acceptancePixelDiffRatio": 0.01,
-    "acceptanceColorDeltaE": 3.0
-  }
-}
-```
-
-**Environment variables:**
-
-- `FIGMA_ACCESS_TOKEN` - Required for Figma API access
-- `UIMATCH_HEADLESS` - Control browser headless mode (default: `true`)
-  - Set to `false` to show browser window during execution (useful for debugging)
-  - Applies to `compare`, `suite`, and `doctor` commands
-- `UIMATCH_LOG_LEVEL` - Logging verbosity: `info` | `debug` | `silent` (default: `info`)
-- `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` - Basic auth credentials for target URLs
-
-## Quick Verification
-
-Smoke test without Figma/Storybook (expects `DFS: X.XX`):
-
-```bash
-pnpm build
-node packages/uimatch-cli/dist/cli/index.js compare \
-  figma=bypass:test \
-  story="data:text/html,<div style='width:10px;height:10px;background:red'></div>" \
-  selector="div" dpr=1 size=pad
-```
-
-Bypass mode uses `UIMATCH_FIGMA_PNG_B64` env var (useful for CI).
+---
 
 ## CI Integration
 
-**Minimal GitHub Actions example:**
+Minimal GitHub Actions example:
 
 ```yaml
 name: uiMatch QA
@@ -261,29 +122,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Install dependencies
+      - name: Install
         run: |
           npm install -g @uimatch/cli playwright
           npx playwright install --with-deps chromium
 
-      - name: Run comparison
+      - name: Compare
         env:
           FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_TOKEN }}
-          UIMATCH_HEADLESS: true
         run: |
           npx uimatch compare \
             figma=${{ secrets.FIGMA_FILE }}:${{ secrets.FIGMA_NODE }} \
-            story=https://your-storybook.com/?path=/story/button \
+            story=https://storybook.com/?path=/story/button \
             selector="#root button" \
             outDir=uimatch-reports
 
-      - name: Upload reports
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -291,278 +149,159 @@ jobs:
           path: uimatch-reports/
 ```
 
-**Tips:**
+**👉 See [CI Integration Guide](https://kosaki08.github.io/uimatch/docs/ci-integration) for caching, bypass mode, and troubleshooting**
 
-- Use `--with-deps` for system dependencies
-- Cache Playwright browsers with `actions/cache@v4`
-- Set `UIMATCH_HEADLESS=true` (default) for CI
-- Use bypass mode (`figma=bypass:test` + `UIMATCH_FIGMA_PNG_B64`) to avoid API rate limits
-
-## Local Testing
-
-### Method 1: Pack (recommended for pre-publish verification)
-
-This simulates actual npm distribution and catches dependency issues:
-
-```bash
-# Build all packages first
-pnpm build
-
-# Create tarballs (pnpm automatically resolves workspace:* to versions)
-mkdir -p dist-packages
-pnpm -C packages/shared-logging pack --pack-destination ../../dist-packages
-pnpm -C packages/uimatch-selector-spi pack --pack-destination ../../dist-packages
-pnpm -C packages/uimatch-core pack --pack-destination ../../dist-packages
-pnpm -C packages/uimatch-scoring pack --pack-destination ../../dist-packages
-pnpm -C packages/uimatch-selector-anchors pack --pack-destination ../../dist-packages
-pnpm -C packages/uimatch-cli pack --pack-destination ../../dist-packages
-
-# Test in isolated environment
-mkdir -p /tmp/uimatch-test && cd /tmp/uimatch-test
-npm init -y
-npm install \
-  /path/to/uimatch/dist-packages/uimatch-shared-logging-*.tgz \
-  /path/to/uimatch/dist-packages/uimatch-selector-spi-*.tgz \
-  /path/to/uimatch/dist-packages/uimatch-core-*.tgz \
-  /path/to/uimatch/dist-packages/uimatch-scoring-*.tgz \
-  /path/to/uimatch/dist-packages/uimatch-selector-anchors-*.tgz \
-  /path/to/uimatch/dist-packages/uimatch-cli-*.tgz \
-  playwright
-
-npx playwright install chromium
-
-# Verify with smoke test
-export UIMATCH_FIGMA_PNG_B64="iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC"
-npx uimatch compare figma=bypass:test \
-  story="data:text/html,<div id='t' style='width:10px;height:10px;background:red'></div>" \
-  selector="#t" dpr=1 size=pad
-```
-
-**Note**: pnpm pack automatically resolves `workspace:*` to actual versions during pack.
-
-### Method 2: Link (for rapid iteration)
-
-```bash
-# Register packages globally
-cd packages/shared-logging && pnpm link --global && cd ../..
-cd packages/uimatch-selector-spi && pnpm link --global && cd ../..
-cd packages/uimatch-core && pnpm link --global && cd ../..
-cd packages/uimatch-scoring && pnpm link --global && cd ../..
-cd packages/uimatch-selector-anchors && pnpm link --global && cd ../..
-cd packages/uimatch-cli && pnpm link --global && cd ../..
-
-# Link in consumer project
-cd /path/to/consumer
-pnpm link --global @uimatch/shared-logging
-pnpm link --global @uimatch/selector-spi
-pnpm link --global @uimatch/core
-pnpm link --global @uimatch/scoring
-pnpm link --global @uimatch/selector-anchors
-pnpm link --global @uimatch/cli
-
-# Unlink when done
-pnpm unlink --global @uimatch/cli  # in consumer
-cd packages/uimatch-cli && pnpm unlink --global  # in source
-```
-
-**Note**: Links persist across shell restarts but break if source paths move or `node_modules` is regenerated.
-
-## Development
-
-**Prerequisites**:
-
-- **Node.js**: 20.19+ / 22.12+ (recommended: 22.12+)
-- **pnpm**: 9.15.4+
-- **Bun**: 1.x (used for script execution and test runner)
-
-```bash
-# Install dependencies
-pnpm install
-
-# Build all packages (required before testing)
-pnpm build
-
-# Run tests
-pnpm test
-
-# Run tests with coverage
-pnpm test:coverage           # Text output to console
-pnpm test:coverage:html      # Generate lcov report in ./coverage/
-
-# Lint and format
-pnpm lint
-pnpm format
-```
-
-### Test Coverage
-
-Generate coverage reports for observation and CI artifacts:
-
-```bash
-pnpm test:coverage       # Text summary to console
-pnpm test:coverage:html  # LCOV report in ./coverage/
-```
-
-View reports with Coverage Gutters (VS Code), Codecov, or Coveralls.
-
-**No thresholds yet** — observe coverage trends first, then set thresholds for core packages after analysis.
-
-## Troubleshooting
-
-### Doctor Command
-
-Run `npx uimatch doctor` to diagnose installation issues:
-
-```bash
-$ npx uimatch doctor
-
-✅ Environment Check
-   Node.js: v22.12.0 (✓ >= 20.19.0)
-   npm: 10.9.0
-   Platform: darwin (arm64)
-
-✅ Playwright Installation
-   @playwright/test: 1.49.1
-   Chromium: installed (1148)
-
-✅ Figma Configuration
-   FIGMA_ACCESS_TOKEN: ✓ Set (figd_***)
-
-⚠️  Optional Dependencies
-   TypeScript: not found (required for anchors plugin AST resolution)
-   → npm install -g typescript
-
-✅ System Ready
-   All critical checks passed. Optional: install TypeScript for anchors.
-```
-
-### Common Issues
-
-| Issue                      | Symptom                                        | Solution                                                 |
-| -------------------------- | ---------------------------------------------- | -------------------------------------------------------- |
-| Browser not found          | ❌ Playwright: Chromium not installed          | `npx playwright install chromium`                        |
-| Figma token missing        | ❌ FIGMA_ACCESS_TOKEN not set                  | `export FIGMA_ACCESS_TOKEN="figd_..."`                   |
-| TypeScript missing         | ⚠️ TypeScript: not found                       | `npm install -g typescript` (for anchors plugin)         |
-| Browser window needed      | Want to see browser during execution           | `export UIMATCH_HEADLESS=false`                          |
-| Storybook wrong URL        | Canvas URL instead of iframe                   | Use `iframe.html?id=...` not `?path=/story/...`          |
-| Bypass mode fails          | `UIMATCH_FIGMA_PNG_B64` not set                | Export base64-encoded PNG (10x10 red square for testing) |
-| Runtime dependency missing | Package installed with wrong dependency type   | Check `package.json`: runtime deps → `dependencies`      |
-| ESM resolution failure     | Incorrect module format in distributed package | Test with `npm pack` before publishing                   |
-| CLI not executable         | Shebang or bin path incorrect                  | Verify `bin` in package.json and `#!/usr/bin/env node`   |
-
-### Publishing to npm
-
-**Primary method**: Changesets for version management and coordinated releases.
-
-```bash
-# 1. Create changeset for changes
-pnpm changeset
-
-# 2. Version packages (updates versions and CHANGELOG)
-pnpm changeset version
-
-# 3. Build all packages
-pnpm build
-
-# 4. Publish all changed packages
-pnpm publish -r
-```
-
-**Manual publish** (if needed):
-
-```bash
-pnpm -C packages/shared-logging publish --access public
-pnpm -C packages/uimatch-selector-spi publish --access public
-# Note: uimatch-core and uimatch-scoring are currently private
-# Remove "private": true from package.json before publishing:
-# pnpm -C packages/uimatch-core publish --access public
-# pnpm -C packages/uimatch-scoring publish --access public
-pnpm -C packages/uimatch-selector-anchors publish --access public
-pnpm -C packages/uimatch-cli publish --access public
-```
-
-**Note**: pnpm resolves `workspace:*` to actual versions automatically during publish.
-
-### Pre-Publish Checklist
-
-Before publishing, verify distribution integrity:
-
-```bash
-# Test with pack method (see Local Testing section)
-pnpm build
-# ... run full pack verification from Local Testing section
-
-# Or quick smoke test
-pnpm -C packages/uimatch-cli pack --pack-destination ../../
-npm i -g ./uimatch-cli-*.tgz
-npx uimatch compare figma=bypass:test story="..." selector="..."
-```
-
-**Critical checks:**
-
-- ✅ Runtime dependencies in `dependencies` (not `devDependencies`)
-- ✅ ESM/CJS module resolution works (test with Node.js directly)
-- ✅ CLI executable with correct shebang (`#!/usr/bin/env node`)
-- ✅ No secrets in package (`npm pack --dry-run` to review contents)
-- ✅ All workspace dependencies resolved (publish from root, not subdirs)
-- ✅ Playwright peer dependency documented in README
-
-## Common Options
-
-| Option                     | Values                          | Use Case                                        |
-| -------------------------- | ------------------------------- | ----------------------------------------------- |
-| `size`                     | `strict/pad/crop/scale`         | Size handling strategy                          |
-| `contentBasis`             | `union/intersection/figma/impl` | Content-aware comparison basis (default: union) |
-| `selectors`                | `path/to/anchors.json`          | Use selector anchors plugin                     |
-| `selectorsPlugin`          | `@uimatch/selector-anchors`     | Custom selector resolution plugin               |
-| `acceptancePixelDiffRatio` | `0.01`                          | Quality gate threshold (1% recommended)         |
-
-**Full options**: Run `npx uimatch compare --help`
+---
 
 ## Quality Gate Profiles
 
-UI Match uses quality gate profiles (`component/strict`, `component/dev`, `page-vs-component`, `lenient`, `custom`) to manage thresholds.
+Manage pass/fail thresholds with built-in profiles:
 
-**Example:**
+- `component/strict` - Pixel-perfect for design systems (DFS ≥ 90)
+- `component/dev` - Development tolerance (DFS ≥ 70)
+- `page-vs-component` - Loose layout comparison (DFS ≥ 60)
 
 ```bash
-# Pixel-perfect comparison
-npx uimatch compare figma=... story=... selector=... profile=component/strict
+npx uimatch compare \
+  figma=... story=... selector=... \
+  profile=component/strict
 ```
 
-For profile details and thresholds, see the [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference#quality-gate-profiles).
+**👉 See [CLI Reference - Quality Gates](https://kosaki08.github.io/uimatch/docs/cli-reference#quality-gate-profiles) for detailed thresholds**
 
-## Experimental Features
+---
 
-⚠️ Experimental features for MCP / AI assistant integration. See [Experimental Features](https://kosaki08.github.io/uimatch/docs/experimental) for details.
+## Architecture Overview
 
-## Documentation
+```
+┌─────────────────────────────────────────────────┐
+│              uiMatch Workflow                   │
+└─────────────────────────────────────────────────┘
 
-Visit the [uiMatch Documentation Site](https://kosaki08.github.io/uimatch/) for comprehensive guides:
+  Figma Design          Implementation
+  (3 modes)             (Storybook/URL)
+       ↓                       ↓
+  ┌─────────┐           ┌──────────┐
+  │ Figma   │           │Playwright│
+  │ API     │           │ Browser  │
+  └────┬────┘           └────┬─────┘
+       │ PNG                 │ Screenshot + CSS
+       ↓                     ↓
+  ┌────────────────────────────────┐
+  │      @uimatch/core Engine      │
+  │  • Size Handler (4 modes)      │
+  │  • Pixelmatch (content-aware)  │
+  │  • Color ΔE2000 (perceptual)   │
+  │  • Quality Gate (thresholds)   │
+  └───────────────┬────────────────┘
+                  ↓
+          ┌──────────────┐
+          │  DFS Score   │  0-100
+          │  Reports     │  Pass/Fail
+          └──────┬───────┘
+                 ↓
+         [ CI/CD Integration ]
+```
 
-- **[Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started)** - Installation and quickstart
-- **[CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference)** - Complete command reference
-- **[Concepts](https://kosaki08.github.io/uimatch/docs/concepts)** - Anchors, quality gates, content basis
-- **[Troubleshooting](https://kosaki08.github.io/uimatch/docs/troubleshooting)** - Common issues and solutions
-- **[Plugins](https://kosaki08.github.io/uimatch/docs/plugins)** - Plugin development guide
-- **[Experimental Features](https://kosaki08.github.io/uimatch/docs/experimental)** - MCP and AI integration
-- **[API Reference](https://kosaki08.github.io/uimatch/docs/api)** - TypeScript API documentation
+**Key components:**
+
+- `@uimatch/cli` - CLI entry point
+- `@uimatch/core` - Comparison engine
+- `@uimatch/selector-anchors` - Optional AST-based selector plugin
+- `@uimatch/scoring` - Design Fidelity Score calculator
+
+**👉 See [Concepts](https://kosaki08.github.io/uimatch/docs/concepts) for detailed explanation**
+
+---
+
+## Development
+
+### Prerequisites
+
+- Node.js 20.19+ / 22.12+
+- pnpm 9.15.4+
+- Bun 1.x (test runner)
+
+### Setup
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+```
+
+### Verification
+
+```bash
+# Smoke test (no Figma/Storybook required)
+pnpm build
+node packages/uimatch-cli/dist/cli/index.js compare \
+  figma=bypass:test \
+  story="data:text/html,<div style='width:10px;height:10px;background:red'></div>" \
+  selector="div" dpr=1 size=pad
+```
+
+**👉 See [Local Testing Guide](https://kosaki08.github.io/uimatch/docs/local-testing) for pack/link workflows**
+
+---
+
+## Troubleshooting
+
+Run diagnostics:
+
+```bash
+npx uimatch doctor
+```
+
+**Common issues:**
+
+| Issue               | Solution                               |
+| ------------------- | -------------------------------------- |
+| Browser not found   | `npx playwright install chromium`      |
+| Figma token missing | `export FIGMA_ACCESS_TOKEN="figd_..."` |
+| Want to see browser | `export UIMATCH_HEADLESS=false`        |
+
+**👉 See [Troubleshooting Guide](https://kosaki08.github.io/uimatch/docs/troubleshooting) for complete solutions**
+
+---
+
+## Packages
+
+**Public (npm):**
+
+- `@uimatch/cli` - CLI tool
+- `@uimatch/selector-anchors` - AST-based selector plugin
+- `@uimatch/selector-spi` - Plugin interface types
+- `@uimatch/shared-logging` - Logging utilities
+
+**Internal:**
+
+- `@uimatch/core` - Comparison engine
+- `@uimatch/scoring` - DFS calculator
+
+---
 
 ## Project Structure
 
 ```
 ui-match/
-├── .github/                      # CI workflows and utility scripts
-├── .claude-plugin/               # (optional) Claude Code / MCP plugin definition [experimental]
-├─┬ packages/
-│ ├── uimatch-core/               # Core comparison engine (image + style diff, quality gate)
-│ ├── uimatch-scoring/            # Design Fidelity Score (DFS) calculation (internal)
-│ ├── uimatch-selector-spi/       # Selector resolver plugin interface (public)
-│ ├── uimatch-selector-anchors/   # AST-based selector plugin (public)
-│ ├── uimatch-cli/                # CLI tool (+ optional AI / Claude Code integration)
-│ └── shared-logging/             # Shared logging utilities (public)
-└── docs/                         # Documentation site and examples
+├── packages/
+│   ├── uimatch-cli/              # CLI entry point
+│   ├── uimatch-core/             # Comparison engine
+│   ├── uimatch-scoring/          # DFS calculation
+│   ├── uimatch-selector-spi/     # Plugin interface
+│   ├── uimatch-selector-anchors/ # AST plugin
+│   └── shared-logging/           # Logging utils
+└── docs/                         # Documentation site
 ```
+
+---
+
+## Contributing
+
+Contributions welcome! See [Local Testing](https://kosaki08.github.io/uimatch/docs/local-testing) for development workflows.
+
+---
 
 ## License
 
