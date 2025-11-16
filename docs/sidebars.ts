@@ -3,7 +3,7 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 // Import TypeDoc generated sidebar with fallback for initial builds
-// NOTE: Typedoc out='api' → generated at docs/docs/api/typedoc-sidebar.cjs
+// NOTE: Typedoc out='docs/api' → generated at docs/docs/api/typedoc-sidebar.cjs
 //       sidebars.ts is at docs/sidebars.ts, so relative path is './docs/api/...'
 let apiItems: any[] = [];
 try {

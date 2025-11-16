@@ -1,10 +1,11 @@
 /**
  * Post-process TypeDoc sidebar to use @uimatch/* package names
+ * and fix document ID paths for Docusaurus
  */
 const fs = require('fs');
 const path = require('path');
 
-const sidebarPath = path.join(__dirname, '../api/typedoc-sidebar.cjs');
+const sidebarPath = path.join(__dirname, '../docs/api/typedoc-sidebar.cjs');
 
 if (!fs.existsSync(sidebarPath)) {
   console.log('Sidebar file not found, skipping...');
