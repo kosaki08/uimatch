@@ -19,11 +19,30 @@ function HomepageHeader() {
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
           <Link className="button button--secondary button--lg" to="/docs/getting-started">
-            Get Started - 3min ⏱️
+            Get Started 🚀
           </Link>
         </div>
       </div>
     </header>
+  );
+}
+
+function ExperimentalNotice() {
+  return (
+    <div className="container" style={{ marginTop: '2rem' }}>
+      <div
+        style={{
+          backgroundColor: 'var(--ifm-color-warning-contrast-background)',
+          border: '1px solid var(--ifm-color-warning-dark)',
+          borderRadius: '0.5rem',
+          padding: '1rem 1.5rem',
+          marginBottom: '2rem',
+        }}
+      >
+        <strong>⚠️ Experimental (0.x):</strong> uiMatch is currently in early development. APIs and
+        behavior may change without notice and are not production-ready.
+      </div>
+    </div>
   );
 }
 
@@ -35,6 +54,7 @@ export default function Home(): ReactNode {
       description="Figma-to-implementation visual QA: pixel diffs, quality gates, and anchor-based selectors."
     >
       <HomepageHeader />
+      <ExperimentalNotice />
       <main>
         <HomepageFeatures />
       </main>

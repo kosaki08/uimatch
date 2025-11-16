@@ -4,10 +4,10 @@ sidebar_position: 6
 
 # Experimental Features
 
-:::warning
-The following features are **experimental** and may change or be removed without notice.
+:::warning Extra Unstable
+While uiMatch itself is in **0.x (experimental)** and subject to change, the features on this page are **even more unstable** and experimental.
 
-These are primarily intended for MCP / AI assistant integration experiments. Please avoid relying on them in long-term CI/CD pipelines yet.
+They may be removed or significantly changed without notice. These are primarily intended for MCP / AI assistant integration experiments. Please avoid relying on them in long-term CI/CD pipelines.
 :::
 
 ## Experimental Commands

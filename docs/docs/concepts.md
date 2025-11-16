@@ -166,9 +166,66 @@ contentBasis=impl           # Use implementation's content area only
 
 **Best Practice:** Use `intersection` with `size=pad` to exclude letterboxing from pixel difference metrics.
 
+## Architecture Overview
+
+uiMatch follows a modular pipeline architecture with three main stages: input acquisition, comparison, and output generation.
+
+### High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│              uiMatch Workflow                   │
+└─────────────────────────────────────────────────┘
+
+  Figma Design          Implementation
+  (3 modes)             (Storybook/URL)
+       ↓                       ↓
+  ┌─────────┐           ┌──────────┐
+  │ Figma   │           │Playwright│
+  │ API     │           │ Browser  │
+  └────┬────┘           └────┬─────┘
+       │ PNG                 │ Screenshot + CSS
+       ↓                     ↓
+  ┌────────────────────────────────┐
+  │      @uimatch/core Engine      │
+  │  • Size Handler (4 modes)      │
+  │  • Pixelmatch (content-aware)  │
+  │  • Color ΔE2000 (perceptual)   │
+  │  • Quality Gate (thresholds)   │
+  └───────────────┬────────────────┘
+                  ↓
+          ┌──────────────┐
+          │  DFS Score   │  0-100
+          │  Reports     │  Pass/Fail
+          └──────┬───────┘
+                 ↓
+         [ CI/CD Integration ]
+```
+
+### Key Components
+
+- **`@uimatch/cli`** - CLI entry point and user interface
+- **`@uimatch/core`** - Comparison engine with pixel/color analysis
+- **`@uimatch/selector-anchors`** - Optional AST-based selector plugin
+- **`@uimatch/scoring`** - Design Fidelity Score calculator
+
+### Input Acquisition Modes
+
+**Figma (3 modes):**
+
+1. **API** - Direct Figma API access with `FIGMA_ACCESS_TOKEN`
+2. **MCP** - Figma MCP server integration for enhanced workflows
+3. **Bypass** - Local PNG files for offline/CI-cached scenarios
+
+**Implementation:**
+
+- Playwright browser automation
+- Screenshot capture + computed CSS extraction
+- DPR/viewport configuration support
+
 ## Comparison Workflow
 
-Putting it all together:
+Step-by-step comparison process:
 
 ```mermaid
 graph LR

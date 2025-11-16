@@ -90,22 +90,7 @@ npx uimatch compare \
   size=pad contentBasis=intersection
 ```
 
-### With Selector Anchors
-
-```bash
-npm install -g @uimatch/selector-anchors
-npx uimatch compare \
-  figma=... story=... selector=... \
-  selectors=./anchors.json
-```
-
-### Batch Comparisons (Suite Mode)
-
-```bash
-npx uimatch suite path=suite-config.json
-```
-
-**👉 See [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) for all options**
+**👉 See [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) for selector anchors, suite mode, and all options**
 
 ---
 
@@ -139,7 +124,8 @@ jobs:
             figma=${{ secrets.FIGMA_FILE }}:${{ secrets.FIGMA_NODE }} \
             story=https://storybook.com/?path=/story/button \
             selector="#root button" \
-            outDir=uimatch-reports
+            outDir=uimatch-reports \
+            profile=component/strict
 
       - name: Upload artifacts
         if: always()
@@ -149,17 +135,17 @@ jobs:
           path: uimatch-reports/
 ```
 
-**👉 See [CI Integration Guide](https://kosaki08.github.io/uimatch/docs/ci-integration) for caching, bypass mode, and troubleshooting**
+**👉 See [CI Integration Guide](https://kosaki08.github.io/uimatch/docs/ci-integration) for caching, bypass mode, suite configurations, and complete setup**
 
 ---
 
 ## Quality Gate Profiles
 
-Manage pass/fail thresholds with built-in profiles:
+Built-in profiles for different use cases:
 
-- `component/strict` - Pixel-perfect for design systems (DFS ≥ 90)
-- `component/dev` - Development tolerance (DFS ≥ 70)
-- `page-vs-component` - Loose layout comparison (DFS ≥ 60)
+- `component/strict` - Pixel-perfect for design systems
+- `component/dev` - Development tolerance
+- `page-vs-component` - Loose layout comparison
 
 ```bash
 npx uimatch compare \
@@ -167,50 +153,21 @@ npx uimatch compare \
   profile=component/strict
 ```
 
-**👉 See [CLI Reference - Quality Gates](https://kosaki08.github.io/uimatch/docs/cli-reference#quality-gate-profiles) for detailed thresholds**
+**👉 See [CI Integration Guide](https://kosaki08.github.io/uimatch/docs/ci-integration#quality-gate-enforcement) for detailed thresholds and parameters**
 
 ---
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────┐
-│              uiMatch Workflow                   │
-└─────────────────────────────────────────────────┘
+At a high level:
 
-  Figma Design          Implementation
-  (3 modes)             (Storybook/URL)
-       ↓                       ↓
-  ┌─────────┐           ┌──────────┐
-  │ Figma   │           │Playwright│
-  │ API     │           │ Browser  │
-  └────┬────┘           └────┬─────┘
-       │ PNG                 │ Screenshot + CSS
-       ↓                     ↓
-  ┌────────────────────────────────┐
-  │      @uimatch/core Engine      │
-  │  • Size Handler (4 modes)      │
-  │  • Pixelmatch (content-aware)  │
-  │  • Color ΔE2000 (perceptual)   │
-  │  • Quality Gate (thresholds)   │
-  └───────────────┬────────────────┘
-                  ↓
-          ┌──────────────┐
-          │  DFS Score   │  0-100
-          │  Reports     │  Pass/Fail
-          └──────┬───────┘
-                 ↓
-         [ CI/CD Integration ]
-```
+- Fetch frame PNG from Figma (API / MCP / bypass)
+- Capture implementation screenshot via Playwright
+- Compare pixels + styles in `@uimatch/core`
+- Apply quality gates and compute DFS (0–100)
+- Report pass/fail and diff artifacts (for CI)
 
-**Key components:**
-
-- `@uimatch/cli` - CLI entry point
-- `@uimatch/core` - Comparison engine
-- `@uimatch/selector-anchors` - Optional AST-based selector plugin
-- `@uimatch/scoring` - Design Fidelity Score calculator
-
-**👉 See [Concepts](https://kosaki08.github.io/uimatch/docs/concepts) for detailed explanation**
+**👉 See [Concepts - Architecture](https://kosaki08.github.io/uimatch/docs/concepts#architecture-overview) for detailed diagrams and component explanation**
 
 ---
 
