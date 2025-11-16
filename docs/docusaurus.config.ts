@@ -93,7 +93,7 @@ const config: Config = {
           type: 'docSidebar',
           sidebarId: 'tutorialSidebar',
           position: 'left',
-          label: 'Guide',
+          label: 'Docs',
         },
         {
           href: 'https://github.com/kosaki08/uimatch',
