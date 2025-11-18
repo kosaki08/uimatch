@@ -73,6 +73,32 @@ viewport=<WxH>           # Custom viewport size (e.g., "1920x1080")
 
 Use environment variable `UIMATCH_HEADLESS=false` to show browser window during execution.
 
+#### Text Matching (Experimental)
+
+Enable text content comparison alongside pixel-based comparison to detect copy differences, typos, and missing text.
+
+```shell
+text=true                          # Enable text matching (default: false)
+textMode=self|descendants          # Text collection scope (default: self)
+                                   #   self: Element's own text only
+                                   #   descendants: Include child elements
+textNormalize=none|nfkc|nfkc_ws    # Normalization mode (default: nfkc_ws)
+                                   #   none: No normalization
+                                   #   nfkc: Unicode NFKC normalization
+                                   #   nfkc_ws: NFKC + whitespace collapsing
+textCase=sensitive|insensitive     # Case sensitivity (default: insensitive)
+textMatch=exact|contains|ratio     # Matching mode (default: ratio)
+                                   #   exact: Exact match required
+                                   #   contains: Substring matching
+                                   #   ratio: Similarity scoring
+textMinRatio=0..1                  # Minimum similarity threshold (default: 0.98)
+                                   # Only applies when textMatch=ratio
+```
+
+**Note**: Text matching results appear in the `textMatch` section of `report.json` when `outDir` is specified.
+
+See [Text Matching](./concepts.md#text-matching) for detailed information on normalization, similarity scoring, and use cases.
+
 ### Examples
 
 #### Basic Comparison
@@ -102,6 +128,37 @@ npx uimatch compare \
   story=http://localhost:3000 \
   selector="#mobile-nav" \
   viewport=375x667
+```
+
+#### With Text Matching
+
+Compare both visual appearance and text content to detect typos and copy differences:
+
+```shell
+npx uimatch compare \
+  figma=abc123:1-2 \
+  story=http://localhost:6006/?path=/story/accordion--default \
+  selector="[data-testid='accordion']" \
+  text=true \
+  textMode=descendants \
+  textMinRatio=0.95 \
+  outDir=./comparison-results
+```
+
+Results include a `textMatch` section in `report.json`:
+
+```json
+{
+  "textMatch": {
+    "enabled": true,
+    "ratio": 0.42,
+    "equal": false,
+    "details": {
+      "missing": ["accordion", "vertically", "stacked"],
+      "extra": ["is", "it", "accessible"]
+    }
+  }
+}
 ```
 
 ## `suite` Command
