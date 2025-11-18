@@ -263,6 +263,24 @@ ui-match/
 
 ---
 
+## Experiments / Skills
+
+These markdown-based skills support AI-assisted workflows (Claude Code) and provide task-focused guides and references.
+
+- Visual Compare: `experiments/skills/uimatch-compare/SKILL.md`
+- Suite (Batch): `experiments/skills/uimatch-suite/SKILL.md`
+- Text Diff: `experiments/skills/uimatch-text-diff/SKILL.md`
+
+Shared references:
+
+- `experiments/skills/_shared/uimatch-advanced-settings.md`
+- `experiments/skills/_shared/uimatch-common-env.md`
+
+👉 Important: export `FIGMA_ACCESS_TOKEN` in your shell (the CLI does not read `.env` automatically).
+👉 Prefer `FILE_KEY:NODE_ID` for Figma references; if you pass a full Figma URL, always quote it in the shell.
+
+---
+
 ## Contributing
 
 Contributions welcome! See [Local Testing](https://kosaki08.github.io/uimatch/docs/local-testing) for development workflows.
