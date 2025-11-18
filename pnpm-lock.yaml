@@ -132,10 +132,10 @@ importers:
   packages/uimatch-cli:
     dependencies:
       '@uimatch/selector-anchors':
-        specifier: workspace:*
-        version: link:../uimatch-selector-anchors
+        specifier: ^0.1.0
+        version: 0.1.0(@uimatch/selector-spi@packages+uimatch-selector-spi)
       '@uimatch/shared-logging':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../shared-logging
       pino:
         specifier: ^9.7.0
@@ -157,13 +157,13 @@ importers:
         version: 4.1.12
     devDependencies:
       '@uimatch/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../uimatch-core
       '@uimatch/scoring':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../uimatch-scoring
       '@uimatch/selector-spi':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../uimatch-selector-spi
       globby:
         specifier: ^14.0.2
@@ -175,7 +175,7 @@ importers:
   packages/uimatch-core:
     dependencies:
       '@uimatch/shared-logging':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../shared-logging
       pixelmatch:
         specifier: ^6.0.0
@@ -200,7 +200,7 @@ importers:
   packages/uimatch-scoring:
     dependencies:
       '@uimatch/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../uimatch-core
     devDependencies:
       '@types/bun':
@@ -239,7 +239,7 @@ importers:
         specifier: ^1.1.13
         version: 1.3.2(@types/react@19.2.2)
       '@uimatch/selector-spi':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../uimatch-selector-spi
       rimraf:
         specifier: ^6.0.1
@@ -2380,6 +2380,13 @@ packages:
   '@typescript-eslint/visitor-keys@8.46.3':
     resolution: {integrity: sha512-uk574k8IU0rOF/AjniX8qbLSGURJVUCeM5e4MIMKBFFi8weeiLrG1fyQejyLXQpRZbU/1BuQasleV/RfHC3hHg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@uimatch/selector-anchors@0.1.0':
+    resolution: {integrity: sha512-XCu3H1xEBFiUDYxifMAn6isbCt6gUVDVnIWcGOSy4hNIlItyJu9jvSTX90ZT2UacpJGwDdVFjwUEknSpeUQ7Sg==}
+    engines: {node: '>=20.19 <21 || >=22.12'}
+    hasBin: true
+    peerDependencies:
+      '@uimatch/selector-spi': '>=0.1.0'
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
@@ -9927,6 +9934,19 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.46.3
       eslint-visitor-keys: 4.2.1
+
+  '@uimatch/selector-anchors@0.1.0(@uimatch/selector-spi@packages+uimatch-selector-spi)':
+    dependencies:
+      '@uimatch/selector-spi': link:packages/uimatch-selector-spi
+      jsep: 1.4.0
+      parse5: 8.0.0
+      safe-regex2: 5.0.0
+      typescript: 5.9.3
+      zod: 4.1.12
+    optionalDependencies:
+      re2: 1.22.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@ungap/structured-clone@1.3.0': {}
 
