@@ -21,6 +21,8 @@ Compare a Figma design with your implementation.
 
 ### Basic Syntax
 
+**Note:** This assumes `@uimatch/cli` is already installed (globally or as a dev dependency).
+
 ```shell
 npx uimatch compare \
   figma=<FIGMA_REFERENCE> \
@@ -28,6 +30,20 @@ npx uimatch compare \
   selector=<CSS_SELECTOR> \
   [options]
 ```
+
+### Run Once Without Installing
+
+If you want to try uiMatch without adding it to your project:
+
+```shell
+npx -p @uimatch/cli uimatch compare \
+  figma=<FIGMA_REFERENCE> \
+  story=<URL> \
+  selector=<CSS_SELECTOR> \
+  [options]
+```
+
+This explicitly tells `npx` which package to install (`@uimatch/cli`) and which binary to run (`uimatch`).
 
 ### Required Parameters
 

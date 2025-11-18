@@ -48,8 +48,21 @@ npx playwright install chromium
 
 ### First Comparison
 
+**Note:** The examples below assume `@uimatch/cli` is already installed (globally or as a dev dependency).
+
 ```bash
 npx uimatch compare \
+  figma=<fileKey>:<nodeId> \
+  story=http://localhost:6006/?path=/story/button \
+  selector="#root button"
+```
+
+**Try without installing:**
+
+If you want to run a quick test without installation:
+
+```bash
+npx -p @uimatch/cli uimatch compare \
   figma=<fileKey>:<nodeId> \
   story=http://localhost:6006/?path=/story/button \
   selector="#root button"

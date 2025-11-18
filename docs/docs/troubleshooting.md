@@ -23,6 +23,57 @@ This checks:
 
 ## Common Issues
 
+### `sh: uimatch: command not found` / `'uimatch@*' is not in this registry`
+
+**Error:** When running `npx uimatch compare ...`, you get:
+
+- `sh: uimatch: command not found`
+- `npm error 404 Not Found - GET https://registry.npmjs.org/uimatch - Not found`
+- `npm error 404  'uimatch@*' is not in this registry`
+
+This usually happens when:
+
+- `@uimatch/cli` is **not installed** yet, and
+- you run `npx uimatch ...` (npx tries to install a package literally named `uimatch`, which doesn't exist)
+
+**Solutions:**
+
+1. **Install the CLI first:**
+
+   ```shell
+   # As dev dependency
+   npm install -D @uimatch/cli
+
+   # Or globally
+   npm install -g @uimatch/cli
+   ```
+
+   Then run:
+
+   ```shell
+   npx uimatch compare ...
+   # or
+   uimatch compare ...
+   ```
+
+2. **Or use an explicit npx one-liner (no install required):**
+
+   ```shell
+   npx -p @uimatch/cli uimatch compare \
+     figma=<fileKey>:<nodeId> \
+     story=http://localhost:3000 \
+     selector="#my-component"
+   ```
+
+   The `-p @uimatch/cli` flag explicitly tells npx which package to install, and `uimatch` is the binary name to run.
+
+**Why this happens:**
+
+- Package name: `@uimatch/cli`
+- Binary name: `uimatch`
+
+When you run `npx uimatch`, npx looks for a package named `uimatch` (not `@uimatch/cli`), which doesn't exist. Using `-p @uimatch/cli uimatch` clarifies both the package and binary names.
+
 ### Figma Access Errors
 
 **Error:** `Failed to fetch Figma file: 403 Forbidden`
