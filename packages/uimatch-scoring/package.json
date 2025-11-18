@@ -47,7 +47,7 @@
     "uimatch"
   ],
   "dependencies": {
-    "@uimatch/core": "workspace:*"
+    "@uimatch/core": "workspace:^"
   },
   "devDependencies": {
     "@types/bun": "latest",
