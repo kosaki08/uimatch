@@ -248,7 +248,7 @@ Upload comparison results as CI artifacts for review:
 - `figma.png` - Figma design screenshot
 - `impl.png` - Implementation screenshot
 - `diff.png` - Visual diff with highlighted discrepancies
-- `result.json` - Detailed comparison metrics
+- `report.json` - Detailed comparison metrics (includes `metrics.dfs`, `qualityGate`, etc.)
 
 ## Quality Gate Enforcement
 
@@ -262,12 +262,21 @@ Fail CI if design fidelity is below threshold:
       profile=component/strict \
       outDir=uimatch-reports
 
-    # Parse DFS score and fail if below threshold
-    DFS=$(grep -oP 'DFS: \K[\d.]+' uimatch-reports/result.json || echo "0")
-    if (( $(echo "$DFS < 80.0" | bc -l) )); then
-      echo "❌ Design Fidelity Score ($DFS) below threshold (80.0)"
-      exit 1
-    fi
+    # Check quality gate result from report.json
+    node - <<'EOF'
+    const fs = require('fs');
+    const report = JSON.parse(fs.readFileSync('uimatch-reports/report.json', 'utf8'));
+    const dfs = report.metrics?.dfs ?? 0;
+    const pass = report.qualityGate?.pass ?? false;
+
+    if (!pass) {
+      console.error(`❌ Quality gate failed (DFS=${dfs})`);
+      console.error(`Reasons: ${report.qualityGate?.reasons?.join(', ')}`);
+      process.exit(1);
+    }
+
+    console.log(`✅ Quality gate passed (DFS=${dfs})`);
+    EOF
 ```
 
 **Profiles:**

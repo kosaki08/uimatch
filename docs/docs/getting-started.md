@@ -33,13 +33,36 @@ npx playwright install chromium
 
 ### Environment Setup
 
-Create a `.env` file with your Figma access token:
+uiMatch CLI requires the `FIGMA_ACCESS_TOKEN` environment variable for Figma API access. Get your token from [Figma Settings > Personal Access Tokens](https://www.figma.com/developers/api#access-tokens).
+
+#### Direct Shell Usage
+
+For direct CLI usage, export the environment variable:
 
 ```shell
+export FIGMA_ACCESS_TOKEN=your_figma_token_here
+npx uimatch compare ...
+```
+
+#### Using .env Files (Node Scripts Only)
+
+If you're calling uiMatch from a Node.js script, you can use a `.env` file with `dotenv`:
+
+```shell
+# .env file
 FIGMA_ACCESS_TOKEN=your_figma_token_here
 ```
 
-Get your token from [Figma Settings > Personal Access Tokens](https://www.figma.com/developers/api#access-tokens).
+```typescript
+// scripts/compare.ts
+import 'dotenv/config'; // Load .env before using uiMatch
+import { uiMatchCompare } from '@uimatch/cli';
+
+// Now the environment variable is available
+await uiMatchCompare({ ... });
+```
+
+**Note:** The CLI itself does not automatically load `.env` files. You must either export the environment variable directly or use `dotenv` in your own scripts.
 
 ### Your First Comparison (Local App)
 

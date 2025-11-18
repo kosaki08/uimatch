@@ -118,6 +118,14 @@ profile=lenient           # Very relaxed for prototyping
 | `page-vs-component` | 0.12 (12%)     | 5.0    | **Padded** - Letterboxed comparisons         |
 | `lenient`           | 0.15 (15%)     | 8.0    | **Prototyping** - Early drafts               |
 
+> **Important Note on `component/strict`:**
+>
+> The `component/strict` profile is intentionally very strict. Even with a visually "perfect" implementation, font rendering differences and anti-aliasing can easily produce 2–3% pixel differences. In practice:
+>
+> - **For day-to-day CI**: Use `component/dev` or `lenient` profiles
+> - **For `component/strict`**: Reserve for design-system components in controlled environments with fixed fonts and consistent rendering stacks
+> - **Expected behavior**: DFS scores of 95-99 with 2-3% pixelDiffRatio are normal for high-quality implementations due to rendering variations
+
 ### Advanced Features
 
 Current implementation supports:
