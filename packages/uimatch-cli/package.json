@@ -1,6 +1,6 @@
 {
   "name": "@uimatch/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "license": "MIT",
   "main": "./dist/index.js",
@@ -40,7 +40,7 @@
     "zod": "^4.1.12"
   },
   "peerDependencies": {
-    "@uimatch/selector-anchors": "^0.1.0",
+    "@uimatch/selector-anchors": "^0.1.1",
     "playwright": ">=1.49.0"
   },
   "peerDependenciesMeta": {
