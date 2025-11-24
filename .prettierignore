@@ -9,6 +9,10 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
+# Local AI/assistant config
+.claude
+.claude/**
+
 # CI debug artifacts
 tsc-root.json
 tsc-build-plan.log
