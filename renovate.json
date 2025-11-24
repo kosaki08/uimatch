@@ -1,0 +1,80 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "group:allNonMajor", "schedule:weekly"],
+  "rangeStrategy": "bump",
+  "timezone": "Asia/Tokyo",
+  "labels": ["deps", "renovate"],
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 5,
+  "npm": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["npm"],
+      "matchPaths": ["docs/**"],
+      "groupName": "docs & docusaurus",
+      "labels": ["deps", "docs"]
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPaths": ["packages/**"],
+      "groupName": "core packages",
+      "labels": ["deps", "core"]
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeSchedule": ["after 9am and before 7pm on weekdays"]
+    },
+    {
+      "matchPackagePatterns": [
+        "^typescript$",
+        "^react$",
+        "^react-dom$",
+        "^@types/react$",
+        "^@types/node$"
+      ],
+      "separateMajorMinor": true,
+      "groupName": "ts/react majors",
+      "labels": ["deps", "breaking"],
+      "automerge": false
+    },
+    {
+      "matchPackagePatterns": ["^@playwright/test$", "^playwright$"],
+      "groupName": "playwright",
+      "labels": ["deps", "e2e"],
+      "automerge": false
+    },
+    {
+      "matchPackagePatterns": ["^eslint$", "^@eslint/", "^typescript-eslint$"],
+      "groupName": "eslint ecosystem",
+      "labels": ["deps", "lint"]
+    },
+    {
+      "matchPackagePatterns": ["^prettier$", "^prettier-plugin-"],
+      "groupName": "prettier ecosystem",
+      "labels": ["deps", "format"]
+    },
+    {
+      "matchPackagePatterns": ["^@changesets/", "^@commitlint/"],
+      "groupName": "tooling",
+      "labels": ["deps", "tooling"]
+    },
+    {
+      "matchPackageNames": ["pnpm"],
+      "matchManagers": ["npm"],
+      "groupName": "pnpm",
+      "labels": ["deps", "package-manager"],
+      "automerge": false
+    },
+    {
+      "matchPackageNames": ["bun", "bun-types", "@types/bun"],
+      "groupName": "bun runtime",
+      "labels": ["deps", "runtime"],
+      "automerge": false
+    }
+  ]
+}
