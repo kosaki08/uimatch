@@ -109,6 +109,26 @@ export const QUALITY_GATE_PROFILES: Record<string, QualityGateProfile> = {
   },
 
   /**
+   * Text-heavy page comparison - for document/legal pages with text-first evaluation
+   * Best for: Terms of Service, Privacy Policy, About pages, documentation
+   * Focuses on text accuracy and critical layout issues while being lenient on pixel differences
+   */
+  'page/text-doc': {
+    name: 'Text-heavy Page',
+    description: 'Document/legal pages with text-first evaluation',
+    thresholds: {
+      pixelDiffRatio: 0.2, // 20% - text rendering variations expected
+      deltaE: 6.0, // Slightly relaxed for text-heavy content
+      maxHighSeverityIssues: 3, // Allow some style variations
+      maxLayoutHighIssues: 1, // Critical layout issues still matter
+      areaGapCritical: 0.35, // 35% - text pages can have significant height differences
+      areaGapWarning: 0.15, // 15% area difference warning
+    },
+    contentBasis: 'intersection', // Focus on actual content area
+    autoReEvaluate: true,
+  },
+
+  /**
    * Lenient profile - for early prototyping and rough drafts
    * Best for: Prototyping, proof-of-concept, initial implementations
    */

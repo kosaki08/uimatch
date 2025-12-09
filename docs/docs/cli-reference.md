@@ -429,13 +429,14 @@ See [Plugins](./plugins.md) for details on creating custom plugins.
 
 uiMatch uses quality gate profiles to manage thresholds instead of individual CLI flags.
 
-| Profile             | Use Case                 | pixelDiffRatio | deltaE | Description               |
-| ------------------- | ------------------------ | -------------- | ------ | ------------------------- |
-| `component/strict`  | Design system components | 0.01 (1%)      | 3.0    | Pixel-perfect comparison  |
-| `component/dev`     | Development workflow     | 0.08 (8%)      | 5.0    | Relaxed for iteration     |
-| `page-vs-component` | Padded comparisons       | 0.12 (12%)     | 5.0    | Accounts for letterboxing |
-| `lenient`           | Prototyping              | 0.15 (15%)     | 8.0    | Very relaxed thresholds   |
-| `custom`            | Custom settings          | -              | -      | Uses `.uimatchrc.json`    |
+| Profile             | Use Case                 | pixelDiffRatio | deltaE | Description                   |
+| ------------------- | ------------------------ | -------------- | ------ | ----------------------------- |
+| `component/strict`  | Design system components | 0.01 (1%)      | 3.0    | Pixel-perfect comparison      |
+| `component/dev`     | Development workflow     | 0.08 (8%)      | 5.0    | Relaxed for iteration         |
+| `page-vs-component` | Padded comparisons       | 0.12 (12%)     | 5.0    | Accounts for letterboxing     |
+| `page/text-doc`     | Text-heavy pages         | 0.20 (20%)     | 6.0    | Terms, privacy, documentation |
+| `lenient`           | Prototyping              | 0.15 (15%)     | 8.0    | Very relaxed thresholds       |
+| `custom`            | Custom settings          | -              | -      | Uses `.uimatchrc.json`        |
 
 ### Using Profiles
 
@@ -445,6 +446,9 @@ npx uimatch compare figma=... story=... selector=... profile=component/strict
 
 # Development workflow
 npx uimatch compare figma=... story=... selector=... profile=component/dev
+
+# Text-heavy pages (Terms, Privacy Policy, etc.)
+npx uimatch compare figma=... story=... selector=... profile=page/text-doc
 ```
 
 ### Custom Configuration

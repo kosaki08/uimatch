@@ -116,6 +116,7 @@ profile=lenient           # Very relaxed for prototyping
 | `component/strict`  | 0.01 (1%)      | 3.0    | **Pixel-perfect** - Design system components |
 | `component/dev`     | 0.08 (8%)      | 5.0    | **Development** - Iterative work             |
 | `page-vs-component` | 0.12 (12%)     | 5.0    | **Padded** - Letterboxed comparisons         |
+| `page/text-doc`     | 0.20 (20%)     | 6.0    | **Text-heavy** - Terms, privacy, docs        |
 | `lenient`           | 0.15 (15%)     | 8.0    | **Prototyping** - Early drafts               |
 
 > **Important Note on `component/strict`:**
@@ -135,6 +136,8 @@ Current implementation supports:
 - **Layout issue detection** - Flags high-severity layout problems
 - **Automatic re-evaluation** - Smart re-checking with adjusted content basis
 - **Flexible area gap handling** - Area gap violations are downgraded to warnings when other metrics (pixelDiff, colorDeltaE, styleCoverage) are within thresholds, allowing comparisons to pass despite dimension mismatches
+
+> **Note:** For detailed information on area gap handling behavior, see [Area Gap Handling in v0.2.0](./area-gap-handling-v0.2.0.md).
 
 ## Size Handling
 

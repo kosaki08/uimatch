@@ -289,6 +289,7 @@ Fail CI if design fidelity is below threshold:
 - `component/strict` - Pixel-perfect (≤1% pixel diff, ΔE≤3.0, 0 high/layout severity issues, 15% area gap critical, 5% area gap warning)
 - `component/dev` - Development tolerance (≤8% pixel diff, ΔE≤5.0, 0 high/layout severity issues, 20% area gap critical, 8% area gap warning)
 - `page-vs-component` - Loose layout with intersection basis (≤12% pixel diff content, ΔE≤5.0, ≤2 high-severity, 0 layout issues, 25% area gap critical, 12% area gap warning)
+- `page/text-doc` - Text-heavy pages (≤20% pixel diff, ΔE≤6.0, ≤3 high-severity, ≤1 layout issue, 35% area gap critical, 15% area gap warning)
 - `lenient` - Prototyping (≤15% pixel diff, ΔE≤8.0, ≤5 high-severity, ≤2 layout issues, 30% area gap critical, 15% area gap warning)
 
 **Profile Parameters Explained:**
