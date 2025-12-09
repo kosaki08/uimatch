@@ -324,6 +324,8 @@ describe('Quality Gate', () => {
     expect(gate.suspicions.detected).toBe(true);
     // But should not fail the gate
     expect(gate.hardGateViolations?.some((v) => v.type === 'suspicion')).toBe(true);
+    // Suspicion reasons should be added to reasons array
+    expect(gate.reasons.some((r) => r.includes('[SUSPICION]'))).toBe(true);
   });
 
   test('should fail when area gap is large with failing styleCoverage', () => {

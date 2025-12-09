@@ -482,6 +482,13 @@ export function evaluateQualityGate(
         `Area gap ${(areaGap * 100).toFixed(1)}% exceeds warning threshold ${(areaGapWarning * 100).toFixed(1)}%`
       );
     }
+
+    // Add suspicion warnings to reasons if detected
+    if (suspicions.detected) {
+      for (const reason of suspicions.reasons) {
+        reasons.push(`[SUSPICION] ${reason}`);
+      }
+    }
   } else {
     // Add hard gate violations to reasons
     // Use gatingViolations instead of hardGateViolations
