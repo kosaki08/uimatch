@@ -220,7 +220,7 @@ describe('Quality Gate', () => {
     expect(gate.cqi).toBeLessThanOrEqual(100);
   });
 
-  test('should detect area gap violations', () => {
+  test('should pass when area gap is large but other metrics are OK', () => {
     const result: CompareImageResult = {
       pixelDiffRatio: 0.005,
       colorDeltaEAvg: 2.0,
@@ -247,7 +247,120 @@ describe('Quality Gate', () => {
       'union'
     );
 
+    // Should pass because other metrics are OK
+    expect(gate.pass).toBe(true);
+    // Area gap violation should still be recorded in hardGateViolations
+    expect(gate.hardGateViolations?.some((v) => v.type === 'area_gap')).toBe(true);
+    // Should have a reason explaining the area gap was downgraded to warning
+    expect(gate.reasons.some((r) => r.includes('treating area gap as warning'))).toBe(true);
+  });
+
+  test('should fail when area gap is large AND other metrics fail', () => {
+    const result: CompareImageResult = {
+      pixelDiffRatio: 0.02, // Exceeds threshold
+      colorDeltaEAvg: 2.0,
+      diffPixelCount: 200,
+      diffPngB64: '',
+      totalPixels: 10000,
+      dimensions: {
+        figma: { width: 100, height: 100 },
+        impl: { width: 130, height: 130 }, // 30% larger area
+        compared: { width: 130, height: 130 },
+        sizeMode: 'pad',
+        adjusted: true,
+      },
+    };
+
+    const gate = evaluateQualityGate(
+      result,
+      [],
+      {
+        pixelDiffRatio: 0.01,
+        deltaE: 3.0,
+        areaGapCritical: 0.15,
+      },
+      'union'
+    );
+
+    // Should fail because pixelDiffRatio exceeds threshold
     expect(gate.pass).toBe(false);
+    expect(gate.hardGateViolations?.some((v) => v.type === 'area_gap')).toBe(true);
+    expect(gate.reasons.some((r) => r.includes('[CRITICAL]'))).toBe(true);
+  });
+
+  test('should exclude suspicions from gating violations', () => {
+    const result: CompareImageResult = {
+      pixelDiffRatio: 0.005,
+      pixelDiffRatioContent: 0.005,
+      colorDeltaEAvg: 2.0,
+      diffPixelCount: 50,
+      diffPngB64: '',
+      totalPixels: 10000,
+      contentCoverage: 0.98,
+      dimensions: {
+        figma: { width: 100, height: 100 },
+        impl: { width: 130, height: 130 },
+        compared: { width: 130, height: 130 },
+        sizeMode: 'pad',
+        adjusted: true,
+        contentRect: { x1: 0, y1: 0, x2: 130, y2: 130 },
+      },
+    };
+
+    const gate = evaluateQualityGate(
+      result,
+      [],
+      {
+        pixelDiffRatio: 0.01,
+        deltaE: 3.0,
+        areaGapCritical: 0.15,
+      },
+      'union'
+    );
+
+    // Should pass even if suspicions are detected
+    expect(gate.pass).toBe(true);
+    // Suspicions should be recorded
+    expect(gate.suspicions.detected).toBe(true);
+    // But should not fail the gate
+    expect(gate.hardGateViolations?.some((v) => v.type === 'suspicion')).toBe(true);
+  });
+
+  test('should fail when area gap is large with failing styleCoverage', () => {
+    const result: CompareImageResult = {
+      pixelDiffRatio: 0.005,
+      colorDeltaEAvg: 2.0,
+      diffPixelCount: 50,
+      diffPngB64: '',
+      totalPixels: 10000,
+      dimensions: {
+        figma: { width: 100, height: 100 },
+        impl: { width: 130, height: 130 },
+        compared: { width: 130, height: 130 },
+        sizeMode: 'pad',
+        adjusted: true,
+      },
+    };
+
+    const gate = evaluateQualityGate(
+      result,
+      [],
+      {
+        pixelDiffRatio: 0.01,
+        deltaE: 3.0,
+        areaGapCritical: 0.15,
+        minStyleCoverage: 0.8,
+      },
+      'union',
+      undefined,
+      { coverage: 0.5 } // Low style coverage
+    );
+
+    // Should fail because area gap cannot be downgraded when styleCoverage is low
+    expect(gate.pass).toBe(false);
+    // The failure reason should mention area gap (since it's the gating violation)
+    expect(gate.reasons.some((r) => r.includes('Area gap'))).toBe(true);
+    // Area gap should be in hardGateViolations
     expect(gate.hardGateViolations?.some((v) => v.type === 'area_gap')).toBe(true);
   });
 });

@@ -410,8 +410,43 @@ export function evaluateQualityGate(
     true // Always include breakdown for transparency
   );
 
+  // Extract violations that should actually fail the gate
+  // Treat suspicion and re_evaluation as informational only
+  let gatingViolations = hardGateViolations.filter(
+    (v) => v.type !== 'suspicion' && v.type !== 're_evaluation'
+  );
+
+  // Detect case where area_gap is the only hard violation
+  const onlyAreaGapViolation =
+    gatingViolations.length === 1 && gatingViolations[0]?.type === 'area_gap';
+
+  if (onlyAreaGapViolation) {
+    // Check styleCoverage if it's configured
+    const styleCoverageOk =
+      styleSummary?.coverage === undefined ||
+      thresholds.minStyleCoverage === undefined ||
+      styleSummary.coverage >= thresholds.minStyleCoverage;
+
+    // Check if all other metrics are within thresholds
+    const canIgnoreAreaGap =
+      effectivePixelRatio <= thresholds.pixelDiffRatio &&
+      colorDeltaEAvg <= thresholds.deltaE &&
+      styleCoverageOk;
+
+    // If all other metrics are OK, downgrade area_gap to warning and pass the gate
+    if (canIgnoreAreaGap) {
+      gatingViolations = [];
+      reasons.push(
+        `Area gap ${(areaGap * 100).toFixed(1)}% > ${(areaGapCritical * 100).toFixed(
+          1
+        )}% but pixelDiff / colorDeltaE / styleCoverage are within thresholds - treating area gap as warning and passing gate`
+      );
+    }
+  }
+
   // Determine pass/fail
-  let pass = hardGateViolations.length === 0;
+  // Use gatingViolations instead of hardGateViolations for the decision
+  let pass = gatingViolations.length === 0;
 
   // Apply threshold checks (only if no hard gate violations)
   if (pass) {
@@ -449,7 +484,8 @@ export function evaluateQualityGate(
     }
   } else {
     // Add hard gate violations to reasons
-    for (const violation of hardGateViolations) {
+    // Use gatingViolations instead of hardGateViolations
+    for (const violation of gatingViolations) {
       reasons.push(`[${violation.severity.toUpperCase()}] ${violation.reason}`);
     }
   }
