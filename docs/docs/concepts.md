@@ -134,6 +134,7 @@ Current implementation supports:
 - **Color difference (deltaE)** - Perceptual color difference threshold
 - **Layout issue detection** - Flags high-severity layout problems
 - **Automatic re-evaluation** - Smart re-checking with adjusted content basis
+- **Flexible area gap handling** - Area gap violations are downgraded to warnings when other metrics (pixelDiff, colorDeltaE, styleCoverage) are within thresholds, allowing comparisons to pass despite dimension mismatches
 
 ## Size Handling
 
