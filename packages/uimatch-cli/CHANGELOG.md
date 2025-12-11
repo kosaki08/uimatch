@@ -1,5 +1,17 @@
 # @uimatch/cli
 
+## 0.2.0
+
+### Added
+
+- feat(cli): add version command to display package version
+- feat(core): add page/text-doc profile for text-heavy pages (Terms, Privacy Policy, documentation)
+- chore(cli): standardize npx usage and update docs
+
+### Changed
+
+- Relaxed thresholds for text-heavy pages: 20% pixelDiff, 6.0 deltaE, 35% area gap critical
+
 ## 0.1.1
 
 ### Patch Changes
