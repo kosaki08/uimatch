@@ -1,5 +1,16 @@
 # @uimatch/cli
 
+## 1.0.0
+
+### Minor Changes
+
+- 0de4039: feat: add `areaGapCritical` and `areaGapWarning` CLI parameters and configuration options
+
+### Patch Changes
+
+- @uimatch/shared-logging@1.0.0
+- @uimatch/selector-anchors@1.0.0
+
 ## 0.2.0
 
 ### Added
