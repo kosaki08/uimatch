@@ -4,12 +4,20 @@
 
 import { getSettings, resetSettings } from '#plugin/commands/settings.js';
 import { runExperimentalClaudeReport } from '#plugin/experimental/claude-report.js';
+import { createRequire } from 'module';
 import { runCompare } from './compare.js';
 import { runDoctor } from './doctor/index.js';
 import { initLogger } from './logger.js';
 import { errln, outln } from './print.js';
 import { runSuite } from './suite.js';
 import { runTextDiff } from './text-diff.js';
+
+interface PackageJson {
+  version: string;
+}
+
+const require = createRequire(import.meta.url);
+const pkg = require('../../package.json') as PackageJson;
 
 // P0 Guard: Exception handlers to catch runtime errors
 // Note: Module loading errors cannot be caught here per ESM specification
@@ -45,6 +53,7 @@ function printHelp(): void {
   outln('  settings      Manage plugin configuration (get|set|reset)');
   outln('  experimental  Experimental commands (unstable, may change)');
   outln('  help          Show this help message');
+  outln('  version       Show version number');
   outln('');
   outln('Global Options:');
   outln('  --log-level <level>     Set log level (silent|debug|info|warn|error)');
@@ -54,9 +63,21 @@ function printHelp(): void {
   outln('Run "uimatch compare" or "uimatch suite" without args to see command-specific options');
 }
 
+/**
+ * Print version message to stdout (bypassing logger for CLI output)
+ */
+function printVersion(): void {
+  outln(`uimatch-cli: ${pkg.version}`);
+}
+
 async function main(): Promise<void> {
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     printHelp();
+    process.exit(0);
+  }
+
+  if (command === 'version' || command === '--version' || command === '-v') {
+    printVersion();
     process.exit(0);
   }
 
