@@ -1,6 +1,15 @@
 # @uimatch/cli
 
-## 0.2.0
+## 0.3.1
+
+### Added
+
+- feat(cli): add `--textGate` flag for text-based quality gate mode
+  - When enabled with `--text=true`, the quality gate passes based on text match results instead of visual differences
+  - Visual differences are still reported but don't affect CI exit code
+  - Useful for text-heavy pages where content accuracy is more important than pixel-perfect visual matching
+
+## 0.3.0
 
 ### Added
 

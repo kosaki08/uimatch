@@ -75,6 +75,7 @@ export interface ParsedArgs {
   textMinRatio?: string;
   areaGapCritical?: string;
   areaGapWarning?: string;
+  textGate?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -291,6 +292,7 @@ function printUsage(): void {
     '  areaGapCritical=<0..1>             Area gap threshold for immediate failure (default: 0.15)'
   );
   errln('  areaGapWarning=<0..1>              Area gap threshold for warning (default: 0.05)');
+  errln('  textGate=<bool> or --textGate      Use text match for gate decision (default: false)');
   errln('');
   errln('Example:');
   errln(
@@ -851,8 +853,36 @@ export async function runCompare(argv: string[]): Promise<void> {
       }
     }
 
-    // Use profile gate result if more restrictive than base gate
-    const finalPass = (result.report.qualityGate?.pass ?? false) && profileGatePass;
+    // Text gate mode: use text match result for pass/fail decision
+    // Support both textGate=true and --textGate formats
+    const rawTextGate = (args as unknown as { textGate?: string | boolean }).textGate;
+    const textGateMode = rawTextGate === 'true' || rawTextGate === true || rawTextGate === '';
+    const textMatch = result.report.textMatch;
+
+    let finalPass: boolean;
+
+    if (textGateMode && textMatch?.enabled) {
+      // Text gate mode: pass if text matches, regardless of visual differences
+      finalPass = Boolean(textMatch?.equal);
+
+      if (!finalPass && result.report.qualityGate?.pass) {
+        outln('\n⚠️  Text gate: ❌ FAIL (text mismatch)');
+        outln('  Visual gate would have passed, but text content differs');
+      } else if (finalPass && !result.report.qualityGate?.pass) {
+        outln('\n✅ Text gate: PASS (text match)');
+        outln('  Note: Visual differences detected but ignored in text gate mode');
+      }
+    } else {
+      // Standard mode: use profile gate result if more restrictive than base gate
+      finalPass = (result.report.qualityGate?.pass ?? false) && profileGatePass;
+
+      // Warn if textGate is enabled but textCheck is not active
+      if (textGateMode && !textMatch?.enabled) {
+        outln('\nℹ️  textGate is enabled but textCheck is not active.');
+        outln('    Enable text match with: text=true textMatch=ratio ...');
+      }
+    }
+
     process.exit(finalPass ? 0 : 1);
   } catch (error) {
     errln('❌ Error:', error instanceof Error ? error.message : String(error));

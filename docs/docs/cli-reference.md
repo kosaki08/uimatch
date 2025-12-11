@@ -114,6 +114,11 @@ textMatch=exact|contains|ratio     # Matching mode (default: ratio)
                                    #   ratio: Similarity scoring
 textMinRatio=0..1                  # Minimum similarity threshold (default: 0.98)
                                    # Only applies when textMatch=ratio
+textGate=true|false                # Use text match for quality gate (default: false)
+--textGate                         # Alternative flag format (same as textGate=true)
+                                   # When enabled, CI passes/fails based on text match
+                                   # instead of visual differences
+                                   # Visual differences are still reported
 ```
 
 **Note**: Text matching results appear in the `textMatch` section of `report.json` when `outDir` is specified.
@@ -181,6 +186,27 @@ Results include a `textMatch` section in `report.json`:
   }
 }
 ```
+
+#### Text-Heavy Pages (Text Gate Mode)
+
+For text-heavy pages like Terms of Service or Privacy Policy, you can use text gate mode to pass CI based on text accuracy while still monitoring visual differences:
+
+```shell
+npx @uimatch/cli compare \
+  figma=abc123:1-2 \
+  story=http://localhost:3000/terms \
+  selector="#terms-content" \
+  text=true \
+  --textGate \
+  profile=page/text-doc \
+  outDir=./comparison-results
+```
+
+In this mode:
+
+- CI passes if text content matches (exit code 0)
+- Visual differences are reported but don't fail the build
+- Useful when content accuracy is more important than pixel-perfect layout
 
 ## `suite` Command
 
