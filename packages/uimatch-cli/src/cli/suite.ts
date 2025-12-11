@@ -5,6 +5,7 @@
  */
 
 import { uiMatchCompare } from '#plugin/commands/compare';
+import type { CompareArgs } from '#plugin/types/index';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getLogger } from './logger.js';
@@ -24,12 +25,14 @@ type SuiteItem = {
   align?: 'center' | 'top-left' | 'top' | 'left';
   padColor?: 'auto' | { r: number; g: number; b: number };
   contentBasis?: 'union' | 'intersection' | 'figma' | 'impl';
-  thresholds?: Record<string, number>;
+  thresholds?: CompareArgs['thresholds'];
   pixelmatch?: { threshold?: number; includeAA?: boolean };
   tokens?: Record<string, Record<string, string>>;
   ignore?: string[];
   weights?: Record<string, number>;
   bootstrap?: boolean; // derive expectedSpec from Figma node if true
+  textCheck?: CompareArgs['textCheck'];
+  textGate?: boolean;
 };
 
 type SuiteConfig = {
@@ -95,6 +98,8 @@ function mergeItem(defaults: Partial<SuiteItem> | undefined, item: SuiteItem): S
     weights: { ...(defaults?.weights ?? {}), ...(item.weights ?? {}) },
     ignore: item.ignore ?? defaults?.ignore,
     contentBasis: item.contentBasis ?? defaults?.contentBasis,
+    textCheck: item.textCheck ?? defaults?.textCheck,
+    textGate: item.textGate ?? defaults?.textGate,
   };
 }
 
@@ -170,6 +175,7 @@ export async function runSuite(argv: string[]): Promise<void> {
           emitArtifacts: true,
           // bootstrap expectedSpec for first-time runs if requested
           bootstrapExpectedFromFigma: Boolean(item.bootstrap),
+          textCheck: item.textCheck, // Pass text check configuration
         });
 
         const rep = res.report;
@@ -179,9 +185,12 @@ export async function runSuite(argv: string[]): Promise<void> {
           await writeFile(join(itemDir, 'impl.png'), Buffer.from(figs.implPngB64, 'base64'));
           await writeFile(join(itemDir, 'diff.png'), Buffer.from(figs.diffPngB64, 'base64'));
         }
+
+        const textGateMode = item.textGate && rep.textMatch?.enabled;
+        const ok = textGateMode ? Boolean(rep.textMatch?.equal) : Boolean(rep.qualityGate?.pass);
+
         await writeFile(join(itemDir, 'report.json'), JSON.stringify(rep, null, 2));
 
-        const ok = Boolean(rep.qualityGate?.pass);
         const styleDiffsArray = Array.isArray(rep.styleDiffs) ? rep.styleDiffs : [];
         const styleDiffsCount = styleDiffsArray.length;
         const highCount = styleDiffsArray.filter((d) => d.severity === 'high').length;

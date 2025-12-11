@@ -1,0 +1,99 @@
+name: Terms of Service Text Verification
+
+on:
+  pull_request:
+    paths:
+      - 'src/pages/TermsPage.tsx'
+      - 'src/components/terms/**'
+      - '.github/workflows/terms-text-verification.yml'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  verify-terms-text:
+    name: Verify Terms Text Matches Figma
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Start preview server
+        run: |
+          pnpm preview &
+          echo "PREVIEW_PID=$!" >> $GITHUB_ENV
+          # Wait for server to be ready
+          pnpm exec wait-on http://localhost:4173 --timeout 30000
+
+      - name: Run uiMatch text verification
+        env:
+          FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_ACCESS_TOKEN }}
+          FIGMA_TERMS_NODE: ${{ secrets.FIGMA_TERMS_NODE }}
+          UIMATCH_HEADLESS: true
+          UIMATCH_HTTP_TIMEOUT_MS: 20000
+        run: |
+          set -e
+          npx @uimatch/cli compare \
+            figma=$FIGMA_TERMS_NODE \
+            story=http://localhost:4173/terms \
+            selector="#terms-root" \
+            text=true \
+            textMode=self \
+            textMatch=ratio \
+            textMinRatio=1.0 \
+            textGate=true \
+            profile=page/text-doc \
+            size=pad \
+            contentBasis=element \
+            areaGapCritical=1.0 \
+            outDir=./uimatch-reports/terms-text-check
+
+      - name: Upload uiMatch reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uimatch-reports-${{ github.run_number }}
+          path: uimatch-reports/
+          retention-days: 30
+
+      - name: Display artifact URL
+        if: always()
+        run: |
+          echo "📊 uiMatch Report Artifacts"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Artifact Name: uimatch-reports-${{ github.run_number }}"
+          echo "Artifact URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo ""
+          echo "To download the artifacts:"
+          echo "  1. Visit the URL above"
+          echo "  2. Scroll to the 'Artifacts' section at the bottom"
+          echo "  3. Click 'uimatch-reports-${{ github.run_number }}' to download"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [ ! -z "$PREVIEW_PID" ]; then
+            kill $PREVIEW_PID || true
+          fi

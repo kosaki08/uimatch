@@ -311,7 +311,7 @@ See [quality-gate-profiles.ts](https://github.com/kosaki08/uimatch/blob/main/pac
 
 Compare multiple components in parallel:
 
-```yaml
+````yaml
 jobs:
   compare:
     runs-on: ubuntu-latest
@@ -331,6 +331,103 @@ jobs:
             story=https://storybook.com/iframe.html?id=${{ matrix.component }} \
             selector="#root .${{ matrix.component }}" \
             outDir=uimatch-reports-${{ matrix.component }}
+
+## Recipe: Text Verification Workflow
+
+For text-heavy pages like Terms of Service where strict pixel matching might differ due to rendering quirks, you can focus on text content verification using the `page/text-doc` profile.
+
+Here is a comprehensive workflow example that:
+
+1.  Starts a local preview server
+2.  Waits for it to be ready
+3.  Runs uiMatch with text-verification parameters (`textMatch=ratio`, `textMinRatio=1.0`)
+
+<details>
+<summary>View Workflow YAML</summary>
+
+```yaml
+name: Terms of Service Text Verification
+
+on:
+  pull_request:
+    paths:
+      - 'src/pages/TermsPage.tsx'
+      - 'src/components/terms/**'
+      - '.github/workflows/terms-text-verification.yml'
+
+jobs:
+  verify-terms-text:
+    name: Verify Terms Text Matches Figma
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Start preview server
+        run: |
+          pnpm preview &
+          echo "PREVIEW_PID=$!" >> $GITHUB_ENV
+          # Wait for server to be ready
+          npx wait-on http://localhost:4173 --timeout 30000
+
+      - name: Run uiMatch text verification
+        env:
+          FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_ACCESS_TOKEN }}
+          FIGMA_TERMS_NODE: ${{ secrets.FIGMA_TERMS_NODE }}
+          UIMATCH_HEADLESS: true
+        run: |
+          npx @uimatch/cli compare \
+            figma=$FIGMA_TERMS_NODE \
+            story=http://localhost:4173/terms \
+            selector="#terms-root" \
+            text=true \
+            textMode=self \
+            textMatch=ratio \
+            textMinRatio=1.0 \
+            textGate=true \
+            profile=page/text-doc \
+            size=pad \
+            contentBasis=intersection \
+            areaGapCritical=1.0 \
+            outDir=./uimatch-reports/terms-text-check
+
+      - name: Upload uiMatch reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uimatch-reports
+          path: uimatch-reports/
+          retention-days: 30
+
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [ ! -z "$PREVIEW_PID" ]; then
+            kill $PREVIEW_PID || true
+          fi
+````
+
+</details>
 ```
 
 ## See Also
