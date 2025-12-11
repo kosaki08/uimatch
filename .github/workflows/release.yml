@@ -49,27 +49,3 @@ jobs:
 
       - name: Build packages (solution, ordered)
         run: pnpm run build:force
-
-      - name: Verify npm authentication
-        if: ${{ env.NPM_TOKEN != '' && vars.ENABLE_PUBLISH == 'true' }}
-        run: |
-          npm whoami
-          npm ping
-        env:
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
-
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        # Use env instead of secrets for safe if-condition evaluation
-        # ENABLE_PUBLISH variable must be set to 'true' to enable publish
-        if: ${{ env.NPM_TOKEN != '' && vars.ENABLE_PUBLISH == 'true' }}
-        uses: changesets/action@v1
-        with:
-          version: pnpm changeset version
-          publish: pnpm publish -r --access public --provenance --no-git-checks
-          title: 'chore: version packages'
-          commit: 'chore: version packages'
-        env:
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ env.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
