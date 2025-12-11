@@ -79,6 +79,18 @@ export interface Thresholds {
    * @default 1.0
    */
   shadowColorExtraDE?: number;
+
+  /**
+   * Area gap threshold for immediate failure (0-1).
+   * @default 0.15 (15%)
+   */
+  areaGapCritical?: number;
+
+  /**
+   * Area gap threshold for warning (0-1).
+   * @default 0.05 (5%)
+   */
+  areaGapWarning?: number;
 }
 
 /**

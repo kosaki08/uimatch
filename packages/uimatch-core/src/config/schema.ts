@@ -152,6 +152,18 @@ export const ComparisonConfigSchema = z.object({
    * @default []
    */
   ignoreProperties: z.array(z.string()).default([]),
+
+  /**
+   * Area gap threshold for immediate failure (0-1).
+   * @default 0.15
+   */
+  areaGapCritical: z.number().min(0).max(1).default(0.15),
+
+  /**
+   * Area gap threshold for warning (0-1).
+   * @default 0.05
+   */
+  areaGapWarning: z.number().min(0).max(1).default(0.05),
 });
 
 /**

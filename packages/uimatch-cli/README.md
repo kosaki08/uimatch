@@ -64,6 +64,8 @@ Compare a single Figma design with implementation.
 - `story`: Implementation URL (Storybook, localhost, or deployed)
 - `selector`: CSS selector for target element
 - `profile`: (Optional) Quality profile - `component/strict` | `component/dev` | `page-vs-component` | `page/text-doc` | `lenient` | `custom`
+- `areaGapCritical`: (Optional) Area gap threshold for immediate failure (0-1, default: 0.15)
+- `areaGapWarning`: (Optional) Area gap threshold for warning (0-1, default: 0.05)
 - `outDir`: (Optional) Output directory for artifacts (screenshots, diffs)
 
 ### `suite`

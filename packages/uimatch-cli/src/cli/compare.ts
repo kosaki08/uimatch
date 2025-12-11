@@ -73,6 +73,8 @@ export interface ParsedArgs {
   textCase?: string;
   textMatch?: string;
   textMinRatio?: string;
+  areaGapCritical?: string;
+  areaGapWarning?: string;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -285,6 +287,10 @@ function printUsage(): void {
   errln('  textCase=<sensitive|insensitive>   Case sensitivity (default: insensitive)');
   errln('  textMatch=<exact|contains|ratio>   Matching mode (default: ratio)');
   errln('  textMinRatio=<0..1>                Minimum similarity ratio (default: 0.98)');
+  errln(
+    '  areaGapCritical=<0..1>             Area gap threshold for immediate failure (default: 0.15)'
+  );
+  errln('  areaGapWarning=<0..1>              Area gap threshold for warning (default: 0.05)');
   errln('');
   errln('Example:');
   errln(
@@ -436,6 +442,8 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
       config.thresholds = {
         pixelDiffRatio: profile.thresholds.pixelDiffRatio,
         deltaE: profile.thresholds.deltaE,
+        areaGapCritical: profile.thresholds.areaGapCritical,
+        areaGapWarning: profile.thresholds.areaGapWarning,
       };
 
       // Override contentBasis if profile specifies it
@@ -456,6 +464,19 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
         `Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`
       );
     }
+  }
+
+  // Add direct CLI argument overrides for thresholds
+  if (config.thresholds === undefined) {
+    config.thresholds = {};
+  }
+  if (args.areaGapCritical) {
+    const value = parseFloat(args.areaGapCritical);
+    if (!Number.isNaN(value)) config.thresholds.areaGapCritical = value;
+  }
+  if (args.areaGapWarning) {
+    const value = parseFloat(args.areaGapWarning);
+    if (!Number.isNaN(value)) config.thresholds.areaGapWarning = value;
   }
 
   // Text match options

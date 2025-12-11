@@ -621,8 +621,8 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     {
       pixelDiffRatio: tPix,
       deltaE: tDe,
-      areaGapCritical: 0.15, // Recommended thresholds
-      areaGapWarning: 0.05,
+      areaGapCritical: args.thresholds?.areaGapCritical ?? settings.comparison.areaGapCritical,
+      areaGapWarning: args.thresholds?.areaGapWarning ?? settings.comparison.areaGapWarning,
     },
     effectiveContentBasis ?? 'union'
   );

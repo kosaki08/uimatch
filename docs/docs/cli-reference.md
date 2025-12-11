@@ -78,6 +78,10 @@ profile=component/strict # Pixel-perfect (pixelDiffRatio: 0.01, deltaE: 3.0)
 profile=component/dev    # Development (pixelDiffRatio: 0.08, deltaE: 5.0)
 profile=page-vs-component # Padded comparison (pixelDiffRatio: 0.12)
 profile=lenient          # Prototyping (pixelDiffRatio: 0.15, deltaE: 8.0)
+
+# Fine-grained thresholds (overrides profile)
+areaGapCritical=<0..1>   # Critical area gap threshold (default: 0.15)
+areaGapWarning=<0..1>    # Warning area gap threshold (default: 0.05)
 ```
 
 See [Quality Gate Profiles](#quality-gate-profiles) for detailed threshold settings.
