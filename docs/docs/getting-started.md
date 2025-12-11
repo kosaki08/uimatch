@@ -69,7 +69,7 @@ await uiMatchCompare({ ... });
 Run a simple comparison between a Figma design and your implementation:
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=https://www.figma.com/file/YOUR_FILE_KEY?node-id=YOUR_NODE_ID \
   story=http://localhost:3000/your-page \
   selector="#my-component"
@@ -86,7 +86,7 @@ npx uimatch compare \
 By default, UI Match outputs results to the console. To save comparison artifacts (screenshots, diff images, reports), specify an output directory:
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=... \
   story=... \
   selector=... \
@@ -107,7 +107,7 @@ For the `suite` command, the default output directory is `.uimatch-suite`.
 ### Storybook Integration
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=FILE_KEY:NODE_ID \
   story=http://localhost:6006/iframe.html?id=button--primary \
   selector="#storybook-root button"
@@ -116,7 +116,7 @@ npx uimatch compare \
 ### CI/CD Pipeline
 
 ```shell
-npx uimatch suite path=suite.json
+npx @uimatch/cli suite path=suite.json
 ```
 
 ### Text-only Checks (Copy Validation)
@@ -124,10 +124,10 @@ npx uimatch suite path=suite.json
 For text-only validation without pixel comparison, use the `text-diff` command:
 
 ```shell
-npx uimatch text-diff "Sign in" "SIGN  IN"
+npx @uimatch/cli text-diff "Sign in" "SIGN  IN"
 # → kind: 'whitespace-or-case-only', similarity: 1.0
 
-npx uimatch text-diff "Submit" "Submt" --threshold=0.6
+npx @uimatch/cli text-diff "Submit" "Submt" --threshold=0.6
 # → kind: 'normalized-match', similarity: 0.7+
 ```
 

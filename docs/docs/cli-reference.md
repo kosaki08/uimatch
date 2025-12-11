@@ -14,6 +14,7 @@ uiMatch provides the following commands:
 - **`suite`** - Run multiple comparisons from a JSON suite file
 - **`text-diff`** - Compare two text strings and show similarity score
 - **`doctor`** - Diagnose installation and configuration issues
+- **`version`** - Display CLI version information
 
 ## `compare` Command
 
@@ -24,7 +25,7 @@ Compare a Figma design with your implementation.
 **Note:** This assumes `@uimatch/cli` is already installed (globally or as a dev dependency).
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=<FIGMA_REFERENCE> \
   story=<URL> \
   selector=<CSS_SELECTOR> \
@@ -120,7 +121,7 @@ See [Text Matching](./concepts.md#text-matching) for detailed information on nor
 #### Basic Comparison
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector="#button"
@@ -129,7 +130,7 @@ npx uimatch compare \
 #### With Strict Quality Profile
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=https://figma.com/file/abc123?node-id=1-2 \
   story=http://localhost:6006/?path=/story/button--primary \
   selector=".storybook-button" \
@@ -139,7 +140,7 @@ npx uimatch compare \
 #### Mobile Viewport
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector="#mobile-nav" \
@@ -151,7 +152,7 @@ npx uimatch compare \
 Compare both visual appearance and text content to detect typos and copy differences:
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=abc123:1-2 \
   story=http://localhost:6006/?path=/story/accordion--default \
   selector="[data-testid='accordion']" \
@@ -184,7 +185,7 @@ Run multiple comparisons from a JSON configuration file.
 ### Basic Syntax
 
 ```shell
-npx uimatch suite path=<suite-file.json> [options]
+npx @uimatch/cli suite path=<suite-file.json> [options]
 ```
 
 ### Suite File Format
@@ -223,7 +224,7 @@ concurrency=<number>     # Run comparisons in parallel (default: 4)
 ### Example
 
 ```shell
-npx uimatch suite path=tests/visual-regression.json concurrency=3
+npx @uimatch/cli suite path=tests/visual-regression.json concurrency=3
 ```
 
 ## `text-diff` Command
@@ -233,7 +234,7 @@ Compare two text strings and show similarity score with classification.
 ### Basic Syntax
 
 ```shell
-npx uimatch text-diff <expected> <actual> [options]
+npx @uimatch/cli text-diff <expected> <actual> [options]
 ```
 
 ### Positional Arguments
@@ -292,7 +293,7 @@ The comparison applies the following normalization steps:
 #### Basic Comparison
 
 ```shell
-npx uimatch text-diff "Sign in" "SIGN  IN"
+npx @uimatch/cli text-diff "Sign in" "SIGN  IN"
 ```
 
 Output:
@@ -309,7 +310,7 @@ Output:
 #### Case-Sensitive Comparison
 
 ```shell
-npx uimatch text-diff "Submit" "submit" --case-sensitive
+npx @uimatch/cli text-diff "Submit" "submit" --case-sensitive
 ```
 
 Output:
@@ -326,7 +327,7 @@ Output:
 #### With Custom Threshold
 
 ```shell
-npx uimatch text-diff "Hello World" "Helo World" --threshold=0.6
+npx @uimatch/cli text-diff "Hello World" "Helo World" --threshold=0.6
 ```
 
 Output:
@@ -343,7 +344,7 @@ Output:
 #### Full-Width Character Handling
 
 ```shell
-npx uimatch text-diff "Button123" "Button１２３"
+npx @uimatch/cli text-diff "Button123" "Button１２３"
 ```
 
 Output:
@@ -381,6 +382,26 @@ console.log(result.similarity); // 0.0 - 1.0
 ```
 
 See [API Reference](./api-reference.md) for details.
+
+## `version` Command
+
+Display the current version of the CLI.
+
+### Basic Syntax
+
+```shell
+npx @uimatch/cli version
+```
+
+### Alternatives
+
+You can also use standard flags:
+
+```shell
+npx @uimatch/cli --version
+# or
+npx @uimatch/cli -v
+```
 
 ## Environment Variables
 
@@ -442,13 +463,13 @@ uiMatch uses quality gate profiles to manage thresholds instead of individual CL
 
 ```shell
 # Pixel-perfect comparison
-npx uimatch compare figma=... story=... selector=... profile=component/strict
+npx @uimatch/cli compare figma=... story=... selector=... profile=component/strict
 
 # Development workflow
-npx uimatch compare figma=... story=... selector=... profile=component/dev
+npx @uimatch/cli compare figma=... story=... selector=... profile=component/dev
 
 # Text-heavy pages (Terms, Privacy Policy, etc.)
-npx uimatch compare figma=... story=... selector=... profile=page/text-doc
+npx @uimatch/cli compare figma=... story=... selector=... profile=page/text-doc
 ```
 
 ### Custom Configuration

@@ -26,7 +26,7 @@ npx playwright install chromium
 ### Basic Comparison
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=AbCdEf123:456-789 \
   story=http://localhost:6006/?path=/story/button \
   selector="#root button"
@@ -35,7 +35,7 @@ npx uimatch compare \
 ### With Quality Profile
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=AbCdEf123:456-789 \
   story=http://localhost:6006 \
   selector=".card" \
@@ -45,7 +45,7 @@ npx uimatch compare \
 ### With Output Directory
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=AbCdEf123:456-789 \
   story=http://localhost:6006 \
   selector=".card" \
@@ -63,7 +63,7 @@ Compare a single Figma design with implementation.
 - `figma`: Figma file key and node ID (format: `fileKey:nodeId`)
 - `story`: Implementation URL (Storybook, localhost, or deployed)
 - `selector`: CSS selector for target element
-- `profile`: (Optional) Quality profile - `component/strict` | `component/dev` | `page-vs-component` | `lenient` | `custom`
+- `profile`: (Optional) Quality profile - `component/strict` | `component/dev` | `page-vs-component` | `page/text-doc` | `lenient` | `custom`
 - `outDir`: (Optional) Output directory for artifacts (screenshots, diffs)
 
 ### `suite`
@@ -71,7 +71,7 @@ Compare a single Figma design with implementation.
 Run multiple comparisons from a JSON configuration file.
 
 ```bash
-npx uimatch suite path=suite-config.json
+npx @uimatch/cli suite path=suite-config.json
 ```
 
 ### `doctor`
@@ -79,7 +79,19 @@ npx uimatch suite path=suite-config.json
 Diagnose installation and configuration issues.
 
 ```bash
-npx uimatch doctor
+npx @uimatch/cli doctor
+```
+
+### `version`
+
+Display the current version of the CLI.
+
+```bash
+npx @uimatch/cli version
+# or
+npx @uimatch/cli --version
+# or
+npx @uimatch/cli -v
 ```
 
 ### `text-diff`
@@ -87,7 +99,7 @@ npx uimatch doctor
 Compare two text strings and show similarity score with classification.
 
 ```bash
-npx uimatch text-diff <expected> <actual> [options]
+npx @uimatch/cli text-diff <expected> <actual> [options]
 ```
 
 **Options:**
@@ -106,13 +118,13 @@ Returns a JSON object with:
 **Example:**
 
 ```bash
-npx uimatch text-diff "Sign in" "SIGN  IN"
+npx @uimatch/cli text-diff "Sign in" "SIGN  IN"
 # → kind: 'whitespace-or-case-only', similarity: 1.0
 
-npx uimatch text-diff "Submit" "submit" --case-sensitive
+npx @uimatch/cli text-diff "Submit" "submit" --case-sensitive
 # → kind: 'whitespace-or-case-only', similarity: 1.0
 
-npx uimatch text-diff "Hello" "Helo" --threshold=0.6
+npx @uimatch/cli text-diff "Hello" "Helo" --threshold=0.6
 # → kind: 'normalized-match', similarity: 0.8
 ```
 
@@ -154,6 +166,7 @@ Create `.uimatchrc.json` in your project root:
 | `component/strict`  | 0.01 (1%)      | 3.0 | DS component validation |
 | `component/dev`     | 0.08 (8%)      | 5.0 | Dev iteration           |
 | `page-vs-component` | 0.12 (12%)     | 5.0 | Padded page comparison  |
+| `page/text-doc`     | 0.20 (20%)     | 6.0 | Text-heavy pages        |
 | `lenient`           | 0.15 (15%)     | 8.0 | PoC/prototype           |
 | `custom`            | (from config)  | -   | From settings file      |
 

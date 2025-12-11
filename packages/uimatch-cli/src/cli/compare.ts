@@ -272,7 +272,7 @@ function printUsage(): void {
   errln('  weights=<json>          JSON weights for DFS (e.g., \'{"color":0.5,"spacing":1}\')');
   errln('  format=<type>           Output format (standard|claude, default: standard)');
   errln(
-    '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|lenient|custom)'
+    '  profile=<name>          Quality gate profile (component/strict|component/dev|page-vs-component|page/text-doc|lenient|custom)'
   );
   errln('  showCqi=<bool>          Display Composite Quality Indicator (default: true)');
   errln('  showSuspicions=<bool>   Display suspicion warnings (default: true)');

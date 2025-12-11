@@ -51,7 +51,7 @@ npx playwright install chromium
 **Note:** The examples below assume `@uimatch/cli` is already installed (globally or as a dev dependency).
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=<fileKey>:<nodeId> \
   story=http://localhost:6006/?path=/story/button \
   selector="#root button"
@@ -71,7 +71,7 @@ npx -p @uimatch/cli uimatch compare \
 ### Save Artifacts
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=<fileKey>:<nodeId> \
   story=http://localhost:6006/?path=/story/button \
   selector="#root button" \
@@ -99,7 +99,7 @@ npx uimatch compare \
 ### Component vs Component (Strict)
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=... story=... selector=... \
   size=strict profile=component/strict
 ```
@@ -107,7 +107,7 @@ npx uimatch compare \
 ### Page vs Component (Padded)
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=... story=... selector=... \
   size=pad contentBasis=intersection
 ```
@@ -142,7 +142,7 @@ jobs:
         env:
           FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_TOKEN }}
         run: |
-          npx uimatch compare \
+          npx @uimatch/cli compare \
             figma=${{ secrets.FIGMA_FILE }}:${{ secrets.FIGMA_NODE }} \
             story=https://storybook.com/?path=/story/button \
             selector="#root button" \
@@ -168,9 +168,10 @@ Built-in profiles for different use cases:
 - `component/strict` - Pixel-perfect for design systems
 - `component/dev` - Development tolerance
 - `page-vs-component` - Loose layout comparison
+- `page/text-doc` - Text-heavy pages (Terms, Privacy)
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=... story=... selector=... \
   profile=component/strict
 ```
@@ -229,7 +230,7 @@ node packages/uimatch-cli/dist/cli/index.js compare \
 Run diagnostics:
 
 ```bash
-npx uimatch doctor
+npx @uimatch/cli doctor
 ```
 
 **Common issues:**

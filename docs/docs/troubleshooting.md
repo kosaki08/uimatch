@@ -11,7 +11,7 @@ Common issues and solutions when using uiMatch.
 Run the built-in health check:
 
 ```shell
-npx uimatch doctor
+npx @uimatch/cli doctor
 ```
 
 This checks:
@@ -31,32 +31,27 @@ This checks:
 - `npm error 404 Not Found - GET https://registry.npmjs.org/uimatch - Not found`
 - `npm error 404  'uimatch@*' is not in this registry`
 
-This usually happens when:
+This happens because:
 
-- `@uimatch/cli` is **not installed** yet, and
-- you run `npx uimatch ...` (npx tries to install a package literally named `uimatch`, which doesn't exist)
+- The package name is `@uimatch/cli`, not `uimatch`
+- `npx uimatch` tries to install a package literally named `uimatch`, which doesn't exist
 
 **Solutions:**
 
-1. **Install the CLI first:**
+1. **Use the scoped package name with npx:**
 
    ```shell
-   # As dev dependency
-   npm install -D @uimatch/cli
-
-   # Or globally
-   npm install -g @uimatch/cli
+   npx @uimatch/cli compare ...
    ```
 
-   Then run:
+2. **Or install globally and run directly:**
 
    ```shell
-   npx uimatch compare ...
-   # or
+   npm install -g @uimatch/cli
    uimatch compare ...
    ```
 
-2. **Or use an explicit npx one-liner (no install required):**
+3. **Or use an explicit npx package flag:**
 
    ```shell
    npx -p @uimatch/cli uimatch compare \
@@ -66,13 +61,6 @@ This usually happens when:
    ```
 
    The `-p @uimatch/cli` flag explicitly tells npx which package to install, and `uimatch` is the binary name to run.
-
-**Why this happens:**
-
-- Package name: `@uimatch/cli`
-- Binary name: `uimatch`
-
-When you run `npx uimatch`, npx looks for a package named `uimatch` (not `@uimatch/cli`), which doesn't exist. Using `-p @uimatch/cli uimatch` clarifies both the package and binary names.
 
 ### Figma Access Errors
 
@@ -105,7 +93,7 @@ When you run `npx uimatch`, npx looks for a package named `uimatch` (not `@uimat
 1. **Run with visible browser:**
 
    ```shell
-   UIMATCH_HEADLESS=false npx uimatch compare ...
+   UIMATCH_HEADLESS=false npx @uimatch/cli compare ...
    ```
 
    Watch the browser to see what's happening.
@@ -203,7 +191,7 @@ When you run `npx uimatch`, npx looks for a package named `uimatch` (not `@uimat
 
 3. **Disable headless for debugging:**
    ```shell
-   UIMATCH_HEADLESS=false npx uimatch compare ...
+   UIMATCH_HEADLESS=false npx @uimatch/cli compare ...
    ```
 
 ### Environment Variable Issues
@@ -291,7 +279,7 @@ UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 1. **Run comparisons in parallel:**
 
    ```shell
-   npx uimatch suite path=tests.json concurrency=4
+   npx @uimatch/cli suite path=tests.json concurrency=4
    ```
 
 2. **Cache browser binaries:**
@@ -362,7 +350,7 @@ Still stuck? Here's how to get help:
 1. **Enable debug logging:**
 
    ```shell
-   UIMATCH_LOG_LEVEL=debug npx uimatch compare ...
+   UIMATCH_LOG_LEVEL=debug npx @uimatch/cli compare ...
    ```
 
 2. **Check GitHub Issues:**
@@ -385,7 +373,7 @@ Still stuck? Here's how to get help:
    ```shell
    # Headless is true by default
    # Explicitly set if needed:
-   UIMATCH_HEADLESS=true npx uimatch compare ...
+   UIMATCH_HEADLESS=true npx @uimatch/cli compare ...
    ```
 
 2. **Reduce screenshot area:**
@@ -397,7 +385,7 @@ Still stuck? Here's how to get help:
 
 3. **Parallel execution:**
    ```shell
-   npx uimatch suite path=tests.json concurrency=4
+   npx @uimatch/cli suite path=tests.json concurrency=4
    ```
 
 ### Reduce Flakiness
