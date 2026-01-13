@@ -63,7 +63,7 @@
     }
   },
   "devDependencies": {
-    "@types/bun": "^1.1.13",
+    "@types/bun": "^1.3.6",
     "@uimatch/selector-spi": "workspace:^",
     "rimraf": "^6.0.1"
   }
