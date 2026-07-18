@@ -34,11 +34,11 @@
   },
   "dependencies": {
     "@uimatch/shared-logging": "workspace:^",
-    "pino": "^9.7.0",
-    "pino-pretty": "^13.1.2",
+    "pino": "^9.14.0",
+    "pino-pretty": "^13.1.3",
     "pngjs": "^7.0.0",
     "pixelmatch": "^6.0.0",
-    "zod": "^4.1.12"
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "@uimatch/selector-anchors": "^0.1.0",
@@ -56,7 +56,7 @@
     "@uimatch/selector-spi": "workspace:^",
     "@uimatch/core": "workspace:^",
     "@uimatch/scoring": "workspace:^",
-    "globby": "^14.0.2",
-    "tsup": "^8.5.0"
+    "globby": "^14.1.0",
+    "tsup": "^8.5.1"
   }
 }
