@@ -65,7 +65,6 @@
     },
     {
       "matchPackageNames": ["pnpm"],
-      "matchManagers": ["npm"],
       "groupName": "pnpm",
       "labels": ["deps", "package-manager"],
       "automerge": false
