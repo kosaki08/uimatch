@@ -295,9 +295,7 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
                     };
 
                     // If postWrite hook is provided, use it to persist changes
-                    const postWriteFn = context.postWrite as
-                      | ((path: string, anchors: object) => Promise<void>)
-                      | undefined;
+                    const postWriteFn = context.postWrite;
                     if (postWriteFn) {
                       try {
                         await postWriteFn(context.anchorsPath, updatedAnchors);
@@ -387,9 +385,7 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
                             ),
                           };
 
-                          const postWriteFn = context.postWrite as
-                            | undefined
-                            | ((p: string, a: object) => Promise<void>);
+                          const postWriteFn = context.postWrite;
                           if (postWriteFn) {
                             try {
                               await postWriteFn(context.anchorsPath, updatedAnchors);

@@ -237,7 +237,7 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     // Get plugin instance (handle both default and named exports)
     const plugin = (
       typeof pluginModule === 'object' && pluginModule !== null && 'default' in pluginModule
-        ? (pluginModule as { default: unknown }).default
+        ? pluginModule.default
         : pluginModule
     ) as SelectorResolverPlugin;
 

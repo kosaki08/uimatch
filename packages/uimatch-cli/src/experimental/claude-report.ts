@@ -33,13 +33,13 @@ export async function runExperimentalClaudeReport(args: string[]): Promise<void>
 
   // Temporarily override process.exit to suppress early exits from runCompare
   const originalExit: (this: void, code?: number) => never = process.exit.bind(process);
-  (process.exit as unknown) = ((code?: number): never => {
+  (process.exit as unknown) = (code?: number): never => {
     if (code !== 0 && code !== undefined) {
       originalExit(code);
     }
     // Allow continuing if exit code is 0 or undefined
     return undefined as never;
-  }) as typeof process.exit;
+  };
 
   try {
     // Run compare - this will log comparison details normally

@@ -243,6 +243,6 @@ export function buildExpectedSpecFromFigma(
   tokens?: TokenMap
 ): ExpectedSpec {
   const spec: ExpectedSpec = {};
-  build(node as FigmaNodeLite, '__self__', spec, tokens, true);
+  build(node, '__self__', spec, tokens, true);
   return spec;
 }
