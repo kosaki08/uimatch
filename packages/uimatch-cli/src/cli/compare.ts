@@ -95,7 +95,7 @@ function parseArgs(argv: string[]): ParsedArgs {
         const val = kv[2];
         out.emitArtifacts = val === 'true' ? true : val === 'false' ? false : undefined;
       } else {
-        out[key] = kv[2] as never;
+        out[key] = kv[2];
       }
       continue;
     }

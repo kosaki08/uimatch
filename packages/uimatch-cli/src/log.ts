@@ -50,12 +50,12 @@ export function createCliLogger(options?: LoggerOptions): Logger {
   // File output
   if (file) {
     const destination = pino.destination({ dest: file, sync: false });
-    return pino(baseOpts, destination) as Logger;
+    return pino(baseOpts, destination);
   }
 
   // JSON format (for CI)
   if (format === 'json') {
-    return pino(baseOpts) as Logger;
+    return pino(baseOpts);
   }
 
   // Pretty format (for development)
@@ -68,7 +68,7 @@ export function createCliLogger(options?: LoggerOptions): Logger {
     },
   };
   const stream = pino.transport(transport) as pino.DestinationStream;
-  return pino(baseOpts, stream) as Logger;
+  return pino(baseOpts, stream);
 }
 
 /**

@@ -484,7 +484,7 @@ export function buildStyleDiffs(
         };
       };
       const ao = takeOffset(props['box-shadow']);
-      const eo = takeOffset(exp['box-shadow'] as string);
+      const eo = takeOffset(exp['box-shadow']);
       const okOffset =
         (ao.x == null || eo.x == null || Math.abs(ao.x - eo.x) <= 1) &&
         (ao.y == null || eo.y == null || Math.abs(ao.y - eo.y) <= 1);

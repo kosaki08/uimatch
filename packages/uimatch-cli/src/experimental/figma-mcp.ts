@@ -102,7 +102,7 @@ export class FigmaMcpClient {
         'content-type': 'application/json',
         ...(this.config.mcpToken ? { authorization: `Bearer ${this.config.mcpToken}` } : {}),
       },
-      body: JSON.stringify({ name, arguments: args } as ToolCall),
+      body: JSON.stringify({ name, arguments: args } satisfies ToolCall),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');

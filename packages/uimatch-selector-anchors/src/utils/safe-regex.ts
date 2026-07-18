@@ -38,7 +38,11 @@ async function loadRE2(): Promise<void> {
   try {
     // Dynamic import of optional dependency
     // Using type guard to safely extract constructor
-    // Type assertion needed because re2 may not be installed (optional dependency)
+    // Type assertion needed because re2 may not be installed (optional dependency).
+    // The rule only sees an environment where re2 happens to be installed, so it
+    // reports this as unnecessary; without it, tsc fails with TS2307 wherever the
+    // optional dependency was skipped.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     const re2Module: unknown = await import('re2' as never);
     RE2 = extractRE2Constructor(re2Module);
   } catch {

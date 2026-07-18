@@ -422,7 +422,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
           propsMode: opts.propsMode ?? 'extended',
           props: Array.from(
             (opts.propsMode ?? 'extended') === 'default' ? DEFAULT_PROPS : EXTENDED_PROPS
-          ) as string[],
+          ),
         }
       );
 
