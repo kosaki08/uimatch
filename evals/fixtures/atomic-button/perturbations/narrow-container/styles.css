@@ -1,0 +1,15 @@
+@import url('../../base.css');
+
+#fixture {
+  width: 88px;
+  overflow: hidden;
+}
+
+#atomic {
+  max-width: 100%;
+}
+
+#atomic span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

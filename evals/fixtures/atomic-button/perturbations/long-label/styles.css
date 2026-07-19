@@ -1,0 +1,5 @@
+@import url('../../base.css');
+
+#atomic span {
+  width: 160px;
+}

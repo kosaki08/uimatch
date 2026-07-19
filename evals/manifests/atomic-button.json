@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "atomic-button",
+  "selector": "#atomic",
+  "viewport": { "width": 320, "height": 160 },
+  "reference": {
+    "html": "fixtures/atomic-button/reference/index.html",
+    "css": "fixtures/atomic-button/reference/styles.css",
+    "expectedMetadata": {
+      "width": 96,
+      "height": 40,
+      "childCount": 1,
+      "padding": [8, 16, 8, 16]
+    },
+    "expectedSpec": {
+      "__self__": {
+        "display": "flex",
+        "flex-direction": "row",
+        "align-items": "center",
+        "justify-content": "center",
+        "gap": "10px",
+        "padding-top": "8px",
+        "padding-right": "16px",
+        "padding-bottom": "8px",
+        "padding-left": "16px",
+        "border-radius": "6px",
+        "width": "96px",
+        "height": "40px"
+      },
+      "__self__ > :nth-child(1)": {
+        "font-family": "Inter, sans-serif",
+        "font-size": "14px",
+        "font-weight": "500",
+        "line-height": "24px"
+      }
+    }
+  },
+  "mutations": [
+    {
+      "id": "padding-drift",
+      "html": "fixtures/atomic-button/mutations/padding-drift/index.html",
+      "css": "fixtures/atomic-button/mutations/padding-drift/styles.css",
+      "rootCause": {
+        "description": "The button horizontal padding drifted from 16px to 28px.",
+        "acceptedRepairs": [
+          [{ "selector": "#atomic", "property": "padding", "value": "8px 16px" }],
+          [{ "selector": "#atomic", "property": "padding-inline", "value": "16px" }],
+          [
+            { "selector": "#atomic", "property": "padding-left", "value": "16px" },
+            { "selector": "#atomic", "property": "padding-right", "value": "16px" }
+          ]
+        ]
+      }
+    }
+  ],
+  "perturbations": [
+    {
+      "id": "long-label",
+      "html": "fixtures/atomic-button/perturbations/long-label/index.html",
+      "css": "fixtures/atomic-button/perturbations/long-label/styles.css"
+    },
+    {
+      "id": "narrow-container",
+      "html": "fixtures/atomic-button/perturbations/narrow-container/index.html",
+      "css": "fixtures/atomic-button/perturbations/narrow-container/styles.css"
+    }
+  ]
+}

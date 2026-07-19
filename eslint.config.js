@@ -40,6 +40,32 @@ export default [
       'no-console': 'off',
     },
   },
+  {
+    files: ['evals/runners/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['evals/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              message: 'Evals must consume workspace code through the @uimatch/cli package export.',
+              regex: '(^|/)packages/[^/]+/src(/|$)|^@uimatch/[^/]+/src(/|$)',
+            },
+            {
+              message: 'Evals may import only @uimatch/cli from workspace packages.',
+              regex: '^@uimatch/(?!cli$)',
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Ignore config files and generated code
   {
     ignores: [

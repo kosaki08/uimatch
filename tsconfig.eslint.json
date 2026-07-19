@@ -1,10 +1,23 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "#plugin/*": ["./packages/uimatch-cli/src/*"],
+      "@uimatch/cli": ["./packages/uimatch-cli/src/index.ts"],
+      "@uimatch/core": ["./packages/uimatch-core/src/index.ts"],
+      "@uimatch/scoring": ["./packages/uimatch-scoring/src/index.ts"],
+      "@uimatch/selector-anchors": ["./packages/uimatch-selector-anchors/src/index.ts"],
+      "@uimatch/selector-spi": ["./packages/uimatch-selector-spi/src/index.ts"],
+      "@uimatch/shared-logging": ["./packages/shared-logging/src/index.ts"]
+    }
+  },
   "include": [
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx",
     "packages/*/*.config.ts",
     "e2e/**/*.ts",
+    "evals/**/*.ts",
+    "test-utils/**/*.ts",
     "*.config.ts"
   ]
 }

@@ -19,6 +19,9 @@
     "test:unit": "UIMATCH_LOG_LEVEL=silent vitest run --config vitest.config.ts",
     "test:integration": "pnpm run build && UIMATCH_HEADLESS=true UIMATCH_LOG_LEVEL=silent vitest run --config vitest.integration.config.ts",
     "test:figma-smoke": "tsx scripts/run-figma-smoke.ts",
+    "eval:smoke": "tsx evals/runners/run-eval.ts --self-check",
+    "eval:run": "tsx evals/runners/run-eval.ts",
+    "eval:report": "tsx evals/runners/report.ts",
     "test:ci": "pnpm test",
     "test:coverage": "UIMATCH_LOG_LEVEL=silent vitest run --config vitest.config.ts --coverage",
     "test:coverage:html": "UIMATCH_LOG_LEVEL=silent vitest run --config vitest.config.ts --coverage",
@@ -28,7 +31,7 @@
     "lint:fix": "eslint . --fix",
     "build:types": "pnpm -r --filter @uimatch/shared-logging --filter @uimatch/selector-spi --filter @uimatch/core run build",
     "build": "pnpm -r --filter @uimatch/shared-logging --filter @uimatch/core --filter @uimatch/scoring --filter @uimatch/selector-spi --filter @uimatch/selector-anchors --filter @uimatch/cli run build",
-    "type-check": "pnpm run build:types && pnpm run type-check:unit && pnpm run type-check:e2e",
+    "type-check": "pnpm run build:types && pnpm run type-check:unit && pnpm run type-check:e2e && tsc --noEmit -p evals/tsconfig.json",
     "type-check:unit": "tsc --noEmit -p packages/uimatch-core/tsconfig.json && tsc --noEmit -p packages/uimatch-scoring/tsconfig.json && tsc --noEmit -p packages/uimatch-selector-anchors/tsconfig.json && tsc --noEmit -p packages/uimatch-cli/tsconfig.json",
     "type-check:e2e": "cd e2e && tsc --noEmit",
     "check": "pnpm run verify:package-manager && pnpm run lint && pnpm run type-check",
@@ -53,6 +56,7 @@
     "@playwright/test": "^1.56.1",
     "@types/node": "^22.10.5",
     "@types/pngjs": "^6.0.5",
+    "@uimatch/cli": "workspace:^",
     "@vitest/coverage-v8": "^4.1.10",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.5",
@@ -70,7 +74,7 @@
     "parse5": "^8.0.1"
   },
   "lint-staged": {
-    "packages/**/*.{ts,tsx}": [
+    "{packages,evals,test-utils}/**/*.{ts,tsx}": [
       "eslint --cache --cache-location .cache/eslint --fix --max-warnings=0 --no-warn-ignored"
     ],
     "packages/**/*.js": [
