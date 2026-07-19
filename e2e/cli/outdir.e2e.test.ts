@@ -29,6 +29,10 @@ describe('E2E: outDir artifact saving', () => {
   // A minimal 10x10 red PNG in base64 (for UIMATCH_FIGMA_PNG_B64 bypass)
   const RED_PNG_B64 =
     'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC';
+  // Remove the browser default body margin so the target fits the 10x10 viewport.
+  const STORY_URL = `data:text/html,${encodeURIComponent(
+    '<style>html,body{margin:0}</style><div id="test" style="width:10px;height:10px;background:red"></div>'
+  )}`;
 
   beforeEach(async () => {
     // Clean test output directory
@@ -67,14 +71,11 @@ describe('E2E: outDir artifact saving', () => {
       NODE_ENV: 'test',
     };
 
-    const storyUrl = `data:text/html,${encodeURIComponent(
-      '<div id="test" style="width:10px;height:10px;background:red"></div>'
-    )}`;
     runCli(
       [
         'compare',
         'figma=bypass:test',
-        `story=${storyUrl}`,
+        `story=${STORY_URL}`,
         'selector=#test',
         `outDir=${testOutDir}`,
         'timestampOutDir=false',
@@ -115,14 +116,11 @@ describe('E2E: outDir artifact saving', () => {
       NODE_ENV: 'test',
     };
 
-    const storyUrl = `data:text/html,${encodeURIComponent(
-      '<div id="test" style="width:10px;height:10px;background:red"></div>'
-    )}`;
     runCli(
       [
         'compare',
         'figma=bypass:test',
-        `story=${storyUrl}`,
+        `story=${STORY_URL}`,
         'selector=#test',
         `outDir=${testOutDir}`,
         'timestampOutDir=false',
@@ -155,16 +153,13 @@ describe('E2E: outDir artifact saving', () => {
       NODE_ENV: 'test',
     };
 
-    const storyUrl = `data:text/html,${encodeURIComponent(
-      '<div id="test" style="width:10px;height:10px;background:red"></div>'
-    )}`;
     // Note: NOT specifying emitArtifacts explicitly
 
     runCli(
       [
         'compare',
         'figma=bypass:test',
-        `story=${storyUrl}`,
+        `story=${STORY_URL}`,
         'selector=#test',
         `outDir=${testOutDir}`,
         'timestampOutDir=false',
