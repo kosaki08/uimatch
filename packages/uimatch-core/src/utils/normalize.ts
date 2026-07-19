@@ -21,15 +21,16 @@ export interface BoxShadowParsed {
  * @returns Value in pixels, or undefined if parsing fails
  */
 export function toPx(value?: string, baseFontSize = 16): number | undefined {
-  if (!value || value === 'auto' || value === 'none') return undefined;
+  if (!value) return undefined;
 
   const trimmed = value.trim();
-  if (trimmed === '0') return 0;
+  if (trimmed === 'auto' || trimmed === 'none') return undefined;
 
-  const match = trimmed.match(/^(-?[\d.]+)(px|rem|em)?$/);
+  const match = trimmed.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(px|rem|em)?$/);
   if (!match || !match[1]) return undefined;
 
-  const num = parseFloat(match[1]);
+  const num = Number(match[1]);
+  if (!Number.isFinite(num)) return undefined;
   const unit = match[2] || 'px';
 
   switch (unit) {

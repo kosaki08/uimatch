@@ -4,20 +4,13 @@
 
 import { getSettings, resetSettings } from '#plugin/commands/settings.js';
 import { runExperimentalClaudeReport } from '#plugin/experimental/claude-report.js';
-import { createRequire } from 'module';
 import { runCompare } from './compare.js';
 import { runDoctor } from './doctor/index.js';
 import { initLogger } from './logger.js';
+import { CLI_VERSION } from './package-meta.js';
 import { errln, outln } from './print.js';
 import { runSuite } from './suite.js';
 import { runTextDiff } from './text-diff.js';
-
-interface PackageJson {
-  version: string;
-}
-
-const require = createRequire(import.meta.url);
-const pkg = require('../../package.json') as PackageJson;
 
 // P0 Guard: Exception handlers to catch runtime errors
 // Note: Module loading errors cannot be caught here per ESM specification
@@ -67,7 +60,7 @@ function printHelp(): void {
  * Print version message to stdout (bypassing logger for CLI output)
  */
 function printVersion(): void {
-  outln(`uimatch-cli: ${pkg.version}`);
+  outln(`uimatch-cli: ${CLI_VERSION}`);
 }
 
 async function main(): Promise<void> {

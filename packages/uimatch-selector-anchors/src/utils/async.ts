@@ -9,7 +9,7 @@
  * Returns null if the timeout is reached
  *
  * @param promise - Promise to execute with timeout
- * @param timeoutMs - Timeout in milliseconds
+ * @param timeoutMs - Timeout in milliseconds. Non-positive values time out immediately.
  * @returns Promise result or null on timeout
  *
  * @example
@@ -21,8 +21,18 @@
  * ```
  */
 export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-  return await Promise.race([
-    promise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
-  ]);
+  void promise.catch(() => {});
+  if (timeoutMs <= 0) return null;
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }

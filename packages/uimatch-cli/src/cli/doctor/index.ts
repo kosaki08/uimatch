@@ -3,9 +3,10 @@
  */
 
 import { execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { hostname } from 'node:os';
 import path from 'node:path';
+import { CLI_VERSION } from '../package-meta.js';
 import { outln } from '../print.js';
 import { getSelectedChecks } from './checks/index.js';
 import { formatReport } from './format.js';
@@ -201,24 +202,11 @@ export async function runDoctor(args: string[]): Promise<void> {
     }
   }
 
-  // Create report
-  const packageJson = JSON.parse(readFileSync(path.join(cwd, 'package.json'), 'utf-8')) as {
-    workspaces?: unknown;
-    version?: string;
-  };
-  const version = packageJson.workspaces
-    ? (
-        JSON.parse(readFileSync(path.join(cwd, 'packages/uimatch-cli/package.json'), 'utf-8')) as {
-          version?: string;
-        }
-      ).version
-    : packageJson.version;
-
   const report: DoctorReport = {
     reportVersion: '1.0.0',
     generator: {
       name: 'uimatch-cli',
-      version: version ?? '0.0.0',
+      version: CLI_VERSION,
     },
     timestamp: new Date().toISOString(),
     summary: {

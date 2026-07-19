@@ -12,38 +12,37 @@ import {
 } from './utils/normalize';
 
 describe('toPx', () => {
-  test('converts px values', () => {
-    expect(toPx('16px')).toBe(16);
-    expect(toPx('24px')).toBe(24);
-    expect(toPx('0px')).toBe(0);
+  test.each([
+    ['16px', 16, 16],
+    ['0px', 16, 0],
+    ['1.5rem', 16, 24],
+    ['2em', 16, 32],
+    ['0', 16, 0],
+    ['+16px', 16, 16],
+    ['-1rem', 16, -16],
+    ['.5em', 20, 10],
+    ['1.', 16, 1],
+    [' 24px ', 16, 24],
+  ])('converts %s with base font size %i', (value, baseFontSize, expected) => {
+    expect(toPx(value, baseFontSize)).toBe(expected);
   });
 
-  test('converts rem values', () => {
-    expect(toPx('1rem', 16)).toBe(16);
-    expect(toPx('1.5rem', 16)).toBe(24);
-    expect(toPx('2rem', 16)).toBe(32);
-  });
-
-  test('converts em values', () => {
-    expect(toPx('1em', 16)).toBe(16);
-    expect(toPx('1.5em', 16)).toBe(24);
-    expect(toPx('2em', 16)).toBe(32);
-  });
-
-  test('handles unitless zero', () => {
-    expect(toPx('0')).toBe(0);
-  });
-
-  test('returns undefined for invalid values', () => {
-    expect(toPx('auto')).toBeUndefined();
-    expect(toPx('none')).toBeUndefined();
-    expect(toPx('invalid')).toBeUndefined();
-    expect(toPx(undefined)).toBeUndefined();
-  });
-
-  test('handles negative values', () => {
-    expect(toPx('-16px')).toBe(-16);
-    expect(toPx('-1rem', 16)).toBe(-16);
+  test.each([
+    ['missing value', undefined],
+    ['empty value', ''],
+    ['auto keyword', 'auto'],
+    ['none keyword', 'none'],
+    ['unknown keyword', 'invalid'],
+    ['decimal point without digits', '.'],
+    ['signed decimal point without digits', '+.'],
+    ['multiple decimal points', '1.2.3px'],
+    ['exponent notation', '1e3px'],
+    ['whitespace before the unit', '16 px'],
+    ['unsupported unit', '16pt'],
+    ['trailing content', '16px trailing'],
+    ['numeric overflow', `${'9'.repeat(400)}px`],
+  ])('rejects %s', (_case, value) => {
+    expect(toPx(value)).toBeUndefined();
   });
 });
 
