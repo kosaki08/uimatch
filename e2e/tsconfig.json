@@ -5,11 +5,10 @@
     "noEmit": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "baseUrl": "..",
     "paths": {
-      "@uimatch/selector-anchors": ["packages/uimatch-selector-anchors/src/index.ts"],
-      "@uimatch/selector-spi": ["packages/uimatch-selector-spi/src/index.ts"],
-      "@uimatch/core": ["packages/uimatch-core/src/index.ts"]
+      "@uimatch/selector-anchors": ["../packages/uimatch-selector-anchors/src/index.ts"],
+      "@uimatch/selector-spi": ["../packages/uimatch-selector-spi/src/index.ts"],
+      "@uimatch/core": ["../packages/uimatch-core/src/index.ts"]
     }
   },
   "include": ["**/*.ts"],

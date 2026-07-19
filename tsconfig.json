@@ -26,14 +26,13 @@
     "noPropertyAccessFromIndexSignature": false,
 
     // Path aliases for monorepo packages
-    "baseUrl": ".",
     "paths": {
-      "@uimatch/shared-logging": ["packages/shared-logging/src/index.ts"],
-      "@uimatch/selector-spi": ["packages/uimatch-selector-spi/src/index.ts"],
-      "@uimatch/selector-anchors": ["packages/uimatch-selector-anchors/src/index.ts"],
-      "@uimatch/core": ["packages/uimatch-core/src/index.ts"],
-      "@uimatch/scoring": ["packages/uimatch-scoring/src/index.ts"],
-      "#plugin/*": ["packages/uimatch-cli/src/*"]
+      "@uimatch/shared-logging": ["./packages/shared-logging/src/index.ts"],
+      "@uimatch/selector-spi": ["./packages/uimatch-selector-spi/src/index.ts"],
+      "@uimatch/selector-anchors": ["./packages/uimatch-selector-anchors/src/index.ts"],
+      "@uimatch/core": ["./packages/uimatch-core/src/index.ts"],
+      "@uimatch/scoring": ["./packages/uimatch-scoring/src/index.ts"],
+      "#plugin/*": ["./packages/uimatch-cli/src/*"]
     }
   },
   "exclude": ["node_modules", "dist", "scripts", "docs"]

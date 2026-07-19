@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-/**
- * Official uiMatch CLI - compare command
- * Safe for commit and distribution with sanitized logging
- */
 
 import { uiMatchCompare } from '#plugin/commands/compare';
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
