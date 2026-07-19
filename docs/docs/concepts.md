@@ -217,9 +217,9 @@ uiMatch follows a modular pipeline architecture with three main stages: input ac
 ### Key Components
 
 - **`@uimatch/cli`** - CLI entry point and user interface
-- **`@uimatch/core`** - Comparison engine with pixel/color analysis
+- **`@uimatch/core`** - Internal comparison engine bundled into `@uimatch/cli`
 - **`@uimatch/selector-anchors`** - Optional AST-based selector plugin
-- **`@uimatch/scoring`** - Design Fidelity Score calculator
+- **`@uimatch/scoring`** - Internal Design Fidelity Score calculator bundled into `@uimatch/cli`
 
 ### Input Acquisition Modes
 
@@ -450,23 +450,6 @@ npx uimatch text-diff "Button123" "Button１２３"
 # → whitespace-or-case-only (full-width digits normalized)
 ```
 
-#### Component Testing
-
-Validate text content in automated tests:
-
-```typescript
-import { compareText } from '@uimatch/core';
-
-const result = compareText(expectedLabel, actualElement.textContent, {
-  caseSensitive: false,
-  similarityThreshold: 0.9,
-});
-
-if (result.kind === 'mismatch') {
-  console.error('Text mismatch:', result);
-}
-```
-
 ### Integration with Pixel Comparison
 
 Text matching complements pixel-based comparison by:
@@ -476,24 +459,8 @@ Text matching complements pixel-based comparison by:
 - **Supporting automation** - Enable programmatic validation of text content
 - **Enhancing quality gates** - Add text fidelity to comparison criteria
 
-### Programmatic Usage
-
-For programmatic use in tests or automation:
-
-```typescript
-import { compareText } from '@uimatch/core';
-
-const diff = compareText('Expected Text', 'Actual Text', {
-  caseSensitive: false,
-  similarityThreshold: 0.9,
-});
-
-console.log(diff.kind); // Classification type
-console.log(diff.similarity); // Similarity score (0-1)
-console.log(diff.equalNormalized); // True if normalized texts match
-```
-
-See [CLI Reference → text-diff Command](./cli-reference.md#text-diff-command) for CLI usage and [API Reference](./api-reference.md) for programmatic details.
+`@uimatch/core` is an internal package and is not a supported public API. Use the
+[`text-diff` command](./cli-reference.md#text-diff-command) for text comparison.
 
 ## Advanced Topics
 

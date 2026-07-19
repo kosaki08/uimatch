@@ -242,19 +242,9 @@ jobs:
           echo "✅ CLI bundle verified"
 
       - name: Pack all packages (pnpm9-safe loop to ${{ github.workspace }}/dist-packages)
-        shell: bash
         run: |
-          set -Eeuo pipefail
           DIST_DIR="${{ github.workspace }}/dist-packages"
-          mkdir -p "$DIST_DIR"
-          echo "Packing into: $DIST_DIR"
-          # Pack each workspace package
-          while IFS= read -r -d '' dir; do
-            if [[ -f "$dir/package.json" ]]; then
-              echo "→ pnpm pack $(basename "$dir")"
-              (cd "$dir" && pnpm pack --pack-destination "$DIST_DIR")
-            fi
-          done < <(find packages -mindepth 1 -maxdepth 1 -type d -print0)
+          node scripts/pack-public-packages.mjs "$DIST_DIR"
           echo "Generated tarballs:"
           ls -la "$DIST_DIR" || true
 
@@ -382,18 +372,9 @@ jobs:
           ls -la packages/uimatch-cli/dist/cli/index.js
 
       - name: Pack all workspace packages
-        shell: bash
         run: |
-          set -Eeuo pipefail
           DIST_DIR="${{ github.workspace }}/dist-packages"
-          mkdir -p "$DIST_DIR"
-          echo "Packing into: $DIST_DIR"
-          while IFS= read -r -d '' dir; do
-            if [[ -f "$dir/package.json" ]]; then
-              echo "→ pnpm pack $(basename "$dir")"
-              (cd "$dir" && pnpm pack --pack-destination "$DIST_DIR")
-            fi
-          done < <(find packages -mindepth 1 -maxdepth 1 -type d -print0)
+          node scripts/pack-public-packages.mjs "$DIST_DIR"
           echo "Tarballs ready:"
           ls -la "$DIST_DIR" || true
 
@@ -436,13 +417,11 @@ jobs:
         run: |
           set -eux
           npm init -y
-          CORE_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-core-*.tgz)
           CLI_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-cli-*.tgz)
           LOG_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-shared-logging-*.tgz)
           SPI_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-spi-*.tgz)
           ANC_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-selector-anchors-*.tgz)
-          SCR_TGZ=$(ls ${GITHUB_WORKSPACE}/dist-packages/uimatch-scoring-*.tgz)
-          npm install "$LOG_TGZ" "$SPI_TGZ" "$CORE_TGZ" "$SCR_TGZ" "$ANC_TGZ" "$CLI_TGZ" playwright
+          npm install "$LOG_TGZ" "$SPI_TGZ" "$ANC_TGZ" "$CLI_TGZ" playwright
 
       - name: Show installed bins
         working-directory: /tmp/uimatch-cli-smoke

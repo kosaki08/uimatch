@@ -395,23 +395,8 @@ Output:
 - **Typography debugging** - Identify subtle text differences (case, whitespace, unicode)
 - **Component testing** - Validate text content in UI components
 
-### Programmatic Usage
-
-For programmatic use, import `compareText` from `@uimatch/core`:
-
-```typescript
-import { compareText } from '@uimatch/core';
-
-const result = compareText('Expected', 'Actual', {
-  caseSensitive: false,
-  similarityThreshold: 0.9,
-});
-
-console.log(result.kind); // 'exact-match' | 'whitespace-or-case-only' | ...
-console.log(result.similarity); // 0.0 - 1.0
-```
-
-See [API Reference](./api-reference.md) for details.
+`@uimatch/core` is an internal package and is not a supported public API. Use this
+command when text comparison is required in scripts or CI.
 
 ## `version` Command
 
