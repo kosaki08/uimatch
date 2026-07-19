@@ -83,7 +83,7 @@ npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector=my-button \
-  --anchor ./my-test-id-anchor.js
+  selectorsPlugin=@my-company/uimatch-test-id-plugin
 ```
 
 See [Plugins](./plugins.md) for complete plugin development guide.
@@ -184,34 +184,12 @@ uiMatch follows a modular pipeline architecture with three main stages: input ac
 
 ### High-Level Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│              uiMatch Workflow                   │
-└─────────────────────────────────────────────────┘
-
-  Figma Design          Implementation
-  (3 modes)             (Storybook/URL)
-       ↓                       ↓
-  ┌─────────┐           ┌──────────┐
-  │ Figma   │           │Playwright│
-  │ API     │           │ Browser  │
-  └────┬────┘           └────┬─────┘
-       │ PNG                 │ Screenshot + CSS
-       ↓                     ↓
-  ┌────────────────────────────────┐
-  │      @uimatch/core Engine      │
-  │  • Size Handler (4 modes)      │
-  │  • Pixelmatch (content-aware)  │
-  │  • Color ΔE2000 (perceptual)   │
-  │  • Quality Gate (thresholds)   │
-  └───────────────┬────────────────┘
-                  ↓
-          ┌──────────────┐
-          │  DFS Score   │  0-100
-          │  Reports     │  Pass/Fail
-          └──────┬───────┘
-                 ↓
-         [ CI/CD Integration ]
+```mermaid
+flowchart TD
+  FIGMA["Figma design<br/>API, MCP, or bypass"] -->|PNG| CORE["@uimatch/core<br/>size handling, pixel and style diff, quality gate"]
+  IMPL["Implementation<br/>Storybook or URL"] -->|"Playwright screenshot + CSS"| CORE
+  CORE --> REPORT["DFS score + reports<br/>Pass or fail"]
+  REPORT --> CI["CI/CD integration"]
 ```
 
 ### Key Components
@@ -320,15 +298,14 @@ tests/
 
 Understanding how uiMatch processes comparisons through multiple layers:
 
-### Layer 1: Detection Thresholds
+### Layer 1: Comparison Thresholds
 
-Controls **which differences are detected** at the pixel/style level:
+Controls how raw pixel and style differences are interpreted:
 
-| Setting               | Purpose                                      | Default | Configuration     |
-| --------------------- | -------------------------------------------- | ------- | ----------------- |
-| `pixelmatchThreshold` | Pixelmatch sensitivity (0=strict, 1=lenient) | 0.1     | Internal          |
-| `thresholds.deltaE`   | Color difference detection (ΔE2000)          | 5.0     | `.uimatchrc.json` |
-| `minDeltaForDiff`     | Minimum ΔE to report as difference           | 1.0     | Internal          |
+| Setting                | Purpose                                      | Default | Configuration     |
+| ---------------------- | -------------------------------------------- | ------- | ----------------- |
+| `pixelmatchThreshold`  | Pixelmatch sensitivity (0=strict, 1=lenient) | 0.1     | `.uimatchrc.json` |
+| `colorDeltaEThreshold` | StyleDiff significance and SFS normalization | 3.0     | `.uimatchrc.json` |
 
 **Purpose**: Fine-tune what constitutes a "difference" in pixel/color comparison.
 
@@ -336,13 +313,18 @@ Controls **which differences are detected** at the pixel/style level:
 
 Controls **pass/fail decision** for the overall comparison:
 
-| Setting                    | Purpose                          | Default   | Configuration    |
-| -------------------------- | -------------------------------- | --------- | ---------------- |
-| `acceptancePixelDiffRatio` | Max pixel difference ratio (0-1) | 0.01 (1%) | Quality profiles |
-| `acceptanceColorDeltaE`    | Max average color ΔE             | 3.0       | Quality profiles |
-| `areaGapRatio`             | Max dimension mismatch ratio     | 0.05 (5%) | Internal         |
+| Setting                    | Purpose                                   | Default    | Configuration                 |
+| -------------------------- | ----------------------------------------- | ---------- | ----------------------------- |
+| `acceptancePixelDiffRatio` | Max pixel difference ratio (0-1)          | 0.01 (1%)  | Profiles or `.uimatchrc.json` |
+| `acceptanceColorDeltaE`    | Max average color ΔE                      | 3.0        | Profiles or `.uimatchrc.json` |
+| `areaGapCritical`          | Area gap that causes an immediate failure | 0.15 (15%) | `.uimatchrc.json`             |
+| `areaGapWarning`           | Area gap warning threshold                | 0.05 (5%)  | `.uimatchrc.json`             |
 
 **Purpose**: Define pass/fail criteria based on detected differences.
+
+Although the two color thresholds share a default, they are separate settings.
+A quality profile supplies one `deltaE` value and intentionally overrides both
+for that run.
 
 ### Layer 3: Scoring (Design Fidelity Score)
 
@@ -393,12 +375,12 @@ uiMatch provides text comparison through the `compareText` utility and `text-dif
 
 Text differences are classified into four categories:
 
-| Classification            | Description                                             | Example                        |
-| ------------------------- | ------------------------------------------------------- | ------------------------------ |
-| `exact-match`             | Texts are identical without modification                | `"Login"` = `"Login"`          |
-| `whitespace-or-case-only` | Only whitespace, case, or Unicode normalization differs | `"Sign in"` ≈ `"SIGN  IN"`     |
-| `normalized-match`        | Similar after normalization (above threshold)           | `"Submit"` ≈ `"Submitt"` (92%) |
-| `mismatch`                | Fundamentally different (below threshold)               | `"Login"` ≠ `"Sign in"` (45%)  |
+| Classification            | Description                                             | Example                                                 |
+| ------------------------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| `exact-match`             | Texts are identical without modification                | `"Login"` = `"Login"`                                   |
+| `whitespace-or-case-only` | Only whitespace, case, or Unicode normalization differs | `"Sign in"` ≈ `"SIGN  IN"`                              |
+| `normalized-match`        | Similarity is at or above the selected threshold        | `"Save changes now"` vs `"Save changes later"` at `0.6` |
+| `mismatch`                | Similarity is below the selected threshold              | The same pair at `0.7`                                  |
 
 #### Normalization Process
 

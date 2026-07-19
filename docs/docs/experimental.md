@@ -2,131 +2,71 @@
 sidebar_position: 6
 ---
 
-# Experimental Features
+# AI and MCP Integration
 
-:::warning Extra Unstable
-While uiMatch itself is in **0.x (experimental)** and subject to change, the features on this page are **even more unstable** and experimental.
-
-They may be removed or significantly changed without notice. These are primarily intended for MCP / AI assistant integration experiments. Please avoid relying on them in long-term CI/CD pipelines.
+:::warning Experimental API
+The TypeScript APIs on this page may change while uiMatch is in the 0.x release
+series. The standard `compare` command and its exit codes remain the supported
+CLI path.
 :::
 
-## Experimental Commands
+## LLM-formatted comparison output
 
-### `experimental claude-report`
-
-Generate Claude-optimized comparison report.
-
-:::warning Work in Progress
-This command is currently a **proof-of-concept** and not fully functional. The `--format` option does not produce formatted output due to architectural limitations (the underlying `runCompare` function does not return `CompareResult`).
-
-For now, use the standard `uimatch compare` command output instead.
-:::
-
-**Syntax**:
+Use the normal `compare` command with `format=claude`:
 
 ```shell
-uimatch experimental claude-report --figma <reference> --url <url> [options]
+npx @uimatch/cli compare \
+  figma=current \
+  story=http://localhost:3000 \
+  selector="#app" \
+  format=claude
 ```
 
-**Options**:
-
-- `--format=prompt` - Output as LLM prompt (default) **[Not yet functional]**
-- `--format=json` - Output as structured JSON **[Not yet functional]**
-
-**Example**:
+When `outDir` is set, uiMatch also writes `claude.json` and
+`claude-prompt.txt` beside the standard artifacts.
 
 ```shell
-# Currently shows standard compare output with a PoC notice
-uimatch experimental claude-report \
-  --figma current \
-  --url http://localhost:3000 \
-  --format=json
+npx @uimatch/cli compare \
+  figma=FILE_KEY:NODE_ID \
+  story=http://localhost:3000 \
+  selector="#app" \
+  format=claude \
+  outDir=./uimatch-results
 ```
 
-## Experimental Configuration
-
-Add experimental settings to `.uimatchrc.json`:
-
-```json
-{
-  "experimental": {
-    "claude": {
-      "format": "prompt",
-      "includeRawDiffs": false
-    },
-    "mcp": {
-      "enabled": false
-    }
-  }
-}
-```
-
-### Configuration Options
-
-| Option                                | Type                   | Default    | Description                          |
-| ------------------------------------- | ---------------------- | ---------- | ------------------------------------ |
-| `experimental.claude.format`          | `"prompt"` \| `"json"` | `"prompt"` | Output format for Claude integration |
-| `experimental.claude.includeRawDiffs` | `boolean`              | `false`    | Include raw diff data in output      |
-| `experimental.mcp.enabled`            | `boolean`              | `false`    | Enable MCP server integration        |
+The comparison uses the same quality-gate decision and exit code in standard
+and Claude formats.
 
 ## Experimental TypeScript API
 
-:::caution
-The experimental API is subject to breaking changes. Use in production at your own risk.
-:::
-
-### LLM Formatting
+### LLM formatting
 
 ```typescript
-import { experimental } from '@uimatch/cli';
+import { experimental, type CompareResult } from '@uimatch/cli';
 
-// Claude-specific formatting
-const payload = experimental.formatForLLM(result, { preferTokens: true });
-const prompt = experimental.generateLLMPrompt(payload);
-```
-
-### Figma MCP Client
-
-Requires MCP server running.
-
-```typescript
-import { experimental } from '@uimatch/cli';
-
-// Initialize MCP client
-const mcpClient = new experimental.FigmaMcpClient(config);
-
-// Get current Figma selection
-const ref = await mcpClient.getCurrentSelectionRef();
-```
-
-## Use Cases
-
-### AI-Assisted Design Review
-
-Use the `claude-report` command to generate reports optimized for AI assistant consumption:
-
-```shell
-# Generate prompt for Claude Code
-uimatch experimental claude-report \
-  --figma current \
-  --url http://localhost:3000 \
-  --format=prompt
-```
-
-### MCP Integration
-
-Enable MCP server integration for enhanced Figma workflows:
-
-```json
-{
-  "experimental": {
-    "mcp": {
-      "enabled": true
-    }
-  }
+function formatResult(result: CompareResult): string {
+  const payload = experimental.formatForLLM(result, { preferTokens: true });
+  return experimental.generateLLMPrompt(payload);
 }
 ```
 
+### Figma MCP client
+
+The MCP client requires a reachable Figma MCP server. Configure it through
+`FIGMA_MCP_URL` and the optional `FIGMA_MCP_TOKEN` environment variable.
+
+```typescript
+import { experimental, loadFigmaMcpConfig } from '@uimatch/cli';
+
+const client = new experimental.FigmaMcpClient(loadFigmaMcpConfig());
+const reference = await client.getCurrentSelectionRef();
+```
+
+There is no `.uimatchrc.json` `experimental` section. MCP connection settings
+come from the environment, while comparison settings use the normal project
+configuration described in the [CLI reference](./cli-reference.md#custom-configuration).
+
 ## Feedback
 
-Experimental features help us explore new integration patterns. If you have feedback or use cases, please [open an issue](https://github.com/kosaki08/uimatch/issues).
+If you have feedback or use cases, please
+[open an issue](https://github.com/kosaki08/uimatch/issues).

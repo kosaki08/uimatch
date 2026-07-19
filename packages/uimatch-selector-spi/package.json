@@ -3,9 +3,6 @@
   "version": "0.1.1",
   "description": "Service Provider Interface types for uiMatch selector resolution plugins",
   "type": "module",
-  "typedoc": {
-    "entryPoint": "src/index.ts"
-  },
   "imports": {
     "#/*": "./src/*"
   },

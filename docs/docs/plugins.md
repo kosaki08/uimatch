@@ -108,7 +108,7 @@ import type { SelectorResolverPlugin } from '@uimatch/selector-spi';
 interface TestingLibraryQuery {
   type: 'role' | 'text' | 'labelText' | 'testId';
   value: string;
-  options?: Record<string, any>;
+  options?: Record<string, string | boolean>;
 }
 
 export const testingLibraryPlugin: SelectorResolverPlugin = {
@@ -167,10 +167,14 @@ function parseSelector(selector: string): TestingLibraryQuery {
   const [, type, value, optionsStr] = match;
   const options = optionsStr ? parseOptions(optionsStr) : undefined;
 
-  return { type: type as any, value, options };
+  if (!['role', 'text', 'labelText', 'testId'].includes(type)) {
+    throw new Error(`Unsupported selector type: ${type}`);
+  }
+
+  return { type: type as TestingLibraryQuery['type'], value, options };
 }
 
-function parseOptions(str: string): Record<string, any> {
+function parseOptions(str: string): Record<string, string | boolean> {
   // Parse: "name=Submit,exact=true"
   return Object.fromEntries(
     str.split(',').map((pair) => {
@@ -297,69 +301,14 @@ export default fallbackPlugin;
 ### SelectorResolverPlugin Interface
 
 ```typescript
-interface SelectorResolverPlugin {
-  /**
-   * Plugin name/identifier
-   */
-  name: string;
-
-  /**
-   * Plugin version
-   */
-  version: string;
-
-  /**
-   * Resolve a selector using the plugin's strategy
-   *
-   * @param context - Resolution context
-   * @returns Resolution result
-   */
-  resolve(context: ResolveContext): Promise<Resolution>;
-
-  /**
-   * Optional: Check if the plugin is available and properly configured
-   */
-  healthCheck?(): Promise<HealthCheckResult>;
-}
-
-interface ResolveContext {
-  /** URL of the page being tested */
-  url: string;
-
-  /** Initial selector provided by the user */
-  initialSelector: string;
-
-  /** Path to anchors JSON file (optional) */
-  anchorsPath?: string;
-
-  /** Canonical root that constrains source paths */
-  projectRoot?: string;
-
-  /** Whether to write back resolved selectors */
-  writeBack?: boolean;
-
-  /** Probe for lightweight liveness checks */
-  probe: Probe;
-}
-
-interface Resolution {
-  /** The non-empty resolved selector */
-  selector: string;
-
-  /** Finite stability score for the resolved selector (0-100) */
-  stabilityScore?: number;
-
-  /** Human-readable reasons for the resolution choice */
-  reasons?: string[];
-}
-
-interface Probe {
-  /**
-   * Check if a selector is alive (exists and optionally visible)
-   */
-  check(selector: string, options?: ProbeOptions): Promise<ProbeResult>;
-}
+import type { Resolution, ResolveContext, SelectorResolverPlugin } from '@uimatch/selector-spi';
 ```
+
+Import the contract from `@uimatch/selector-spi` instead of copying it into a
+plugin. `ResolveContext` includes the initial selector, optional anchors path,
+canonical project root, write-back controls, a `postWrite` persistence hook,
+and the browser-independent `probe` interface. uiMatch validates every returned
+`Resolution` with the SPI runtime schema.
 
 ### Best Practices
 
@@ -459,8 +408,7 @@ my-uimatch-plugin/
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "peerDependencies": {
-    "@uimatch/selector-spi": "^1.0.0",
-    "playwright": "^1.40.0"
+    "@uimatch/selector-spi": ">=0.1.1"
   },
   "keywords": ["uimatch", "plugin", "testing-library"]
 }
@@ -475,22 +423,27 @@ npm install @my-company/uimatch-testing-library-plugin
 # Use
 npx uimatch compare \
   ... \
-  --anchor @my-company/uimatch-testing-library-plugin
+  selectorsPlugin=@my-company/uimatch-testing-library-plugin
 ```
 
 ## Testing Your Plugin
 
 ```typescript
-import { test, expect } from '@playwright/test';
+import { expect, test } from 'vitest';
 import { myPlugin } from './my-plugin';
 
-test('plugin resolves data-testid', async ({ page }) => {
-  await page.setContent('<button data-testid="submit">Click</button>');
+test('plugin resolves data-testid', async () => {
+  const resolution = await myPlugin.resolve({
+    url: 'https://example.test',
+    initialSelector: 'submit',
+    probe: {
+      async check(selector) {
+        return { selector, isValid: true, checkTime: 0 };
+      },
+    },
+  });
 
-  const locator = await myPlugin.resolve('submit', page);
-
-  await expect(locator).toBeVisible();
-  await expect(locator).toHaveText('Click');
+  expect(resolution.selector).toBe('[data-testid="submit"]');
 });
 ```
 
@@ -551,15 +504,6 @@ async resolve(context) {
   };
 }
 ```
-
-## Examples Repository
-
-See the [examples directory](https://github.com/kosaki08/uimatch/tree/main/examples/plugins) for more plugin examples:
-
-- **Storybook Plugin** - Target Storybook-specific selectors
-- **Accessibility Plugin** - Use ARIA roles and labels
-- **i18n Plugin** - Resolve by translated text keys
-- **Shadow DOM Plugin** - Navigate shadow DOM boundaries
 
 ## See Also
 

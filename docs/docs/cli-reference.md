@@ -14,6 +14,7 @@ uiMatch provides the following commands:
 - **`suite`** - Run multiple comparisons from a JSON suite file
 - **`text-diff`** - Compare two text strings and show similarity score
 - **`doctor`** - Diagnose installation and configuration issues
+- **`settings`** - View or reset project comparison settings
 - **`version`** - Display CLI version information
 
 ## `compare` Command
@@ -302,12 +303,12 @@ Returns a JSON object with the following fields:
 
 ### Classification Types
 
-| Kind                      | Description                                                  | Example                          |
-| ------------------------- | ------------------------------------------------------------ | -------------------------------- |
-| `exact-match`             | Texts are identical without any modification                 | `"Login"` vs `"Login"`           |
-| `whitespace-or-case-only` | Texts differ only in whitespace, case, or NFKC normalization | `"Sign in"` vs `"SIGN  IN"`      |
-| `normalized-match`        | Texts are similar after normalization (above threshold)      | `"Submit"` vs `"Submitt"` (0.92) |
-| `mismatch`                | Texts are fundamentally different (below threshold)          | `"Login"` vs `"Sign in"` (0.45)  |
+| Kind                      | Description                                                  | Example                                                 |
+| ------------------------- | ------------------------------------------------------------ | ------------------------------------------------------- |
+| `exact-match`             | Texts are identical without any modification                 | `"Login"` vs `"Login"`                                  |
+| `whitespace-or-case-only` | Texts differ only in whitespace, case, or NFKC normalization | `"Sign in"` vs `"SIGN  IN"`                             |
+| `normalized-match`        | Similarity is at or above the selected threshold             | `"Save changes now"` vs `"Save changes later"` at `0.6` |
+| `mismatch`                | Similarity is below the selected threshold                   | The same pair at `0.7`                                  |
 
 ### Text Normalization
 
@@ -347,8 +348,8 @@ Output:
 
 ```json
 {
-  "kind": "whitespace-or-case-only",
-  "similarity": 1.0,
+  "kind": "normalized-match",
+  "similarity": 0.9666666666666668,
   "equalRaw": false,
   "equalNormalized": false
 }
@@ -357,7 +358,7 @@ Output:
 #### With Custom Threshold
 
 ```shell
-npx @uimatch/cli text-diff "Hello World" "Helo World" --threshold=0.6
+npx @uimatch/cli text-diff "Save changes now" "Save changes later" --threshold=0.6
 ```
 
 Output:
@@ -365,7 +366,7 @@ Output:
 ```json
 {
   "kind": "normalized-match",
-  "similarity": 0.91,
+  "similarity": 0.6777777777777778,
   "equalRaw": false,
   "equalNormalized": false
 }
@@ -398,6 +399,20 @@ Output:
 `@uimatch/core` is an internal package and is not a supported public API. Use this
 command when text comparison is required in scripts or CI.
 
+## `settings` Command
+
+View the effective project configuration or remove `.uimatchrc.json` and return
+to defaults.
+
+```shell
+npx @uimatch/cli settings get
+npx @uimatch/cli settings reset
+```
+
+Running `settings` without an action is equivalent to `settings get`. The
+command does not provide a `set` action; edit `.uimatchrc.json` and inspect the
+effective result with `settings get`.
+
 ## `version` Command
 
 Display the current version of the CLI.
@@ -424,7 +439,7 @@ Set these in `.env` or your environment:
 
 ```shell
 FIGMA_ACCESS_TOKEN=your_token_here       # Required for Figma API access
-UIMATCH_LOG_LEVEL=info|debug|silent      # Logging verbosity (default: info)
+UIMATCH_LOG_LEVEL=debug|info|warn|error|silent # Logging verbosity (default: info)
 UIMATCH_HEADLESS=true|false              # Playwright headless mode (default: true)
                                           # Set to 'false' to show browser window
                                           # Applies to compare/suite/doctor commands
@@ -503,11 +518,16 @@ For fine-grained control, create `.uimatchrc.json`:
 ```json
 {
   "comparison": {
+    "colorDeltaEThreshold": 3.0,
     "acceptancePixelDiffRatio": 0.01,
     "acceptanceColorDeltaE": 3.0
   }
 }
 ```
+
+`colorDeltaEThreshold` controls StyleDiff significance and SFS normalization.
+`acceptanceColorDeltaE` controls the aggregate color quality gate. Profiles
+provide a single `deltaE` value that overrides both stages for that run.
 
 ## Tips
 

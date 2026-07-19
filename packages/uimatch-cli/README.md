@@ -124,13 +124,13 @@ npx @uimatch/cli text-diff "Sign in" "SIGN  IN"
 # → kind: 'whitespace-or-case-only', similarity: 1.0
 
 npx @uimatch/cli text-diff "Submit" "submit" --case-sensitive
-# → kind: 'whitespace-or-case-only', similarity: 1.0
+# → kind: 'normalized-match', similarity: approximately 0.97
 
-npx @uimatch/cli text-diff "Hello" "Helo" --threshold=0.6
-# → kind: 'normalized-match', similarity: 0.8
+npx @uimatch/cli text-diff "Save changes now" "Save changes later" --threshold=0.6
+# → kind: 'normalized-match', similarity: approximately 0.68
 ```
 
-For details, see [CLI Reference → Text Comparison](../../docs/docs/cli-reference.md#text-diff-command).
+For details, see [CLI Reference → Text Comparison](https://kosaki08.github.io/uimatch/docs/cli-reference#text-diff-command).
 
 ## Programmatic API
 
@@ -144,8 +144,8 @@ const result = await uiMatchCompare({
   profile: 'component/strict',
 });
 
-console.log(`DFS: ${result.dfs}`);
-console.log(`Status: ${result.status}`);
+console.log(`DFS: ${result.report.metrics.dfs}`);
+console.log(result.summary);
 ```
 
 ## Configuration
@@ -155,11 +155,16 @@ Create `.uimatchrc.json` in your project root:
 ```json
 {
   "comparison": {
+    "colorDeltaEThreshold": 3.0,
     "acceptancePixelDiffRatio": 0.01,
     "acceptanceColorDeltaE": 3.0
   }
 }
 ```
+
+`colorDeltaEThreshold` controls StyleDiff significance and SFS normalization;
+`acceptanceColorDeltaE` controls the aggregate color quality gate. A profile's
+`deltaE` value overrides both for that run.
 
 ### Quality Gate Profiles
 
@@ -178,7 +183,7 @@ Create `.uimatchrc.json` in your project root:
 FIGMA_ACCESS_TOKEN=your_token_here       # Required for Figma API
 UIMATCH_HEADLESS=true|false              # Browser headless mode (default: true)
 UIMATCH_CHROMIUM_SANDBOX=true|false      # Chromium sandbox (default: true)
-UIMATCH_LOG_LEVEL=info|debug|silent      # Logging verbosity (default: info)
+UIMATCH_LOG_LEVEL=debug|info|warn|error|silent # Logging verbosity (default: info)
 ```
 
 Use `UIMATCH_CHROMIUM_SANDBOX=false` only as an explicit opt-out for environments

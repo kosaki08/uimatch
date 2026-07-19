@@ -18,7 +18,7 @@ const config: Config = {
   organizationName: 'kosaki08', // Your GitHub org/user name
   projectName: 'uimatch', // Your repo name
 
-  onBrokenLinks: 'warn',
+  onBrokenLinks: 'throw',
 
   i18n: {
     defaultLocale: 'en',
@@ -28,7 +28,7 @@ const config: Config = {
   markdown: {
     format: 'detect',
     hooks: {
-      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownLinks: 'throw',
     },
   },
 
@@ -55,11 +55,10 @@ const config: Config = {
         id: 'api',
         // entryPoints: packages directory (not src/index.ts)
         entryPoints: [
-          '../packages/uimatch-core',
           '../packages/uimatch-cli',
           '../packages/uimatch-selector-spi',
           '../packages/uimatch-selector-anchors',
-          '../packages/uimatch-scoring',
+          '../packages/shared-logging',
         ],
         // Use 'packages' strategy to show @uimatch/* scope names
         entryPointStrategy: 'packages',

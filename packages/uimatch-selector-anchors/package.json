@@ -5,9 +5,6 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "typedoc": {
-    "entryPoint": "src/index.ts"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

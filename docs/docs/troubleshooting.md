@@ -14,12 +14,10 @@ Run the built-in health check:
 npx @uimatch/cli doctor
 ```
 
-This checks:
-
-- ✅ Figma API connectivity
-- ✅ Browser automation setup
-- ✅ Environment variables
-- ✅ Plugin compatibility
+By default this checks environment configuration and launches Chromium. Use
+`--deep` to include implemented optional checks such as anchors-file validation.
+The doctor command does not currently test Figma API connectivity or execute a
+selector plugin.
 
 ## Common Issues
 
@@ -231,7 +229,7 @@ FIGMA_ACCESS_TOKEN=figd_xxx    # Get from Figma settings
 Optional:
 
 ```shell
-UIMATCH_LOG_LEVEL=debug        # silent | info | debug
+UIMATCH_LOG_LEVEL=debug        # silent | debug | info | warn | error
 UIMATCH_HEADLESS=false         # Show browser during tests
 UIMATCH_CHROMIUM_SANDBOX=true  # Secure default; set false only for incompatible runtimes
 UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
@@ -260,7 +258,7 @@ automatically.
 
    ```shell
    # Set consistent viewport
-   --viewport 1920x1080
+   viewport=1920x1080
    ```
 
 3. **Missing browser:**
@@ -330,9 +328,9 @@ automatically.
 2. **Verify plugin path:**
 
    ```shell
-   # Use absolute or relative path
-   --anchor ./src/plugins/my-anchor.js
-   --anchor @my-company/anchor-plugin
+   # Use an absolute path or an installed package name
+   selectorsPlugin=/absolute/path/to/my-anchor.js
+   selectorsPlugin=@my-company/anchor-plugin
    ```
 
 3. **Check async/await:**

@@ -90,8 +90,8 @@ npx uimatch-anchors --help
 
 ```bash
 uimatch compare \
-  --selectors anchors.json \
-  --selectors-plugin @uimatch/selector-anchors
+  selectors=anchors.json \
+  selectorsPlugin=@uimatch/selector-anchors
 ```
 
 ### Direct Usage
@@ -275,7 +275,7 @@ Enable IDE autocompletion and validation by adding the `$schema` property to you
 
 ```json
 {
-  "$schema": "https://unpkg.com/@uimatch/selector-anchors@latest/dist/schema/anchors.schema.json",
+  "$schema": "https://unpkg.com/@uimatch/selector-anchors@latest/schema/anchors.schema.json",
   "version": "1.0.0",
   "anchors": []
 }
@@ -292,7 +292,7 @@ Enable IDE autocompletion and validation by adding the `$schema` property to you
 
 ```json
 {
-  "$schema": "./node_modules/@uimatch/selector-anchors/dist/schema/anchors.schema.json",
+  "$schema": "./node_modules/@uimatch/selector-anchors/schema/anchors.schema.json",
   "version": "1.0.0",
   "anchors": []
 }
@@ -412,7 +412,7 @@ For complete schema details, see [`schema.ts`](./src/types/schema.ts).
 **Integration**
 
 - SPI-compliant plugin architecture
-- CLI integration via `--selectors-plugin` flag
+- CLI integration via the `selectorsPlugin=<package>` option
 - Probe interface for liveness checking
 - Write-back support for anchor updates
 

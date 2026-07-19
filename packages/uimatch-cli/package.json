@@ -5,9 +5,6 @@
   "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "typedoc": {
-    "entryPoint": "src/index.ts"
-  },
   "exports": {
     ".": "./dist/index.js",
     "./cli": "./dist/cli/index.js"

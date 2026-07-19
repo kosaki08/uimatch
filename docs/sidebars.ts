@@ -41,10 +41,10 @@ const sidebars: SidebarsConfig = {
     'ci-integration',
     'local-testing',
 
-    // 5. Help - Troubleshooting before experimental features
+    // 5. Help
     'troubleshooting',
 
-    // 6. Advanced - Experimental features
+    // 6. Advanced integration APIs
     'experimental',
 
     // 7. API Reference - Complete technical reference
