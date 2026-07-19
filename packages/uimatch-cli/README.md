@@ -1,138 +1,50 @@
 # @uimatch/cli
 
-CLI tool for comparing Figma designs with implementation. Provides visual comparison and quality scoring.
-
-## Features
-
-- **Figma Integration**: Direct integration with Figma API and MCP server
-- **Quality Scoring**: Design Fidelity Score (DFS) with configurable thresholds
-- **Quality Gate Profiles**: Pixel-perfect, development, or lenient comparison modes
-- **Extensible**: Plugin architecture for custom selector resolution
+Command-line and programmatic entry point for comparing Figma designs with
+implemented interfaces.
 
 ## Installation
 
-```bash
-# Global installation (recommended)
-npm install -g @uimatch/cli playwright
-npx playwright install chromium
+Install the CLI with Playwright, then install Chromium:
 
-# Or project-local installation
+```shell
 npm install -D @uimatch/cli playwright
 npx playwright install chromium
 ```
 
-## Quick Start
+Set `FIGMA_ACCESS_TOKEN` when using the Figma API:
 
-### Basic Comparison
+```shell
+export FIGMA_ACCESS_TOKEN="figd_..."
+```
 
-```bash
+## Quick start
+
+```shell
 npx @uimatch/cli compare \
   figma=AbCdEf123:456-789 \
   story=http://localhost:6006/?path=/story/button \
-  selector="#root button"
-```
-
-### With Quality Profile
-
-```bash
-npx @uimatch/cli compare \
-  figma=AbCdEf123:456-789 \
-  story=http://localhost:6006 \
-  selector=".card" \
-  profile=component/strict
-```
-
-### With Output Directory
-
-```bash
-npx @uimatch/cli compare \
-  figma=AbCdEf123:456-789 \
-  story=http://localhost:6006 \
-  selector=".card" \
+  selector="#root button" \
+  profile=component/strict \
   outDir=./comparison-results
 ```
 
 ## Commands
 
-### `compare`
+| Command     | Purpose                                              |
+| ----------- | ---------------------------------------------------- |
+| `compare`   | Compare one Figma node with one implementation       |
+| `suite`     | Run comparisons defined in a JSON suite              |
+| `text-diff` | Compare two strings after uiMatch text normalization |
+| `doctor`    | Diagnose the runtime, browser, and anchors setup     |
+| `settings`  | Inspect or reset the effective project configuration |
+| `version`   | Print the CLI version                                |
 
-Compare a single Figma design with implementation.
+The [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference)
+defines command arguments, configuration keys, environment variables, output,
+and exit codes.
 
-**Parameters:**
-
-- `figma`: Figma file key and node ID (format: `fileKey:nodeId`)
-- `story`: Implementation URL (Storybook, localhost, or deployed)
-- `selector`: CSS selector for target element
-- `profile`: (Optional) Quality profile - `component/strict` | `component/dev` | `page-vs-component` | `page/text-doc` | `lenient` | `custom`
-- `areaGapCritical`: (Optional) Area gap threshold for immediate failure (0-1, default: 0.15)
-- `areaGapWarning`: (Optional) Area gap threshold for warning (0-1, default: 0.05)
-- `outDir`: (Optional) Output directory for artifacts (screenshots, diffs)
-
-### `suite`
-
-Run multiple comparisons from a JSON configuration file.
-
-```bash
-npx @uimatch/cli suite path=suite-config.json
-```
-
-### `doctor`
-
-Diagnose installation and configuration issues.
-
-```bash
-npx @uimatch/cli doctor
-```
-
-### `version`
-
-Display the current version of the CLI.
-
-```bash
-npx @uimatch/cli version
-# or
-npx @uimatch/cli --version
-# or
-npx @uimatch/cli -v
-```
-
-### `text-diff`
-
-Compare two text strings and show similarity score with classification.
-
-```bash
-npx @uimatch/cli text-diff <expected> <actual> [options]
-```
-
-**Options:**
-
-- `--case-sensitive`: Perform case-sensitive comparison (default: case-insensitive)
-- `--threshold=<number>`: Similarity threshold (0-1, default: 0.9)
-
-**Output:**
-
-Returns a JSON object with:
-
-- `kind`: Classification (`exact-match` | `whitespace-or-case-only` | `normalized-match` | `mismatch`)
-- `similarity`: Similarity score (0-1)
-- `normalizedExpected` / `normalizedActual`: Normalized text values
-
-**Example:**
-
-```bash
-npx @uimatch/cli text-diff "Sign in" "SIGN  IN"
-# → kind: 'whitespace-or-case-only', similarity: 1.0
-
-npx @uimatch/cli text-diff "Submit" "submit" --case-sensitive
-# → kind: 'normalized-match', similarity: approximately 0.97
-
-npx @uimatch/cli text-diff "Save changes now" "Save changes later" --threshold=0.6
-# → kind: 'normalized-match', similarity: approximately 0.68
-```
-
-For details, see [CLI Reference → Text Comparison](https://kosaki08.github.io/uimatch/docs/cli-reference#text-diff-command).
-
-## Programmatic API
+## Programmatic use
 
 ```typescript
 import { uiMatchCompare } from '@uimatch/cli';
@@ -144,61 +56,38 @@ const result = await uiMatchCompare({
   profile: 'component/strict',
 });
 
-console.log(`DFS: ${result.report.metrics.dfs}`);
+console.log(result.report.metrics.dfs);
 console.log(result.summary);
 ```
 
-## Configuration
+Programmatic callers receive a result object and remain responsible for their
+own process exit behavior.
 
-Create `.uimatchrc.json` in your project root:
+## Selector plugins
 
-```json
-{
-  "comparison": {
-    "colorDeltaEThreshold": 3.0,
-    "acceptancePixelDiffRatio": 0.01,
-    "acceptanceColorDeltaE": 3.0
-  }
-}
+Set `selectorsPlugin` and, when required, `selectors` to use a selector resolver:
+
+```shell
+npx @uimatch/cli compare \
+  figma=AbCdEf123:456-789 \
+  story=http://localhost:6006 \
+  selector=button-primary \
+  selectors=.uimatch/anchors.json \
+  selectorsPlugin=@uimatch/selector-anchors
 ```
 
-`colorDeltaEThreshold` controls StyleDiff significance and SFS normalization;
-`acceptanceColorDeltaE` controls the aggregate color quality gate. A profile's
-`deltaE` value overrides both for that run.
-
-### Quality Gate Profiles
-
-| Profile             | pixelDiffRatio | ΔE  | Use Case                |
-| ------------------- | -------------- | --- | ----------------------- |
-| `component/strict`  | 0.01 (1%)      | 3.0 | DS component validation |
-| `component/dev`     | 0.08 (8%)      | 5.0 | Dev iteration           |
-| `page-vs-component` | 0.12 (12%)     | 5.0 | Padded page comparison  |
-| `page/text-doc`     | 0.20 (20%)     | 6.0 | Text-heavy pages        |
-| `lenient`           | 0.15 (15%)     | 8.0 | PoC/prototype           |
-| `custom`            | (from config)  | -   | From settings file      |
-
-### Environment Variables
-
-```bash
-FIGMA_ACCESS_TOKEN=your_token_here       # Required for Figma API
-UIMATCH_HEADLESS=true|false              # Browser headless mode (default: true)
-UIMATCH_CHROMIUM_SANDBOX=true|false      # Chromium sandbox (default: true)
-UIMATCH_LOG_LEVEL=debug|info|warn|error|silent # Logging verbosity (default: info)
-```
-
-Use `UIMATCH_CHROMIUM_SANDBOX=false` only as an explicit opt-out for environments
-that cannot run the Chromium sandbox, such as some root containers.
+Plugins execute as trusted code in the uiMatch process. See
+[Plugin Development](https://kosaki08.github.io/uimatch/docs/plugins) for the
+runtime contract and failure model.
 
 ## Documentation
 
-For complete documentation, see the [uiMatch Documentation Site](https://kosaki08.github.io/uimatch/):
-
-- **[Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started)** - Installation and quickstart
-- **[CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference)** - Complete command reference and options
-- **[Concepts](https://kosaki08.github.io/uimatch/docs/concepts)** - Quality gates, scoring layers, and workflows
-- **[Troubleshooting](https://kosaki08.github.io/uimatch/docs/troubleshooting)** - Common issues
-- **[Plugins](https://kosaki08.github.io/uimatch/docs/plugins)** - Custom selector plugins
-- **[API Reference](https://kosaki08.github.io/uimatch/docs/api)** - TypeScript API documentation
+- [Getting Started](https://kosaki08.github.io/uimatch/docs/getting-started)
+- [CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference)
+- [Concepts](https://kosaki08.github.io/uimatch/docs/concepts)
+- [CI Integration](https://kosaki08.github.io/uimatch/docs/ci-integration)
+- [Troubleshooting](https://kosaki08.github.io/uimatch/docs/troubleshooting)
+- [API Reference](https://kosaki08.github.io/uimatch/docs/api)
 
 ## License
 

@@ -128,7 +128,7 @@ npx @uimatch/cli text-diff "Sign in" "SIGN  IN"
 # → kind: 'whitespace-or-case-only', similarity: 1.0
 
 npx @uimatch/cli text-diff "Save changes now" "Save changes later" --threshold=0.6
-# → kind: 'normalized-match', similarity: approximately 0.68
+# → kind: 'normalized-match'
 ```
 
 This is useful for comparing Figma text content with implementation `textContent`.

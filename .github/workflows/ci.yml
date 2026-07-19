@@ -81,6 +81,9 @@ jobs:
       - name: Type check
         run: pnpm run type-check
 
+      - name: Build documentation
+        run: pnpm run docs:build
+
       - name: Toolchain versions
         run: |
           node -v

@@ -1,6 +1,6 @@
 /** Verify that public tarballs work from an isolated consumer project. */
 import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -78,6 +78,23 @@ void createLogger;
 
     await execFileAsync('pnpm', ['add', ...tarballs, 'playwright@1.56.1', 'typescript@5.9.3'], {
       cwd: consumerDirectory,
+    });
+    const anchorsSchema = JSON.parse(
+      await readFile(
+        join(
+          consumerDirectory,
+          'node_modules',
+          '@uimatch',
+          'selector-anchors',
+          'schema',
+          'anchors.schema.json'
+        ),
+        'utf8'
+      )
+    ) as unknown;
+    expect(anchorsSchema).toMatchObject({
+      title: 'Selector Anchors',
+      type: 'object',
     });
     await execFileAsync('pnpm', ['exec', 'tsc', '--noEmit'], { cwd: consumerDirectory });
     await execFileAsync(

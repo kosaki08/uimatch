@@ -414,13 +414,13 @@ npx uimatch text-diff "Sign in" "SIGN IN"
 # → whitespace-or-case-only (minor formatting difference)
 ```
 
-#### Localization Testing
+#### Threshold Behavior
 
-Verify translated text maintains similarity to original:
+Apply a lower threshold when a known wording change should remain acceptable:
 
 ```shell
-npx uimatch text-diff "Submit Form" "Submit Form (送信)" --threshold=0.7
-# → normalized-match (acceptable localization difference)
+npx uimatch text-diff "Save changes now" "Save changes later" --threshold=0.6
+# → normalized-match
 ```
 
 #### Typography Debugging

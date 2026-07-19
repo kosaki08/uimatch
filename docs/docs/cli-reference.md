@@ -349,11 +349,13 @@ Output:
 ```json
 {
   "kind": "normalized-match",
-  "similarity": 0.9666666666666668,
   "equalRaw": false,
   "equalNormalized": false
 }
 ```
+
+The similarity remains above the default threshold, so the result is a
+`normalized-match` even though case normalization is disabled.
 
 #### With Custom Threshold
 
@@ -366,11 +368,13 @@ Output:
 ```json
 {
   "kind": "normalized-match",
-  "similarity": 0.6777777777777778,
   "equalRaw": false,
   "equalNormalized": false
 }
 ```
+
+This pair is above `0.6` and below `0.7`; selecting `0.7` therefore classifies
+the same input as a `mismatch`.
 
 #### Full-Width Character Handling
 
@@ -392,7 +396,7 @@ Output:
 ### Use Cases
 
 - **Text label validation** - Compare Figma text labels with implementation
-- **Localization testing** - Verify translated text maintains similarity
+- **Copy review** - Compare intentional wording changes against an explicit threshold
 - **Typography debugging** - Identify subtle text differences (case, whitespace, unicode)
 - **Component testing** - Validate text content in UI components
 

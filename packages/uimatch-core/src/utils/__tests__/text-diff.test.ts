@@ -2,6 +2,50 @@ import { describe, expect, test } from 'vitest';
 import { compareText } from '../text-diff';
 
 describe('compareText', () => {
+  describe('documented examples', () => {
+    const examples = [
+      {
+        name: 'case and whitespace normalization',
+        expected: 'Sign in',
+        actual: 'SIGN  IN',
+        options: {},
+        kind: 'whitespace-or-case-only',
+      },
+      {
+        name: 'case-sensitive comparison',
+        expected: 'Submit',
+        actual: 'submit',
+        options: { caseSensitive: true },
+        kind: 'normalized-match',
+      },
+      {
+        name: 'similar text below the selected threshold',
+        expected: 'Save changes now',
+        actual: 'Save changes later',
+        options: { similarityThreshold: 0.7 },
+        kind: 'mismatch',
+      },
+      {
+        name: 'similar text above the selected threshold',
+        expected: 'Save changes now',
+        actual: 'Save changes later',
+        options: { similarityThreshold: 0.6 },
+        kind: 'normalized-match',
+      },
+      {
+        name: 'NFKC normalization',
+        expected: 'Button123',
+        actual: 'Button１２３',
+        options: {},
+        kind: 'whitespace-or-case-only',
+      },
+    ] as const;
+
+    test.each(examples)('$name', ({ expected, actual, options, kind }) => {
+      expect(compareText(expected, actual, options).kind).toBe(kind);
+    });
+  });
+
   describe('exact-match', () => {
     test('identical texts', () => {
       const diff = compareText('Hello World', 'Hello World');
