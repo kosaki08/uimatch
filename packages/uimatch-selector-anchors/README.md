@@ -103,6 +103,7 @@ const resolution = await plugin.resolve({
   url: 'http://localhost:3000',
   initialSelector: '.my-button',
   anchorsPath: './anchors.json',
+  projectRoot: process.cwd(),
   probe: myProbeImplementation,
 });
 
@@ -110,6 +111,8 @@ console.log(resolution.selector); // Best selector found
 console.log(resolution.stabilityScore); // Quality score 0-100
 console.log(resolution.reasons); // Selection reasoning
 ```
+
+When a host supplies `projectRoot`, source paths referenced by the anchors file must resolve inside that directory, including after symlink resolution. The uiMatch CLI always supplies this boundary. Direct library callers may omit it when arbitrary source paths are intentionally required.
 
 ## How It Works
 

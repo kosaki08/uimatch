@@ -306,6 +306,12 @@ export interface CompareArgs {
   selectorsPath?: string;
 
   /**
+   * Canonical project root used to constrain selector anchor file access.
+   * The CLI resolves this from projectRoot, the nearest git root, or cwd.
+   */
+  projectRoot?: string;
+
+  /**
    * Write back resolved selectors to anchors JSON.
    * @default false
    */

@@ -39,3 +39,4 @@ export * from './types/config.js';
 export * from './types/schema.js';
 export * from './utils/io.js';
 export * from './utils/liveness.js';
+export * from './utils/project-path.js';

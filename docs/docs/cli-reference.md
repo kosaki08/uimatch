@@ -461,6 +461,12 @@ Use custom selector resolution plugins:
 selectorsPlugin=@my-company/custom-anchor-plugin
 ```
 
+Selector anchor files and the source paths they reference must stay within the project root. uiMatch uses an explicit `projectRoot=<path>` when provided, otherwise the nearest Git root, and finally the current working directory. Paths are resolved through symlinks before this boundary is checked.
+
+```shell
+selectors=.uimatch/anchors.json projectRoot=/path/to/project
+```
+
 See [Plugins](./plugins.md) for details on creating custom plugins.
 
 ## Quality Gate Profiles

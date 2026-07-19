@@ -32,8 +32,8 @@ export interface ResolveContext {
 
   /**
    * Optional hook to persist updated anchors after successful resolution
-   * If not provided, the plugin will prepare updatedAnchors in Resolution
-   * and leave the actual file write to the host (caller)
+   * If not provided, plugins that support write-back are responsible for
+   * validating and persisting their own data.
    *
    * @param path - Path to anchors file
    * @param anchors - Updated anchors data
@@ -46,8 +46,8 @@ export interface ResolveContext {
   probe: Probe;
 
   /**
-   * Project root directory (for resolving relative paths)
-   * @deprecated Use anchorsPath instead
+   * Canonical project root directory used to constrain file access.
+   * Hosts should resolve symlinks before passing this boundary.
    */
   projectRoot?: string;
 
@@ -93,8 +93,9 @@ export interface Resolution {
   reasons?: string[];
 
   /**
-   * Updated anchors data structure (caller handles JSON.stringify and formatting).
-   * Only present if writeBack=true and update was performed.
+   * Updated anchors data for diagnostics.
+   * Hosts must not persist unvalidated plugin output automatically.
+   * @deprecated Plugins should persist validated data through postWrite or their own storage layer.
    */
   updatedAnchors?: object;
 

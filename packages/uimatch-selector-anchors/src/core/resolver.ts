@@ -7,38 +7,20 @@
  */
 
 import type { Resolution, ResolveContext } from '@uimatch/selector-spi';
-import { dirname, isAbsolute, resolve as resolvePath } from 'node:path';
 import { findSnippetMatch } from '../hashing/snippet-hash.js';
 import { calculateStabilityScore, findMostStableSelector } from '../hashing/stability-score.js';
 import { selectBestAnchor } from '../matching/anchor-matcher.js';
 import { resolveFromTypeScript } from '../resolvers/ast-resolver.js';
 import { getConfig } from '../types/config.js';
 import type { SelectorsAnchors } from '../types/schema.js';
+import { SelectorsAnchorsSchema } from '../types/schema.js';
 import { withTimeout } from '../utils/async.js';
 import { extractErrorMessage } from '../utils/error.js';
-import { loadSelectorsAnchors } from '../utils/io.js';
+import { loadSelectorsAnchors, saveSelectorsAnchors } from '../utils/io.js';
 import { checkLivenessAll } from '../utils/liveness.js';
+import { resolveProjectPath, resolveProjectPathWithinRoot } from '../utils/project-path.js';
 
-/**
- * Resolve project path relative to anchors file directory
- *
- * @param anchorsPath - Path to the anchors JSON file
- * @param file - Source file path (absolute or relative)
- * @returns Absolute path to the source file
- *
- * @example
- * ```typescript
- * const absolutePath = resolveProjectPath('/project/anchors.json', 'src/Button.tsx');
- * // Returns: '/project/src/Button.tsx'
- * ```
- */
-export function resolveProjectPath(anchorsPath: string, file: string): string {
-  if (isAbsolute(file)) {
-    return file;
-  }
-  const anchorsDir = dirname(anchorsPath);
-  return resolvePath(anchorsDir, file);
-}
+export { resolveProjectPath } from '../utils/project-path.js';
 
 /**
  * Check if liveness result indicates the selector is alive
@@ -59,6 +41,32 @@ export function isLive(result: unknown): boolean {
   if (!result || typeof result !== 'object') return false;
   const r = result as { isAlive?: boolean; isValid?: boolean };
   return Boolean(r.isAlive ?? r.isValid);
+}
+
+class AnchorWriteError extends Error {
+  override readonly name = 'AnchorWriteError';
+}
+
+async function persistUpdatedAnchors(
+  context: ResolveContext,
+  anchorsPath: string,
+  updatedAnchors: SelectorsAnchors
+): Promise<void> {
+  try {
+    const validatedAnchors = SelectorsAnchorsSchema.parse(updatedAnchors);
+    if (context.postWrite) {
+      await context.postWrite(anchorsPath, validatedAnchors);
+    } else {
+      await saveSelectorsAnchors(anchorsPath, validatedAnchors);
+    }
+  } catch (cause) {
+    throw new AnchorWriteError(
+      `Failed to persist selector anchors: ${extractErrorMessage(cause)}`,
+      {
+        cause,
+      }
+    );
+  }
 }
 
 /**
@@ -161,7 +169,9 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
         const { file, line, col } = anchor.source;
 
         // Resolve source file path relative to anchors file
-        const resolvedFile = resolveProjectPath(context.anchorsPath, file);
+        const resolvedFile = context.projectRoot
+          ? await resolveProjectPathWithinRoot(context.anchorsPath, file, context.projectRoot)
+          : resolveProjectPath(context.anchorsPath, file);
 
         // Check snippet hash match (fuzzy match if needed)
         try {
@@ -294,22 +304,8 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
                       ),
                     };
 
-                    // If postWrite hook is provided, use it to persist changes
-                    const postWriteFn = context.postWrite;
-                    if (postWriteFn) {
-                      try {
-                        await postWriteFn(context.anchorsPath, updatedAnchors);
-                        reasons.push('Updated anchors persisted via postWrite hook');
-                      } catch (err) {
-                        reasons.push(`postWrite hook failed: ${extractErrorMessage(err)}`);
-                        // Still include updatedAnchors for fallback
-                        result.updatedAnchors = updatedAnchors;
-                      }
-                    } else {
-                      // No postWrite hook provided, prepare updatedAnchors for host to handle
-                      result.updatedAnchors = updatedAnchors;
-                      reasons.push('Prepared updated anchors (host will write to file)');
-                    }
+                    await persistUpdatedAnchors(context, context.anchorsPath, updatedAnchors);
+                    reasons.push('Updated anchors persisted');
                   }
 
                   return result;
@@ -385,23 +381,8 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
                             ),
                           };
 
-                          const postWriteFn = context.postWrite;
-                          if (postWriteFn) {
-                            try {
-                              await postWriteFn(context.anchorsPath, updatedAnchors);
-                              reasons.push(
-                                'Updated anchors persisted via postWrite hook (fallback)'
-                              );
-                            } catch (err) {
-                              reasons.push(`postWrite hook failed: ${extractErrorMessage(err)}`);
-                              result.updatedAnchors = updatedAnchors;
-                            }
-                          } else {
-                            result.updatedAnchors = updatedAnchors;
-                            reasons.push(
-                              'Prepared updated anchors (host will write to file) (fallback)'
-                            );
-                          }
+                          await persistUpdatedAnchors(context, context.anchorsPath, updatedAnchors);
+                          reasons.push('Updated anchors persisted (fallback)');
                         }
                         return result;
                       }
@@ -416,6 +397,7 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
             reasons.push('Snippet hash did not match (code may have moved)');
           }
         } catch (error) {
+          if (error instanceof AnchorWriteError) throw error;
           reasons.push(
             `Snippet resolution error: ${error instanceof Error ? error.message : String(error)}`
           );

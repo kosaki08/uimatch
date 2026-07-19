@@ -230,6 +230,7 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
       url: args.story,
       initialSelector: args.selector,
       anchorsPath: args.selectorsPath,
+      projectRoot: args.projectRoot,
       writeBack: args.selectorsWriteBack ?? false,
       probe,
     };
@@ -249,22 +250,6 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
 
     // Resolve selector using plugin
     const resolved = await plugin.resolve(resolveContext);
-
-    // Handle write-back if plugin provided updated anchors
-    if (resolved.updatedAnchors && args.selectorsPath) {
-      try {
-        // Generic JSON write-back (plugin-agnostic)
-        const fs = await import('node:fs/promises');
-        const updatedJson = JSON.stringify(resolved.updatedAnchors, null, 2);
-        await fs.writeFile(args.selectorsPath, updatedJson, 'utf-8');
-        logger.info({ selectorsPath: args.selectorsPath }, 'Updated anchors file');
-      } catch (err) {
-        logger.warn(
-          { error: err instanceof Error ? err.message : String(err) },
-          'Failed to write back anchors'
-        );
-      }
-    }
 
     return {
       selector: resolved.selector || args.selector,

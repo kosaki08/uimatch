@@ -1,5 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { expect, test } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, expect, test } from 'vitest';
 import { cliProcessArgs } from '../../../../../test-utils/run-cli.js';
 
 const FIGMA_PNG_B64 =
@@ -7,6 +10,13 @@ const FIGMA_PNG_B64 =
 const DIFFERENT_HTML = `data:text/html,${encodeURIComponent(
   '<div id="target" style="width:10px;height:10px;background:blue"></div>'
 )}`;
+const tempDirectories: string[] = [];
+
+afterEach(() => {
+  for (const directory of tempDirectories.splice(0)) {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('claude format preserves a failing quality gate exit code', { timeout: 20_000 }, () => {
   const result = spawnSync(
@@ -80,4 +90,33 @@ test('rejects an invalid area gap threshold before comparison', () => {
   expect(result.error).toBeUndefined();
   expect(result.status).toBe(2);
   expect(result.stderr).toContain('Invalid areaGapCritical');
+});
+
+test('rejects selector anchors outside the project root before comparison', () => {
+  const parent = mkdtempSync(join(tmpdir(), 'uimatch-cli-project-root-'));
+  tempDirectories.push(parent);
+  const projectRoot = join(parent, 'project');
+  mkdirSync(join(projectRoot, '.git'), { recursive: true });
+  writeFileSync(join(parent, 'outside.json'), '{"version":"1.0.0","anchors":[]}');
+
+  const result = spawnSync(
+    process.execPath,
+    cliProcessArgs([
+      'compare',
+      'figma=bypass:test',
+      `story=${DIFFERENT_HTML}`,
+      'selector=#target',
+      'selectors=../outside.json',
+    ]),
+    {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      env: { ...process.env, UIMATCH_LOG_LEVEL: 'silent' },
+      timeout: 30_000,
+    }
+  );
+
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain('selectors path must be inside project root');
 });

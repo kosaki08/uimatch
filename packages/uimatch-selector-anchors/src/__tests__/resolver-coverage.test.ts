@@ -445,14 +445,14 @@ describe('Resolver Coverage Tests', () => {
       expect(firstAnchor.id).toBe('writeback-test');
       expect(firstAnchor.resolvedCss).toBe('[data-testid="new"]');
       expect(firstAnchor.lastKnown?.selector).toBe('[data-testid="new"]');
-      expect(result.reasons?.some((r) => r.includes('persisted via postWrite hook'))).toBe(true);
+      expect(result.reasons?.some((r) => r.includes('Updated anchors persisted'))).toBe(true);
 
       loadSpy.mockRestore();
       findSnippetSpy.mockRestore();
       astResolveSpy.mockRestore();
     });
 
-    test('handles postWrite hook failure gracefully', async () => {
+    test('reports postWrite hook failure instead of silently succeeding', async () => {
       const probe = new MockProbe({
         '[data-testid="new"]': {
           selector: '[data-testid="new"]',
@@ -505,17 +505,17 @@ describe('Resolver Coverage Tests', () => {
         probe,
       });
 
-      expect(result.selector).toBe('[data-testid="new"]');
+      expect(result.selector).toBe('.old');
       expect(postWrite).toHaveBeenCalledTimes(1);
-      expect(result.updatedAnchors).toBeDefined();
-      expect(result.reasons?.some((r) => r.includes('postWrite hook failed'))).toBe(true);
+      expect(result.error).toContain('Failed to persist selector anchors: Write failed');
+      expect(result.reasons).toEqual(['Resolution failed with error, using initial selector']);
 
       loadSpy.mockRestore();
       findSnippetSpy.mockRestore();
       astResolveSpy.mockRestore();
     });
 
-    test('prepares updatedAnchors when no postWrite hook provided', async () => {
+    test('validates and saves updated anchors when no postWrite hook is provided', async () => {
       const probe = new MockProbe({
         '[data-testid="new"]': {
           selector: '[data-testid="new"]',
@@ -556,6 +556,8 @@ describe('Resolver Coverage Tests', () => {
         hint: { prefer: ['testid'] },
         reasons: [],
       });
+      const saveSpy = vi.spyOn(ioModule, 'saveSelectorsAnchors');
+      saveSpy.mockResolvedValueOnce(undefined);
 
       const result = await resolve({
         initialSelector: '.old',
@@ -566,12 +568,25 @@ describe('Resolver Coverage Tests', () => {
       });
 
       expect(result.selector).toBe('[data-testid="new"]');
-      expect(result.updatedAnchors).toBeDefined();
-      expect(result.reasons?.some((r) => r.includes('host will write to file'))).toBe(true);
+      expect(saveSpy).toHaveBeenCalledTimes(1);
+      expect(saveSpy).toHaveBeenCalledWith(
+        './anchors.json',
+        expect.objectContaining({
+          version: '1.0.0',
+          anchors: [
+            expect.objectContaining({
+              id: 'no-hook',
+              resolvedCss: '[data-testid="new"]',
+            }),
+          ],
+        })
+      );
+      expect(result.reasons?.some((r) => r.includes('Updated anchors persisted'))).toBe(true);
 
       loadSpy.mockRestore();
       findSnippetSpy.mockRestore();
       astResolveSpy.mockRestore();
+      saveSpy.mockRestore();
     });
   });
 

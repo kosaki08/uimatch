@@ -13,6 +13,11 @@ import { silentLogger } from '@uimatch/shared-logging';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
+import {
+  ProjectPathError,
+  resolveExistingProjectPath,
+  resolveProjectRoot,
+} from '../utils/project-path.js';
 import { getLogger, initLogger } from './logger.js';
 import { errln, outln } from './print.js';
 
@@ -65,6 +70,7 @@ export interface ParsedArgs {
   showSuspicions?: string;
   showReEval?: string;
   selectors?: string;
+  projectRoot?: string;
   selectorsWriteBack?: string;
   selectorsPlugin?: string;
   // text check options
@@ -242,6 +248,7 @@ function printUsage(): void {
     '  figmaChildStrategy=<mode>  Child-node mapping strategy (area|area+position, default: area+position)'
   );
   errln('  selectors=<path>        Path to selector anchors JSON (LLM-managed)');
+  errln('  projectRoot=<path>      Allowed project root (default: git root, then cwd)');
   errln('  selectorsWriteBack=<bool>  Write back resolved selectors to JSON (default: false)');
   errln(
     '  selectorsPlugin=<pkg>   Selector resolution plugin package (default: @uimatch/selector-anchors)'
@@ -706,6 +713,23 @@ export async function runCompare(argv: string[]): Promise<number> {
         return 2;
       }
       throw error;
+    }
+
+    if (config.selectorsPath) {
+      try {
+        config.projectRoot = await resolveProjectRoot(args.projectRoot);
+        config.selectorsPath = await resolveExistingProjectPath(
+          config.projectRoot,
+          config.selectorsPath,
+          'selectors path'
+        );
+      } catch (error) {
+        if (error instanceof ProjectPathError) {
+          errln(error.message);
+          return 2;
+        }
+        throw error;
+      }
     }
     const saveExpectedPath = args.saveExpected;
 
