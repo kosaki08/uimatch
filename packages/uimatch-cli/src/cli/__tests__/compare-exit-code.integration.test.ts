@@ -120,3 +120,29 @@ test('rejects selector anchors outside the project root before comparison', () =
   expect(result.status).toBe(2);
   expect(result.stderr).toContain('selectors path must be inside project root');
 });
+
+test('rejects an invalid selector plugin timeout before comparison', () => {
+  const result = spawnSync(
+    process.execPath,
+    cliProcessArgs([
+      'compare',
+      'figma=bypass:test',
+      `story=${DIFFERENT_HTML}`,
+      'selector=#target',
+      'selectorsPlugin=@uimatch/selector-anchors',
+    ]),
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        UIMATCH_LOG_LEVEL: 'silent',
+        UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS: 'not-a-timeout',
+      },
+      timeout: 30_000,
+    }
+  );
+
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain('UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS must be a positive integer');
+});

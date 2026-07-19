@@ -17,8 +17,18 @@ import {
   textSimilarity,
 } from '@uimatch/core';
 import { computeDFS } from '@uimatch/scoring';
-import type { Probe, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
+import {
+  ResolutionSchema,
+  isSelectorResolverPlugin,
+  type Probe,
+  type Resolution,
+} from '@uimatch/selector-spi';
 import { createLogger } from '@uimatch/shared-logging';
+import {
+  getSelectorPluginTimeoutMs,
+  resolveSelectorPluginId,
+  runSelectorPluginWithTimeout,
+} from './selector-plugin.js';
 import { getSettings } from './settings';
 
 const logger = createLogger({ package: '@uimatch/cli', module: 'compare' });
@@ -146,7 +156,8 @@ interface ResolveOutput {
 
 /**
  * Attempt to resolve selector using dynamically loaded plugin.
- * Falls back to original selector if plugin is unavailable or fails.
+ * Returns the original selector only when no plugin is configured.
+ * A configured plugin must load, finish before its deadline, and return a valid Resolution.
  *
  * @param args - Comparison arguments
  * @returns Resolved selector information
@@ -154,24 +165,37 @@ interface ResolveOutput {
 async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<ResolveOutput> {
   // Determine plugin ID from CLI arg or environment variable
   // Only fall back to default if anchorsPath is explicitly provided
-  const pluginId =
-    args.selectorsPlugin ??
-    process.env.UIMATCH_SELECTORS_PLUGIN?.trim() ??
-    (args.selectorsPath ? '@uimatch/selector-anchors' : undefined);
+  const pluginId = resolveSelectorPluginId(
+    args.selectorsPlugin,
+    process.env.UIMATCH_SELECTORS_PLUGIN,
+    Boolean(args.selectorsPath)
+  );
 
   // Skip if no plugin specified
   if (!pluginId) {
     return { selector: args.selector };
   }
 
-  // Attempt to dynamically import plugin
+  // Importing a plugin executes trusted operator-provided code in this process.
   let pluginModule: unknown;
   try {
     pluginModule = await import(pluginId);
-  } catch {
-    logger.warn({ pluginId }, 'selector plugin not found. Skip.');
-    return { selector: args.selector };
+  } catch (cause) {
+    const details = cause instanceof Error ? cause.message : String(cause);
+    throw new Error(`Failed to load selector plugin "${pluginId}": ${details}`, { cause });
   }
+
+  const plugin =
+    typeof pluginModule === 'object' && pluginModule !== null && 'default' in pluginModule
+      ? pluginModule.default
+      : pluginModule;
+  if (!isSelectorResolverPlugin(plugin)) {
+    throw new Error(
+      `Selector plugin "${pluginId}" must export name, version, and a resolve() function`
+    );
+  }
+
+  const pluginTimeoutMs = args.selectorPluginTimeoutMs ?? getSelectorPluginTimeoutMs();
 
   // Create lightweight Playwright-based probe using BrowserPool context management
   const context = await browserPool.createContext({
@@ -179,9 +203,10 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     deviceScaleFactor: args.dpr ?? 2,
     httpCredentials: args.basicAuth,
   });
-  const page = await context.newPage();
 
   try {
+    const page = await context.newPage();
+
     // Navigate to target URL with timeout
     const timeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 6000);
     await page.goto(args.story, { waitUntil: 'domcontentloaded', timeout });
@@ -235,35 +260,34 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
       probe,
     };
 
-    // Get plugin instance (handle both default and named exports)
-    const plugin = (
-      typeof pluginModule === 'object' && pluginModule !== null && 'default' in pluginModule
-        ? pluginModule.default
-        : pluginModule
-    ) as SelectorResolverPlugin;
-
-    // Validate plugin interface before use
-    if (!plugin || typeof plugin.resolve !== 'function') {
-      logger.warn({ pluginId }, 'selector plugin has no resolve(). Skip.');
-      return { selector: args.selector };
+    const pluginOutput = await runSelectorPluginWithTimeout(
+      plugin.resolve(resolveContext),
+      pluginTimeoutMs,
+      pluginId
+    );
+    const parsedResolution = ResolutionSchema.safeParse(pluginOutput);
+    if (!parsedResolution.success) {
+      const details = parsedResolution.error.issues
+        .map((issue) => `${issue.path.join('.') || 'result'}: ${issue.message}`)
+        .join('; ');
+      throw new Error(`Selector plugin "${pluginId}" returned an invalid result: ${details}`);
     }
-
-    // Resolve selector using plugin
-    const resolved = await plugin.resolve(resolveContext);
+    const resolved = parsedResolution.data;
 
     return {
-      selector: resolved.selector || args.selector,
+      selector: resolved.selector,
       subselector: resolved.subselector,
       diagnostic: resolved,
     };
-  } catch (err) {
-    logger.warn(
-      { error: err instanceof Error ? err.message : String(err) },
-      'selector plugin failed'
-    );
-    return { selector: args.selector };
   } finally {
-    await browserPool.closeContext(context);
+    try {
+      await browserPool.closeContext(context);
+    } catch (error) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Failed to close selector plugin browser context'
+      );
+    }
   }
 }
 

@@ -14,6 +14,10 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import {
+  getSelectorPluginTimeoutMs,
+  resolveSelectorPluginId,
+} from '../commands/selector-plugin.js';
+import {
   ProjectPathError,
   resolveExistingProjectPath,
   resolveProjectRoot,
@@ -730,6 +734,23 @@ export async function runCompare(argv: string[]): Promise<number> {
         }
         throw error;
       }
+    }
+
+    try {
+      config.selectorsPlugin = resolveSelectorPluginId(
+        config.selectorsPlugin,
+        process.env.UIMATCH_SELECTORS_PLUGIN,
+        Boolean(config.selectorsPath)
+      );
+      if (config.selectorsPlugin) {
+        config.selectorPluginTimeoutMs = getSelectorPluginTimeoutMs();
+      }
+    } catch (error) {
+      if (error instanceof RangeError) {
+        errln(error.message);
+        return 2;
+      }
+      throw error;
     }
     const saveExpectedPath = args.saveExpected;
 

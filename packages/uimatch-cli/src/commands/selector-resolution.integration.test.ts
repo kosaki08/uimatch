@@ -74,13 +74,8 @@ describe('Selector resolution plugin integration', () => {
 
         expect(result).toBeDefined();
 
-        // If plugin loaded successfully, selectorResolution should be present
         const report = result.report as { selectorResolution?: unknown };
-        if (report.selectorResolution) {
-          // Plugin was available and used
-          expect(report.selectorResolution).toBeDefined();
-        }
-        // If not present, plugin dependency was optional and not installed (acceptable)
+        expect(report.selectorResolution).toBeDefined();
       } finally {
         if (originalEnv !== undefined) {
           process.env.UIMATCH_FIGMA_PNG_B64 = originalEnv;
@@ -88,6 +83,39 @@ describe('Selector resolution plugin integration', () => {
           delete process.env.UIMATCH_FIGMA_PNG_B64;
         }
       }
+    });
+
+    test('rejects invalid plugin output instead of silently using the original selector', async () => {
+      const { uiMatchCompare } = await import('./compare.js');
+      const invalidPlugin = `data:text/javascript,${encodeURIComponent(`
+        export default {
+          name: 'invalid-plugin',
+          version: '1.0.0',
+          resolve: async () => ({ selector: '#test', stabilityScore: 101 })
+        };
+      `)}`;
+
+      await expect(
+        uiMatchCompare({
+          figma: 'test:1-2',
+          story: 'data:text/html,<div id="test"></div>',
+          selector: '#test',
+          selectorsPlugin: invalidPlugin,
+        })
+      ).rejects.toThrow('returned an invalid result');
+    });
+
+    test('rejects a configured plugin that cannot be loaded', async () => {
+      const { uiMatchCompare } = await import('./compare.js');
+
+      await expect(
+        uiMatchCompare({
+          figma: 'test:1-2',
+          story: 'data:text/html,<div id="test"></div>',
+          selector: '#test',
+          selectorsPlugin: '@uimatch/plugin-that-does-not-exist',
+        })
+      ).rejects.toThrow('Failed to load selector plugin');
     });
   });
 });

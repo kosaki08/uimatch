@@ -5,6 +5,8 @@
  * It is intentionally implementation-agnostic - no TypeScript compiler, parse5, or Playwright dependencies.
  */
 
+import { z } from 'zod';
+
 /**
  * Context provided to the resolver plugin
  */
@@ -67,49 +69,29 @@ export interface ResolveContext {
   };
 }
 
-/**
- * Result of selector resolution
- */
-export interface Resolution {
-  /**
-   * The resolved selector (may be same as initial if no better selector found)
-   */
-  selector: string;
-
-  /**
-   * Optional subselector for child elements (used with Figma auto-ROI)
-   */
-  subselector?: string;
-
-  /**
-   * Stability score for the resolved selector (0-100 scale, consistent with DFS/SFS/CQI metrics).
-   * Higher is more stable.
-   */
-  stabilityScore?: number;
-
-  /**
-   * Human-readable reasons for the resolution choice
-   */
-  reasons?: string[];
-
+/** Runtime contract for selector plugin output. */
+export const ResolutionSchema = z.object({
+  /** The resolved selector (may be the initial selector when no better selector exists). */
+  selector: z.string().min(1),
+  /** Optional subselector for child elements (used with Figma auto-ROI). */
+  subselector: z.string().min(1).optional(),
+  /** Stability score on the same 0-100 scale as DFS/SFS/CQI metrics. */
+  stabilityScore: z.number().finite().min(0).max(100).optional(),
+  /** Human-readable reasons for the resolution choice. */
+  reasons: z.array(z.string()).optional(),
   /**
    * Updated anchors data for diagnostics.
-   * Hosts must not persist unvalidated plugin output automatically.
    * @deprecated Plugins should persist validated data through postWrite or their own storage layer.
    */
-  updatedAnchors?: object;
+  updatedAnchors: z.record(z.string(), z.unknown()).optional(),
+  /** @deprecated Use the name from SelectorResolverPlugin instead. */
+  plugin: z.string().optional(),
+  /** Error message if resolution failed non-fatally. */
+  error: z.string().optional(),
+});
 
-  /**
-   * Plugin identifier that performed the resolution
-   * @deprecated Use plugin name from SelectorResolverPlugin instead
-   */
-  plugin?: string;
-
-  /**
-   * Error message if resolution failed (non-fatal)
-   */
-  error?: string;
-}
+/** Result of selector resolution. */
+export type Resolution = z.infer<typeof ResolutionSchema>;
 
 /**
  * Probe interface for liveness checking

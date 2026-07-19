@@ -19,6 +19,14 @@ Plugins allow you to customize how uiMatch resolves selectors. This enables inte
 
 uiMatch uses a plugin system called SPI (Selector Plugin Interface) to resolve CSS selectors to DOM elements.
 
+### Trust and Failure Model
+
+Selector plugins are trusted operator code. Loading a plugin is equivalent to importing any other installed Node.js package: it runs in the uiMatch process with the same filesystem, network, and environment access. Only configure packages that you trust; package-name validation is not a security boundary.
+
+uiMatch validates each plugin result against the SPI runtime schema. Selectors must be non-empty and `stabilityScore`, when present, must be a finite value from 0 through 100. A configured plugin that cannot be loaded, times out, throws, or returns an invalid result fails the comparison instead of silently falling back to the original selector.
+
+Plugin resolution has a 30-second deadline. Set `UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS` to a positive integer to change it. This deadline stops uiMatch from waiting and closes the plugin's browser context; it is not a sandbox or a cancellation mechanism for arbitrary plugin code.
+
 ### Why Plugins?
 
 Different projects use different selector strategies:
@@ -83,7 +91,7 @@ npx uimatch compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector=submit-button \
-  --anchor ./my-test-id-plugin.ts
+  selectorsPlugin=@my-company/uimatch-test-id-plugin
 ```
 
 Now `selector=submit-button` resolves to `[data-testid="submit-button"]`.
@@ -324,6 +332,9 @@ interface ResolveContext {
   /** Path to anchors JSON file (optional) */
   anchorsPath?: string;
 
+  /** Canonical root that constrains source paths */
+  projectRoot?: string;
+
   /** Whether to write back resolved selectors */
   writeBack?: boolean;
 
@@ -332,10 +343,10 @@ interface ResolveContext {
 }
 
 interface Resolution {
-  /** The resolved selector */
+  /** The non-empty resolved selector */
   selector: string;
 
-  /** Stability score for the resolved selector (0-100) */
+  /** Finite stability score for the resolved selector (0-100) */
   stabilityScore?: number;
 
   /** Human-readable reasons for the resolution choice */

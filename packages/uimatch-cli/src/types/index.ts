@@ -325,6 +325,12 @@ export interface CompareArgs {
   selectorsPlugin?: string;
 
   /**
+   * Validated selector plugin resolution deadline in milliseconds.
+   * Programmatic callers may inject this instead of using the environment variable.
+   */
+  selectorPluginTimeoutMs?: number;
+
+  /**
    * Enable verbose logging (informational messages about mode, URLs, etc.).
    * When false, only warnings and errors are shown.
    * @default false (quiet for programmatic use), true (CLI)
