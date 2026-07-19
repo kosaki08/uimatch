@@ -1,0 +1,44 @@
+{
+  "atomic": {
+    "type": "INSTANCE",
+    "size": { "width": 96, "height": 40 },
+    "layoutMode": "HORIZONTAL",
+    "gap": 10,
+    "padding": [8, 16, 8, 16],
+    "childCount": 1,
+    "text": {
+      "fontFamily": "Inter",
+      "fontSize": 14,
+      "fontWeight": 500,
+      "lineHeight": 24,
+      "textDecoration": "UNDERLINE"
+    }
+  },
+  "composite": {
+    "type": "FRAME",
+    "size": { "width": 969, "height": 228 },
+    "layoutMode": "VERTICAL",
+    "gap": 32,
+    "childCount": 2,
+    "title": {
+      "fontFamily": "Inter",
+      "fontSize": 30,
+      "fontWeight": 600,
+      "lineHeight": 36,
+      "letterSpacing": -0.225
+    },
+    "table": {
+      "size": { "width": 689, "height": 160 },
+      "layoutMode": "VERTICAL",
+      "rowCount": 4,
+      "firstRow": {
+        "size": { "width": 689, "height": 40 },
+        "layoutMode": "HORIZONTAL",
+        "cellWidths": [315, 374],
+        "cellPadding": [8, 16, 8, 16],
+        "cellGap": 10,
+        "fontWeights": [700, 700]
+      }
+    }
+  }
+}
