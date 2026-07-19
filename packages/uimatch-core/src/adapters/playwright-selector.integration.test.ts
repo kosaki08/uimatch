@@ -9,14 +9,10 @@ import { PlaywrightAdapter } from './playwright';
 // E2E tests need more time than the default 5s. Use 15s as default.
 const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
 
-// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
-const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-const run = ENABLE_E2E ? describe : describe.skip;
-
 // Helper to apply consistent timeout to all tests
 const itT = (name: string, fn: () => Promise<void>) => test(name, { timeout: TEST_TIMEOUT }, fn);
 
-run('PlaywrightAdapter - Enhanced Selectors', () => {
+describe('PlaywrightAdapter - Enhanced Selectors', () => {
   const testHtml = `
     <!DOCTYPE html>
     <html>

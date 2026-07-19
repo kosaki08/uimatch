@@ -13,12 +13,8 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { isSelectorsAnchors } from '../helpers/type-guards';
 
-// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
-const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-const run = ENABLE_E2E ? describe : describe.skip;
-
 // E2E tests for selector resolution
-run('Selector resolution E2E', () => {
+describe('Selector resolution E2E', () => {
   // Set default timeout values for E2E tests
   process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';
   process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';

@@ -188,13 +188,15 @@ jobs:
 
       - name: Run integration tests
         env:
-          UIMATCH_ENABLE_BROWSER_TESTS: 'true'
           UIMATCH_HEADLESS: 'true'
           UIMATCH_NAV_TIMEOUT_MS: '1500'
           UIMATCH_SELECTOR_WAIT_MS: '3000'
           UIMATCH_BBOX_TIMEOUT_MS: '800'
           UIMATCH_SCREENSHOT_TIMEOUT_MS: '1000'
         run: pnpm run test:integration
+
+      - name: Run Playwright end-to-end tests
+        run: pnpm run test:e2e
 
       - name: Upload test artifacts on failure
         if: failure()

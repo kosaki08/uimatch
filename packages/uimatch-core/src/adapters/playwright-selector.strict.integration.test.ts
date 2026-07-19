@@ -4,11 +4,7 @@ import { captureTarget } from './playwright';
 
 const itT = (name: string, fn: () => Promise<void>) => test(name, { timeout: 15000 }, fn);
 
-// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
-const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-const run = ENABLE_E2E ? describe : describe.skip;
-
-run('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
+describe('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
   itT('UIMATCH_SELECTOR_STRICT=true throws on unknown prefix', async () => {
     const orig = process.env.UIMATCH_SELECTOR_STRICT;
     process.env.UIMATCH_SELECTOR_STRICT = 'true';

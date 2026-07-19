@@ -5,25 +5,18 @@
   "type": "module",
   "license": "MIT",
   "description": "Design Fidelity Score (DFS) calculation for uiMatch",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "imports": {
     "#/*": "./src/*"
   },
   "exports": {
     ".": "./src/index.ts"
   },
-  "files": [
-    "dist",
-    "src"
-  ],
   "engines": {
     "node": ">=20.19 <21 || >=22.12"
   },
   "scripts": {
-    "prepublishOnly": "pnpm run build",
     "build": "tsc --project tsconfig.build.json",
-    "clean": "rimraf dist",
+    "clean": "rimraf dist dist-types",
     "test": "vitest run --root ../.. packages/uimatch-scoring",
     "lint": "eslint src",
     "format": "prettier --write \"src/**/*.ts\""

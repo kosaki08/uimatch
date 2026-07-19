@@ -13,16 +13,21 @@ pnpm run check
 pnpm test
 ```
 
-`pnpm test` runs the Vitest unit suite, rebuilds the packages, and runs the
-integration suite against the built CLI. Use `pnpm run test:unit` for a faster
-loop when the test does not depend on `dist`.
+`pnpm test` runs the Vitest unit suite, rebuilds the packages, runs the
+integration suite against the built CLI, and finishes with the Playwright Test
+liveness suite. Use `pnpm run test:unit` for a faster loop when the test does not
+depend on `dist`.
 
 Browser integration tests require the Playwright Chromium build:
 
 ```shell
 pnpm exec playwright install chromium
 pnpm run test:integration
+pnpm run test:e2e
 ```
+
+Integration tests use Vitest as the runner and Playwright for browser
+automation. `test:e2e` is the separate Playwright Test suite.
 
 ## Test public tarballs
 

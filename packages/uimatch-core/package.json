@@ -4,22 +4,15 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "imports": {
     "#/*": "./src/*"
   },
   "exports": {
     ".": "./src/index.ts"
   },
-  "files": [
-    "dist",
-    "src"
-  ],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
-    "clean": "rimraf dist",
-    "prepublishOnly": "pnpm run build"
+    "clean": "rimraf dist dist-types"
   },
   "engines": {
     "node": ">=20.19 <21 || >=22.12"

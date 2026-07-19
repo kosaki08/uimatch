@@ -232,7 +232,6 @@ Optional:
 UIMATCH_LOG_LEVEL=debug        # silent | debug | info | warn | error
 UIMATCH_HEADLESS=false         # Show browser during tests
 UIMATCH_CHROMIUM_SANDBOX=true  # Secure default; set false only for incompatible runtimes
-UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 ```
 
 If Chromium cannot start in a root container, prefer running as a non-root user

@@ -1,7 +1,7 @@
 /**
- * P0 Smoke Tests - Fast validation of critical paths
+ * P0 CLI smoke integration tests
  * Purpose: Detect crashes, hangs, and non-reproducibility
- * Target: < 200ms per test, run on every PR
+ * Runs against the built CLI in the serial integration suite.
  */
 
 import { globby } from 'globby';

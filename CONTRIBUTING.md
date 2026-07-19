@@ -10,7 +10,8 @@ pnpm test
 ```
 
 Use pnpm for dependency management and repository commands. The project runs on
-Node.js; unit tests use Vitest and browser E2E tests use Playwright.
+Node.js; unit and integration tests use Vitest, browser automation uses
+Playwright, and the liveness E2E suite uses Playwright Test.
 
 ## Development Workflow
 
@@ -19,7 +20,7 @@ Node.js; unit tests use Vitest and browser E2E tests use Playwright.
 pnpm format               # Format code
 pnpm lint                 # Check linting
 pnpm run test:unit        # Fast unit tests without a build
-pnpm test                 # Unit + built-CLI integration tests
+pnpm test                 # Unit + integration + Playwright Test suites
 ```
 
 ## Commit Guidelines

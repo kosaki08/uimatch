@@ -10,11 +10,7 @@ const itT = (name: string, fn: () => Promise<void>): void => {
   test(name, { timeout: TEST_TIMEOUT }, fn);
 };
 
-// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
-const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-const run = ENABLE_E2E ? describe : describe.skip;
-
-run('Playwright childBox capture - with childSelector', () => {
+describe('Playwright childBox capture - with childSelector', () => {
   itT('should capture childBox for CSS child selector', async () => {
     const html = `
       <div id="parent" style="width: 400px; height: 300px; position: relative;">
@@ -53,7 +49,7 @@ run('Playwright childBox capture - with childSelector', () => {
   });
 });
 
-run('Playwright childBox capture - without childSelector', () => {
+describe('Playwright childBox capture - without childSelector', () => {
   itT('should work without childSelector', async () => {
     const html = `<div id="parent">Content</div>`;
 

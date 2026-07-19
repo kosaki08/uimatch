@@ -8,11 +8,7 @@ import { compareImages } from './core/compare';
 const FIXTURES_DIR = join(import.meta.dirname, '../fixtures');
 const redBase64 = () => readFileSync(join(FIXTURES_DIR, 'red-100x100.png')).toString('base64');
 
-// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
-const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-const run = ENABLE_E2E ? describe : describe.skip;
-
-run('captureTarget', () => {
+describe('captureTarget', () => {
   // E2E stabilization: reduce startup cost and shorten timeouts
   beforeAll(async () => {
     process.env.UIMATCH_HEADLESS = process.env.UIMATCH_HEADLESS ?? 'true';

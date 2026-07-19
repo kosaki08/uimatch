@@ -23,11 +23,7 @@ interface TestReport {
   };
 }
 
-// Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
-const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
-const run = ENABLE_E2E ? describe : describe.skip;
-
-run('E2E: outDir artifact saving', () => {
+describe('E2E: outDir artifact saving', () => {
   const testOutDir = join(import.meta.dirname, 'fixtures', 'test-out');
 
   // A minimal 10x10 red PNG in base64 (for UIMATCH_FIGMA_PNG_B64 bypass)
