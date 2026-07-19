@@ -107,7 +107,7 @@ async function main(): Promise<void> {
   } else if (command === 'compare') {
     process.exitCode = await runCompare(args);
   } else if (command === 'suite') {
-    await runSuite(args);
+    process.exitCode = await runSuite(args);
   } else if (command === 'text-diff') {
     runTextDiff(args);
   } else if (command === 'doctor') {

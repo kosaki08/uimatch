@@ -6,6 +6,7 @@
 
 import { uiMatchCompare } from '#plugin/commands/compare';
 import type { CompareArgs } from '#plugin/types/index';
+import { browserPool } from '@uimatch/core';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getLogger } from './logger.js';
@@ -66,11 +67,21 @@ function slugify(s: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-async function runWithConcurrency<T, R>(
+export function parseConcurrency(value: string): number | undefined {
+  if (!/^[1-9]\d*$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
+export async function runWithConcurrency<T, R>(
   items: T[],
   limit: number,
   worker: (it: T, index: number) => Promise<R>
 ): Promise<R[]> {
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    throw new RangeError('Concurrency limit must be a positive safe integer');
+  }
+
   const results: (R | undefined)[] = Array.from({ length: items.length }, () => undefined);
   let i = 0;
   const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
@@ -103,161 +114,250 @@ function mergeItem(defaults: Partial<SuiteItem> | undefined, item: SuiteItem): S
   };
 }
 
-export async function runSuite(argv: string[]): Promise<void> {
-  const args = parseArgs(argv);
-  if (!args.path) {
-    errln(
-      'Usage: uimatch suite path=<suite.json> [outDir=.uimatch-suite] [concurrency=4] [verbose=false]'
-    );
-    process.exit(2);
+function findInvalidTextGatePath(config: { defaults?: unknown; items: unknown[] }): string | undefined {
+  const hasInvalidTextGate = (value: unknown): boolean =>
+    typeof value === 'object' &&
+    value !== null &&
+    'textGate' in value &&
+    typeof value.textGate !== 'boolean';
+
+  if (hasInvalidTextGate(config.defaults)) {
+    return 'defaults.textGate';
   }
-  const suitePath = args.path;
-  const outBase = args.outDir ?? '.uimatch-suite';
-  const concurrency = Math.max(1, parseInt(args.concurrency ?? '4', 10));
 
-  const raw = await readFile(suitePath, 'utf8');
-  const cfg = JSON.parse(raw) as SuiteConfig;
+  for (const [index, item] of config.items.entries()) {
+    if (hasInvalidTextGate(item)) {
+      return `items[${index}].textGate`;
+    }
+  }
 
-  await mkdir(outBase, { recursive: true });
+  return undefined;
+}
 
-  type SuiteResult = {
-    name: string;
-    ok: boolean;
-    dfs: number;
-    pixelDiff: number;
-    colorDE: number;
-    outDir: string;
-    error?: string;
-    styleDiffs?: number;
-    highCount?: number;
-  };
-
-  const logger = getLogger();
-
-  const results = await runWithConcurrency<SuiteItem, SuiteResult>(
-    cfg.items.map((i) => mergeItem(cfg.defaults, i)),
-    concurrency,
-    async (item, index) => {
-      const itemName = item.name ?? `case-${index + 1}`;
-      const itemDir = join(outBase, `${String(index + 1).padStart(3, '0')}-${slugify(itemName)}`);
-      await mkdir(itemDir, { recursive: true });
-
-      logger.info(
-        {
-          figma: item.figma,
-          story: item.story,
-          selector: item.selector,
-        },
-        `Suite item #${index + 1}: ${itemName}`
+export async function runSuite(argv: string[]): Promise<number> {
+  try {
+    const args = parseArgs(argv);
+    if (!args.path) {
+      errln(
+        'Usage: uimatch suite path=<suite.json> [outDir=.uimatch-suite] [concurrency=4] [verbose=false]'
       );
+      return 2;
+    }
+    const suitePath = args.path;
+    const outBase = args.outDir ?? '.uimatch-suite';
+    const concurrencyValue = args.concurrency ?? (argv.includes('concurrency=') ? '' : '4');
+    const concurrency = parseConcurrency(concurrencyValue);
+    if (concurrency === undefined) {
+      errln(
+        `Invalid concurrency "${concurrencyValue}": expected a positive integer (for example, concurrency=4)`
+      );
+      return 2;
+    }
 
-      try {
-        const res = await uiMatchCompare({
-          figma: item.figma,
-          story: item.story,
-          selector: item.selector,
-          viewport: item.viewport,
-          dpr: item.dpr,
-          figmaScale: item.figmaScale,
-          figmaAutoRoi: item.figmaAutoRoi,
-          detectStorybookIframe:
-            item.detectStorybookIframe ?? /\/iframe\.html(\?|$)/.test(item.story),
-          sizeMode: item.size,
-          align: item.align,
-          padColor: item.padColor ?? 'auto',
-          contentBasis: item.contentBasis,
-          thresholds: item.thresholds,
-          pixelmatch: item.pixelmatch,
-          tokens: item.tokens,
-          ignore: item.ignore,
-          weights: item.weights,
-          reuseBrowser: true,
-          emitArtifacts: true,
-          // bootstrap expectedSpec for first-time runs if requested
-          bootstrapExpectedFromFigma: Boolean(item.bootstrap),
-          textCheck: item.textCheck, // Pass text check configuration
-        });
+    let raw: string;
+    try {
+      raw = await readFile(suitePath, 'utf8');
+    } catch (error) {
+      errln(
+        `Failed to read suite file "${suitePath}": ${error instanceof Error ? error.message : String(error)}`
+      );
+      return 2;
+    }
 
-        const rep = res.report;
-        const figs = rep.artifacts;
-        if (figs) {
-          await writeFile(join(itemDir, 'figma.png'), Buffer.from(figs.figmaPngB64, 'base64'));
-          await writeFile(join(itemDir, 'impl.png'), Buffer.from(figs.implPngB64, 'base64'));
-          await writeFile(join(itemDir, 'diff.png'), Buffer.from(figs.diffPngB64, 'base64'));
-        }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      errln(
+        `Invalid suite JSON in "${suitePath}": ${error instanceof Error ? error.message : String(error)}`
+      );
+      return 2;
+    }
 
-        const textGateMode = item.textGate && rep.textMatch?.enabled;
-        const ok = textGateMode ? Boolean(rep.textMatch?.equal) : Boolean(rep.qualityGate?.pass);
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      !Array.isArray((parsed as { items?: unknown }).items) ||
+      (parsed as { items: unknown[] }).items.length === 0
+    ) {
+      errln(`Invalid suite config in "${suitePath}": items must be a non-empty array`);
+      return 2;
+    }
 
-        await writeFile(join(itemDir, 'report.json'), JSON.stringify(rep, null, 2));
+    const invalidTextGatePath = findInvalidTextGatePath(
+      parsed as { defaults?: unknown; items: unknown[] }
+    );
+    if (invalidTextGatePath) {
+      errln(`Invalid suite config in "${suitePath}": ${invalidTextGatePath} must be a boolean`);
+      return 2;
+    }
 
-        const styleDiffsArray = Array.isArray(rep.styleDiffs) ? rep.styleDiffs : [];
-        const styleDiffsCount = styleDiffsArray.length;
-        const highCount = styleDiffsArray.filter((d) => d.severity === 'high').length;
+    const cfg = parsed as SuiteConfig;
 
-        if (!ok) {
-          logger.warn(
-            `Item ${itemName} FAIL: ${rep.qualityGate?.reasons?.join(' | ') || 'quality gate failed'}`
-          );
-        } else {
-          logger.info(`Item ${itemName} PASS`);
-        }
+    await mkdir(outBase, { recursive: true });
 
-        const metrics = rep.metrics;
-        const dfsValue = metrics.dfs ?? 0;
-        const colorDEValue = metrics.colorDeltaEAvg ?? 0;
+    type SuiteResult = {
+      name: string;
+      ok: boolean;
+      dfs: number;
+      pixelDiff: number;
+      colorDE: number;
+      outDir: string;
+      error?: string;
+      styleDiffs?: number;
+      highCount?: number;
+      warnings?: string[];
+    };
 
-        return {
-          name: itemName,
-          ok,
-          dfs: dfsValue,
-          pixelDiff: metrics.pixelDiffRatio ?? 0,
-          colorDE: colorDEValue,
-          outDir: itemDir,
-          styleDiffs: styleDiffsCount,
-          highCount,
-        };
-      } catch (e) {
-        const errMsg = (e as Error)?.message ?? String(e);
-        logger.error(`Item ${itemName} ERROR: ${errMsg}`);
-        await writeFile(
-          join(itemDir, 'error.txt'),
-          `[uiMatch] Error in "${itemName}": ${errMsg}\n`
+    const logger = getLogger();
+
+    const results = await runWithConcurrency<SuiteItem, SuiteResult>(
+      cfg.items.map((i) => mergeItem(cfg.defaults, i)),
+      concurrency,
+      async (item, index) => {
+        const itemName = item.name ?? `case-${index + 1}`;
+        const itemDir = join(outBase, `${String(index + 1).padStart(3, '0')}-${slugify(itemName)}`);
+        await mkdir(itemDir, { recursive: true });
+
+        logger.info(
+          {
+            figma: item.figma,
+            story: item.story,
+            selector: item.selector,
+          },
+          `Suite item #${index + 1}: ${itemName}`
         );
-        return {
-          name: itemName,
-          ok: false,
-          dfs: 0,
-          pixelDiff: 1,
-          colorDE: 999,
-          outDir: itemDir,
-          error: errMsg,
-        };
+
+        try {
+          const res = await uiMatchCompare({
+            figma: item.figma,
+            story: item.story,
+            selector: item.selector,
+            viewport: item.viewport,
+            dpr: item.dpr,
+            figmaScale: item.figmaScale,
+            figmaAutoRoi: item.figmaAutoRoi,
+            detectStorybookIframe:
+              item.detectStorybookIframe ?? /\/iframe\.html(\?|$)/.test(item.story),
+            sizeMode: item.size,
+            align: item.align,
+            padColor: item.padColor ?? 'auto',
+            contentBasis: item.contentBasis,
+            thresholds: item.thresholds,
+            pixelmatch: item.pixelmatch,
+            tokens: item.tokens,
+            ignore: item.ignore,
+            weights: item.weights,
+            reuseBrowser: true,
+            emitArtifacts: true,
+            // bootstrap expectedSpec for first-time runs if requested
+            bootstrapExpectedFromFigma: Boolean(item.bootstrap),
+            textCheck: item.textCheck, // Pass text check configuration
+          });
+
+          const rep = res.report;
+          const figs = rep.artifacts;
+          if (figs) {
+            await writeFile(join(itemDir, 'figma.png'), Buffer.from(figs.figmaPngB64, 'base64'));
+            await writeFile(join(itemDir, 'impl.png'), Buffer.from(figs.implPngB64, 'base64'));
+            await writeFile(join(itemDir, 'diff.png'), Buffer.from(figs.diffPngB64, 'base64'));
+          }
+
+          const warnings: string[] = [];
+          const textGateMode = item.textGate === true && rep.textMatch?.enabled === true;
+          if (item.textGate === true && rep.textMatch?.enabled !== true) {
+            warnings.push(
+              'textGate is enabled but textCheck is not active; using the visual quality gate.'
+            );
+          }
+          const ok = textGateMode ? Boolean(rep.textMatch?.equal) : Boolean(rep.qualityGate?.pass);
+
+          await writeFile(join(itemDir, 'report.json'), JSON.stringify(rep, null, 2));
+
+          const styleDiffsArray = Array.isArray(rep.styleDiffs) ? rep.styleDiffs : [];
+          const styleDiffsCount = styleDiffsArray.length;
+          const highCount = styleDiffsArray.filter((d) => d.severity === 'high').length;
+
+          if (!ok) {
+            logger.warn(
+              `Item ${itemName} FAIL: ${rep.qualityGate?.reasons?.join(' | ') || 'quality gate failed'}`
+            );
+          } else {
+            logger.info(`Item ${itemName} PASS`);
+          }
+
+          const metrics = rep.metrics;
+          const dfsValue = metrics.dfs ?? 0;
+          const colorDEValue = metrics.colorDeltaEAvg ?? 0;
+
+          return {
+            name: itemName,
+            ok,
+            dfs: dfsValue,
+            pixelDiff: metrics.pixelDiffRatio ?? 0,
+            colorDE: colorDEValue,
+            outDir: itemDir,
+            styleDiffs: styleDiffsCount,
+            highCount,
+            warnings: warnings.length > 0 ? warnings : undefined,
+          };
+        } catch (e) {
+          const errMsg = (e as Error)?.message ?? String(e);
+          logger.error(`Item ${itemName} ERROR: ${errMsg}`);
+          await writeFile(
+            join(itemDir, 'error.txt'),
+            `[uiMatch] Error in "${itemName}": ${errMsg}\n`
+          );
+          return {
+            name: itemName,
+            ok: false,
+            dfs: 0,
+            pixelDiff: 1,
+            colorDE: 999,
+            outDir: itemDir,
+            error: errMsg,
+          };
+        }
+      }
+    );
+
+    // Write suite-level report
+    const summary = {
+      name: cfg.name ?? 'uiMatch Suite',
+      total: results.length,
+      passed: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok && !r.error).length,
+      errors: results.filter((r) => Boolean(r.error)).length,
+      items: results,
+    };
+    await writeFile(join(outBase, 'suite-report.json'), JSON.stringify(summary, null, 2));
+
+    // Pretty print
+    outln(`\n=== ${summary.name} ===`);
+    for (const r of results) {
+      const badge = r.ok ? '✓' : r.error ? 'E' : '✖';
+      outln(
+        `${badge} ${r.name}  ->  DFS:${r.dfs}  pix:${(r.pixelDiff * 100).toFixed(1)}%  ΔE:${r.colorDE.toFixed(2)}  out:${r.outDir}`
+      );
+      for (const warning of r.warnings ?? []) {
+        outln(`  ⚠ ${warning}`);
       }
     }
-  );
-
-  // Write suite-level report
-  const summary = {
-    name: cfg.name ?? 'uiMatch Suite',
-    total: results.length,
-    passed: results.filter((r) => r.ok).length,
-    failed: results.filter((r) => !r.ok && !r.error).length,
-    errors: results.filter((r) => Boolean(r.error)).length,
-    items: results,
-  };
-  await writeFile(join(outBase, 'suite-report.json'), JSON.stringify(summary, null, 2));
-
-  // Pretty print
-  outln(`\n=== ${summary.name} ===`);
-  for (const r of results) {
-    const badge = r.ok ? '✓' : r.error ? 'E' : '✖';
     outln(
-      `${badge} ${r.name}  ->  DFS:${r.dfs}  pix:${(r.pixelDiff * 100).toFixed(1)}%  ΔE:${r.colorDE.toFixed(2)}  out:${r.outDir}`
+      `\nTotal ${summary.total}, Passed ${summary.passed}, Failed ${summary.failed}, Errors ${summary.errors}`
     );
+    return summary.failed === 0 && summary.errors === 0 ? 0 : 1;
+  } catch (error) {
+    errln('❌ Suite error:', error instanceof Error ? error.message : String(error));
+    return 1;
+  } finally {
+    try {
+      await browserPool.closeAll();
+    } catch (error) {
+      errln(
+        '⚠️ Failed to close browser pool:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   }
-  outln(
-    `\nTotal ${summary.total}, Passed ${summary.passed}, Failed ${summary.failed}, Errors ${summary.errors}`
-  );
-  process.exit(summary.failed === 0 && summary.errors === 0 ? 0 : 1);
 }
