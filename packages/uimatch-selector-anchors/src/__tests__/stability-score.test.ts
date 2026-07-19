@@ -402,4 +402,57 @@ describe('findMostStableSelector', () => {
     expect(result).not.toBeNull();
     expect(result?.selector).toBe('#only-one');
   });
+
+  test.each([
+    ['[data-testid="submit"]', 'role:button'],
+    ['role:button', '.submit'],
+    ['role:button', 'button'],
+  ])('prefers %s over lower-priority %s selectors', (preferred, fallback) => {
+    const result = findMostStableSelector([
+      {
+        selector: preferred,
+        score: {
+          overall: 0.1,
+          breakdown: { hintQuality: 0, snippetMatch: 0, liveness: 0, specificity: 0 },
+          details: [],
+        },
+      },
+      {
+        selector: fallback,
+        score: {
+          overall: 0.9,
+          breakdown: { hintQuality: 1, snippetMatch: 1, liveness: 1, specificity: 1 },
+          details: [],
+        },
+      },
+    ]);
+
+    expect(result?.selector).toBe(preferred);
+  });
+
+  test.each([
+    ['#submit', 'role:button'],
+    ['role:button', '[aria-label="Submit"]'],
+  ])('uses overall score when %s and %s priorities differ by at most 100', (first, second) => {
+    const result = findMostStableSelector([
+      {
+        selector: first,
+        score: {
+          overall: 0.1,
+          breakdown: { hintQuality: 0, snippetMatch: 0, liveness: 0, specificity: 0 },
+          details: [],
+        },
+      },
+      {
+        selector: second,
+        score: {
+          overall: 0.9,
+          breakdown: { hintQuality: 1, snippetMatch: 1, liveness: 1, specificity: 1 },
+          details: [],
+        },
+      },
+    ]);
+
+    expect(result?.selector).toBe(second);
+  });
 });

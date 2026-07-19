@@ -337,6 +337,7 @@ function getSelectorTypePriority(selector: string): number {
   if (selector.includes('[data-test-id=')) return 1000;
   if (selector.includes('[data-test=')) return 1000;
   if (selector.startsWith('#')) return 900; // ID selector
+  if (selector.startsWith('role:')) return 800;
   if (selector.includes('role=')) return 800;
   if (selector.includes('[role=')) return 800;
   if (selector.includes('[aria-')) return 700;

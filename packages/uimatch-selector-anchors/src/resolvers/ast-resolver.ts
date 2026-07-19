@@ -91,7 +91,7 @@ export async function resolveFromTypeScript(
   );
 
   // Find node at position
-  const position = getPositionFromLineCol(content, line, col);
+  const position = getPositionFromLineCol(sourceFile, line, col);
   const targetNode = findNodeAtPosition(sourceFile, position);
 
   if (!targetNode) {
@@ -269,16 +269,19 @@ export async function resolveFromTypeScript(
 /**
  * Convert line/col to absolute position in file
  */
-function getPositionFromLineCol(content: string, line: number, col: number): number {
-  const lines = content.split(/\r?\n/);
-  let position = 0;
-
-  for (let i = 0; i < line - 1; i++) {
-    position += (lines[i]?.length ?? 0) + 1; // +1 for newline
+function getPositionFromLineCol(sourceFile: ts.SourceFile, line: number, col: number): number {
+  if (!Number.isSafeInteger(line) || line < 1) {
+    throw new RangeError(`Line must be a positive safe integer, received ${line}`);
+  }
+  if (!Number.isSafeInteger(col) || col < 0) {
+    throw new RangeError(`Column must be a non-negative safe integer, received ${col}`);
   }
 
-  position += col;
-  return position;
+  try {
+    return sourceFile.getPositionOfLineAndCharacter(line - 1, col);
+  } catch {
+    throw new RangeError(`Source position is outside the file: line ${line}, column ${col}`);
+  }
 }
 
 /**
