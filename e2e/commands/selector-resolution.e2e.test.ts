@@ -7,7 +7,7 @@
 
 import type { SelectorsAnchors } from '@uimatch/selector-anchors';
 import type { Probe, ProbeResult, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
@@ -130,30 +130,26 @@ export function Button() {
       // Verify anchor was matched
       expect(result.reasons?.some((r) => r.includes('submit-button'))).toBe(true);
 
-      // Verify updatedAnchors includes updated data
-      expect(result.updatedAnchors).toBeDefined();
-      if (!isSelectorsAnchors(result.updatedAnchors)) {
-        throw new Error('updatedAnchors is not SelectorsAnchors');
+      // Verify validated data was persisted atomically instead of returned to the host.
+      const persistedAnchors: unknown = JSON.parse(await readFile(anchorsPath, 'utf-8'));
+      if (!isSelectorsAnchors(persistedAnchors)) {
+        throw new Error('Persisted anchors are not SelectorsAnchors');
       }
-      const ua = result.updatedAnchors;
-      expect(ua.version).toBe('1.0.0');
-      expect(ua.anchors).toHaveLength(1);
+      expect(persistedAnchors.version).toBe('1.0.0');
+      expect(persistedAnchors.anchors).toHaveLength(1);
 
       // Verify anchor was updated with AST data
-      if (result.updatedAnchors) {
-        const updatedData = result.updatedAnchors;
-        expect(updatedData.anchors.length).toBeGreaterThan(0);
-        const updatedAnchor = updatedData.anchors[0];
-        if (updatedAnchor) {
-          expect(updatedAnchor.id).toBe('submit-button');
-          expect(updatedAnchor.subselector).toBe('[data-testid="submit-btn"]');
+      expect(persistedAnchors.anchors.length).toBeGreaterThan(0);
+      const updatedAnchor = persistedAnchors.anchors[0];
+      if (updatedAnchor) {
+        expect(updatedAnchor.id).toBe('submit-button');
+        expect(updatedAnchor.subselector).toBe('[data-testid="submit-btn"]');
 
-          // Verify liveness tracking - check lastKnown
-          expect(updatedAnchor.lastKnown).toBeDefined();
-          if (updatedAnchor.lastKnown) {
-            expect(updatedAnchor.lastKnown.selector).toBe('[data-testid="submit-btn"]');
-            expect(updatedAnchor.lastKnown.timestamp).toBeDefined();
-          }
+        // Verify liveness tracking - check lastKnown
+        expect(updatedAnchor.lastKnown).toBeDefined();
+        if (updatedAnchor.lastKnown) {
+          expect(updatedAnchor.lastKnown.selector).toBe('[data-testid="submit-btn"]');
+          expect(updatedAnchor.lastKnown.timestamp).toBeDefined();
         }
       }
     } finally {
@@ -372,7 +368,7 @@ export function MultiButton() {
       };
 
       // Only match submit button
-      const result: Resolution = await plugin.resolve({
+      await plugin.resolve({
         url: 'http://localhost:3000',
         initialSelector: '[data-testid="submit"]',
         anchorsPath,
@@ -380,29 +376,25 @@ export function MultiButton() {
         probe: mockProbe,
       });
 
-      expect(result.updatedAnchors).toBeDefined();
+      const persistedAnchors: unknown = JSON.parse(await readFile(anchorsPath, 'utf-8'));
       // Both anchors should be preserved
-      if (!isSelectorsAnchors(result.updatedAnchors)) {
-        throw new Error('updatedAnchors is not SelectorsAnchors');
+      if (!isSelectorsAnchors(persistedAnchors)) {
+        throw new Error('Persisted anchors are not SelectorsAnchors');
       }
-      const ua2 = result.updatedAnchors;
-      expect(ua2.anchors).toHaveLength(2);
+      expect(persistedAnchors.anchors).toHaveLength(2);
 
       // Only matched anchor should have updated timestamp
-      if (result.updatedAnchors) {
-        const updatedData = result.updatedAnchors;
-        const submitAnchor = updatedData.anchors.find((a) => a.id === 'submit-btn');
-        const cancelAnchor = updatedData.anchors.find((a) => a.id === 'cancel-btn');
+      const submitAnchor = persistedAnchors.anchors.find((a) => a.id === 'submit-btn');
+      const cancelAnchor = persistedAnchors.anchors.find((a) => a.id === 'cancel-btn');
 
-        expect(submitAnchor).toBeDefined();
-        expect(submitAnchor?.lastKnown).toBeDefined();
-        if (submitAnchor?.lastKnown) {
-          expect(submitAnchor.lastKnown.timestamp).toBeDefined();
-        }
-        // Cancel anchor shouldn't have new match timestamp (if it wasn't matched before)
-        // but should still exist in the output
-        expect(cancelAnchor).toBeDefined();
+      expect(submitAnchor).toBeDefined();
+      expect(submitAnchor?.lastKnown).toBeDefined();
+      if (submitAnchor?.lastKnown) {
+        expect(submitAnchor.lastKnown.timestamp).toBeDefined();
       }
+      // Cancel anchor shouldn't have new match timestamp (if it wasn't matched before)
+      // but should still exist in the output
+      expect(cancelAnchor).toBeDefined();
     } finally {
       await rm(tmpDir, { recursive: true, force: true });
     }
