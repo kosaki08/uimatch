@@ -1,21 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { compileSafeRegex, execRegexSafe } from './safe-regex.js';
+import { describe, expect, it, vi } from 'vitest';
+import { compileSafeRegex, createRE2Loader, execRegexSafe } from './safe-regex.js';
 
 describe('compileSafeRegex', () => {
-  it('uses the same regex engine for concurrent cold-start compilations', async () => {
-    const results = await Promise.all([
-      compileSafeRegex('first'),
-      compileSafeRegex('second'),
-      compileSafeRegex('third'),
-    ]);
-    const constructors = results.flatMap((result) =>
-      result.success ? [result.regex.constructor] : []
-    );
-
-    expect(constructors).toHaveLength(3);
-    expect(new Set(constructors).size).toBe(1);
-  });
-
   describe('valid patterns', () => {
     it('should compile simple patterns successfully', async () => {
       const result = await compileSafeRegex('hello');
@@ -248,6 +234,44 @@ describe('compileSafeRegex', () => {
   });
 });
 
+describe('createRE2Loader', () => {
+  it('shares one pending import across concurrent callers', async () => {
+    class FakeRE2 extends RegExp {
+      constructor(pattern: string, flags?: string) {
+        super(pattern, flags);
+      }
+    }
+
+    let resolveImport: ((module: unknown) => void) | undefined;
+    const importer = vi.fn(
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolveImport = resolve;
+        })
+    );
+    const loadRE2 = createRE2Loader(importer);
+
+    const pending = [loadRE2(), loadRE2(), loadRE2()];
+    expect(importer).toHaveBeenCalledTimes(1);
+
+    resolveImport?.({ default: FakeRE2 });
+
+    await expect(Promise.all(pending)).resolves.toEqual([FakeRE2, FakeRE2, FakeRE2]);
+  });
+
+  it('shares a failed import and consistently falls back', async () => {
+    const importer = vi.fn(() => Promise.reject(new Error('RE2 unavailable')));
+    const loadRE2 = createRE2Loader(importer);
+
+    await expect(Promise.all([loadRE2(), loadRE2(), loadRE2()])).resolves.toEqual([
+      null,
+      null,
+      null,
+    ]);
+    expect(importer).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('execRegexSafe', () => {
   it('returns capture groups for bounded input', () => {
     const match = execRegexSafe(/data-testid="([^"]+)"/, 'data-testid="submit"');
@@ -259,6 +283,12 @@ describe('execRegexSafe', () => {
     const match = execRegexSafe(/target/, `${'a'.repeat(10_001)}target`);
 
     expect(match).toBeNull();
+  });
+
+  it('executes input at the maximum length boundary', () => {
+    const match = execRegexSafe(/target$/, `${'a'.repeat(9_994)}target`);
+
+    expect(match?.[0]).toBe('target');
   });
 
   it('resets stateful regexes before execution', () => {

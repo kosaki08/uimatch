@@ -4,7 +4,7 @@ import { uiMatchCompare } from '#plugin/commands/compare';
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#plugin/utils/sanitize';
 import type { QualityGateProfile } from '@uimatch/core';
-import { browserPool, getQualityGateProfile } from '@uimatch/core';
+import { browserPool, DEFAULT_CONFIG, getQualityGateProfile } from '@uimatch/core';
 import { silentLogger } from '@uimatch/shared-logging';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -487,6 +487,13 @@ export function buildCompareConfig(
   }
   if (args.areaGapWarning !== undefined) {
     config.thresholds.areaGapWarning = parseUnitInterval(args.areaGapWarning, 'areaGapWarning');
+  }
+  const areaGapCritical =
+    config.thresholds.areaGapCritical ?? DEFAULT_CONFIG.comparison.areaGapCritical;
+  const areaGapWarning =
+    config.thresholds.areaGapWarning ?? DEFAULT_CONFIG.comparison.areaGapWarning;
+  if (areaGapWarning > areaGapCritical) {
+    throw new RangeError('areaGapWarning must not exceed areaGapCritical');
   }
 
   // Text match options

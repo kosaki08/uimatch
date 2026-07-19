@@ -510,6 +510,32 @@ describe('buildCompareConfig', () => {
         expect(() => buildCompareConfig(args)).toThrow(RangeError);
       }
     );
+
+    test('should reject an area gap warning threshold above the critical threshold', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        areaGapCritical: '0.2',
+        areaGapWarning: '0.21',
+      };
+
+      expect(() => buildCompareConfig(args)).toThrow('areaGapWarning must not exceed');
+    });
+
+    test.each([
+      ['critical threshold below the default warning', { areaGapCritical: '0.04' }],
+      ['warning threshold above the default critical', { areaGapWarning: '0.16' }],
+    ])('should reject a %s', (_name, thresholds) => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+        ...thresholds,
+      };
+
+      expect(() => buildCompareConfig(args)).toThrow('areaGapWarning must not exceed');
+    });
   });
 
   describe('ignore parsing', () => {

@@ -18,37 +18,37 @@ const MAX_PATTERN_LENGTH = 500;
 /**
  * Maximum input length for regex execution to prevent excessive processing time
  */
-const MAX_INPUT_LENGTH = 10000;
+const MAX_INPUT_LENGTH = 10_000;
 
 /**
- * RE2 engine instance (loaded lazily if available)
- * RE2 provides linear-time regex execution, preventing ReDoS attacks
+ * Create a memoized optional RE2 loader.
+ * Concurrent callers share the same import attempt and resolved constructor.
  */
-let RE2: RE2Constructor | null = null;
-let re2LoadPromise: Promise<void> | undefined;
+export function createRE2Loader(
+  importer: () => Promise<unknown>
+): () => Promise<RE2Constructor | null> {
+  let loadPromise: Promise<RE2Constructor | null> | undefined;
 
-/**
- * Attempt to load RE2 engine (optional dependency)
- * @returns Promise that resolves when load attempt is complete
- */
-function loadRE2(): Promise<void> {
-  re2LoadPromise ??= (async () => {
-    try {
-      // Dynamic import of optional dependency
-      // Using type guard to safely extract constructor
-      // Type assertion needed because re2 may not be installed (optional dependency).
-      // The rule only sees an environment where re2 happens to be installed, so it
-      // reports this as unnecessary; without it, tsc fails with TS2307 wherever the
-      // optional dependency was skipped.
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const re2Module: unknown = await import('re2' as never);
-      RE2 = extractRE2Constructor(re2Module);
-    } catch {
-      // RE2 not available - will use safe-regex2 validation + standard RegExp
-    }
-  })();
+  return () => {
+    loadPromise ??= importer()
+      .then(extractRE2Constructor)
+      .catch(() => null);
+    return loadPromise;
+  };
+}
 
-  return re2LoadPromise;
+const loadRE2 = createRE2Loader(async () => {
+  // Type assertion is required because re2 is an optional dependency and may
+  // be absent from the installation used for type-checking.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+  const re2Module: unknown = await import('re2' as never);
+  return re2Module;
+});
+
+export function getRegexInputLengthError(input: string): string | undefined {
+  return input.length > MAX_INPUT_LENGTH
+    ? `regex input length ${input.length} exceeds maximum ${MAX_INPUT_LENGTH}`
+    : undefined;
 }
 
 /**
@@ -104,7 +104,7 @@ export async function compileSafeRegex(pattern: string, flags?: string): Promise
   }
 
   // Try to load RE2 if not already attempted
-  await loadRE2();
+  const RE2 = await loadRE2();
 
   // Try to compile with RE2 if available (linear-time guarantee)
   if (RE2) {
@@ -160,7 +160,7 @@ export async function compileSafeRegex(pattern: string, flags?: string): Promise
  */
 export function execRegexSafe(regex: RegExp, input: string): RegExpExecArray | null {
   // Enforce input length limit
-  if (input.length > MAX_INPUT_LENGTH) {
+  if (getRegexInputLengthError(input)) {
     return null;
   }
 

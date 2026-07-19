@@ -14,7 +14,7 @@
 
 import ts from 'typescript';
 import type { SelectorHint } from '../types/schema.js';
-import { compileSafeRegex, execRegexSafe } from '../utils/safe-regex.js';
+import { compileSafeRegex, execRegexSafe, getRegexInputLengthError } from '../utils/safe-regex.js';
 import { buildHintFromAttributes, generateSelectorsFromAttributes } from './selector-utils.js';
 
 /**
@@ -219,6 +219,11 @@ export async function heuristicCandidates(
     const lines = sourceContent.split(/\r?\n/);
     const targetLine = lines[line - 1] || '';
     const contextLines = lines.slice(Math.max(0, line - 3), line + 3).join('\n');
+    const inputLengthError =
+      getRegexInputLengthError(contextLines) ?? getRegexInputLengthError(targetLine);
+    if (inputLengthError) {
+      reasons.push(`Skipped oversized heuristic regex input: ${inputLengthError}`);
+    }
 
     // Try to extract data-testid
     const testidResult = await compileSafeRegex('data-testid=["\'](([^"\'])+)["\']');

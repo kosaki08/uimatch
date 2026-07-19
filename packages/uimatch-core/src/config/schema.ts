@@ -73,98 +73,103 @@ export const CaptureConfigSchema = z.object({
 /**
  * Comparison configuration schema
  */
-export const ComparisonConfigSchema = z.object({
-  /**
-   * Pixelmatch threshold (0 to 1). Smaller = more sensitive.
-   * @default 0.1
-   */
-  pixelmatchThreshold: z.number().min(0).max(1).default(0.1),
+export const ComparisonConfigSchema = z
+  .object({
+    /**
+     * Pixelmatch threshold (0 to 1). Smaller = more sensitive.
+     * @default 0.1
+     */
+    pixelmatchThreshold: z.number().min(0).max(1).default(0.1),
 
-  /**
-   * Whether to skip anti-aliasing detection in pixelmatch
-   * @default false
-   */
-  includeAA: z.boolean().default(false),
+    /**
+     * Whether to skip anti-aliasing detection in pixelmatch
+     * @default false
+     */
+    includeAA: z.boolean().default(false),
 
-  /**
-   * Color delta E threshold for style differences
-   * @default 3.0
-   */
-  colorDeltaEThreshold: z.number().nonnegative().default(3.0),
+    /**
+     * Color delta E threshold for style differences
+     * @default 3.0
+     */
+    colorDeltaEThreshold: z.number().nonnegative().default(3.0),
 
-  /**
-   * Acceptance threshold for pixelDiffRatio (quality gate)
-   * @default 0.01
-   */
-  acceptancePixelDiffRatio: z.number().min(0).max(1).default(0.01),
+    /**
+     * Acceptance threshold for pixelDiffRatio (quality gate)
+     * @default 0.01
+     */
+    acceptancePixelDiffRatio: z.number().min(0).max(1).default(0.01),
 
-  /**
-   * Acceptance threshold for colorDeltaEAvg (quality gate)
-   * @default 3.0
-   */
-  acceptanceColorDeltaE: z.number().nonnegative().default(3.0),
+    /**
+     * Acceptance threshold for colorDeltaEAvg (quality gate)
+     * @default 3.0
+     */
+    acceptanceColorDeltaE: z.number().nonnegative().default(3.0),
 
-  /**
-   * Tolerance ratio for spacing properties (padding, margin)
-   * @default 0.15 (15%)
-   */
-  toleranceSpacing: z.number().nonnegative().default(0.15),
+    /**
+     * Tolerance ratio for spacing properties (padding, margin)
+     * @default 0.15 (15%)
+     */
+    toleranceSpacing: z.number().nonnegative().default(0.15),
 
-  /**
-   * Tolerance ratio for dimension properties (width, height)
-   * @default 0.05 (5%)
-   */
-  toleranceDimension: z.number().nonnegative().default(0.05),
+    /**
+     * Tolerance ratio for dimension properties (width, height)
+     * @default 0.05 (5%)
+     */
+    toleranceDimension: z.number().nonnegative().default(0.05),
 
-  /**
-   * Tolerance ratio for gap properties (gap, column-gap, row-gap)
-   * @default 0.1 (10%)
-   */
-  toleranceLayoutGap: z.number().nonnegative().default(0.1),
+    /**
+     * Tolerance ratio for gap properties (gap, column-gap, row-gap)
+     * @default 0.1 (10%)
+     */
+    toleranceLayoutGap: z.number().nonnegative().default(0.1),
 
-  /**
-   * Tolerance ratio for border-radius
-   * @default 0.12 (12%)
-   */
-  toleranceRadius: z.number().nonnegative().default(0.12),
+    /**
+     * Tolerance ratio for border-radius
+     * @default 0.12 (12%)
+     */
+    toleranceRadius: z.number().nonnegative().default(0.12),
 
-  /**
-   * Tolerance ratio for border-width
-   * @default 0.3 (30%)
-   */
-  toleranceBorderWidth: z.number().nonnegative().default(0.3),
+    /**
+     * Tolerance ratio for border-width
+     * @default 0.3 (30%)
+     */
+    toleranceBorderWidth: z.number().nonnegative().default(0.3),
 
-  /**
-   * Tolerance ratio for box-shadow blur
-   * @default 0.15 (15%)
-   */
-  toleranceShadowBlur: z.number().nonnegative().default(0.15),
+    /**
+     * Tolerance ratio for box-shadow blur
+     * @default 0.15 (15%)
+     */
+    toleranceShadowBlur: z.number().nonnegative().default(0.15),
 
-  /**
-   * Extra Delta E tolerance for box-shadow color comparison
-   * @default 1.0
-   */
-  toleranceShadowColorExtraDE: z.number().nonnegative().default(1.0),
+    /**
+     * Extra Delta E tolerance for box-shadow color comparison
+     * @default 1.0
+     */
+    toleranceShadowColorExtraDE: z.number().nonnegative().default(1.0),
 
-  /**
-   * Properties to ignore in style comparison (default noise filtering)
-   * Common decorative/non-essential properties that add noise to reports
-   * @default []
-   */
-  ignoreProperties: z.array(z.string()).default([]),
+    /**
+     * Properties to ignore in style comparison (default noise filtering)
+     * Common decorative/non-essential properties that add noise to reports
+     * @default []
+     */
+    ignoreProperties: z.array(z.string()).default([]),
 
-  /**
-   * Area gap threshold for immediate failure (0-1).
-   * @default 0.15
-   */
-  areaGapCritical: z.number().min(0).max(1).default(0.15),
+    /**
+     * Area gap threshold for immediate failure (0-1).
+     * @default 0.15
+     */
+    areaGapCritical: z.number().min(0).max(1).default(0.15),
 
-  /**
-   * Area gap threshold for warning (0-1).
-   * @default 0.05
-   */
-  areaGapWarning: z.number().min(0).max(1).default(0.05),
-});
+    /**
+     * Area gap threshold for warning (0-1).
+     * @default 0.05
+     */
+    areaGapWarning: z.number().min(0).max(1).default(0.05),
+  })
+  .refine((config) => config.areaGapWarning <= config.areaGapCritical, {
+    message: 'areaGapWarning must not exceed areaGapCritical',
+    path: ['areaGapWarning'],
+  });
 
 /**
  * Full application configuration schema

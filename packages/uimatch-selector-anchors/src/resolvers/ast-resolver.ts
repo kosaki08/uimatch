@@ -277,11 +277,28 @@ function getPositionFromLineCol(sourceFile: ts.SourceFile, line: number, col: nu
     throw new RangeError(`Column must be a non-negative safe integer, received ${col}`);
   }
 
-  try {
-    return sourceFile.getPositionOfLineAndCharacter(line - 1, col);
-  } catch {
+  const lineIndex = line - 1;
+  const lineStarts = sourceFile.getLineStarts();
+  const lineStart = lineStarts[lineIndex];
+  if (lineStart === undefined) {
     throw new RangeError(`Source position is outside the file: line ${line}, column ${col}`);
   }
+
+  const nextLineStart = lineStarts[lineIndex + 1] ?? sourceFile.text.length;
+  let contentEnd = nextLineStart;
+  while (
+    contentEnd > lineStart &&
+    (sourceFile.text[contentEnd - 1] === '\n' || sourceFile.text[contentEnd - 1] === '\r')
+  ) {
+    contentEnd--;
+  }
+
+  const lineLength = contentEnd - lineStart;
+  if (col > lineLength) {
+    throw new RangeError(`Column is outside line ${line}: received ${col}, maximum ${lineLength}`);
+  }
+
+  return sourceFile.getPositionOfLineAndCharacter(lineIndex, col);
 }
 
 /**

@@ -29,6 +29,14 @@ describe('resolveFromTypeScript', () => {
     expect(result?.selectors).toContain('[data-testid="target"]');
   });
 
+  test('validates columns against CRLF line content', async () => {
+    const file = await writeSource('abc\r\nx');
+
+    await expect(resolveFromTypeScript(file, 1, 3)).resolves.not.toBeNull();
+    await expect(resolveFromTypeScript(file, 2, 0)).resolves.not.toBeNull();
+    await expect(resolveFromTypeScript(file, 1, 4)).rejects.toThrow(RangeError);
+  });
+
   test.each([
     [0, 0],
     [1.5, 0],

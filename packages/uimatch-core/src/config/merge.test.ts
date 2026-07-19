@@ -29,4 +29,16 @@ describe('mergeConfig', () => {
       ).toThrow();
     }
   );
+
+  test('rejects an area gap warning threshold above the critical threshold', () => {
+    expect(() =>
+      mergeConfig({
+        comparison: {
+          ...DEFAULT_CONFIG.comparison,
+          areaGapCritical: 0.2,
+          areaGapWarning: 0.21,
+        },
+      })
+    ).toThrow('areaGapWarning must not exceed areaGapCritical');
+  });
 });

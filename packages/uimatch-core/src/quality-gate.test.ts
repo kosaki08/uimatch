@@ -14,6 +14,15 @@ describe('Quality Gate', () => {
     expect(calculateAreaGap({ width: 0, height: 0 }, { width: 100, height: 100 })).toBe(1);
   });
 
+  test.each([
+    ['NaN Figma width', { width: Number.NaN, height: 100 }, { width: 100, height: 100 }],
+    ['infinite Figma height', { width: 100, height: Infinity }, { width: 100, height: 100 }],
+    ['overflowing Figma area', { width: Number.MAX_VALUE, height: 2 }, { width: 100, height: 100 }],
+    ['negative implementation width', { width: 100, height: 100 }, { width: -1, height: 100 }],
+  ])('should reject %s in area-gap dimensions', (_name, figma, impl) => {
+    expect(() => calculateAreaGap(figma, impl)).toThrow(RangeError);
+  });
+
   test('should use root identity instead of the display selector for suspicion detection', () => {
     const result: CompareImageResult = {
       pixelDiffRatio: 0.005,
@@ -158,6 +167,84 @@ describe('Quality Gate', () => {
   );
 
   test.each([
+    [
+      'global pixel ratio above one',
+      { pixelDiffRatio: 1.01, colorDeltaEAvg: 0, areaGap: 0, hasHighSeverity: false },
+    ],
+    [
+      'global pixel ratio above one when a content ratio is present',
+      {
+        pixelDiffRatio: 1.01,
+        pixelDiffRatioContent: 0,
+        colorDeltaEAvg: 0,
+        areaGap: 0,
+        hasHighSeverity: false,
+      },
+    ],
+    [
+      'content pixel ratio above one',
+      {
+        pixelDiffRatio: 0,
+        pixelDiffRatioContent: 1.01,
+        colorDeltaEAvg: 0,
+        areaGap: 0,
+        hasHighSeverity: false,
+      },
+    ],
+    [
+      'area gap above one',
+      { pixelDiffRatio: 0, colorDeltaEAvg: 0, areaGap: 1.01, hasHighSeverity: false },
+    ],
+  ])('should reject %s in CQI calculation', (_name, metrics) => {
+    expect(() =>
+      calculateCQI(metrics, {
+        pixelDiffRatio: 0.01,
+        deltaE: 3,
+      })
+    ).toThrow(RangeError);
+  });
+
+  test.each(['pixelWeight', 'colorWeight', 'areaWeight', 'severityWeight'] as const)(
+    'should reject invalid %s values',
+    (weightName) => {
+      for (const invalidWeight of [Number.NaN, Infinity, -0.01, 1.01]) {
+        expect(() =>
+          calculateCQI(
+            {
+              pixelDiffRatio: 0,
+              colorDeltaEAvg: 0,
+              areaGap: 0,
+              hasHighSeverity: false,
+            },
+            { pixelDiffRatio: 0.01, deltaE: 3 },
+            { [weightName]: invalidWeight }
+          )
+        ).toThrow(RangeError);
+      }
+    }
+  );
+
+  test('should accept zero and valid custom CQI weights', () => {
+    const result = calculateCQI(
+      {
+        pixelDiffRatio: 0.01,
+        colorDeltaEAvg: 3,
+        areaGap: 1,
+        hasHighSeverity: true,
+      },
+      { pixelDiffRatio: 0.01, deltaE: 3 },
+      {
+        pixelWeight: 0,
+        colorWeight: 0.25,
+        areaWeight: 0.25,
+        severityWeight: 0.25,
+      }
+    );
+
+    expect(result.cqi).toBe(25);
+  });
+
+  test.each([
     ['negative pixel threshold', { pixelDiffRatio: -1, deltaE: 3 }],
     ['NaN pixel threshold', { pixelDiffRatio: Number.NaN, deltaE: 3 }],
     ['pixel threshold above one', { pixelDiffRatio: 1.1, deltaE: 3 }],
@@ -165,6 +252,10 @@ describe('Quality Gate', () => {
     ['NaN color threshold', { pixelDiffRatio: 0.01, deltaE: Number.NaN }],
     ['negative critical area threshold', { pixelDiffRatio: 0.01, deltaE: 3, areaGapCritical: -1 }],
     ['NaN warning area threshold', { pixelDiffRatio: 0.01, deltaE: 3, areaGapWarning: Number.NaN }],
+    [
+      'warning area threshold above critical threshold',
+      { pixelDiffRatio: 0.01, deltaE: 3, areaGapCritical: 0.2, areaGapWarning: 0.21 },
+    ],
     [
       'negative high-severity limit',
       { pixelDiffRatio: 0.01, deltaE: 3, maxHighSeverityIssues: -1 },

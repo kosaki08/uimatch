@@ -23,5 +23,10 @@ describe('heuristicCandidates', () => {
 
     expect(result.level).toBe('failed');
     expect(result.selectors).toEqual([]);
+    expect(result.reasons).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/regex input length \d+ exceeds maximum 10000/),
+      ])
+    );
   });
 });

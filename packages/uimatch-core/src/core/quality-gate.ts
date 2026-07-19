@@ -67,13 +67,13 @@ export interface QualityGateThresholds {
  * Composite Quality Indicator (CQI) calculation parameters
  */
 export interface CQIParams {
-  /** Pixel difference weight (default: 0.6) */
+  /** Pixel difference weight (0-1, default: 0.6) */
   pixelWeight?: number;
-  /** Color delta weight (default: 0.2) */
+  /** Color delta weight (0-1, default: 0.2) */
   colorWeight?: number;
-  /** Area gap weight (default: 0.15) */
+  /** Area gap weight (0-1, default: 0.15) */
   areaWeight?: number;
-  /** High severity penalty weight (default: 0.05) */
+  /** High severity penalty weight (0-1, default: 0.05) */
   severityWeight?: number;
 }
 
@@ -180,6 +180,12 @@ function validateQualityGateThresholds(thresholds: QualityGateThresholds): void 
       'maximum layout high-severity issues'
     );
   }
+
+  const areaGapCritical = thresholds.areaGapCritical ?? 0.15;
+  const areaGapWarning = thresholds.areaGapWarning ?? 0.05;
+  if (areaGapWarning > areaGapCritical) {
+    throw new RangeError('warning area gap threshold must not exceed critical area gap threshold');
+  }
 }
 
 function normalizePenalty(metric: number, threshold: number, name: string): number {
@@ -198,8 +204,18 @@ export function calculateAreaGap(
   figmaDim: { width: number; height: number },
   implDim: { width: number; height: number }
 ): number {
+  for (const [name, dimension] of [
+    ['Figma', figmaDim],
+    ['implementation', implDim],
+  ] as const) {
+    assertNonNegativeFinite(dimension.width, `${name} width`);
+    assertNonNegativeFinite(dimension.height, `${name} height`);
+  }
+
   const areaFigma = figmaDim.width * figmaDim.height;
   const areaImpl = implDim.width * implDim.height;
+  assertNonNegativeFinite(areaFigma, 'Figma area');
+  assertNonNegativeFinite(areaImpl, 'implementation area');
   const maxArea = Math.max(areaFigma, areaImpl);
   return maxArea === 0 ? 0 : Math.abs(areaFigma - areaImpl) / maxArea;
 }
@@ -328,7 +344,27 @@ export function calculateCQI(
   includeBreakdown = false
 ): { cqi: number; breakdown?: CQIBreakdown } {
   validateQualityGateThresholds(thresholds);
-  const { pixelWeight = 0.6, colorWeight = 0.2, areaWeight = 0.15, severityWeight = 0.05 } = params;
+  const weights: Required<CQIParams> = {
+    pixelWeight: params.pixelWeight ?? 0.6,
+    colorWeight: params.colorWeight ?? 0.2,
+    areaWeight: params.areaWeight ?? 0.15,
+    severityWeight: params.severityWeight ?? 0.05,
+  };
+  for (const [name, weight] of [
+    ['pixel', weights.pixelWeight],
+    ['color', weights.colorWeight],
+    ['area', weights.areaWeight],
+    ['severity', weights.severityWeight],
+  ] as const) {
+    assertUnitInterval(weight, `${name} weight`);
+  }
+  const { pixelWeight, colorWeight, areaWeight, severityWeight } = weights;
+
+  assertUnitInterval(metrics.pixelDiffRatio, 'pixel difference ratio');
+  if (metrics.pixelDiffRatioContent !== undefined) {
+    assertUnitInterval(metrics.pixelDiffRatioContent, 'content pixel difference ratio');
+  }
+  assertUnitInterval(metrics.areaGap, 'area gap');
 
   // Use content-only ratio when available
   const effectivePixelRatio = metrics.pixelDiffRatioContent ?? metrics.pixelDiffRatio;
@@ -340,7 +376,6 @@ export function calculateCQI(
     'pixel difference ratio'
   );
   const colorPenalty = normalizePenalty(metrics.colorDeltaEAvg, thresholds.deltaE, 'color delta E');
-  assertNonNegativeFinite(metrics.areaGap, 'area gap');
   const areaPenalty = metrics.areaGap; // Already 0-1
   const severityPenalty = metrics.hasHighSeverity ? 1 : 0;
 
