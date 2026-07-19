@@ -45,14 +45,46 @@ describe('buildStyleDiffs', () => {
       thresholds: { deltaE: 3.0 },
     });
 
-    // Should create diff but with low severity (within threshold)
-    // Implementation includes property even when within tolerance
-    if (diffs.length > 0) {
-      const colorDiff = diffs[0].properties['color'];
-      if (colorDiff) {
-        expect(colorDiff.delta).toBeLessThan(3.0); // Within deltaE threshold
-      }
-    }
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0]?.properties['color']?.delta).toBeLessThan(3.0);
+  });
+
+  it('should omit selectors without comparable expected properties', () => {
+    const actual = {
+      '.implementation-only': {
+        color: 'rgb(0, 0, 0)',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, {});
+
+    expect(diffs).toEqual([]);
+  });
+
+  it('should preserve root identity separately from its display selector', () => {
+    const actual = {
+      __self__: {
+        width: '100px',
+      },
+    };
+    const expected: ExpectedSpec = {
+      __self__: {
+        width: '200px',
+      },
+    };
+
+    const diffs = buildStyleDiffs(actual, expected, {
+      meta: {
+        __self__: {
+          tag: 'main',
+          cssSelector: 'main.app',
+        },
+      },
+    });
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0]?.selector).toBe('main.app');
+    expect(diffs[0]?.isRoot).toBe(true);
   });
 
   it('should detect layout property differences', () => {

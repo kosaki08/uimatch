@@ -11,6 +11,21 @@
 import type { StyleDiff } from '../types/index';
 import type { CompareImageResult } from './compare';
 
+const LAYOUT_PROPERTIES = new Set([
+  'display',
+  'position',
+  'flex-direction',
+  'flex-wrap',
+  'justify-content',
+  'align-items',
+  'align-content',
+  'grid-template-columns',
+  'grid-template-rows',
+  'grid-auto-flow',
+  'place-items',
+  'place-content',
+]);
+
 /**
  * Hard gate violations that immediately fail quality check
  */
@@ -42,6 +57,10 @@ export interface QualityGateThresholds {
   areaGapWarning?: number;
   /** Minimum style coverage ratio (0-1) to prevent false high scores */
   minStyleCoverage?: number;
+  /** Maximum allowed high-severity StyleDiff entries (default: 0) */
+  maxHighSeverityIssues?: number;
+  /** Maximum allowed high-severity StyleDiff entries containing a layout property */
+  maxLayoutHighIssues?: number;
 }
 
 /**
@@ -146,7 +165,7 @@ export function detectSuspicions(
   const areaGap = calculateAreaGap(dimensions.figma, dimensions.impl);
 
   // Suspicion 1: High SFS but only root-level style diffs (suggests incomplete child comparison)
-  const hasOnlyRootDiff = styleDiffs.length === 1 && styleDiffs[0]?.selector === '__self__';
+  const hasOnlyRootDiff = styleDiffs.length === 1 && styleDiffs[0]?.isRoot === true;
   if (hasOnlyRootDiff && pixelDiffRatioContent !== undefined && pixelDiffRatioContent < 0.03) {
     reasons.push(
       'Only root style diff present despite low pixel difference - possible incomplete comparison'
@@ -382,14 +401,30 @@ export function evaluateQualityGate(
     });
   }
 
-  // Hard Gate 2: High severity style issues
-  const hasHighSeverity = styleDiffs.some((d) => d.severity === 'high');
-  if (hasHighSeverity) {
+  // Hard Gate 2: High severity style issues, counted per StyleDiff entry.
+  const highSeverityDiffs = styleDiffs.filter((diff) => diff.severity === 'high');
+  const highSeverityCount = highSeverityDiffs.length;
+  const hasHighSeverity = highSeverityCount > 0;
+  const maxHighSeverityIssues = thresholds.maxHighSeverityIssues ?? 0;
+  if (highSeverityCount > maxHighSeverityIssues) {
     hardGateViolations.push({
       type: 'high_severity',
-      reason: 'High severity style differences present',
+      reason: `High severity count ${highSeverityCount} exceeds maximum ${maxHighSeverityIssues}`,
       severity: 'high',
     });
+  }
+
+  if (thresholds.maxLayoutHighIssues !== undefined) {
+    const layoutHighCount = highSeverityDiffs.filter((diff) =>
+      Object.keys(diff.properties).some((property) => LAYOUT_PROPERTIES.has(property))
+    ).length;
+    if (layoutHighCount > thresholds.maxLayoutHighIssues) {
+      hardGateViolations.push({
+        type: 'high_severity',
+        reason: `Layout high severity count ${layoutHighCount} exceeds maximum ${thresholds.maxLayoutHighIssues}`,
+        severity: 'high',
+      });
+    }
   }
 
   // Calculate metrics for CQI

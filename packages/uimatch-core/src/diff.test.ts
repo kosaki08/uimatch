@@ -310,9 +310,7 @@ describe('buildStyleDiffs', () => {
 
     const diffs = buildStyleDiffs(actual, expected);
 
-    expect(diffs).toHaveLength(1);
-    const firstDiff = getFirstDiff(diffs);
-    expect(firstDiff.severity).toBe('low'); // No differences to detect
+    expect(diffs).toEqual([]);
   });
 
   test('handles box-shadow difference', () => {

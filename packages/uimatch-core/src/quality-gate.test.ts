@@ -1,9 +1,42 @@
 import { describe, expect, test } from 'bun:test';
 import type { CompareImageResult } from './core/compare';
-import { evaluateQualityGate } from './core/quality-gate';
+import { detectSuspicions, evaluateQualityGate } from './core/quality-gate';
 import type { StyleDiff } from './types/index';
 
 describe('Quality Gate', () => {
+  test('should use root identity instead of the display selector for suspicion detection', () => {
+    const result: CompareImageResult = {
+      pixelDiffRatio: 0.005,
+      pixelDiffRatioContent: 0.005,
+      diffPixelCount: 50,
+      diffPngB64: '',
+      totalPixels: 10000,
+      dimensions: {
+        figma: { width: 100, height: 100 },
+        impl: { width: 100, height: 100 },
+        compared: { width: 100, height: 100 },
+        sizeMode: 'strict',
+        adjusted: false,
+      },
+    };
+    const styleDiffs: StyleDiff[] = [
+      {
+        selector: 'main.app',
+        isRoot: true,
+        properties: {
+          color: { actual: '#000', expected: '#111' },
+        },
+        severity: 'low',
+      },
+    ];
+
+    const suspicions = detectSuspicions(result, styleDiffs);
+
+    expect(suspicions.reasons).toContain(
+      'Only root style diff present despite low pixel difference - possible incomplete comparison'
+    );
+  });
+
   test('should maintain core interface', () => {
     const result: CompareImageResult = {
       pixelDiffRatio: 0.005,
@@ -140,6 +173,102 @@ describe('Quality Gate', () => {
 
     expect(gate.pass).toBe(false);
     expect(gate.hardGateViolations?.some((v) => v.type === 'high_severity')).toBe(true);
+    expect(gate.reasons).toContain('[HIGH] High severity count 1 exceeds maximum 0');
+  });
+
+  test('should count high-severity limits by StyleDiff entry while retaining the CQI penalty', () => {
+    const result: CompareImageResult = {
+      pixelDiffRatio: 0.001,
+      colorDeltaEAvg: 1.0,
+      diffPixelCount: 10,
+      diffPngB64: '',
+      totalPixels: 10000,
+      dimensions: {
+        figma: { width: 100, height: 100 },
+        impl: { width: 100, height: 100 },
+        compared: { width: 100, height: 100 },
+        sizeMode: 'strict',
+        adjusted: false,
+      },
+    };
+    const firstDiff: StyleDiff = {
+      selector: '#first',
+      properties: {
+        color: { actual: '#000', expected: '#fff' },
+        'background-color': { actual: '#000', expected: '#fff' },
+      },
+      severity: 'high',
+    };
+    const secondDiff: StyleDiff = {
+      selector: '#second',
+      properties: {
+        color: { actual: '#000', expected: '#fff' },
+      },
+      severity: 'high',
+    };
+
+    const allowed = evaluateQualityGate(result, [firstDiff], {
+      pixelDiffRatio: 0.01,
+      deltaE: 3.0,
+      maxHighSeverityIssues: 1,
+    });
+    const exceeded = evaluateQualityGate(result, [firstDiff, secondDiff], {
+      pixelDiffRatio: 0.01,
+      deltaE: 3.0,
+      maxHighSeverityIssues: 1,
+    });
+
+    expect(allowed.pass).toBe(true);
+    expect(allowed.cqiBreakdown?.components.find((component) => component.name === 'severity')?.penalty)
+      .toBeGreaterThan(0);
+    expect(exceeded.pass).toBe(false);
+    expect(exceeded.reasons).toContain('[HIGH] High severity count 2 exceeds maximum 1');
+  });
+
+  test('should apply the layout high-severity limit only when configured', () => {
+    const result: CompareImageResult = {
+      pixelDiffRatio: 0.001,
+      colorDeltaEAvg: 1.0,
+      diffPixelCount: 10,
+      diffPngB64: '',
+      totalPixels: 10000,
+      dimensions: {
+        figma: { width: 100, height: 100 },
+        impl: { width: 100, height: 100 },
+        compared: { width: 100, height: 100 },
+        sizeMode: 'strict',
+        adjusted: false,
+      },
+    };
+    const layoutDiff: StyleDiff = {
+      selector: '#test',
+      properties: {
+        display: { actual: 'block', expected: 'flex' },
+        'grid-template-columns': { actual: '1fr', expected: '1fr 1fr' },
+      },
+      severity: 'high',
+    };
+
+    const notConfigured = evaluateQualityGate(result, [layoutDiff], {
+      pixelDiffRatio: 0.01,
+      deltaE: 3.0,
+      maxHighSeverityIssues: 1,
+    });
+    const exceeded = evaluateQualityGate(result, [layoutDiff], {
+      pixelDiffRatio: 0.01,
+      deltaE: 3.0,
+      maxHighSeverityIssues: 1,
+      maxLayoutHighIssues: 0,
+    });
+
+    expect(notConfigured.pass).toBe(true);
+    expect(notConfigured.reasons.some((reason) => reason.includes('Layout high severity'))).toBe(
+      false
+    );
+    expect(exceeded.pass).toBe(false);
+    expect(exceeded.reasons).toContain(
+      '[HIGH] Layout high severity count 1 exceeds maximum 0'
+    );
   });
 
   test('should use pixelDiffRatioContent when available', () => {

@@ -623,6 +623,8 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
       deltaE: tDe,
       areaGapCritical: args.thresholds?.areaGapCritical ?? settings.comparison.areaGapCritical,
       areaGapWarning: args.thresholds?.areaGapWarning ?? settings.comparison.areaGapWarning,
+      maxHighSeverityIssues: args.thresholds?.maxHighSeverityIssues,
+      maxLayoutHighIssues: args.thresholds?.maxLayoutHighIssues,
     },
     effectiveContentBasis ?? 'union'
   );

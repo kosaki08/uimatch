@@ -446,6 +446,8 @@ export function buildCompareConfig(
       deltaE: qualityGateProfile.thresholds.deltaE,
       areaGapCritical: qualityGateProfile.thresholds.areaGapCritical,
       areaGapWarning: qualityGateProfile.thresholds.areaGapWarning,
+      maxHighSeverityIssues: qualityGateProfile.thresholds.maxHighSeverityIssues,
+      maxLayoutHighIssues: qualityGateProfile.thresholds.maxLayoutHighIssues,
     };
 
     if (qualityGateProfile.contentBasis && !args.contentBasis) {
@@ -527,47 +529,13 @@ export function evaluateGateDecision(
   qualityGateProfile?: QualityGateProfile
 ): GateDecision {
   const baseGatePass = report.qualityGate?.pass ?? false;
-  let profile: ProfileGateDecision | undefined;
-  let profileGatePass = baseGatePass;
-
-  if (qualityGateProfile) {
-    const reasons: string[] = [];
-    const layoutKeys = new Set([
-      'display',
-      'position',
-      'flex-direction',
-      'flex-wrap',
-      'justify-content',
-      'align-items',
-      'align-content',
-      'grid-template-columns',
-      'grid-template-rows',
-      'grid-auto-flow',
-      'place-items',
-      'place-content',
-    ]);
-
-    const layoutHighCount = report.styleDiffs.filter(
-      (diff) =>
-        diff.severity === 'high' &&
-        Object.keys(diff.properties).some((property) => layoutKeys.has(property))
-    ).length;
-    if (layoutHighCount > qualityGateProfile.thresholds.maxLayoutHighIssues) {
-      reasons.push(
-        `layoutHighCount ${layoutHighCount} > ${qualityGateProfile.thresholds.maxLayoutHighIssues}`
-      );
-    }
-
-    const highCount = report.styleSummary?.highCount ?? 0;
-    if (highCount > qualityGateProfile.thresholds.maxHighSeverityIssues) {
-      reasons.push(
-        `highSeverityCount ${highCount} > ${qualityGateProfile.thresholds.maxHighSeverityIssues}`
-      );
-    }
-
-    profileGatePass = baseGatePass && reasons.length === 0;
-    profile = { name: qualityGateProfile.name, pass: profileGatePass, reasons };
-  }
+  const profile: ProfileGateDecision | undefined = qualityGateProfile
+    ? {
+        name: qualityGateProfile.name,
+        pass: baseGatePass,
+        reasons: report.qualityGate?.reasons ?? [],
+      }
+    : undefined;
 
   const rawTextGate = args.textGate;
   const textGateMode = rawTextGate === 'true' || rawTextGate === true || rawTextGate === '';
@@ -585,7 +553,7 @@ export function evaluateGateDecision(
       notices.push('  Note: Visual differences detected but ignored in text gate mode');
     }
   } else {
-    finalPass = baseGatePass && profileGatePass;
+    finalPass = baseGatePass;
     if (textGateMode) {
       notices.push('ℹ️  textGate is enabled but textCheck is not active.');
       notices.push('    Enable text match with: text=true textMatch=ratio ...');

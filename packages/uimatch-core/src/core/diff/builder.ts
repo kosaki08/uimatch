@@ -667,6 +667,11 @@ export function buildStyleDiffs(
       };
     });
 
+    // A selector without comparable expected properties is not a style difference.
+    if (Object.keys(propDiffs).length === 0) {
+      continue;
+    }
+
     // Generate patch hints
     const patchHints = generatePatchHints(propDiffs);
 
@@ -686,6 +691,7 @@ export function buildStyleDiffs(
 
     diffs.push({
       selector: selectorDisplay,
+      isRoot: sel === '__self__' ? true : undefined,
       properties: propDiffs,
       severity,
       patchHints,

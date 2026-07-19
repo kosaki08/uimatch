@@ -91,6 +91,17 @@ export interface Thresholds {
    * @default 0.05 (5%)
    */
   areaGapWarning?: number;
+
+  /**
+   * Maximum allowed high-severity StyleDiff entries.
+   * @default 0
+   */
+  maxHighSeverityIssues?: number;
+
+  /**
+   * Maximum allowed high-severity StyleDiff entries containing a layout property.
+   */
+  maxLayoutHighIssues?: number;
 }
 
 /**

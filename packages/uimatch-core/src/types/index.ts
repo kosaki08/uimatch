@@ -87,6 +87,8 @@ export type CheckingStage = 'parent' | 'self' | 'children' | 'all';
 export interface StyleDiff {
   /** CSS selector for the element (e.g., "div.w-full", "[data-testid='button']") */
   selector: string;
+  /** Whether this diff belongs to the comparison root element */
+  isRoot?: boolean;
   /** Property-level differences */
   properties: Record<
     string,

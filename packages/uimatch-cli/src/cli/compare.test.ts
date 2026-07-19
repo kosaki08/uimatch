@@ -474,6 +474,22 @@ describe('buildCompareConfig', () => {
     });
   });
 
+  describe('quality gate profiles', () => {
+    test('should pass high-severity limits to the core comparison', () => {
+      const args: ParsedArgs = {
+        figma: 'AbCdEf:1-23',
+        story: 'http://localhost:6006',
+        selector: '#root',
+      };
+      const profile = getQualityGateProfile('page-vs-component');
+
+      const config = buildCompareConfig(args, profile);
+
+      expect(config.thresholds?.maxHighSeverityIssues).toBe(2);
+      expect(config.thresholds?.maxLayoutHighIssues).toBe(0);
+    });
+  });
+
   describe('ignore parsing', () => {
     test('should parse comma-separated ignore list', () => {
       const args: ParsedArgs = {
@@ -576,18 +592,42 @@ describe('evaluateGateDecision', () => {
     expect(decision.notices).toContain('✅ Text gate: PASS (text match)');
   });
 
-  test('applies profile-specific layout limits to a passing base gate', () => {
-    const report = createReport(true);
-    report.styleDiffs.push({
-      selector: '#target',
-      properties: { display: { expected: 'flex', actual: 'block' } },
-      severity: 'high',
-    });
+  test('uses the core quality gate result for profile output', () => {
+    const report = createReport(false);
+    if (!report.qualityGate) throw new Error('Expected quality gate report');
+    report.qualityGate.reasons = ['[HIGH] Layout high severity count 1 exceeds maximum 0'];
 
     const decision = evaluateGateDecision(report, {}, getQualityGateProfile('component/strict'));
 
     expect(decision.finalPass).toBe(false);
     expect(decision.profile?.pass).toBe(false);
-    expect(decision.profile?.reasons).toContain('layoutHighCount 1 > 0');
+    expect(decision.profile?.reasons).toEqual(report.qualityGate.reasons);
+  });
+
+  test('does not recalculate profile limits from reporting summaries', () => {
+    const report = createReport(true);
+    report.styleDiffs.push({
+      selector: '#target',
+      properties: {
+        display: { expected: 'flex', actual: 'block' },
+        'grid-template-columns': { expected: '1fr 1fr', actual: '1fr' },
+      },
+      severity: 'high',
+    });
+    report.styleSummary = {
+      styleFidelityScore: 0,
+      highCount: 2,
+      mediumCount: 0,
+      lowCount: 0,
+      totalDiffs: 2,
+      categoryBreakdown: [],
+      coverage: 1,
+      autofixableCount: 0,
+    };
+
+    const decision = evaluateGateDecision(report, {}, getQualityGateProfile('component/strict'));
+
+    expect(decision.finalPass).toBe(true);
+    expect(decision.profile?.pass).toBe(true);
   });
 });
