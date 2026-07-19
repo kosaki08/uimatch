@@ -457,6 +457,7 @@ export interface CompareArgs {
 
   /**
    * Validated selector plugin resolution deadline in milliseconds.
+   * Must be between 1 and Node.js's maximum timer delay (2,147,483,647).
    * Programmatic callers may inject this instead of using the environment variable.
    */
   selectorPluginTimeoutMs?: number;

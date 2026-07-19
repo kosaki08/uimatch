@@ -50,7 +50,7 @@
     "re2": "^1.26.0"
   },
   "peerDependencies": {
-    "@uimatch/selector-spi": ">=0.1.1"
+    "@uimatch/selector-spi": "^0.1.1"
   },
   "peerDependenciesMeta": {
     "@uimatch/selector-spi": {

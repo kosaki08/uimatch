@@ -1,8 +1,29 @@
 const DEFAULT_SELECTOR_PLUGIN_TIMEOUT_MS = 30_000;
+const MAX_NODE_TIMER_DELAY_MS = 2_147_483_647;
 const DEFAULT_SELECTOR_PLUGIN = '@uimatch/selector-anchors';
 
 export class SelectorPluginTimeoutError extends Error {
   override readonly name = 'SelectorPluginTimeoutError';
+}
+
+function validateTimeoutMs(timeoutMs: number, label: string): number {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_NODE_TIMER_DELAY_MS) {
+    throw new RangeError(`${label} must be an integer between 1 and ${MAX_NODE_TIMER_DELAY_MS}`);
+  }
+  return timeoutMs;
+}
+
+export function validateSelectorPluginTimeoutMs(timeoutMs: number): number {
+  return validateTimeoutMs(timeoutMs, 'Selector plugin timeout');
+}
+
+function createSelectorPluginTimeoutError(
+  pluginId: string,
+  timeoutMs: number
+): SelectorPluginTimeoutError {
+  return new SelectorPluginTimeoutError(
+    `Selector plugin "${pluginId}" timed out after ${timeoutMs}ms`
+  );
 }
 
 export function resolveSelectorPluginId(
@@ -30,34 +51,36 @@ export function getSelectorPluginTimeoutMs(
   }
 
   const timeoutMs = Number(value);
-  if (!Number.isSafeInteger(timeoutMs)) {
-    throw new RangeError('UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS must be a safe integer');
-  }
-  return timeoutMs;
+  return validateTimeoutMs(timeoutMs, 'UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS');
 }
 
 export async function runSelectorPluginWithTimeout<T>(
-  operation: Promise<T>,
+  operation: () => Promise<T>,
   timeoutMs: number,
-  pluginId: string
+  pluginId: string,
+  deadlineAt?: number
 ): Promise<T> {
-  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
-    throw new RangeError('Selector plugin timeout must be a positive safe integer');
+  validateSelectorPluginTimeoutMs(timeoutMs);
+
+  const expiresAt = deadlineAt ?? performance.now() + timeoutMs;
+  if (!Number.isFinite(expiresAt)) {
+    throw new RangeError('Selector plugin deadline must be finite');
+  }
+  const remainingMs = Math.min(timeoutMs, Math.ceil(expiresAt - performance.now()));
+  if (remainingMs < 1) {
+    throw createSelectorPluginTimeoutError(pluginId, timeoutMs);
   }
 
-  void operation.catch(() => {});
+  const operationPromise = operation();
+  void operationPromise.catch(() => {});
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      operation,
+      operationPromise,
       new Promise<never>((_resolve, reject) => {
         timer = setTimeout(() => {
-          reject(
-            new SelectorPluginTimeoutError(
-              `Selector plugin "${pluginId}" timed out after ${timeoutMs}ms`
-            )
-          );
-        }, timeoutMs);
+          reject(createSelectorPluginTimeoutError(pluginId, timeoutMs));
+        }, remainingMs);
       }),
     ]);
   } finally {

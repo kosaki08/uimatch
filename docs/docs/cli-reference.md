@@ -449,7 +449,7 @@ UIMATCH_HEADLESS=true|false              # Playwright headless mode (default: tr
                                           # Applies to compare/suite/doctor commands
 UIMATCH_CHROMIUM_SANDBOX=true|false      # Chromium sandbox (default: true)
                                           # Use false only when the runtime cannot support it
-UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS=30000 # Positive integer plugin deadline
+UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS=30000 # Plugin deadline (1..2147483647 ms)
 ```
 
 ## Exit Codes

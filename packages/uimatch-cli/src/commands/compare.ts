@@ -26,9 +26,11 @@ import {
 import { createLogger } from '@uimatch/shared-logging';
 import { resolveColorDeltaEThresholds } from './comparison-thresholds.js';
 import {
+  SelectorPluginTimeoutError,
   getSelectorPluginTimeoutMs,
   resolveSelectorPluginId,
   runSelectorPluginWithTimeout,
+  validateSelectorPluginTimeoutMs,
 } from './selector-plugin.js';
 import { getSettings } from './settings';
 
@@ -177,11 +179,23 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     return { selector: args.selector };
   }
 
+  const pluginTimeoutMs =
+    args.selectorPluginTimeoutMs === undefined
+      ? getSelectorPluginTimeoutMs()
+      : validateSelectorPluginTimeoutMs(args.selectorPluginTimeoutMs);
+  const pluginDeadlineAt = performance.now() + pluginTimeoutMs;
+
   // Importing a plugin executes trusted operator-provided code in this process.
   let pluginModule: unknown;
   try {
-    pluginModule = await import(pluginId);
+    pluginModule = await runSelectorPluginWithTimeout(
+      () => import(pluginId),
+      pluginTimeoutMs,
+      pluginId,
+      pluginDeadlineAt
+    );
   } catch (cause) {
+    if (cause instanceof SelectorPluginTimeoutError) throw cause;
     const details = cause instanceof Error ? cause.message : String(cause);
     throw new Error(`Failed to load selector plugin "${pluginId}": ${details}`, { cause });
   }
@@ -196,8 +210,6 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     );
   }
 
-  const pluginTimeoutMs = args.selectorPluginTimeoutMs ?? getSelectorPluginTimeoutMs();
-
   // Create lightweight Playwright-based probe using BrowserPool context management
   const context = await browserPool.createContext({
     viewport: args.viewport,
@@ -206,11 +218,21 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
   });
 
   try {
-    const page = await context.newPage();
+    const page = await runSelectorPluginWithTimeout(
+      () => context.newPage(),
+      pluginTimeoutMs,
+      pluginId,
+      pluginDeadlineAt
+    );
 
     // Navigate to target URL with timeout
     const timeout = Number(process.env.UIMATCH_NAV_TIMEOUT_MS ?? 6000);
-    await page.goto(args.story, { waitUntil: 'domcontentloaded', timeout });
+    await runSelectorPluginWithTimeout(
+      () => page.goto(args.story, { waitUntil: 'domcontentloaded', timeout }),
+      pluginTimeoutMs,
+      pluginId,
+      pluginDeadlineAt
+    );
 
     // Detect Storybook iframe (/iframe.html takes precedence over mainFrame)
     // This ensures probe checks the same frame as captureTarget will use
@@ -262,9 +284,10 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     };
 
     const pluginOutput = await runSelectorPluginWithTimeout(
-      plugin.resolve(resolveContext),
+      () => plugin.resolve(resolveContext),
       pluginTimeoutMs,
-      pluginId
+      pluginId,
+      pluginDeadlineAt
     );
     const parsedResolution = ResolutionSchema.safeParse(pluginOutput);
     if (!parsedResolution.success) {

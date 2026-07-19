@@ -26,6 +26,21 @@ describe('ResolutionSchema', () => {
   test('rejects an empty selector', () => {
     expect(() => ResolutionSchema.parse({ selector: '' })).toThrow();
   });
+
+  test.each([' ', '\t', '\n', ' \t\n '])('rejects a whitespace-only selector: %j', (selector) => {
+    expect(() => ResolutionSchema.parse({ selector })).toThrow();
+  });
+
+  test.each([' ', '\t', '\n', ' \t\n '])(
+    'rejects a whitespace-only subselector: %j',
+    (subselector) => {
+      expect(() => ResolutionSchema.parse({ selector: '#submit', subselector })).toThrow();
+    }
+  );
+
+  test('preserves meaningful surrounding selector whitespace', () => {
+    expect(ResolutionSchema.parse({ selector: ' #submit ' }).selector).toBe(' #submit ');
+  });
 });
 
 describe('isSelectorResolverPlugin', () => {

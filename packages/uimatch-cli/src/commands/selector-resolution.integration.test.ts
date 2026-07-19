@@ -117,5 +117,41 @@ describe('Selector resolution plugin integration', () => {
         })
       ).rejects.toThrow('Failed to load selector plugin');
     });
+
+    test('applies the plugin deadline while loading the module', async () => {
+      const { uiMatchCompare } = await import('./compare.js');
+      const pendingPlugin = `data:text/javascript,${encodeURIComponent(
+        'await new Promise(() => {}); export default {};'
+      )}`;
+      const startedAt = performance.now();
+
+      await expect(
+        uiMatchCompare({
+          figma: 'test:1-2',
+          story: 'data:text/html,<div id="test"></div>',
+          selector: '#test',
+          selectorsPlugin: pendingPlugin,
+          selectorPluginTimeoutMs: 50,
+        })
+      ).rejects.toMatchObject({ name: 'SelectorPluginTimeoutError' });
+      expect(performance.now() - startedAt).toBeLessThan(1_000);
+    });
+
+    test('rejects an out-of-range programmatic deadline before loading the module', async () => {
+      const { uiMatchCompare } = await import('./compare.js');
+      const pendingPlugin = `data:text/javascript,${encodeURIComponent(
+        'await new Promise(() => {}); export default {};'
+      )}`;
+
+      await expect(
+        uiMatchCompare({
+          figma: 'test:1-2',
+          story: 'data:text/html,<div id="test"></div>',
+          selector: '#test',
+          selectorsPlugin: pendingPlugin,
+          selectorPluginTimeoutMs: 2_147_483_648,
+        })
+      ).rejects.toBeInstanceOf(RangeError);
+    });
   });
 });

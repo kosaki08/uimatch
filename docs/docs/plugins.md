@@ -25,7 +25,7 @@ Selector plugins are trusted operator code. Loading a plugin is equivalent to im
 
 uiMatch validates each plugin result against the SPI runtime schema. Selectors must be non-empty and `stabilityScore`, when present, must be a finite value from 0 through 100. A configured plugin that cannot be loaded, times out, throws, or returns an invalid result fails the comparison instead of silently falling back to the original selector.
 
-Plugin resolution has a 30-second deadline. Set `UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS` to a positive integer to change it. This deadline stops uiMatch from waiting and closes the plugin's browser context; it is not a sandbox or a cancellation mechanism for arbitrary plugin code.
+Plugin resolution has one 30-second deadline shared by module loading, export validation, page setup after a browser context is available, and `resolve()`. Set `UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS` to an integer from 1 through 2,147,483,647 to change it. Browser launch and context creation retain Playwright's separate launch timeout, but their elapsed time reduces the remaining plugin deadline. After a context exists, exceeding the plugin deadline closes it. This is not a sandbox or a cancellation mechanism for arbitrary plugin code.
 
 ### Why Plugins?
 
@@ -408,7 +408,7 @@ my-uimatch-plugin/
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "peerDependencies": {
-    "@uimatch/selector-spi": ">=0.1.1"
+    "@uimatch/selector-spi": "^0.1.1"
   },
   "keywords": ["uimatch", "plugin", "testing-library"]
 }

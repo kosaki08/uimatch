@@ -70,11 +70,15 @@ export interface ResolveContext {
 }
 
 /** Runtime contract for selector plugin output. */
+const NonBlankSelectorSchema = z.string().refine((value) => value.trim().length > 0, {
+  message: 'Selector must contain a non-whitespace character',
+});
+
 export const ResolutionSchema = z.object({
   /** The resolved selector (may be the initial selector when no better selector exists). */
-  selector: z.string().min(1),
+  selector: NonBlankSelectorSchema,
   /** Optional subselector for child elements (used with Figma auto-ROI). */
-  subselector: z.string().min(1).optional(),
+  subselector: NonBlankSelectorSchema.optional(),
   /** Stability score on the same 0-100 scale as DFS/SFS/CQI metrics. */
   stabilityScore: z.number().finite().min(0).max(100).optional(),
   /** Human-readable reasons for the resolution choice. */
