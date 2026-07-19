@@ -4,25 +4,11 @@
  * Tests both plugin-enabled and plugin-disabled (fallback) modes
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 
-// Browser tests always enabled in test:all
-const runBrowser = describe;
-
-// Utility: Skip integration tests in CI with Bun runtime
-// These tests require browser context and plugin loading which can be flaky in CI
-// The same functionality is validated more reliably in:
-// - cli-distribution-smoke (packed CLI + Playwright)
-// - package-distribution-smoke (healthCheck + plugin resolve)
-const isCI = process.env.CI === 'true';
-const isBun = !!process.versions.bun;
-const describeIf = (cond: boolean) => (cond ? describe : describe.skip);
-
-// Skip plugin integration tests in CI+Bun environments
-// Run in local development for fast feedback
-describeIf(!(isCI && isBun))('Selector resolution plugin integration', () => {
+describe('Selector resolution plugin integration', () => {
   describe('Plugin-disabled mode (fallback)', () => {
-    runBrowser('uses original selector when no plugin is specified', () => {
+    describe('uses original selector when no plugin is specified', () => {
       test('should use original selector when no plugin is specified', async () => {
         // Phase 3 Acceptance: Comparison should work as before when plugin is not available
         const { uiMatchCompare } = await import('./compare.js');
@@ -89,7 +75,7 @@ describeIf(!(isCI && isBun))('Selector resolution plugin integration', () => {
     });
   });
 
-  runBrowser('Actual plugin integration', () => {
+  describe('Actual plugin integration', () => {
     test('should load and use @uimatch/selector-anchors when available', async () => {
       // Integration test with real plugin
       const { uiMatchCompare } = await import('./compare.js');

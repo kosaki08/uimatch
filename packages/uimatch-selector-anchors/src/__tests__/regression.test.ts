@@ -4,7 +4,7 @@
  * Ensures critical behaviors remain stable across updates
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { matchAnchors } from '../matching/anchor-matcher.js';
 import type { SelectorAnchor } from '../types/schema.js';
 

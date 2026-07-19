@@ -2,17 +2,17 @@
  * Library import smoke test
  * Ensures type-safe imports work from published packages
  */
-import { describe, expect, test } from 'bun:test';
 import { exec } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { describe, expect, test } from 'vitest';
 
 const execAsync = promisify(exec);
 
 describe('@uimatch/selector-anchors + @uimatch/selector-spi type imports', () => {
-  test('should import and type-check successfully', async () => {
+  test('should import and type-check successfully', { timeout: 60000 }, async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), 'uimatch-lib-smoke-'));
     let packDir: string | undefined;
 
@@ -89,12 +89,12 @@ export {};
       const anchorsTgzPath = anchorsPack.trim().split('\n').pop() ?? '';
 
       // Install packages
-      await execAsync(`npm install ${spiTgzPath} ${anchorsTgzPath} typescript`, {
+      await execAsync(`pnpm add ${spiTgzPath} ${anchorsTgzPath} typescript`, {
         cwd: tmpDir,
       });
 
       // Type check
-      const { stdout } = await execAsync('npx tsc --noEmit test.ts', {
+      const { stdout } = await execAsync('pnpm exec tsc --noEmit test.ts', {
         cwd: tmpDir,
       });
 
@@ -105,11 +105,11 @@ export {};
         await rm(packDir, { recursive: true, force: true });
       }
     }
-  }, 60000);
+  });
 });
 
 describe('@uimatch/shared-logging type imports', () => {
-  test('should import Logger types successfully', async () => {
+  test('should import Logger types successfully', { timeout: 60000 }, async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), 'uimatch-logging-smoke-'));
     let packDir: string | undefined;
 
@@ -164,11 +164,11 @@ export {};
       // pnpm pack outputs the full path to the generated tarball
       const loggingTgzPath = loggingPack.trim().split('\n').pop() ?? '';
 
-      await execAsync(`npm install ${loggingTgzPath} typescript`, {
+      await execAsync(`pnpm add ${loggingTgzPath} typescript`, {
         cwd: tmpDir,
       });
 
-      const { stdout } = await execAsync('npx tsc --noEmit test.ts', {
+      const { stdout } = await execAsync('pnpm exec tsc --noEmit test.ts', {
         cwd: tmpDir,
       });
 
@@ -179,5 +179,5 @@ export {};
         await rm(packDir, { recursive: true, force: true });
       }
     }
-  }, 60000);
+  });
 });

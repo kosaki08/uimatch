@@ -2,7 +2,7 @@
  * Tests for enhanced selector system with prefix support
  */
 
-import { afterAll, describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'vitest';
 import { browserPool } from './browser-pool';
 import { PlaywrightAdapter } from './playwright';
 
@@ -14,7 +14,7 @@ const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
 const run = ENABLE_E2E ? describe : describe.skip;
 
 // Helper to apply consistent timeout to all tests
-const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: TEST_TIMEOUT });
+const itT = (name: string, fn: () => Promise<void>) => test(name, { timeout: TEST_TIMEOUT }, fn);
 
 run('PlaywrightAdapter - Enhanced Selectors', () => {
   const testHtml = `

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { buildStyleDiffs } from './core/diff';
 import type { ExpectedSpec } from './types';
 

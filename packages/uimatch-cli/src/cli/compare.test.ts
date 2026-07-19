@@ -1,5 +1,5 @@
 import { getQualityGateProfile } from '@uimatch/core';
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import type { CompareResult } from '../types/index';
 import type { ParsedArgs } from './compare';
 import { buildCompareConfig, evaluateGateDecision } from './compare';

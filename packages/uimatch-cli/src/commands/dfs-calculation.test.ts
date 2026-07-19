@@ -3,7 +3,7 @@
  * Tests the size mismatch penalty logic
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 
 /**
  * Calculate size mismatch penalty for DFS scoring

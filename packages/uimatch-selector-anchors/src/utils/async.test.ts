@@ -1,13 +1,13 @@
-import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { withTimeout } from './async.js';
 
 afterEach(() => {
-  mock.restore();
+  vi.restoreAllMocks();
 });
 
 describe('withTimeout', () => {
   test('returns a resolved value and clears the timer', async () => {
-    const clearTimeoutSpy = spyOn(globalThis, 'clearTimeout');
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
 
     const result = await withTimeout(Promise.resolve('done'), 10_000);
 
@@ -16,7 +16,7 @@ describe('withTimeout', () => {
   });
 
   test('propagates a rejection before the timeout and clears the timer', async () => {
-    const clearTimeoutSpy = spyOn(globalThis, 'clearTimeout');
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
     const error = new Error('operation failed');
 
     let caught: unknown;
@@ -31,7 +31,7 @@ describe('withTimeout', () => {
   });
 
   test('returns null when the timeout wins', async () => {
-    const clearTimeoutSpy = spyOn(globalThis, 'clearTimeout');
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
     const pending = new Promise<never>(() => {});
 
     const result = await withTimeout(pending, 1);
@@ -60,7 +60,7 @@ describe('withTimeout', () => {
     try {
       const result = await withTimeout(operation, 0);
       rejectOperation(new Error('late rejection'));
-      await Bun.sleep(10);
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(result).toBeNull();
       expect(unhandled).toEqual([]);

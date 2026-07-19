@@ -1,11 +1,11 @@
-import { afterEach, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { afterEach, expect, test } from 'vitest';
+import { cliProcessArgs } from '../../../../../test-utils/run-cli.js';
 
-const CLI_PATH = join(import.meta.dir, '../index.ts');
-const CLI_PACKAGE_PATH = join(import.meta.dir, '../../../package.json');
+const CLI_PACKAGE_PATH = join(import.meta.dirname, '../../../package.json');
 const tempDirs: string[] = [];
 
 afterEach(() => {
@@ -20,9 +20,8 @@ test('doctor reports the CLI version outside the project directory', () => {
   const outDir = join(cwd, 'doctor-output');
 
   const result = spawnSync(
-    'bun',
-    [
-      CLI_PATH,
+    process.execPath,
+    cliProcessArgs([
       'doctor',
       '--select',
       'env',
@@ -31,7 +30,7 @@ test('doctor reports the CLI version outside the project directory', () => {
       'json',
       '--out-dir',
       outDir,
-    ],
+    ]),
     {
       cwd,
       encoding: 'utf8',

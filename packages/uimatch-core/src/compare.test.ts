@@ -1,9 +1,9 @@
-import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { describe, expect, test } from 'vitest';
 import { compareImages } from './core/compare';
 
-const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
+const FIXTURES_DIR = join(import.meta.dirname, '../fixtures');
 
 /**
  * Load a PNG fixture and convert to base64

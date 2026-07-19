@@ -68,12 +68,6 @@
       "groupName": "pnpm",
       "labels": ["deps", "package-manager"],
       "automerge": false
-    },
-    {
-      "matchPackageNames": ["bun", "bun-types", "@types/bun"],
-      "groupName": "bun runtime",
-      "labels": ["deps", "runtime"],
-      "automerge": false
     }
   ]
 }

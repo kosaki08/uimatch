@@ -1,8 +1,8 @@
-import { afterAll, describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'vitest';
 import { browserPool } from './browser-pool';
 import { captureTarget } from './playwright';
 
-const itT = (name: string, fn: () => Promise<void>) => test(name, fn, { timeout: 15000 });
+const itT = (name: string, fn: () => Promise<void>) => test(name, { timeout: 15000 }, fn);
 
 // Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs
 const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';

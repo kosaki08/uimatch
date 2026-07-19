@@ -1,12 +1,18 @@
-import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { afterAll, afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { browserPool } from '../../packages/uimatch-core/src/adapters/browser-pool';
+import { cliProcessArgs } from '../../test-utils/run-cli.js';
 
-// Path to CLI for process-based execution
-const CLI_PATH = join(import.meta.dir, '../../packages/uimatch-cli/src/cli/index.ts');
+function runCli(args: readonly string[], env: NodeJS.ProcessEnv): void {
+  execFileSync(process.execPath, cliProcessArgs(args), {
+    env,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  });
+}
 
 // Type definitions for test report
 interface TestReport {
@@ -22,7 +28,7 @@ const ENABLE_E2E = process.env.UIMATCH_ENABLE_BROWSER_TESTS === 'true';
 const run = ENABLE_E2E ? describe : describe.skip;
 
 run('E2E: outDir artifact saving', () => {
-  const testOutDir = join(import.meta.dir, 'fixtures', 'test-out');
+  const testOutDir = join(import.meta.dirname, 'fixtures', 'test-out');
 
   // A minimal 10x10 red PNG in base64 (for UIMATCH_FIGMA_PNG_B64 bypass)
   const RED_PNG_B64 =
@@ -56,77 +62,92 @@ run('E2E: outDir artifact saving', () => {
     await browserPool.closeAll();
   });
 
-  test(
-    'should save artifacts when outDir is specified',
-    async () => {
-      // Execute CLI same way as smoke/distribution tests (stable, fast)
-      const env = {
-        ...process.env,
-        UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
-        UIMATCH_HEADLESS: 'true',
-        NODE_ENV: 'test',
-      };
+  test('should save artifacts when outDir is specified', { timeout: 10000 }, async () => {
+    // Execute CLI same way as smoke/distribution tests (stable, fast)
+    const env = {
+      ...process.env,
+      UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
+      UIMATCH_HEADLESS: 'true',
+      NODE_ENV: 'test',
+    };
 
-      const storyUrl = `data:text/html,${encodeURIComponent(
-        '<div id="test" style="width:10px;height:10px;background:red"></div>'
-      )}`;
-      const cmd = `bun "${CLI_PATH}" compare figma=bypass:test story="${storyUrl}" selector="#test" outDir="${testOutDir}" timestampOutDir=false size=pad viewport=10x10 dpr=1`;
+    const storyUrl = `data:text/html,${encodeURIComponent(
+      '<div id="test" style="width:10px;height:10px;background:red"></div>'
+    )}`;
+    runCli(
+      [
+        'compare',
+        'figma=bypass:test',
+        `story=${storyUrl}`,
+        'selector=#test',
+        `outDir=${testOutDir}`,
+        'timestampOutDir=false',
+        'size=pad',
+        'viewport=10x10',
+        'dpr=1',
+      ],
+      env
+    );
+    // Wait for file flush
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
-      execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
-      // Wait for file flush
-      await new Promise((resolve) => setTimeout(resolve, 300));
+    // Verify artifacts were saved
+    const files = await readdir(testOutDir);
 
-      // Verify artifacts were saved
-      const files = await readdir(testOutDir);
+    expect(files).toContain('figma.png');
+    expect(files).toContain('impl.png');
+    expect(files).toContain('diff.png');
+    expect(files).toContain('report.json');
 
-      expect(files).toContain('figma.png');
-      expect(files).toContain('impl.png');
-      expect(files).toContain('diff.png');
-      expect(files).toContain('report.json');
+    // Verify figma.png content matches bypass
+    const figmaContent = await readFile(join(testOutDir, 'figma.png'));
+    const figmaB64 = figmaContent.toString('base64');
+    expect(figmaB64).toBe(RED_PNG_B64);
 
-      // Verify figma.png content matches bypass
-      const figmaContent = await readFile(join(testOutDir, 'figma.png'));
-      const figmaB64 = figmaContent.toString('base64');
-      expect(figmaB64).toBe(RED_PNG_B64);
+    // Verify report.json does NOT contain artifacts (jsonOnly=true default)
+    const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
+    const report = JSON.parse(reportContent) as TestReport;
 
-      // Verify report.json does NOT contain artifacts (jsonOnly=true default)
-      const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
-      const report = JSON.parse(reportContent) as TestReport;
+    expect(report.artifacts).toBeUndefined();
+  });
 
-      expect(report.artifacts).toBeUndefined();
-    },
-    { timeout: 10000 }
-  );
+  test('should include artifacts in JSON when jsonOnly=false', { timeout: 20000 }, async () => {
+    const env = {
+      ...process.env,
+      UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
+      UIMATCH_HEADLESS: 'true',
+      NODE_ENV: 'test',
+    };
 
-  test(
-    'should include artifacts in JSON when jsonOnly=false',
-    async () => {
-      const env = {
-        ...process.env,
-        UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
-        UIMATCH_HEADLESS: 'true',
-        NODE_ENV: 'test',
-      };
+    const storyUrl = `data:text/html,${encodeURIComponent(
+      '<div id="test" style="width:10px;height:10px;background:red"></div>'
+    )}`;
+    runCli(
+      [
+        'compare',
+        'figma=bypass:test',
+        `story=${storyUrl}`,
+        'selector=#test',
+        `outDir=${testOutDir}`,
+        'timestampOutDir=false',
+        'jsonOnly=false',
+        'size=pad',
+        'viewport=10x10',
+        'dpr=1',
+      ],
+      env
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
-      const storyUrl = `data:text/html,${encodeURIComponent(
-        '<div id="test" style="width:10px;height:10px;background:red"></div>'
-      )}`;
-      const cmd = `bun "${CLI_PATH}" compare figma=bypass:test story="${storyUrl}" selector="#test" outDir="${testOutDir}" timestampOutDir=false jsonOnly=false size=pad viewport=10x10 dpr=1`;
+    // Verify report.json DOES contain artifacts
+    const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
+    const report = JSON.parse(reportContent) as TestReport;
 
-      execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Verify report.json DOES contain artifacts
-      const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
-      const report = JSON.parse(reportContent) as TestReport;
-
-      expect(report.artifacts).toBeDefined();
-      expect(report.artifacts?.figmaPngB64).toBeDefined();
-      expect(report.artifacts?.implPngB64).toBeDefined();
-      expect(report.artifacts?.diffPngB64).toBeDefined();
-    },
-    { timeout: 20000 }
-  );
+    expect(report.artifacts).toBeDefined();
+    expect(report.artifacts?.figmaPngB64).toBeDefined();
+    expect(report.artifacts?.implPngB64).toBeDefined();
+    expect(report.artifacts?.diffPngB64).toBeDefined();
+  });
 
   test('should auto-enable emitArtifacts when outDir specified', async () => {
     // This test verifies the config builder auto-enables emitArtifacts
@@ -141,10 +162,22 @@ run('E2E: outDir artifact saving', () => {
     const storyUrl = `data:text/html,${encodeURIComponent(
       '<div id="test" style="width:10px;height:10px;background:red"></div>'
     )}`;
-    const cmd = `bun "${CLI_PATH}" compare figma=bypass:test story="${storyUrl}" selector="#test" outDir="${testOutDir}" timestampOutDir=false size=pad viewport=10x10 dpr=1`;
     // Note: NOT specifying emitArtifacts explicitly
 
-    execSync(cmd, { env, encoding: 'utf8', stdio: 'pipe' });
+    runCli(
+      [
+        'compare',
+        'figma=bypass:test',
+        `story=${storyUrl}`,
+        'selector=#test',
+        `outDir=${testOutDir}`,
+        'timestampOutDir=false',
+        'size=pad',
+        'viewport=10x10',
+        'dpr=1',
+      ],
+      env
+    );
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     // If emitArtifacts was NOT auto-enabled, these files wouldn't exist

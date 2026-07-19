@@ -476,10 +476,7 @@ export function buildCompareConfig(
     config.thresholds = {};
   }
   if (args.areaGapCritical !== undefined) {
-    config.thresholds.areaGapCritical = parseUnitInterval(
-      args.areaGapCritical,
-      'areaGapCritical'
-    );
+    config.thresholds.areaGapCritical = parseUnitInterval(args.areaGapCritical, 'areaGapCritical');
   }
   if (args.areaGapWarning !== undefined) {
     config.thresholds.areaGapWarning = parseUnitInterval(args.areaGapWarning, 'areaGapWarning');

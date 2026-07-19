@@ -1,5 +1,5 @@
 import type { ProbeResult } from '@uimatch/selector-spi';
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   calculateStabilityScore,
   compareStabilityScores,

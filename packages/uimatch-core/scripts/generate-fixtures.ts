@@ -1,9 +1,9 @@
-#!/usr/bin/env bun
+#!/usr/bin/env tsx
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
 
-const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
+const FIXTURES_DIR = join(import.meta.dirname, '../fixtures');
 mkdirSync(FIXTURES_DIR, { recursive: true });
 
 /**

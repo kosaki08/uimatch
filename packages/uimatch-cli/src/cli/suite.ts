@@ -114,7 +114,10 @@ function mergeItem(defaults: Partial<SuiteItem> | undefined, item: SuiteItem): S
   };
 }
 
-function findInvalidTextGatePath(config: { defaults?: unknown; items: unknown[] }): string | undefined {
+function findInvalidTextGatePath(config: {
+  defaults?: unknown;
+  items: unknown[];
+}): string | undefined {
   const hasInvalidTextGate = (value: unknown): boolean =>
     typeof value === 'object' &&
     value !== null &&

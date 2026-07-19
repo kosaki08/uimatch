@@ -1,7 +1,7 @@
 /**
  * Test FigmaRestClient findBestChildForDomBox method
  */
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import type { FigmaNodeMetadata } from './figma-rest';
 
 // Helper to create test parent node

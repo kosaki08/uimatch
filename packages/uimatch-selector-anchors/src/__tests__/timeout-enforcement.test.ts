@@ -4,10 +4,10 @@
  * Tests that components respect timeout settings and return quickly
  */
 
-import { expect, test } from 'bun:test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { expect, test } from 'vitest';
 import { resolveFromTypeScript } from '../resolvers/ast-resolver.js';
 
 // Create a fixture directory for large test files

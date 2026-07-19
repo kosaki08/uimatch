@@ -1,5 +1,5 @@
 import type { CompareImageResult } from '@uimatch/core';
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { computeDFS } from './computeDFS';
 
 function createResult(

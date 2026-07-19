@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import type { CompareImageResult } from './core/compare';
 import {
   calculateAreaGap,
@@ -106,14 +106,8 @@ describe('Quality Gate', () => {
     ['pixel threshold above one', { pixelDiffRatio: 1.1, deltaE: 3 }],
     ['negative color threshold', { pixelDiffRatio: 0.01, deltaE: -1 }],
     ['NaN color threshold', { pixelDiffRatio: 0.01, deltaE: Number.NaN }],
-    [
-      'negative critical area threshold',
-      { pixelDiffRatio: 0.01, deltaE: 3, areaGapCritical: -1 },
-    ],
-    [
-      'NaN warning area threshold',
-      { pixelDiffRatio: 0.01, deltaE: 3, areaGapWarning: Number.NaN },
-    ],
+    ['negative critical area threshold', { pixelDiffRatio: 0.01, deltaE: 3, areaGapCritical: -1 }],
+    ['NaN warning area threshold', { pixelDiffRatio: 0.01, deltaE: 3, areaGapWarning: Number.NaN }],
     [
       'negative high-severity limit',
       { pixelDiffRatio: 0.01, deltaE: 3, maxHighSeverityIssues: -1 },
@@ -318,8 +312,9 @@ describe('Quality Gate', () => {
     });
 
     expect(allowed.pass).toBe(true);
-    expect(allowed.cqiBreakdown?.components.find((component) => component.name === 'severity')?.penalty)
-      .toBeGreaterThan(0);
+    expect(
+      allowed.cqiBreakdown?.components.find((component) => component.name === 'severity')?.penalty
+    ).toBeGreaterThan(0);
     expect(exceeded.pass).toBe(false);
     expect(exceeded.reasons).toContain('[HIGH] High severity count 2 exceeds maximum 1');
   });
@@ -365,9 +360,7 @@ describe('Quality Gate', () => {
       false
     );
     expect(exceeded.pass).toBe(false);
-    expect(exceeded.reasons).toContain(
-      '[HIGH] Layout high severity count 1 exceeds maximum 0'
-    );
+    expect(exceeded.reasons).toContain('[HIGH] Layout high severity count 1 exceeds maximum 0');
   });
 
   test('should use pixelDiffRatioContent when available', () => {

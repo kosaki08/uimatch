@@ -2,7 +2,8 @@
  * Unit tests for diff scoring and patch hint generation
  */
 
-import { describe, expect, test as it } from 'bun:test';
+import { describe, expect, test as it } from 'vitest';
+import { expectSingle } from '../../../../../test-utils/assertions.js';
 import { calculatePriorityScore, generatePatchHints } from './scoring';
 
 describe('calculatePriorityScore', () => {
@@ -165,8 +166,7 @@ describe('generatePatchHints', () => {
 
     const hints = generatePatchHints(propDiffs);
 
-    expect(hints).toHaveLength(1);
-    expect(hints[0]).toMatchObject({
+    expect(expectSingle(hints)).toMatchObject({
       property: 'color',
       suggestedValue: 'rgb(51, 51, 51)',
       severity: expect.stringMatching(/^(low|medium|high)$/) as string,
@@ -186,8 +186,7 @@ describe('generatePatchHints', () => {
 
     const hints = generatePatchHints(propDiffs);
 
-    expect(hints).toHaveLength(1);
-    expect(hints[0].suggestedValue).toBe('var(--color-bg-subtle)');
+    expect(expectSingle(hints).suggestedValue).toBe('var(--color-bg-subtle)');
   });
 
   it('should classify severity based on delta', () => {
@@ -218,9 +217,9 @@ describe('generatePatchHints', () => {
       },
     };
 
-    expect(generatePatchHints(highColorDiff)[0].severity).toBe('high');
-    expect(generatePatchHints(mediumColorDiff)[0].severity).toBe('medium');
-    expect(generatePatchHints(lowColorDiff)[0].severity).toBe('low');
+    expect(expectSingle(generatePatchHints(highColorDiff)).severity).toBe('high');
+    expect(expectSingle(generatePatchHints(mediumColorDiff)).severity).toBe('medium');
+    expect(expectSingle(generatePatchHints(lowColorDiff)).severity).toBe('low');
   });
 
   it('should classify layout categorical diffs as high severity', () => {
@@ -272,8 +271,7 @@ describe('generatePatchHints', () => {
     const hints = generatePatchHints(propDiffs);
 
     // Should only include box-shadow, not auxiliary offset properties
-    expect(hints).toHaveLength(1);
-    expect(hints[0].property).toBe('box-shadow');
+    expect(expectSingle(hints).property).toBe('box-shadow');
   });
 
   it('should skip properties without expected values', () => {
@@ -293,7 +291,6 @@ describe('generatePatchHints', () => {
     const hints = generatePatchHints(propDiffs);
 
     // Should only include background-color
-    expect(hints).toHaveLength(1);
-    expect(hints[0].property).toBe('background-color');
+    expect(expectSingle(hints).property).toBe('background-color');
   });
 });

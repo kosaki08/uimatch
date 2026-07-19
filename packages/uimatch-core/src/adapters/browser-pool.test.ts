@@ -1,34 +1,34 @@
-import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { chromium, type Browser, type BrowserContext } from 'playwright';
+import { afterEach, expect, test, vi } from 'vitest';
 import { browserPool } from './browser-pool';
 
 afterEach(async () => {
   await browserPool.closeAll().catch(() => undefined);
-  mock.restore();
+  vi.restoreAllMocks();
 });
 
 function createContext(close: () => Promise<void>): BrowserContext {
   return {
     close,
-    on: mock(() => undefined),
+    on: vi.fn(() => undefined),
   } as unknown as BrowserContext;
 }
 
 function mockBrowser(contexts: BrowserContext[], close: () => Promise<void>): Browser {
   const browser = {
     close,
-    isConnected: mock(() => true),
-    newContext: mock(() => Promise.resolve(contexts.shift() as BrowserContext)),
-    once: mock(() => undefined),
+    isConnected: vi.fn(() => true),
+    newContext: vi.fn(() => Promise.resolve(contexts.shift() as BrowserContext)),
+    once: vi.fn(() => undefined),
   } as unknown as Browser;
-  spyOn(chromium, 'launch').mockResolvedValue(browser);
+  vi.spyOn(chromium, 'launch').mockResolvedValue(browser);
   return browser;
 }
 
 test('closes every context and the browser', async () => {
-  const closeFirstContext = mock(() => Promise.resolve());
-  const closeSecondContext = mock(() => Promise.resolve());
-  const closeBrowser = mock(() => Promise.resolve());
+  const closeFirstContext = vi.fn(() => Promise.resolve());
+  const closeSecondContext = vi.fn(() => Promise.resolve());
+  const closeBrowser = vi.fn(() => Promise.resolve());
   mockBrowser([createContext(closeFirstContext), createContext(closeSecondContext)], closeBrowser);
   await browserPool.createContext({});
   await browserPool.createContext({});
@@ -41,9 +41,9 @@ test('closes every context and the browser', async () => {
 });
 
 test('closes the browser and reports context cleanup failures', async () => {
-  const closeFailingContext = mock(() => Promise.reject(new Error('context close failed')));
-  const closeOtherContext = mock(() => Promise.resolve());
-  const closeBrowser = mock(() => Promise.resolve());
+  const closeFailingContext = vi.fn(() => Promise.reject(new Error('context close failed')));
+  const closeOtherContext = vi.fn(() => Promise.resolve());
+  const closeBrowser = vi.fn(() => Promise.resolve());
   mockBrowser([createContext(closeFailingContext), createContext(closeOtherContext)], closeBrowser);
   await browserPool.createContext({});
   await browserPool.createContext({});

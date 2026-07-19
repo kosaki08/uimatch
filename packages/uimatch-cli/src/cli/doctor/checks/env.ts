@@ -1,5 +1,5 @@
 /**
- * Environment checks - Node/Bun runtime, OS, memory, CPU
+ * Environment checks - Node runtime, OS, memory, CPU
  */
 
 import os from 'node:os';
@@ -8,12 +8,10 @@ import type { DoctorCheck } from '../types.js';
 export const checkRuntime: DoctorCheck = async () => {
   const t0 = Date.now();
   try {
-    const bunVersion = (process.versions as { bun?: string }).bun;
     const nodeVersion = process.versions.node;
-    const runtime = bunVersion ? `Bun ${bunVersion}` : `Node ${nodeVersion}`;
 
     const details = [
-      `Runtime: ${runtime}`,
+      `Runtime: Node ${nodeVersion}`,
       `Platform: ${process.platform}`,
       `Arch: ${process.arch}`,
       `CPUs: ${os.cpus()?.length ?? 0}`,

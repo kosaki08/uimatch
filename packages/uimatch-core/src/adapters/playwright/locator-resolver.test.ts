@@ -2,8 +2,8 @@
  * Unit tests for locator-resolver utilities
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { Frame, Locator } from 'playwright';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { applyFirstIfNeeded, resolveLocator } from './locator-resolver';
 
 // Mock Locator for testing

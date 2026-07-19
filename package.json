@@ -10,34 +10,34 @@
   "scripts": {
     "prepare": "husky",
     "ci:postinstall": "pnpm exec playwright install --with-deps chromium",
-    "doctor": "bun run packages/uimatch-cli/src/cli/index.ts doctor",
-    "clean:tsbuild": "rimraf \"packages/**/tsconfig.tsbuildinfo\"",
+    "doctor": "tsx packages/uimatch-cli/src/cli/index.ts doctor",
+    "clean:tsbuild": "rimraf \"packages/**/*.tsbuildinfo\"",
     "build:force": "pnpm run clean:tsbuild && tsc -b --force tsconfig.build.json",
-    "bootstrap": "node -e \"const fs=require('fs');process.exit(fs.existsSync('node_modules')?0:1)\" || pnpm install --frozen-lockfile; pnpm run build:types",
-    "pretest": "node -e \"process.exit(process.env.CI?0:1)\" || (pnpm run bootstrap && bun ./packages/uimatch-core/scripts/generate-fixtures.ts)",
-    "test": "UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
-    "test:ci": "UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
-    "test:all": "UIMATCH_ENABLE_BROWSER_TESTS=true UIMATCH_HEADLESS=true UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
-    "test:coverage": "UIMATCH_LOG_LEVEL=silent bun test --coverage --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
-    "test:coverage:html": "UIMATCH_LOG_LEVEL=silent bun test --coverage --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
-    "test:e2e:bun": "UIMATCH_ENABLE_BROWSER_TESTS=true UIMATCH_HEADLESS=true bun test --bail --jobs=1 --timeout 60000 packages/uimatch-cli/src/cli/__tests__/smoke.test.ts e2e/cli/outdir.e2e.test.ts e2e/commands/selector-resolution.e2e.test.ts",
-    "test:e2e": "npx playwright test e2e/",
+    "bootstrap": "node -e \"const fs=require('fs');process.exit(fs.existsSync('node_modules')?0:1)\" || pnpm install --frozen-lockfile; pnpm run build:types && pnpm --filter @uimatch/cli run build",
+    "pretest": "node -e \"process.exit(process.env.CI?0:1)\" || (pnpm run bootstrap && tsx ./packages/uimatch-core/scripts/generate-fixtures.ts)",
+    "test": "UIMATCH_LOG_LEVEL=silent vitest run",
+    "test:ci": "UIMATCH_LOG_LEVEL=silent vitest run",
+    "test:all": "UIMATCH_ENABLE_BROWSER_TESTS=true UIMATCH_HEADLESS=true UIMATCH_LOG_LEVEL=silent vitest run",
+    "test:coverage": "UIMATCH_LOG_LEVEL=silent vitest run --coverage",
+    "test:coverage:html": "UIMATCH_LOG_LEVEL=silent vitest run --coverage",
+    "test:e2e:cli": "UIMATCH_ENABLE_BROWSER_TESTS=true UIMATCH_HEADLESS=true vitest run --config vitest.e2e.config.ts",
+    "test:e2e": "pnpm exec playwright test e2e/",
+    "verify:package-manager": "node .github/scripts/verify-package-manager.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "build:types": "pnpm -r --filter @uimatch/shared-logging --filter @uimatch/selector-spi --filter @uimatch/core run build",
     "build": "pnpm -r --filter @uimatch/shared-logging --filter @uimatch/core --filter @uimatch/scoring --filter @uimatch/selector-spi --filter @uimatch/selector-anchors --filter @uimatch/cli run build",
-    "type-check": "bun run build:types && bun run type-check:plugin && bun run type-check:selector-anchors && bun run type-check:e2e",
-    "type-check:plugin": "cd packages/uimatch-cli && tsc --noEmit -p tsconfig.build.json",
-    "type-check:selector-anchors": "cd packages/uimatch-selector-anchors && tsc --noEmit",
+    "type-check": "pnpm run build:types && pnpm run type-check:unit && pnpm run type-check:e2e",
+    "type-check:unit": "tsc --noEmit -p packages/uimatch-core/tsconfig.json && tsc --noEmit -p packages/uimatch-scoring/tsconfig.json && tsc --noEmit -p packages/uimatch-selector-anchors/tsconfig.json && tsc --noEmit -p packages/uimatch-cli/tsconfig.json",
     "type-check:e2e": "cd e2e && tsc --noEmit",
-    "check": "bun run lint && bun run type-check",
+    "check": "pnpm run verify:package-manager && pnpm run lint && pnpm run type-check",
     "check:fast": "pnpm run format:check && pnpm run lint && pnpm run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "pack:local": "mkdir -p dist-packages && node -e \"require('fs').readdirSync('packages',{withFileTypes:true}).filter(d=>d.isDirectory()).forEach(d=>{require('child_process').spawnSync('pnpm',['pack','--pack-destination','../dist-packages'],{cwd:'packages/'+d.name,stdio:'inherit'})})\"",
-    "test:quick": "UIMATCH_LOG_LEVEL=silent bun test --recursive packages/*/src/**/*.test.ts packages/*/src/**/__tests__/**/*.test.ts",
-    "uimatch:compare": "bun run packages/uimatch-cli/src/cli/index.ts compare",
-    "uimatch:suite": "bun run packages/uimatch-cli/src/cli/index.ts suite",
+    "test:quick": "UIMATCH_LOG_LEVEL=silent vitest run",
+    "uimatch:compare": "pnpm run bootstrap && node packages/uimatch-cli/dist/cli/index.js compare",
+    "uimatch:suite": "pnpm run bootstrap && node packages/uimatch-cli/dist/cli/index.js suite",
     "docs:dev": "cd docs && pnpm start",
     "docs:build": "cd docs && pnpm build",
     "docs:serve": "cd docs && pnpm serve",
@@ -49,10 +49,9 @@
     "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.56.1",
-    "@types/bun": "latest",
     "@types/node": "^22.10.5",
     "@types/pngjs": "^6.0.5",
-    "bun-types": "^1.3.14",
+    "@vitest/coverage-v8": "^4.1.10",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.5",
     "husky": "^9.1.7",
@@ -60,18 +59,20 @@
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.3.0",
     "rimraf": "^6.1.3",
+    "tsx": "^4.23.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.64.0"
+    "typescript-eslint": "^8.64.0",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "parse5": "^8.0.1"
   },
   "lint-staged": {
     "packages/**/*.{ts,tsx}": [
-      "eslint --cache --cache-location .cache/eslint --fix --max-warnings=0"
+      "eslint --cache --cache-location .cache/eslint --fix --max-warnings=0 --no-warn-ignored"
     ],
     "packages/**/*.js": [
-      "eslint --cache --cache-location .cache/eslint --fix --max-warnings=0"
+      "eslint --cache --cache-location .cache/eslint --fix --max-warnings=0 --no-warn-ignored"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"

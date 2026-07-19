@@ -22,8 +22,8 @@
     "#plugin/*": "./dist/*"
   },
   "scripts": {
-    "build": "tsup",
-    "prepublishOnly": "bun run build"
+    "build": "tsup --tsconfig tsconfig.build.json",
+    "prepublishOnly": "pnpm run build"
   },
   "publishConfig": {
     "access": "public",

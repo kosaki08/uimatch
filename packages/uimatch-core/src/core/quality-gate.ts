@@ -167,10 +167,7 @@ function validateQualityGateThresholds(thresholds: QualityGateThresholds): void 
     assertUnitInterval(thresholds.minStyleCoverage, 'minimum style coverage');
   }
   if (thresholds.maxHighSeverityIssues !== undefined) {
-    assertNonNegativeSafeInteger(
-      thresholds.maxHighSeverityIssues,
-      'maximum high-severity issues'
-    );
+    assertNonNegativeSafeInteger(thresholds.maxHighSeverityIssues, 'maximum high-severity issues');
   }
   if (thresholds.maxLayoutHighIssues !== undefined) {
     assertNonNegativeSafeInteger(

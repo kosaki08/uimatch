@@ -505,13 +505,13 @@ for (const test of tests) {
 
 ```bash
 # Run all tests
-bun test
+pnpm --workspace-root test
 
 # Run specific test file
-bun test compare.test.ts
+pnpm --workspace-root exec vitest run packages/uimatch-core/src/compare.test.ts
 
 # Watch mode
-bun test --watch
+pnpm --workspace-root exec vitest packages/uimatch-core/src/compare.test.ts
 ```
 
 ## Type Definitions

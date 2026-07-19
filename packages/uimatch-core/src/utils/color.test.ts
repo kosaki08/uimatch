@@ -2,7 +2,7 @@
  * Unit tests for color conversion and deltaE2000 calculation
  */
 
-import { describe, expect, test as it } from 'bun:test';
+import { describe, expect, test as it } from 'vitest';
 import { deltaE2000, rgbToLab } from './color';
 import type { RGB } from './normalize';
 

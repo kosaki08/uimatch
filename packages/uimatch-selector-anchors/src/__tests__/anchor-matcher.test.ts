@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { matchAnchors, selectBestAnchor, type AnchorScore } from '../matching/anchor-matcher.js';
 import type { SelectorAnchor } from '../types/schema.js';
 

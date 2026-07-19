@@ -24,11 +24,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc --project tsconfig.json && npm run postbuild",
-    "postbuild": "rimraf dist/__tests__ dist/**/*.test.* dist/**/safe-regex.test.*",
+    "build": "tsc --project tsconfig.build.json",
     "clean": "rimraf dist",
-    "prepublishOnly": "npm run build",
-    "test": "bun test"
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest run --root ../.. packages/uimatch-selector-anchors"
   },
   "keywords": [
     "uimatch",
@@ -62,7 +61,6 @@
     }
   },
   "devDependencies": {
-    "@types/bun": "^1.3.14",
     "@uimatch/selector-spi": "workspace:^",
     "rimraf": "^6.1.3"
   }

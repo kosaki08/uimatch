@@ -2,7 +2,7 @@
  * Unit tests for normalize utilities
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
   normLineHeight,
   normalizeText,

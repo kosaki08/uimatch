@@ -4,7 +4,7 @@
  */
 
 import { getQualityGateProfile } from '@uimatch/core';
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'vitest';
 import type { ParsedArgs } from '../compare';
 import { buildCompareConfig } from '../compare';
 

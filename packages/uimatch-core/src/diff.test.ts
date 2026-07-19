@@ -2,7 +2,7 @@
  * Unit tests for style diff calculation
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { buildStyleDiffs } from './core/diff';
 import type { ExpectedSpec, StyleDiff, TokenMap } from './types/index';
 

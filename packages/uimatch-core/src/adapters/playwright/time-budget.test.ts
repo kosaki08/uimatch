@@ -2,7 +2,7 @@
  * Unit tests for time-budget utilities
  */
 
-import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createTimeBudget, getE2ETimeBudget } from './time-budget';
 
 describe('createTimeBudget', () => {
@@ -11,7 +11,7 @@ describe('createTimeBudget', () => {
 
   beforeEach(() => {
     mockTime = 1000000;
-    dateNowSpy = spyOn(Date, 'now').mockImplementation(() => mockTime);
+    dateNowSpy = vi.spyOn(Date, 'now').mockImplementation(() => mockTime);
   });
 
   afterEach(() => {

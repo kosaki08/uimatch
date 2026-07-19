@@ -1,11 +1,11 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/uimatch-core" },
-    { "path": "./packages/uimatch-scoring" },
-    { "path": "./packages/uimatch-cli" },
-    { "path": "./packages/shared-logging" },
-    { "path": "./packages/uimatch-selector-spi" },
-    { "path": "./packages/uimatch-selector-anchors" }
+    { "path": "./packages/shared-logging/tsconfig.build.json" },
+    { "path": "./packages/uimatch-selector-spi/tsconfig.build.json" },
+    { "path": "./packages/uimatch-core/tsconfig.build.json" },
+    { "path": "./packages/uimatch-scoring/tsconfig.build.json" },
+    { "path": "./packages/uimatch-selector-anchors/tsconfig.build.json" },
+    { "path": "./packages/uimatch-cli/tsconfig.build.json" }
   ]
 }

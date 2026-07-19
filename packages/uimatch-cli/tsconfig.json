@@ -1,18 +1,13 @@
 {
-  "extends": "../../tsconfig.packages.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDir": ".",
     "lib": ["esnext", "dom"],
     "baseUrl": ".",
     "paths": {
       "#plugin/*": ["./src/*"]
-    }
+    },
+    "types": ["node"]
   },
-  "references": [
-    { "path": "../shared-logging" },
-    { "path": "../uimatch-selector-spi" },
-    { "path": "../uimatch-scoring" },
-    { "path": "../uimatch-core" }
-  ],
-  "include": ["src/**/*", "*.ts"]
+  "include": ["src/**/*", "*.ts"],
+  "exclude": ["node_modules", "dist", "dist-types"]
 }

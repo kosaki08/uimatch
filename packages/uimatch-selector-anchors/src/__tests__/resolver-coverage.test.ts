@@ -4,8 +4,8 @@
  */
 
 import type { Probe, ProbeResult } from '@uimatch/selector-spi';
-import { beforeEach, describe, expect, test, vi } from 'bun:test';
 import { resolve as resolvePath } from 'node:path';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { isLive, resolve, resolveProjectPath } from '../core/resolver.js';
 import * as findSnippetMatchModule from '../hashing/snippet-hash.js';
 import * as astResolverModule from '../resolvers/ast-resolver.js';

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { compileSafeRegex, execRegexSafe } from './safe-regex.js';
 
 describe('compileSafeRegex', () => {

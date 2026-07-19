@@ -1,9 +1,10 @@
-# dependencies (bun install)
+# dependencies
 node_modules
 
-# lockfiles (only pnpm-lock.yaml is tracked)
+# lockfiles (pnpm-lock.yaml is the sole source of truth)
 package-lock.json
 yarn.lock
+bun.lock
 bun.lockb
 
 # output

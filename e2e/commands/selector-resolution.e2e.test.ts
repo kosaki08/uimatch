@@ -7,10 +7,10 @@
 
 import type { SelectorsAnchors } from '@uimatch/selector-anchors';
 import type { Probe, ProbeResult, Resolution, SelectorResolverPlugin } from '@uimatch/selector-spi';
-import { describe, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { describe, expect, test } from 'vitest';
 import { isSelectorsAnchors } from '../helpers/type-guards';
 
 // Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs

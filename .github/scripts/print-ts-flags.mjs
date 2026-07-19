@@ -33,10 +33,10 @@ console.log('TypeScript Compiler Flags per Package');
 console.log('='.repeat(80));
 
 for (const pkgName of targets) {
-  const tsconfigPath = path.join(pkgsDir, pkgName, 'tsconfig.json');
+  const tsconfigPath = path.join(pkgsDir, pkgName, 'tsconfig.build.json');
 
   if (!fs.existsSync(tsconfigPath)) {
-    console.log(`\n[${pkgName}] ⚠️  No tsconfig.json found`);
+    console.log(`\n[${pkgName}] ⚠️  No tsconfig.build.json found`);
     continue;
   }
 

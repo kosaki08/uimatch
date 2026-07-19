@@ -1,12 +1,12 @@
 import { browserPool } from '@uimatch/core';
-import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { afterEach, expect, test, vi } from 'vitest';
+import { cliProcessArgs } from '../../../../../test-utils/run-cli.js';
 import { runSuite, runWithConcurrency } from '../suite';
 
-const CLI_PATH = join(import.meta.dir, '../index.ts');
 const FIGMA_PNG_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC';
 const TEXT_GATE_WARNING =
@@ -14,7 +14,7 @@ const TEXT_GATE_WARNING =
 const tempDirs: string[] = [];
 
 afterEach(() => {
-  mock.restore();
+  vi.restoreAllMocks();
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -36,10 +36,10 @@ function runSuiteCli(suiteContents: string, concurrency?: string) {
   const outDir = join(tempDir, 'out');
   writeFileSync(suitePath, suiteContents);
 
-  const args = [CLI_PATH, 'suite', `path=${suitePath}`, `outDir=${outDir}`];
+  const args = ['suite', `path=${suitePath}`, `outDir=${outDir}`];
   if (concurrency !== undefined) args.push(`concurrency=${concurrency}`);
 
-  const result = spawnSync('bun', args, {
+  const result = spawnSync(process.execPath, cliProcessArgs(args), {
     encoding: 'utf8',
     env: {
       ...process.env,
@@ -116,9 +116,7 @@ test.each([0, -1, Number.NaN, 1.5, Number.MAX_SAFE_INTEGER + 1])(
     }
 
     expect(rejection).toBeInstanceOf(RangeError);
-    expect((rejection as Error).message).toBe(
-      'Concurrency limit must be a positive safe integer'
-    );
+    expect((rejection as Error).message).toBe('Concurrency limit must be a positive safe integer');
   }
 );
 
@@ -130,6 +128,7 @@ test('runWithConcurrency preserves item order', async () => {
 
 test(
   'records a warning when textGate falls back to the visual quality gate',
+  { timeout: 15_000 },
   () => {
     const suite = JSON.stringify({
       items: [
@@ -157,12 +156,11 @@ test(
       items: Array<{ warnings?: string[] }>;
     };
     expect(report.items[0]?.warnings).toEqual([TEXT_GATE_WARNING]);
-  },
-  { timeout: 15_000 }
+  }
 );
 
 test('runSuite closes the browser pool on a usage error', async () => {
-  const closeAll = spyOn(browserPool, 'closeAll').mockResolvedValue();
+  const closeAll = vi.spyOn(browserPool, 'closeAll').mockResolvedValue();
 
   const exitCode = await runSuite([]);
 

@@ -3,10 +3,10 @@
  * Covers loadSelectorsAnchors, saveSelectorsAnchors, and atomic write patterns
  */
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'bun:test';
 import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { SelectorsAnchors } from '../../types/schema.js';
 import {
   createEmptyAnchors,
@@ -14,6 +14,8 @@ import {
   loadSelectorsAnchors,
   saveSelectorsAnchors,
 } from '../io.js';
+
+vi.mock('node:fs/promises', { spy: true });
 
 describe('io utilities', () => {
   let testDir: string;
@@ -55,17 +57,17 @@ describe('io utilities', () => {
       expect(anchor0.id).toBe('test-anchor');
     });
 
-    test('throws error for non-existent file (ENOENT)', () => {
+    test('throws error for non-existent file (ENOENT)', async () => {
       const nonExistentPath = join(testDir, 'does-not-exist.json');
 
-      expect(loadSelectorsAnchors(nonExistentPath)).rejects.toThrow(/Anchors file not found/);
+      await expect(loadSelectorsAnchors(nonExistentPath)).rejects.toThrow(/Anchors file not found/);
     });
 
     test('throws error for invalid JSON syntax', async () => {
       const invalidJsonPath = join(testDir, 'invalid.json');
       await fs.writeFile(invalidJsonPath, '{ invalid json }', 'utf-8');
 
-      expect(loadSelectorsAnchors(invalidJsonPath)).rejects.toThrow(/Invalid JSON syntax/);
+      await expect(loadSelectorsAnchors(invalidJsonPath)).rejects.toThrow(/Invalid JSON syntax/);
     });
 
     test('throws error for schema validation failure', async () => {
@@ -82,7 +84,7 @@ describe('io utilities', () => {
 
       await fs.writeFile(invalidSchemaPath, JSON.stringify(invalidData), 'utf-8');
 
-      expect(loadSelectorsAnchors(invalidSchemaPath)).rejects.toThrow(
+      await expect(loadSelectorsAnchors(invalidSchemaPath)).rejects.toThrow(
         /Invalid anchors JSON schema/
       );
     });
@@ -164,7 +166,7 @@ describe('io utilities', () => {
       expect(renameSpy).toHaveBeenCalledWith(`${anchorsPath}.tmp`, anchorsPath);
 
       // Verify temp file was cleaned up
-      expect(fs.access(`${anchorsPath}.tmp`)).rejects.toThrow();
+      await expect(fs.access(`${anchorsPath}.tmp`)).rejects.toThrow();
 
       writeFileSpy.mockRestore();
       renameSpy.mockRestore();
@@ -242,14 +244,14 @@ describe('io utilities', () => {
       rmSpy.mockRestore();
     });
 
-    test('throws error for invalid schema data', () => {
+    test('throws error for invalid schema data', async () => {
       const anchorsPath = join(testDir, 'invalid.json');
       const invalidData = {
         version: '1.0.0',
         anchors: [{ invalid: 'data' }],
       } as unknown as SelectorsAnchors;
 
-      expect(saveSelectorsAnchors(anchorsPath, invalidData)).rejects.toThrow(
+      await expect(saveSelectorsAnchors(anchorsPath, invalidData)).rejects.toThrow(
         /Cannot save invalid anchors data/
       );
     });
@@ -311,11 +313,11 @@ describe('io utilities', () => {
       expect(JSON.parse(content)).toEqual(anchorsData);
     });
 
-    test('propagates errors from saveSelectorsAnchors', () => {
+    test('propagates errors from saveSelectorsAnchors', async () => {
       const anchorsPath = join(testDir, 'postwrite-error.json');
       const invalidData = { invalid: 'data' };
 
-      expect(defaultPostWrite(anchorsPath, invalidData)).rejects.toThrow();
+      await expect(defaultPostWrite(anchorsPath, invalidData)).rejects.toThrow();
     });
   });
 

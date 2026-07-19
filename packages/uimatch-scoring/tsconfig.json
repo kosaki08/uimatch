@@ -1,14 +1,9 @@
 {
-  "extends": "../../tsconfig.packages.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "rootDir": "src",
-    "outDir": "dist-types",
-    "lib": ["esnext", "dom"]
+    "lib": ["esnext", "dom"],
+    "types": ["node"]
   },
-  "references": [{ "path": "../uimatch-core" }],
   "include": ["src/**/*"],
-  "exclude": ["dist", "dist-types", "**/*.test.ts", "**/__tests__/**"]
+  "exclude": ["node_modules", "dist", "dist-types"]
 }

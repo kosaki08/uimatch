@@ -4,9 +4,7 @@ build
 coverage
 .next
 *.lock
-bun.lock
 package-lock.json
-yarn.lock
 pnpm-lock.yaml
 
 # Local AI/assistant config

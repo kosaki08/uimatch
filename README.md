@@ -200,7 +200,6 @@ At a high level:
 
 - Node.js 20.19+ / 22.12+
 - pnpm 9.15.4+
-- Bun 1.x (test runner)
 
 ### Setup
 

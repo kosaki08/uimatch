@@ -1,5 +1,5 @@
 import type { Probe, ProbeResult } from '@uimatch/selector-spi';
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import plugin from '../index.js';
 
 /**

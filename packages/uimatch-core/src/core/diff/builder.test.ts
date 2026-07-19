@@ -2,7 +2,8 @@
  * Unit tests for buildStyleDiffs core logic
  */
 
-import { describe, expect, test as it } from 'bun:test';
+import { describe, expect, test as it } from 'vitest';
+import { expectSingle } from '../../../../../test-utils/assertions.js';
 import type { ExpectedSpec } from '../../types/index';
 import { buildStyleDiffs } from './builder';
 
@@ -22,10 +23,10 @@ describe('buildStyleDiffs', () => {
 
     const diffs = buildStyleDiffs(actual, expected);
 
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].selector).toBe('self');
-    expect(diffs[0].properties['color']).toBeDefined();
-    expect(diffs[0].severity).toBe('high'); // Large color diff should be high severity
+    const diff = expectSingle(diffs);
+    expect(diff.selector).toBe('self');
+    expect(diff.properties['color']).toBeDefined();
+    expect(diff.severity).toBe('high'); // Large color diff should be high severity
   });
 
   it('should accept color differences within deltaE threshold', () => {
@@ -45,8 +46,8 @@ describe('buildStyleDiffs', () => {
       thresholds: { deltaE: 3.0 },
     });
 
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0]?.properties['color']?.delta).toBeLessThan(3.0);
+    const diff = expectSingle(diffs);
+    expect(diff.properties['color']?.delta).toBeLessThan(3.0);
   });
 
   it('should omit selectors without comparable expected properties', () => {
@@ -82,9 +83,9 @@ describe('buildStyleDiffs', () => {
       },
     });
 
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0]?.selector).toBe('main.app');
-    expect(diffs[0]?.isRoot).toBe(true);
+    const diff = expectSingle(diffs);
+    expect(diff.selector).toBe('main.app');
+    expect(diff.isRoot).toBe(true);
   });
 
   it('should detect layout property differences', () => {
@@ -106,12 +107,12 @@ describe('buildStyleDiffs', () => {
 
     const diffs = buildStyleDiffs(actual, expected);
 
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].properties['display']).toBeDefined();
-    expect(diffs[0].properties['flex-direction']).toBeDefined();
-    expect(diffs[0].properties['gap']).toBeDefined();
+    const diff = expectSingle(diffs);
+    expect(diff.properties['display']).toBeDefined();
+    expect(diff.properties['flex-direction']).toBeDefined();
+    expect(diff.properties['gap']).toBeDefined();
     // Layout diffs escalate to high severity
-    expect(diffs[0].severity).toMatch(/^(medium|high)$/);
+    expect(diff.severity).toMatch(/^(medium|high)$/);
   });
 
   it('should handle spacing property tolerances', () => {
@@ -131,10 +132,10 @@ describe('buildStyleDiffs', () => {
       thresholds: { spacing: 0.15 },
     });
 
-    expect(diffs).toHaveLength(1);
+    const diff = expectSingle(diffs);
     // padding-left should fail (large difference exceeds tolerance)
-    expect(diffs[0].properties['padding-left']).toBeDefined();
-    const delta = diffs[0].properties['padding-left']?.delta ?? 0;
+    expect(diff.properties['padding-left']).toBeDefined();
+    const delta = diff.properties['padding-left']?.delta ?? 0;
     expect(Math.abs(delta)).toBeGreaterThan(0); // Should have non-zero delta
   });
 
@@ -196,9 +197,9 @@ describe('buildStyleDiffs', () => {
       ignore: ['font-size'],
     });
 
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].properties['color']).toBeDefined();
-    expect(diffs[0].properties['font-size']).toBeUndefined();
+    const diff = expectSingle(diffs);
+    expect(diff.properties['color']).toBeDefined();
+    expect(diff.properties['font-size']).toBeUndefined();
   });
 
   it('should use token values when available', () => {
@@ -222,9 +223,9 @@ describe('buildStyleDiffs', () => {
 
     const diffs = buildStyleDiffs(actual, expected, { tokens });
 
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].properties['color']).toBeDefined();
-    expect(diffs[0].properties['color'].expectedToken).toBe('--color-text-primary');
+    const diff = expectSingle(diffs);
+    expect(diff.properties['color']).toBeDefined();
+    expect(diff.properties['color']?.expectedToken).toBe('--color-text-primary');
   });
 
   it('should generate patch hints for fixable differences', () => {
@@ -244,10 +245,10 @@ describe('buildStyleDiffs', () => {
 
     const diffs = buildStyleDiffs(actual, expected);
 
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].patchHints).toBeDefined();
-    expect(diffs[0].patchHints?.length ?? 0).toBeGreaterThan(0);
-    expect(diffs[0].autoFixable).toBe(true);
+    const diff = expectSingle(diffs);
+    expect(diff.patchHints).toBeDefined();
+    expect(diff.patchHints?.length ?? 0).toBeGreaterThan(0);
+    expect(diff.autoFixable).toBe(true);
   });
 
   it('should sort diffs by scope and priority', () => {
@@ -285,8 +286,8 @@ describe('buildStyleDiffs', () => {
     expect(diffs.length).toBeGreaterThan(0);
     // Diffs should be sorted by scope (self before descendant)
     if (diffs.length === 2) {
-      expect(diffs[0].scope).toBe('self');
-      expect(diffs[1].scope).toBe('descendant');
+      expect(diffs[0]?.scope).toBe('self');
+      expect(diffs[1]?.scope).toBe('descendant');
     }
   });
 
@@ -334,9 +335,9 @@ describe('buildStyleDiffs', () => {
 
     const diffs = buildStyleDiffs(actual, expected);
 
-    expect(diffs).toHaveLength(1);
+    const diff = expectSingle(diffs);
     // Large dimension error should escalate severity
-    expect(diffs[0].severity).toBe('high');
+    expect(diff.severity).toBe('high');
   });
 
   it('should suppress background-color for text elements when color expectation is missing', () => {
@@ -366,7 +367,7 @@ describe('buildStyleDiffs', () => {
 
     // Should suppress background-color comparison for text elements
     if (diffs.length > 0) {
-      expect(diffs[0].properties['background-color']).toBeUndefined();
+      expect(diffs[0]?.properties['background-color']).toBeUndefined();
     }
   });
 
@@ -385,7 +386,7 @@ describe('buildStyleDiffs', () => {
 
     const diffs = buildStyleDiffs(actual, expected);
 
-    expect(diffs).toHaveLength(1);
-    expect(diffs[0].properties['box-shadow']).toBeDefined();
+    const diff = expectSingle(diffs);
+    expect(diff.properties['box-shadow']).toBeDefined();
   });
 });

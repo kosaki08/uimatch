@@ -1,0 +1,34 @@
+# AGENTS.md
+
+Instructions for coding agents working in this repository.
+
+## Package manager
+
+**Use pnpm for dependency management and all repository commands.**
+
+The project runs on Node.js. Unit tests use Vitest, browser end-to-end tests use
+Playwright, and development TypeScript scripts run with tsx.
+
+- `pnpm-lock.yaml` is the sole lockfile and must be committed whenever
+  dependencies change.
+- To add a dependency, run `pnpm add <pkg> --filter <workspace>` and commit the
+  updated `package.json` and `pnpm-lock.yaml` together.
+
+`pnpm run verify:package-manager` enforces this policy and runs in CI.
+
+## Checks before committing
+
+```bash
+pnpm run check
+pnpm test
+```
+
+Unit tests are type-checked as part of `pnpm run type-check`. Do not silence a
+new type error in a test with `@ts-ignore`; use `@ts-expect-error` with a reason
+when the test deliberately passes an invalid value, and fix the test otherwise.
+
+## Conventions
+
+- Conventional Commits (enforced by commitlint on commit-msg).
+- English only in code, comments, and commit messages.
+- No `any`; prefer `unknown` with narrowing.

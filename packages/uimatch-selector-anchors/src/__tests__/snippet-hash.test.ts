@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { clearFileCache, findSnippetMatch, generateSnippetHash } from '../hashing/snippet-hash.js';
 
 describe('Snippet Hash', () => {
@@ -80,8 +80,8 @@ line 4`;
       const filePath = join(tempDir, 'invalid.ts');
       await writeFile(filePath, code);
 
-      expect(generateSnippetHash(filePath, 0)).rejects.toThrow(/Invalid line number/);
-      expect(generateSnippetHash(filePath, 10)).rejects.toThrow(/Invalid line number/);
+      await expect(generateSnippetHash(filePath, 0)).rejects.toThrow(/Invalid line number/);
+      await expect(generateSnippetHash(filePath, 10)).rejects.toThrow(/Invalid line number/);
     });
 
     test('supports custom context size', async () => {

@@ -9,6 +9,9 @@ pnpm install
 pnpm test
 ```
 
+Use pnpm for dependency management and repository commands. The project runs on
+Node.js; unit tests use Vitest and browser E2E tests use Playwright.
+
 ## Development Workflow
 
 ```bash

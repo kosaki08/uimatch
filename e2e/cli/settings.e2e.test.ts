@@ -1,16 +1,22 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import type { AppConfig } from '../../packages/uimatch-core/src/config/schema';
-
-// Path to CLI for process-based execution
-const CLI_PATH = join(import.meta.dir, '../../packages/uimatch-cli/src/cli/index.ts');
+import { cliProcessArgs } from '../../test-utils/run-cli.js';
 
 describe('E2E: settings command', () => {
-  const testDir = join(import.meta.dir, 'fixtures', 'settings-test');
+  const testDir = join(import.meta.dirname, 'fixtures', 'settings-test');
   const configPath = join(testDir, '.uimatchrc.json');
+
+  function runSettings(args: readonly string[]): string {
+    return execFileSync(process.execPath, cliProcessArgs(['settings', ...args]), {
+      cwd: testDir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+  }
 
   beforeEach(async () => {
     // Clean test directory
@@ -24,10 +30,7 @@ describe('E2E: settings command', () => {
   });
 
   test('settings get: outputs default config as JSON when no config file exists', () => {
-    const output = execSync(`bun ${CLI_PATH} settings get`, {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
+    const output = runSettings(['get']);
 
     // Should output valid JSON
     const config = JSON.parse(output) as AppConfig;
@@ -40,15 +43,8 @@ describe('E2E: settings command', () => {
   });
 
   test('settings get (implicit): same as explicit get', () => {
-    const explicitOutput = execSync(`bun ${CLI_PATH} settings get`, {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
-
-    const implicitOutput = execSync(`bun ${CLI_PATH} settings`, {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
+    const explicitOutput = runSettings(['get']);
+    const implicitOutput = runSettings([]);
 
     // Both should produce identical JSON output
     expect(JSON.parse(implicitOutput)).toEqual(JSON.parse(explicitOutput));
@@ -65,10 +61,7 @@ describe('E2E: settings command', () => {
 
     await writeFile(configPath, JSON.stringify(customConfig, null, 2));
 
-    const output = execSync(`bun ${CLI_PATH} settings get`, {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
+    const output = runSettings(['get']);
 
     const config = JSON.parse(output) as AppConfig;
 
@@ -96,10 +89,7 @@ describe('E2E: settings command', () => {
     expect(existsSync(configPath)).toBe(true);
 
     // Reset
-    const output = execSync(`bun ${CLI_PATH} settings reset`, {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
+    const output = runSettings(['reset']);
 
     // Should output reset message
     expect(output).toContain('Settings reset to defaults:');
@@ -120,10 +110,7 @@ describe('E2E: settings command', () => {
   test('settings reset: succeeds even when no config file exists', () => {
     expect(existsSync(configPath)).toBe(false);
 
-    const output = execSync(`bun ${CLI_PATH} settings reset`, {
-      cwd: testDir,
-      encoding: 'utf-8',
-    });
+    const output = runSettings(['reset']);
 
     expect(output).toContain('Settings reset to defaults:');
     expect(existsSync(configPath)).toBe(false);
@@ -131,21 +118,13 @@ describe('E2E: settings command', () => {
 
   test('settings <unknown>: exits with error code 2 and shows usage', () => {
     expect(() => {
-      execSync(`bun ${CLI_PATH} settings unknown-action`, {
-        cwd: testDir,
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
+      runSettings(['unknown-action']);
     }).toThrow();
 
     try {
-      execSync(`bun ${CLI_PATH} settings unknown-action`, {
-        cwd: testDir,
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
+      runSettings(['unknown-action']);
     } catch (error: unknown) {
-      const execError = error as { status?: number; stderr?: Buffer };
+      const execError = error as { status?: number; stderr?: Buffer | string };
       expect(execError.status).toBe(2);
 
       const stderr = execError.stderr?.toString() ?? '';
@@ -162,11 +141,7 @@ describe('E2E: settings command', () => {
     // Write invalid JSON
     await writeFile(configPath, '{ invalid json }');
 
-    const output = execSync(`bun ${CLI_PATH} settings get`, {
-      cwd: testDir,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const output = runSettings(['get']);
 
     // Should fall back to defaults and output valid JSON
     const config = JSON.parse(output) as AppConfig;

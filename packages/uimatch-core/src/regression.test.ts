@@ -2,14 +2,14 @@
  * Regression tests for critical paths and edge cases
  */
 
-import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { describe, expect, test } from 'vitest';
 import { compareImages } from './core/compare';
 import { buildStyleDiffs } from './core/diff';
 import type { ExpectedSpec } from './types/index';
 
-const FIXTURES_DIR = join(import.meta.dir, '../fixtures');
+const FIXTURES_DIR = join(import.meta.dirname, '../fixtures');
 
 function loadFixtureAsBase64(filename: string): string {
   const buffer = readFileSync(join(FIXTURES_DIR, filename));

@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'bun:test';
 import { PNG } from 'pngjs';
+import { describe, expect, test } from 'vitest';
 import { compareImages } from './core/compare';
 
 function createSolidPng(

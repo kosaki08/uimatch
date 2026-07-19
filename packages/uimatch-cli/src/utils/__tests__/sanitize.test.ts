@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { maskToken, relativizePath, sanitizeFigmaRefObject, sanitizeUrl } from '../sanitize.js';
 
 describe('sanitizeUrl', () => {

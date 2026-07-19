@@ -1,13 +1,13 @@
 /**
  * Test childBox capture with childSelector
  */
-import { afterAll, describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'vitest';
 import { browserPool } from '../../packages/uimatch-core/src/adapters/browser-pool';
 import { captureTarget } from '../../packages/uimatch-core/src/adapters/playwright';
 
 const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
 const itT = (name: string, fn: () => Promise<void>): void => {
-  test(name, fn, { timeout: TEST_TIMEOUT });
+  test(name, { timeout: TEST_TIMEOUT }, fn);
 };
 
 // Gate E2E tests behind environment variable to prevent heavy browser tests during unit test runs

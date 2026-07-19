@@ -4,7 +4,7 @@
  */
 
 import type { Probe, ProbeResult } from '@uimatch/selector-spi';
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { checkLivenessAll, checkLivenessPriority } from '../liveness.js';
 
 /**
@@ -142,14 +142,16 @@ describe('liveness utilities', () => {
       expect(probe.getCallOrder()).toEqual(['[role="button"]']);
     });
 
-    test('handles probe errors by continuing to next selector', () => {
+    test('handles probe errors by continuing to next selector', async () => {
       const probe = new TestProbe({
         '.error': new Error('Check failed'),
         '.alive': { selector: '.alive', isValid: true, isAlive: true, checkTime: 5 },
       });
 
       // Even though first selector throws, it should continue
-      expect(checkLivenessPriority(probe, ['.error', '.alive'])).rejects.toThrow('Check failed');
+      await expect(checkLivenessPriority(probe, ['.error', '.alive'])).rejects.toThrow(
+        'Check failed'
+      );
     });
 
     test('passes options to probe check', async () => {

@@ -2,8 +2,8 @@
  * Tests for contentBasis parameter in pad mode
  */
 
-import { expect, test } from 'bun:test';
 import { PNG } from 'pngjs';
+import { expect, test } from 'vitest';
 import { compareImages } from './core/compare';
 
 /**

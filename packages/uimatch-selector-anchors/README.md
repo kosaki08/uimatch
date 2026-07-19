@@ -10,14 +10,11 @@ Selector resolution plugin for uiMatch using AST-based anchors.
 npm install @uimatch/selector-anchors @uimatch/selector-spi
 # or
 pnpm add @uimatch/selector-anchors @uimatch/selector-spi
-# or
-bun add @uimatch/selector-anchors @uimatch/selector-spi
 ```
 
 **Requirements:**
 
 - **Node.js**: `>=20.19` or `>=22.12`
-- **Bun**: Compatible with Bun 1.x (all scripts use Bun)
 - **TypeScript**: This package includes TypeScript as a runtime dependency for AST-based selector resolution
   - **Why runtime dependency?** TypeScript is required at runtime for AST parsing and analysis, not just for type checking
 - **Module System**: ESM only (CommonJS is not supported)
