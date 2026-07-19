@@ -47,6 +47,63 @@ describe('Quality Gate', () => {
     );
   });
 
+  test.each(['__self__', 'self'])('should support legacy root selector %s', (selector) => {
+    const result: CompareImageResult = {
+      pixelDiffRatio: 0.005,
+      pixelDiffRatioContent: 0.005,
+      diffPixelCount: 50,
+      diffPngB64: '',
+      totalPixels: 10000,
+      dimensions: {
+        figma: { width: 100, height: 100 },
+        impl: { width: 100, height: 100 },
+        compared: { width: 100, height: 100 },
+        sizeMode: 'strict',
+        adjusted: false,
+      },
+    };
+    const styleDiffs: StyleDiff[] = [
+      {
+        selector,
+        properties: {
+          color: { actual: '#000', expected: '#111' },
+        },
+        severity: 'low',
+      },
+    ];
+
+    expect(detectSuspicions(result, styleDiffs).detected).toBe(true);
+  });
+
+  test('should prefer explicit root identity over a legacy selector', () => {
+    const result: CompareImageResult = {
+      pixelDiffRatio: 0.005,
+      pixelDiffRatioContent: 0.005,
+      diffPixelCount: 50,
+      diffPngB64: '',
+      totalPixels: 10000,
+      dimensions: {
+        figma: { width: 100, height: 100 },
+        impl: { width: 100, height: 100 },
+        compared: { width: 100, height: 100 },
+        sizeMode: 'strict',
+        adjusted: false,
+      },
+    };
+    const styleDiffs: StyleDiff[] = [
+      {
+        selector: 'self',
+        isRoot: false,
+        properties: {
+          color: { actual: '#000', expected: '#111' },
+        },
+        severity: 'low',
+      },
+    ];
+
+    expect(detectSuspicions(result, styleDiffs).detected).toBe(false);
+  });
+
   test('should define zero-threshold CQI penalties without producing NaN', () => {
     const zeroMetrics = {
       pixelDiffRatio: 0,
@@ -113,6 +170,10 @@ describe('Quality Gate', () => {
       { pixelDiffRatio: 0.01, deltaE: 3, maxHighSeverityIssues: -1 },
     ],
     [
+      'NaN high-severity limit',
+      { pixelDiffRatio: 0.01, deltaE: 3, maxHighSeverityIssues: Number.NaN },
+    ],
+    [
       'non-integer layout high-severity limit',
       { pixelDiffRatio: 0.01, deltaE: 3, maxLayoutHighIssues: 1.5 },
     ],
@@ -156,6 +217,9 @@ describe('Quality Gate', () => {
     expect(gate.thresholds).toBeDefined();
     expect(gate.thresholds.pixelDiffRatio).toBe(0.01);
     expect(gate.thresholds.deltaE).toBe(3.0);
+    expect(gate.thresholds.areaGapCritical).toBe(0.15);
+    expect(gate.thresholds.areaGapWarning).toBe(0.05);
+    expect(gate.thresholds.maxHighSeverityIssues).toBe(0);
   });
 
   test('should include advanced quality metrics', () => {
@@ -312,6 +376,7 @@ describe('Quality Gate', () => {
     });
 
     expect(allowed.pass).toBe(true);
+    expect(allowed.thresholds.maxHighSeverityIssues).toBe(1);
     expect(
       allowed.cqiBreakdown?.components.find((component) => component.name === 'severity')?.penalty
     ).toBeGreaterThan(0);
@@ -360,6 +425,7 @@ describe('Quality Gate', () => {
       false
     );
     expect(exceeded.pass).toBe(false);
+    expect(exceeded.thresholds.maxLayoutHighIssues).toBe(0);
     expect(exceeded.reasons).toContain('[HIGH] Layout high severity count 1 exceeds maximum 0');
   });
 

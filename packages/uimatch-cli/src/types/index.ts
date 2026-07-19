@@ -113,6 +113,11 @@ export interface QualityGateResult {
   thresholds: {
     pixelDiffRatio: number;
     deltaE: number;
+    areaGapCritical: number;
+    areaGapWarning: number;
+    minStyleCoverage?: number;
+    maxHighSeverityIssues: number;
+    maxLayoutHighIssues?: number;
   };
 }
 

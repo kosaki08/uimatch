@@ -19,7 +19,13 @@ function createReport(pass: boolean): CompareResult['report'] {
       suspicions: { detected: false, reasons: [] },
       reEvaluated: false,
       reasons: [],
-      thresholds: { pixelDiffRatio: 0.01, deltaE: 3 },
+      thresholds: {
+        pixelDiffRatio: 0.01,
+        deltaE: 3,
+        areaGapCritical: 0.15,
+        areaGapWarning: 0.05,
+        maxHighSeverityIssues: 0,
+      },
     },
   };
 }
@@ -485,8 +491,10 @@ describe('buildCompareConfig', () => {
 
       const config = buildCompareConfig(args, profile);
 
-      expect(config.thresholds?.maxHighSeverityIssues).toBe(2);
-      expect(config.thresholds?.maxLayoutHighIssues).toBe(0);
+      expect(config.thresholds?.maxHighSeverityIssues).toBe(
+        profile.thresholds.maxHighSeverityIssues
+      );
+      expect(config.thresholds?.maxLayoutHighIssues).toBe(profile.thresholds.maxLayoutHighIssues);
     });
 
     test.each(['', '-0.1', 'NaN', 'Infinity', '0.1junk', '1.1'])(

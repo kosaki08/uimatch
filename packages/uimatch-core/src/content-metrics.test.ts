@@ -1,6 +1,7 @@
 import { PNG } from 'pngjs';
 import { describe, expect, test } from 'vitest';
 import { compareImages } from './core/compare';
+import { calculateContentDiffRatio } from './core/content-metrics';
 
 function createSolidPng(
   width: number,
@@ -195,23 +196,14 @@ describe('Content-only metrics', () => {
         }).pixelDiffRatioContent ?? 0
     );
 
+    expect(ratios[0]).toBe(1);
+    expect(ratios[2]).toBe(0);
     expect(ratios[1]).toBeLessThanOrEqual(ratios[0] ?? 0);
     expect(ratios[2]).toBeLessThanOrEqual(ratios[1] ?? 0);
   });
 
-  test('does not produce NaN for a zero-area content intersection', () => {
-    const emptyPng = new PNG({ width: 0, height: 1 });
-    const implPng = createSolidPng(1, 1, { r: 255, g: 255, b: 255 });
-
-    const result = compareImages({
-      figmaPngB64: pngToBase64(emptyPng),
-      implPngB64: pngToBase64(implPng),
-      sizeMode: 'pad',
-      contentBasis: 'intersection',
-    });
-
-    expect(result.contentPixels).toBe(0);
-    expect(result.pixelDiffRatioContent).toBeUndefined();
-    expect(Number.isNaN(result.pixelDiffRatioContent ?? 0)).toBe(false);
+  test('does not calculate a ratio for zero content pixels', () => {
+    expect(calculateContentDiffRatio(0, 0)).toBeUndefined();
+    expect(calculateContentDiffRatio(10, 0)).toBeUndefined();
   });
 });

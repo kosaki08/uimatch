@@ -132,6 +132,11 @@ export interface QualityGateResult {
   thresholds: {
     pixelDiffRatio: number;
     deltaE: number;
+    areaGapCritical: number;
+    areaGapWarning: number;
+    minStyleCoverage?: number;
+    maxHighSeverityIssues: number;
+    maxLayoutHighIssues?: number;
   };
 }
 
@@ -214,7 +219,12 @@ export function detectSuspicions(
   const areaGap = calculateAreaGap(dimensions.figma, dimensions.impl);
 
   // Suspicion 1: High SFS but only root-level style diffs (suggests incomplete child comparison)
-  const hasOnlyRootDiff = styleDiffs.length === 1 && styleDiffs[0]?.isRoot === true;
+  const onlyDiff = styleDiffs[0];
+  const isLegacyRootSelector =
+    onlyDiff?.isRoot === undefined &&
+    (onlyDiff?.selector === '__self__' || onlyDiff?.selector === 'self');
+  const hasOnlyRootDiff =
+    styleDiffs.length === 1 && (onlyDiff?.isRoot === true || isLegacyRootSelector);
   if (hasOnlyRootDiff && pixelDiffRatioContent !== undefined && pixelDiffRatioContent < 0.03) {
     reasons.push(
       'Only root style diff present despite low pixel difference - possible incomplete comparison'
@@ -418,6 +428,7 @@ export function evaluateQualityGate(
 
   // Hard Gate 1: Critical area gap (immediate fail)
   const areaGapCritical = thresholds.areaGapCritical ?? 0.15;
+  const areaGapWarning = thresholds.areaGapWarning ?? 0.05;
   if (areaGap > areaGapCritical) {
     hardGateViolations.push({
       type: 'area_gap',
@@ -469,14 +480,15 @@ export function evaluateQualityGate(
     });
   }
 
-  if (thresholds.maxLayoutHighIssues !== undefined) {
+  const maxLayoutHighIssues = thresholds.maxLayoutHighIssues;
+  if (maxLayoutHighIssues !== undefined) {
     const layoutHighCount = highSeverityDiffs.filter((diff) =>
       Object.keys(diff.properties).some((property) => LAYOUT_PROPERTIES.has(property))
     ).length;
-    if (layoutHighCount > thresholds.maxLayoutHighIssues) {
+    if (layoutHighCount > maxLayoutHighIssues) {
       hardGateViolations.push({
         type: 'high_severity',
-        reason: `Layout high severity count ${layoutHighCount} exceeds maximum ${thresholds.maxLayoutHighIssues}`,
+        reason: `Layout high severity count ${layoutHighCount} exceeds maximum ${maxLayoutHighIssues}`,
         severity: 'high',
       });
     }
@@ -566,7 +578,6 @@ export function evaluateQualityGate(
     }
 
     // Area gap warning (not critical, but adds to reasons)
-    const areaGapWarning = thresholds.areaGapWarning ?? 0.05;
     if (areaGap > areaGapWarning) {
       reasons.push(
         `Area gap ${(areaGap * 100).toFixed(1)}% exceeds warning threshold ${(areaGapWarning * 100).toFixed(1)}%`
@@ -599,6 +610,11 @@ export function evaluateQualityGate(
     thresholds: {
       pixelDiffRatio: thresholds.pixelDiffRatio,
       deltaE: thresholds.deltaE,
+      areaGapCritical,
+      areaGapWarning,
+      minStyleCoverage: thresholds.minStyleCoverage,
+      maxHighSeverityIssues,
+      maxLayoutHighIssues,
     },
   };
 }

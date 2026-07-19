@@ -2,6 +2,7 @@ import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import type { ExpectedSpec, StyleDiff, TokenMap } from '../types/index';
 import { parseCssColorToRgb, type RGB } from '../utils/normalize';
+import { calculateContentDiffRatio } from './content-metrics';
 import { buildStyleDiffs, type DiffOptions } from './diff';
 
 /**
@@ -725,15 +726,14 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     result.dimensions.contentRect = contentMetrics.contentRect;
 
     // Calculate content-only pixel diff ratio by counting diff pixels within content rect
-    if (contentMetrics.contentPixels > 0) {
-      const diffPixelCountInContent = countDiffPixelsInRect(
-        figmaPng,
-        implPng,
-        contentMetrics.contentRect,
-        opts
-      );
-      result.pixelDiffRatioContent = diffPixelCountInContent / contentMetrics.contentPixels;
-    }
+    const diffPixelCountInContent =
+      contentMetrics.contentPixels > 0
+        ? countDiffPixelsInRect(figmaPng, implPng, contentMetrics.contentRect, opts)
+        : 0;
+    result.pixelDiffRatioContent = calculateContentDiffRatio(
+      diffPixelCountInContent,
+      contentMetrics.contentPixels
+    );
   }
 
   // Calculate style differences if styles are provided

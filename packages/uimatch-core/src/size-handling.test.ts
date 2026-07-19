@@ -173,6 +173,27 @@ describe('Size Handling Modes', () => {
 
     expect(result.diffPixelCount).toBe(0);
   });
+
+  test.each(['transparent', 'rgba(0, 0, 0, 0)'])(
+    'padColor auto treats %s as white',
+    (backgroundColor) => {
+      const white = { r: 255, g: 255, b: 255 };
+      const figmaPng = createTestPng(1, 1, white);
+      const implPng = createTestPng(3, 1, white);
+
+      const result = compareImages({
+        figmaPngB64: pngToBase64(figmaPng),
+        implPngB64: pngToBase64(implPng),
+        sizeMode: 'pad',
+        padColor: 'auto',
+        styles: {
+          __self__: { 'background-color': backgroundColor },
+        },
+      });
+
+      expect(result.diffPixelCount).toBe(0);
+    }
+  );
 });
 
 describe('Alignment Options', () => {
