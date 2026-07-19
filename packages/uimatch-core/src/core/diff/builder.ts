@@ -15,49 +15,50 @@ import { getDominantScope, shouldIncludeDiffAtStage } from './scope';
 import { calculatePriorityScore, generatePatchHints } from './scoring';
 import { isNoiseElement } from './utils';
 
+/**
+ * Tolerances used when deciding whether a property difference is significant.
+ *
+ * Every field is optional; unset fields fall back to {@link DEFAULT_DIFF_THRESHOLDS}.
+ */
+export interface DiffThresholds {
+  /** Maximum acceptable color Delta E (CIEDE2000). */
+  deltaE?: number;
+  /** Tolerance ratio for spacing properties (padding, margin). */
+  spacing?: number;
+  /** Tolerance ratio for dimension properties (width, height). */
+  dimension?: number;
+  /** Tolerance ratio for gap properties (gap, column-gap, row-gap). */
+  layoutGap?: number;
+  /** Tolerance ratio for border-radius. */
+  radius?: number;
+  /** Tolerance ratio for border-width. */
+  borderWidth?: number;
+  /** Tolerance ratio for box-shadow blur. */
+  shadowBlur?: number;
+  /** Extra Delta E tolerance for box-shadow color comparison. */
+  shadowColorExtraDE?: number;
+}
+
+/**
+ * Default tolerances applied when {@link DiffOptions.thresholds} omits a field.
+ *
+ * This is the single source of truth for these values; consumers that need to
+ * display or re-normalize against the defaults must read them from here rather
+ * than re-declaring their own copy.
+ */
+export const DEFAULT_DIFF_THRESHOLDS: Required<DiffThresholds> = {
+  deltaE: 3.0,
+  spacing: 0.15,
+  dimension: 0.05,
+  layoutGap: 0.1,
+  radius: 0.12,
+  borderWidth: 0.3,
+  shadowBlur: 0.15,
+  shadowColorExtraDE: 1.0,
+};
+
 export interface DiffOptions {
-  thresholds?: {
-    /**
-     * Maximum acceptable color Delta E (CIEDE2000).
-     * @default 3.0
-     */
-    deltaE?: number;
-    /**
-     * Tolerance ratio for spacing properties (padding, margin).
-     * @default 0.15 (15%)
-     */
-    spacing?: number;
-    /**
-     * Tolerance ratio for dimension properties (width, height).
-     * @default 0.05 (5%)
-     */
-    dimension?: number;
-    /**
-     * Tolerance ratio for gap properties (gap, column-gap, row-gap).
-     * @default 0.1 (10%)
-     */
-    layoutGap?: number;
-    /**
-     * Tolerance ratio for border-radius.
-     * @default 0.12 (12%)
-     */
-    radius?: number;
-    /**
-     * Tolerance ratio for border-width.
-     * @default 0.3 (30%)
-     */
-    borderWidth?: number;
-    /**
-     * Tolerance ratio for box-shadow blur.
-     * @default 0.15 (15%)
-     */
-    shadowBlur?: number;
-    /**
-     * Extra Delta E tolerance for box-shadow color comparison.
-     * @default 1.0
-     */
-    shadowColorExtraDE?: number;
-  };
+  thresholds?: DiffThresholds;
   ignore?: string[];
   weights?: Partial<
     Record<'color' | 'spacing' | 'radius' | 'border' | 'shadow' | 'typography', number>
@@ -103,14 +104,15 @@ export function buildStyleDiffs(
   const stage = opts.stage ?? 'all';
 
   // Extract thresholds with defaults
-  const tDeltaE = opts.thresholds?.deltaE ?? 3.0;
-  const tSpacing = opts.thresholds?.spacing ?? 0.15;
-  const tDimension = opts.thresholds?.dimension ?? 0.05;
-  const tLayoutGap = opts.thresholds?.layoutGap ?? 0.1;
-  const tRadius = opts.thresholds?.radius ?? 0.12;
-  const tBorderWidth = opts.thresholds?.borderWidth ?? 0.3;
-  const tShadowBlur = opts.thresholds?.shadowBlur ?? 0.15;
-  const tShadowColorExtra = opts.thresholds?.shadowColorExtraDE ?? 1.0;
+  const tDeltaE = opts.thresholds?.deltaE ?? DEFAULT_DIFF_THRESHOLDS.deltaE;
+  const tSpacing = opts.thresholds?.spacing ?? DEFAULT_DIFF_THRESHOLDS.spacing;
+  const tDimension = opts.thresholds?.dimension ?? DEFAULT_DIFF_THRESHOLDS.dimension;
+  const tLayoutGap = opts.thresholds?.layoutGap ?? DEFAULT_DIFF_THRESHOLDS.layoutGap;
+  const tRadius = opts.thresholds?.radius ?? DEFAULT_DIFF_THRESHOLDS.radius;
+  const tBorderWidth = opts.thresholds?.borderWidth ?? DEFAULT_DIFF_THRESHOLDS.borderWidth;
+  const tShadowBlur = opts.thresholds?.shadowBlur ?? DEFAULT_DIFF_THRESHOLDS.shadowBlur;
+  const tShadowColorExtra =
+    opts.thresholds?.shadowColorExtraDE ?? DEFAULT_DIFF_THRESHOLDS.shadowColorExtraDE;
 
   const categoriesOf = (
     prop: string

@@ -12,11 +12,6 @@ export {
   type TextNormalizeOptions,
 } from './normalize';
 export {
-  generateSnippetHash,
-  generateSnippetHashes,
-  type SnippetHashOptions,
-} from './snippet-hash';
-export {
   compareText,
   type TextCompareOptions,
   type TextDiff,

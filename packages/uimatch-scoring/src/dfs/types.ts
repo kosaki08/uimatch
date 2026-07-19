@@ -2,7 +2,9 @@
  * Type definitions for Design Fidelity Score (DFS) calculation
  */
 
-import type { CompareImageResult } from '@uimatch/core';
+import type { CompareImageResult, StyleDiff } from '@uimatch/core';
+
+export type { StyleDiff };
 
 /**
  * Weights for DFS calculation components
@@ -15,29 +17,6 @@ export interface DFSWeights {
   border: number;
   shadow: number;
   typography: number;
-}
-
-/**
- * Style diff from comparison result
- */
-export interface StyleDiff {
-  selector: string;
-  properties: Record<
-    string,
-    {
-      actual?: string;
-      expected?: string;
-      expectedToken?: string;
-      delta?: number;
-      unit?: string;
-    }
-  >;
-  severity: 'low' | 'medium' | 'high';
-  patchHints?: Array<{
-    property: string;
-    suggestedValue: string;
-    severity: 'low' | 'medium' | 'high';
-  }>;
 }
 
 /**

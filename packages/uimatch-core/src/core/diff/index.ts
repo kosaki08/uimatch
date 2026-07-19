@@ -2,7 +2,12 @@
  * Style difference calculation with staged checking support
  */
 
-export { buildStyleDiffs, type DiffOptions } from './builder';
+export {
+  DEFAULT_DIFF_THRESHOLDS,
+  buildStyleDiffs,
+  type DiffOptions,
+  type DiffThresholds,
+} from './builder';
 export {
   expandShorthand,
   getDominantScope,

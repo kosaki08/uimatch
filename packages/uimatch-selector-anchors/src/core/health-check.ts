@@ -4,25 +4,7 @@
  * @module core/health-check
  */
 
-/**
- * Health check result
- */
-export interface HealthCheckResult {
-  /**
-   * Overall health status
-   */
-  healthy: boolean;
-
-  /**
-   * Human-readable message describing health status
-   */
-  message: string;
-
-  /**
-   * Optional list of issues found during health check
-   */
-  issues?: string[];
-}
+import type { HealthCheckResult } from '@uimatch/selector-spi';
 
 /**
  * Perform health check for the plugin

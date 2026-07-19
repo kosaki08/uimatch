@@ -15,8 +15,8 @@ export type {
 } from './config/index';
 export { compareImages } from './core/compare';
 export type { CompareImageInput, CompareImageResult, PixelmatchOptions } from './core/compare';
-export { buildStyleDiffs } from './core/diff';
-export type { DiffOptions } from './core/diff';
+export { DEFAULT_DIFF_THRESHOLDS, buildStyleDiffs } from './core/diff';
+export type { DiffOptions, DiffThresholds } from './core/diff';
 export {
   calculateAreaGap,
   calculateCQI,

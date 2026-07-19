@@ -3,7 +3,7 @@
  * Normalizes style diffs and computes weighted scores for LLM consumption
  */
 
-import type { StyleDiff } from '@uimatch/core';
+import { DEFAULT_DIFF_THRESHOLDS, type DiffThresholds, type StyleDiff } from '@uimatch/core';
 
 /**
  * Category weights for SFS calculation
@@ -34,32 +34,20 @@ export const DEFAULT_WEIGHTS: CategoryWeights = {
 };
 
 /**
- * Tolerance thresholds for normalization
+ * Tolerance thresholds for normalization.
+ *
+ * SFS normalizes against the same tolerances the core diff builder uses to
+ * decide significance, so this mirrors core's threshold set with every field
+ * resolved.
  */
-export interface ToleranceThresholds {
-  deltaE: number;
-  spacing: number; // ratio
-  dimension: number; // ratio
-  layoutGap: number; // ratio
-  radius: number; // ratio
-  borderWidth: number; // ratio
-  shadowBlur: number; // ratio
-  shadowColorExtraDE: number;
-}
+export type ToleranceThresholds = Required<DiffThresholds>;
 
 /**
- * Default tolerances (from @uimatch/core defaults)
+ * Default tolerances, re-exported from `@uimatch/core`.
+ *
+ * Do not re-declare these values here — core owns them.
  */
-export const DEFAULT_TOLERANCES: ToleranceThresholds = {
-  deltaE: 3.0,
-  spacing: 0.15,
-  dimension: 0.05,
-  layoutGap: 0.1,
-  radius: 0.12,
-  borderWidth: 0.3,
-  shadowBlur: 0.15,
-  shadowColorExtraDE: 1.0,
-};
+export const DEFAULT_TOLERANCES: ToleranceThresholds = DEFAULT_DIFF_THRESHOLDS;
 
 /**
  * Normalized style diff (0-1 scale)
