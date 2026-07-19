@@ -188,6 +188,8 @@ jobs:
 
       - name: Run integration tests
         env:
+          UIMATCH_CHROME_CHANNEL: chrome
+          UIMATCH_CHROMIUM_SANDBOX: 'true'
           UIMATCH_HEADLESS: 'true'
           UIMATCH_NAV_TIMEOUT_MS: '1500'
           UIMATCH_SELECTOR_WAIT_MS: '3000'
@@ -442,6 +444,8 @@ jobs:
         working-directory: /tmp/uimatch-cli-smoke
         env:
           UIMATCH_FIGMA_PNG_B64: iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC
+          UIMATCH_CHROME_CHANNEL: chrome
+          UIMATCH_CHROMIUM_SANDBOX: 'true'
           UIMATCH_HEADLESS: 'true'
         run: |
           set -eux
