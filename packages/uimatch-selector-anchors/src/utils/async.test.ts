@@ -40,11 +40,16 @@ describe('withTimeout', () => {
     expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
   });
 
-  test.each([0, -1])('treats timeoutMs=%p as an immediate timeout', async (timeoutMs) => {
-    const result = await withTimeout(Promise.resolve('too late'), timeoutMs);
+  test.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, 2_147_483_648])(
+    'treats timeoutMs=%p as an immediate timeout',
+    async (timeoutMs) => {
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+      const result = await withTimeout(Promise.resolve('too late'), timeoutMs);
 
-    expect(result).toBeNull();
-  });
+      expect(result).toBeNull();
+      expect(setTimeoutSpy).not.toHaveBeenCalled();
+    }
+  );
 
   test('observes a rejection after an immediate timeout', async () => {
     let rejectOperation: (reason: Error) => void = () => {};

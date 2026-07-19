@@ -14,6 +14,16 @@ export interface BoxShadowParsed {
   rgb?: RGB;
 }
 
+const CSS_NUMBER_SOURCE = String.raw`[+-]?(?:\d+(?:\.\d*)?|\.\d+)`;
+const CSS_NUMBER_PATTERN = new RegExp(`^${CSS_NUMBER_SOURCE}$`);
+const CSS_LENGTH_PATTERN = new RegExp(`^(${CSS_NUMBER_SOURCE})(px|rem|em)?$`);
+
+function parseCssNumber(value: string): number | undefined {
+  if (!CSS_NUMBER_PATTERN.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 /**
  * Convert CSS length value to pixels
  * @param value CSS length value (e.g., "16px", "1rem", "1.5em")
@@ -26,11 +36,11 @@ export function toPx(value?: string, baseFontSize = 16): number | undefined {
   const trimmed = value.trim();
   if (trimmed === 'auto' || trimmed === 'none') return undefined;
 
-  const match = trimmed.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(px|rem|em)?$/);
+  const match = trimmed.match(CSS_LENGTH_PATTERN);
   if (!match || !match[1]) return undefined;
 
-  const num = Number(match[1]);
-  if (!Number.isFinite(num)) return undefined;
+  const num = parseCssNumber(match[1]);
+  if (num === undefined) return undefined;
   const unit = match[2] || 'px';
 
   switch (unit) {
@@ -60,13 +70,12 @@ export function normLineHeight(value?: string, fontSize = 16): number | undefine
   if (trimmed === 'normal') return 1.2 * fontSize;
 
   // Handle unitless (e.g., "1.5")
-  const unitless = parseFloat(trimmed);
-  if (!isNaN(unitless) && /^[\d.]+$/.test(trimmed)) {
-    return unitless * fontSize;
-  }
+  const unitless = parseCssNumber(trimmed);
+  if (unitless !== undefined) return unitless >= 0 ? unitless * fontSize : undefined;
 
   // Handle explicit units (e.g., "24px")
-  return toPx(trimmed, fontSize);
+  const length = toPx(trimmed, fontSize);
+  return length !== undefined && length >= 0 ? length : undefined;
 }
 
 /**

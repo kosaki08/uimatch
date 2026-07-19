@@ -56,6 +56,9 @@ describe('normLineHeight', () => {
     expect(normLineHeight('1.5', 16)).toBe(24);
     expect(normLineHeight('2', 16)).toBe(32);
     expect(normLineHeight('1', 20)).toBe(20);
+    expect(normLineHeight('.5', 20)).toBe(10);
+    expect(normLineHeight('1.', 16)).toBe(16);
+    expect(normLineHeight('+1.2', 10)).toBe(12);
   });
 
   test('converts px values', () => {
@@ -63,9 +66,18 @@ describe('normLineHeight', () => {
     expect(normLineHeight('32px', 16)).toBe(32);
   });
 
-  test('returns undefined for invalid values', () => {
-    expect(normLineHeight(undefined)).toBeUndefined();
-    expect(normLineHeight('auto')).toBeUndefined();
+  test.each([
+    ['missing value', undefined],
+    ['auto keyword', 'auto'],
+    ['multiple decimal points', '1.2.3'],
+    ['repeated decimal point', '1..2'],
+    ['decimal point without digits', '.'],
+    ['exponent notation', '1e3'],
+    ['negative unitless value', '-1.2'],
+    ['negative length', '-2px'],
+    ['numeric overflow', '9'.repeat(400)],
+  ])('rejects %s', (_case, value) => {
+    expect(normLineHeight(value)).toBeUndefined();
   });
 });
 
