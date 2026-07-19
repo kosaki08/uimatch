@@ -4,6 +4,7 @@
  * Extracted from compare.ts (lines 381-434) for reusability
  */
 
+import { calculateAreaGap } from '@uimatch/core';
 import type { DFSInput, DFSResult, DFSWeights } from './types';
 
 /**
@@ -64,9 +65,7 @@ export function computeDFS(input: DFSInput): DFSResult {
   if (result.dimensions.adjusted) {
     const figmaDim = result.dimensions.figma;
     const implDim = result.dimensions.impl;
-    const areaFigma = figmaDim.width * figmaDim.height;
-    const areaImpl = implDim.width * implDim.height;
-    const areaGap = Math.abs(areaFigma - areaImpl) / Math.max(areaFigma, areaImpl); // 0..1
+    const areaGap = calculateAreaGap(figmaDim, implDim);
     // Apply up to 15 points penalty, scaled by area difference (20 max * 0.75 cap)
     const sizePenalty = Math.min(15, Math.round(areaGap * 20));
     dfs -= sizePenalty;

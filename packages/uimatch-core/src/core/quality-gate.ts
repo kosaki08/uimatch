@@ -135,6 +135,57 @@ export interface QualityGateResult {
   };
 }
 
+function assertNonNegativeFinite(value: number, name: string): void {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new RangeError(`${name} must be a finite non-negative number`);
+  }
+}
+
+function assertUnitInterval(value: number, name: string): void {
+  assertNonNegativeFinite(value, name);
+  if (value > 1) {
+    throw new RangeError(`${name} must be at most 1`);
+  }
+}
+
+function assertNonNegativeSafeInteger(value: number, name: string): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RangeError(`${name} must be a non-negative safe integer`);
+  }
+}
+
+function validateQualityGateThresholds(thresholds: QualityGateThresholds): void {
+  assertUnitInterval(thresholds.pixelDiffRatio, 'pixel difference ratio threshold');
+  assertNonNegativeFinite(thresholds.deltaE, 'color delta E threshold');
+  if (thresholds.areaGapCritical !== undefined) {
+    assertUnitInterval(thresholds.areaGapCritical, 'critical area gap threshold');
+  }
+  if (thresholds.areaGapWarning !== undefined) {
+    assertUnitInterval(thresholds.areaGapWarning, 'warning area gap threshold');
+  }
+  if (thresholds.minStyleCoverage !== undefined) {
+    assertUnitInterval(thresholds.minStyleCoverage, 'minimum style coverage');
+  }
+  if (thresholds.maxHighSeverityIssues !== undefined) {
+    assertNonNegativeSafeInteger(
+      thresholds.maxHighSeverityIssues,
+      'maximum high-severity issues'
+    );
+  }
+  if (thresholds.maxLayoutHighIssues !== undefined) {
+    assertNonNegativeSafeInteger(
+      thresholds.maxLayoutHighIssues,
+      'maximum layout high-severity issues'
+    );
+  }
+}
+
+function normalizePenalty(metric: number, threshold: number, name: string): number {
+  assertNonNegativeFinite(metric, name);
+  if (threshold === 0) return metric === 0 ? 0 : 1;
+  return Math.min(metric / threshold, 1);
+}
+
 /**
  * Calculate area gap between Figma and implementation
  * @param figmaDim - Figma dimensions
@@ -147,7 +198,8 @@ export function calculateAreaGap(
 ): number {
   const areaFigma = figmaDim.width * figmaDim.height;
   const areaImpl = implDim.width * implDim.height;
-  return Math.abs(areaFigma - areaImpl) / Math.max(areaFigma, areaImpl);
+  const maxArea = Math.max(areaFigma, areaImpl);
+  return maxArea === 0 ? 0 : Math.abs(areaFigma - areaImpl) / maxArea;
 }
 
 /**
@@ -268,14 +320,20 @@ export function calculateCQI(
   params: CQIParams = {},
   includeBreakdown = false
 ): { cqi: number; breakdown?: CQIBreakdown } {
+  validateQualityGateThresholds(thresholds);
   const { pixelWeight = 0.6, colorWeight = 0.2, areaWeight = 0.15, severityWeight = 0.05 } = params;
 
   // Use content-only ratio when available
   const effectivePixelRatio = metrics.pixelDiffRatioContent ?? metrics.pixelDiffRatio;
 
   // Normalize each metric to 0-1 penalty range using thresholds
-  const pixelPenalty = Math.min(effectivePixelRatio / thresholds.pixelDiffRatio, 1);
-  const colorPenalty = Math.min(metrics.colorDeltaEAvg / thresholds.deltaE, 1);
+  const pixelPenalty = normalizePenalty(
+    effectivePixelRatio,
+    thresholds.pixelDiffRatio,
+    'pixel difference ratio'
+  );
+  const colorPenalty = normalizePenalty(metrics.colorDeltaEAvg, thresholds.deltaE, 'color delta E');
+  assertNonNegativeFinite(metrics.areaGap, 'area gap');
   const areaPenalty = metrics.areaGap; // Already 0-1
   const severityPenalty = metrics.hasHighSeverity ? 1 : 0;
 

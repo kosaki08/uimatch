@@ -5,6 +5,11 @@
 import { DEFAULT_CONFIG } from './defaults';
 import { AppConfigSchema, type AppConfig } from './schema';
 
+function parseEnvironmentNumber(value: string | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  return value.trim() === '' ? Number.NaN : Number(value);
+}
+
 /**
  * Load configuration from environment variables with validation.
  * Falls back to defaults for missing values.
@@ -28,12 +33,14 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
     comparison: {
       ...DEFAULT_CONFIG.comparison,
-      pixelmatchThreshold: env.PIXELMATCH_THRESHOLD
-        ? parseFloat(env.PIXELMATCH_THRESHOLD)
-        : DEFAULT_CONFIG.comparison.pixelmatchThreshold,
-      colorDeltaEThreshold: env.COLOR_DELTA_E_THRESHOLD
-        ? parseFloat(env.COLOR_DELTA_E_THRESHOLD)
-        : DEFAULT_CONFIG.comparison.colorDeltaEThreshold,
+      pixelmatchThreshold: parseEnvironmentNumber(
+        env.PIXELMATCH_THRESHOLD,
+        DEFAULT_CONFIG.comparison.pixelmatchThreshold
+      ),
+      colorDeltaEThreshold: parseEnvironmentNumber(
+        env.COLOR_DELTA_E_THRESHOLD,
+        DEFAULT_CONFIG.comparison.colorDeltaEThreshold
+      ),
     },
   };
 

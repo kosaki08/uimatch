@@ -488,6 +488,20 @@ describe('buildCompareConfig', () => {
       expect(config.thresholds?.maxHighSeverityIssues).toBe(2);
       expect(config.thresholds?.maxLayoutHighIssues).toBe(0);
     });
+
+    test.each(['', '-0.1', 'NaN', 'Infinity', '0.1junk', '1.1'])(
+      'should reject invalid area gap threshold %s',
+      (areaGapCritical) => {
+        const args: ParsedArgs = {
+          figma: 'AbCdEf:1-23',
+          story: 'http://localhost:6006',
+          selector: '#root',
+          areaGapCritical,
+        };
+
+        expect(() => buildCompareConfig(args)).toThrow(RangeError);
+      }
+    );
   });
 
   describe('ignore parsing', () => {

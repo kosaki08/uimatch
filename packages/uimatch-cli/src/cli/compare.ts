@@ -159,6 +159,14 @@ function parseBool(value?: string): boolean | undefined {
   return undefined;
 }
 
+function parseUnitInterval(value: string, name: string): number {
+  const parsed = value.trim() === '' ? Number.NaN : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
+    throw new RangeError(`Invalid ${name} "${value}": expected a number between 0 and 1`);
+  }
+  return parsed;
+}
+
 /**
  * Parse size mode string
  */
@@ -467,13 +475,14 @@ export function buildCompareConfig(
   if (config.thresholds === undefined) {
     config.thresholds = {};
   }
-  if (args.areaGapCritical) {
-    const value = parseFloat(args.areaGapCritical);
-    if (!Number.isNaN(value)) config.thresholds.areaGapCritical = value;
+  if (args.areaGapCritical !== undefined) {
+    config.thresholds.areaGapCritical = parseUnitInterval(
+      args.areaGapCritical,
+      'areaGapCritical'
+    );
   }
-  if (args.areaGapWarning) {
-    const value = parseFloat(args.areaGapWarning);
-    if (!Number.isNaN(value)) config.thresholds.areaGapWarning = value;
+  if (args.areaGapWarning !== undefined) {
+    config.thresholds.areaGapWarning = parseUnitInterval(args.areaGapWarning, 'areaGapWarning');
   }
 
   // Text match options
@@ -691,7 +700,16 @@ export async function runCompare(argv: string[]): Promise<number> {
     }
 
     // Build configuration using extracted function (this includes verbose decision)
-    const config = buildCompareConfig(args, qualityGateProfile);
+    let config: CompareArgs;
+    try {
+      config = buildCompareConfig(args, qualityGateProfile);
+    } catch (error) {
+      if (error instanceof RangeError) {
+        errln(error.message);
+        return 2;
+      }
+      throw error;
+    }
     const saveExpectedPath = args.saveExpected;
 
     // Use config.verbose as the single source of truth

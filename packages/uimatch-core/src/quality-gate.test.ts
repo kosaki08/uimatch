@@ -1,9 +1,19 @@
 import { describe, expect, test } from 'bun:test';
 import type { CompareImageResult } from './core/compare';
-import { detectSuspicions, evaluateQualityGate } from './core/quality-gate';
+import {
+  calculateAreaGap,
+  calculateCQI,
+  detectSuspicions,
+  evaluateQualityGate,
+} from './core/quality-gate';
 import type { StyleDiff } from './types/index';
 
 describe('Quality Gate', () => {
+  test('should keep zero-area gap calculations finite', () => {
+    expect(calculateAreaGap({ width: 0, height: 0 }, { width: 0, height: 0 })).toBe(0);
+    expect(calculateAreaGap({ width: 0, height: 0 }, { width: 100, height: 100 })).toBe(1);
+  });
+
   test('should use root identity instead of the display selector for suspicion detection', () => {
     const result: CompareImageResult = {
       pixelDiffRatio: 0.005,
@@ -35,6 +45,95 @@ describe('Quality Gate', () => {
     expect(suspicions.reasons).toContain(
       'Only root style diff present despite low pixel difference - possible incomplete comparison'
     );
+  });
+
+  test('should define zero-threshold CQI penalties without producing NaN', () => {
+    const zeroMetrics = {
+      pixelDiffRatio: 0,
+      colorDeltaEAvg: 0,
+      areaGap: 0,
+      hasHighSeverity: false,
+    };
+
+    const zeroAtZero = calculateCQI(zeroMetrics, {
+      pixelDiffRatio: 0,
+      deltaE: 0,
+    });
+    const positiveAtZero = calculateCQI(
+      { ...zeroMetrics, pixelDiffRatio: 0.01 },
+      { pixelDiffRatio: 0, deltaE: 0 }
+    );
+
+    expect(zeroAtZero.cqi).toBe(100);
+    expect(Number.isFinite(zeroAtZero.cqi)).toBe(true);
+    expect(positiveAtZero.cqi).toBe(40);
+  });
+
+  test.each([
+    ['negative pixel metric', -1, 0.01, 0, 3, 0],
+    ['NaN pixel metric', Number.NaN, 0.01, 0, 3, 0],
+    ['negative pixel threshold', 0, -1, 0, 3, 0],
+    ['NaN pixel threshold', 0, Number.NaN, 0, 3, 0],
+    ['negative color metric', 0, 0.01, -1, 3, 0],
+    ['NaN color metric', 0, 0.01, Number.NaN, 3, 0],
+    ['negative color threshold', 0, 0.01, 0, -1, 0],
+    ['NaN color threshold', 0, 0.01, 0, Number.NaN, 0],
+    ['negative area gap', 0, 0.01, 0, 3, -1],
+    ['NaN area gap', 0, 0.01, 0, 3, Number.NaN],
+  ])(
+    'should reject %s in CQI calculation',
+    (_name, pixelMetric, pixelThreshold, colorMetric, colorThreshold, areaGap) => {
+      expect(() =>
+        calculateCQI(
+          {
+            pixelDiffRatio: pixelMetric,
+            colorDeltaEAvg: colorMetric,
+            areaGap,
+            hasHighSeverity: false,
+          },
+          {
+            pixelDiffRatio: pixelThreshold,
+            deltaE: colorThreshold,
+          }
+        )
+      ).toThrow(RangeError);
+    }
+  );
+
+  test.each([
+    ['negative pixel threshold', { pixelDiffRatio: -1, deltaE: 3 }],
+    ['NaN pixel threshold', { pixelDiffRatio: Number.NaN, deltaE: 3 }],
+    ['pixel threshold above one', { pixelDiffRatio: 1.1, deltaE: 3 }],
+    ['negative color threshold', { pixelDiffRatio: 0.01, deltaE: -1 }],
+    ['NaN color threshold', { pixelDiffRatio: 0.01, deltaE: Number.NaN }],
+    [
+      'negative critical area threshold',
+      { pixelDiffRatio: 0.01, deltaE: 3, areaGapCritical: -1 },
+    ],
+    [
+      'NaN warning area threshold',
+      { pixelDiffRatio: 0.01, deltaE: 3, areaGapWarning: Number.NaN },
+    ],
+    [
+      'negative high-severity limit',
+      { pixelDiffRatio: 0.01, deltaE: 3, maxHighSeverityIssues: -1 },
+    ],
+    [
+      'non-integer layout high-severity limit',
+      { pixelDiffRatio: 0.01, deltaE: 3, maxLayoutHighIssues: 1.5 },
+    ],
+  ])('should reject %s in quality-gate thresholds', (_name, thresholds) => {
+    expect(() =>
+      calculateCQI(
+        {
+          pixelDiffRatio: 0,
+          colorDeltaEAvg: 0,
+          areaGap: 0,
+          hasHighSeverity: false,
+        },
+        thresholds
+      )
+    ).toThrow(RangeError);
   });
 
   test('should maintain core interface', () => {

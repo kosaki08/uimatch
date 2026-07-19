@@ -90,7 +90,7 @@ export const ComparisonConfigSchema = z.object({
    * Color delta E threshold for style differences
    * @default 3.0
    */
-  colorDeltaEThreshold: z.number().positive().default(3.0),
+  colorDeltaEThreshold: z.number().nonnegative().default(3.0),
 
   /**
    * Acceptance threshold for pixelDiffRatio (quality gate)
@@ -102,7 +102,7 @@ export const ComparisonConfigSchema = z.object({
    * Acceptance threshold for colorDeltaEAvg (quality gate)
    * @default 3.0
    */
-  acceptanceColorDeltaE: z.number().positive().default(3.0),
+  acceptanceColorDeltaE: z.number().nonnegative().default(3.0),
 
   /**
    * Tolerance ratio for spacing properties (padding, margin)

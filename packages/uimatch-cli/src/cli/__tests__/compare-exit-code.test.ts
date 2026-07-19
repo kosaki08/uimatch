@@ -66,3 +66,26 @@ test('rejects an unknown quality gate profile before comparison', () => {
   expect(result.status).toBe(2);
   expect(result.stderr).toContain("Quality gate profile 'does-not-exist' not found");
 });
+
+test('rejects an invalid area gap threshold before comparison', () => {
+  const result = spawnSync(
+    'bun',
+    [
+      CLI_PATH,
+      'compare',
+      'figma=bypass:test',
+      `story=${DIFFERENT_HTML}`,
+      'selector=#target',
+      'areaGapCritical=0.1junk',
+    ],
+    {
+      encoding: 'utf8',
+      env: { ...process.env, UIMATCH_LOG_LEVEL: 'silent' },
+      timeout: 10_000,
+    }
+  );
+
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain('Invalid areaGapCritical');
+});
