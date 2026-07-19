@@ -16,9 +16,10 @@ Node.js; unit tests use Vitest and browser E2E tests use Playwright.
 
 ```bash
 # Make changes
-pnpm format        # Format code
-pnpm lint          # Check linting
-pnpm test          # Run tests
+pnpm format               # Format code
+pnpm lint                 # Check linting
+pnpm run test:unit        # Fast unit tests without a build
+pnpm test                 # Unit + built-CLI integration tests
 ```
 
 ## Commit Guidelines

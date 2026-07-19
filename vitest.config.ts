@@ -11,7 +11,7 @@ export default defineConfig({
     environment: 'node',
     pool: 'forks',
     include: ['packages/**/*.test.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/dist-types/**'],
+    exclude: ['**/*.integration.test.ts', '**/node_modules/**', '**/dist/**', '**/dist-types/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],

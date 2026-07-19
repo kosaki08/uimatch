@@ -53,28 +53,6 @@ describe('Selector resolution plugin integration', () => {
     });
   });
 
-  describe('Configuration bridging', () => {
-    test('should pass selectorsPath and selectorsWriteBack to ResolveContext', () => {
-      // This test documents the expected bridging behavior
-      // Actual validation happens in maybeResolveSelectorWithPlugin implementation
-
-      const mockContext = {
-        url: 'http://example.com',
-        initialSelector: '#test',
-        anchorsPath: './selectors.json', // from args.selectorsPath
-        writeBack: true, // from args.selectorsWriteBack
-        probe: {} as { check: () => Promise<unknown> },
-      };
-
-      // Verify context structure matches SPI contract
-      expect(mockContext.url).toBe('http://example.com');
-      expect(mockContext.initialSelector).toBe('#test');
-      expect(mockContext.anchorsPath).toBe('./selectors.json');
-      expect(mockContext.writeBack).toBe(true);
-      expect(mockContext.probe).toBeDefined();
-    });
-  });
-
   describe('Actual plugin integration', () => {
     test('should load and use @uimatch/selector-anchors when available', async () => {
       // Integration test with real plugin

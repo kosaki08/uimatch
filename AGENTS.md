@@ -23,6 +23,10 @@ pnpm run check
 pnpm test
 ```
 
+`pnpm test` runs the unit suite, rebuilds the CLI, and then runs integration
+tests against the new bundle. Use `pnpm run test:unit` for fast local iteration;
+it does not execute files that depend on `dist`.
+
 Unit tests are type-checked as part of `pnpm run type-check`. Do not silence a
 new type error in a test with `@ts-ignore`; use `@ts-expect-error` with a reason
 when the test deliberately passes an invalid value, and fix the test otherwise.

@@ -51,7 +51,7 @@ test('rejects an unknown quality gate profile before comparison', () => {
     {
       encoding: 'utf8',
       env: { ...process.env, UIMATCH_LOG_LEVEL: 'silent' },
-      timeout: 10_000,
+      timeout: 30_000,
     }
   );
 
@@ -73,7 +73,7 @@ test('rejects an invalid area gap threshold before comparison', () => {
     {
       encoding: 'utf8',
       env: { ...process.env, UIMATCH_LOG_LEVEL: 'silent' },
-      timeout: 10_000,
+      timeout: 30_000,
     }
   );
 

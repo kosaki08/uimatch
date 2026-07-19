@@ -180,16 +180,10 @@ jobs:
       - name: Install dependencies (no scripts)
         run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Bootstrap workspace (pre-build local packages)
-        run: pnpm run bootstrap
-
-      - name: Build packages (solution, ordered)
-        run: pnpm run build:force
-
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run E2E tests
+      - name: Run integration tests
         env:
           UIMATCH_ENABLE_BROWSER_TESTS: 'true'
           UIMATCH_HEADLESS: 'true'
@@ -197,7 +191,7 @@ jobs:
           UIMATCH_SELECTOR_WAIT_MS: '3000'
           UIMATCH_BBOX_TIMEOUT_MS: '800'
           UIMATCH_SCREENSHOT_TIMEOUT_MS: '1000'
-        run: pnpm run test:e2e:cli
+        run: pnpm run test:integration
 
       - name: Upload test artifacts on failure
         if: failure()
