@@ -130,9 +130,7 @@ describe('Integration Tests', () => {
     expect(result.reasons?.some((r) => r.includes('login-form'))).toBe(true);
   });
 
-  test('prepares updated anchors when writeBack requested (with liveness)', async () => {
-    // Note: writeBack only works when AST resolution succeeds and liveness check passes
-    // Since our test anchors reference non-existent files, this falls back to resolvedCss
+  test('does not rewrite anchors when the cached selector is still live', async () => {
     const probe = new IntegrationProbe(['[data-testid="submit-btn"]']);
 
     const result = await plugin.resolve({
@@ -143,12 +141,9 @@ describe('Integration Tests', () => {
       probe,
     });
 
-    // Should use resolvedCss (since AST resolution can't find the source file)
+    // A live cached selector returns before AST resolution and write-back.
     expect(result.selector).toBe('[data-testid="submit-btn"]');
     // stabilityScore is undefined when using cached resolvedCss
-
-    // updatedAnchors is only set when new resolution happens (not when falling back to resolvedCss)
-    // So it may not be present in this test scenario
   });
 
   test('prioritizes anchors with higher scores', async () => {
