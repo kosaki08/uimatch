@@ -10,14 +10,12 @@ import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import {
+  BROWSER_FIXTURE_VIEWPORT_SIZE,
+  RED_10X10_PNG_B64,
+  RED_TARGET_STORY_URL,
+} from '../../../../../test-utils/browser-fixtures.js';
 import { cliProcessArgs } from '../../../../../test-utils/run-cli.js';
-
-// Minimal 10x10 red square PNG (base64)
-const MINIMAL_PNG_B64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC';
-
-// Simple HTML fixture for story (URL encoded to avoid shell issues)
-const MINIMAL_HTML = `data:text/html,${encodeURIComponent('<div id="target" style="width:10px;height:10px;background:red"></div>')}`;
 
 function runCli(args: readonly string[], env: NodeJS.ProcessEnv): string {
   return execFileSync(process.execPath, cliProcessArgs(args), {
@@ -51,7 +49,7 @@ afterAll(() => {
 test('CLI smoke (no crash)', () => {
   const env = {
     ...process.env,
-    UIMATCH_FIGMA_PNG_B64: MINIMAL_PNG_B64,
+    UIMATCH_FIGMA_PNG_B64: RED_10X10_PNG_B64,
     NODE_ENV: 'test',
   };
 
@@ -61,9 +59,10 @@ test('CLI smoke (no crash)', () => {
       [
         'compare',
         'figma=bypass:test',
-        `story=${MINIMAL_HTML}`,
+        `story=${RED_TARGET_STORY_URL}`,
         'selector=#target',
         'size=pad',
+        `viewport=${BROWSER_FIXTURE_VIEWPORT_SIZE}x${BROWSER_FIXTURE_VIEWPORT_SIZE}`,
         'dpr=1',
       ],
       env
@@ -90,7 +89,7 @@ test('CLI smoke (no crash)', () => {
 test('deterministic report', { timeout: 20000 }, async () => {
   const env = {
     ...process.env,
-    UIMATCH_FIGMA_PNG_B64: MINIMAL_PNG_B64,
+    UIMATCH_FIGMA_PNG_B64: RED_10X10_PNG_B64,
     NODE_ENV: 'test',
   };
 
@@ -104,9 +103,10 @@ test('deterministic report', { timeout: 20000 }, async () => {
   const baseArgs = [
     'compare',
     'figma=bypass:test',
-    `story=${MINIMAL_HTML}`,
+    `story=${RED_TARGET_STORY_URL}`,
     'selector=#target',
     'size=pad',
+    `viewport=${BROWSER_FIXTURE_VIEWPORT_SIZE}x${BROWSER_FIXTURE_VIEWPORT_SIZE}`,
     'dpr=1',
     '--no-screenshots',
   ];
@@ -166,7 +166,7 @@ test('representative E2E passes', { timeout: 20000 }, async () => {
 
   const env = {
     ...process.env,
-    UIMATCH_FIGMA_PNG_B64: MINIMAL_PNG_B64,
+    UIMATCH_FIGMA_PNG_B64: RED_10X10_PNG_B64,
     NODE_ENV: 'test',
   };
 
@@ -174,9 +174,10 @@ test('representative E2E passes', { timeout: 20000 }, async () => {
     [
       'compare',
       'figma=bypass:test',
-      `story=${MINIMAL_HTML}`,
+      `story=${RED_TARGET_STORY_URL}`,
       'selector=#target',
       'size=pad',
+      `viewport=${BROWSER_FIXTURE_VIEWPORT_SIZE}x${BROWSER_FIXTURE_VIEWPORT_SIZE}`,
       'dpr=1',
       '--out-dir',
       outDir,

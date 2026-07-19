@@ -3,10 +3,12 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test } from 'vitest';
+import {
+  BROWSER_FIXTURE_VIEWPORT_SIZE,
+  RED_10X10_PNG_B64,
+  RED_TARGET_STORY_URL,
+} from '../../../../../test-utils/browser-fixtures.js';
 import { cliProcessArgs } from '../../../../../test-utils/run-cli.js';
-
-const FIGMA_PNG_B64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC';
 const TEXT_GATE_WARNING =
   'textGate is enabled but textCheck is not active; using the visual quality gate.';
 const tempDirs: string[] = [];
@@ -41,7 +43,7 @@ function runSuiteCli(suiteContents: string, concurrency?: string) {
     env: {
       ...process.env,
       NODE_ENV: 'test',
-      UIMATCH_FIGMA_PNG_B64: FIGMA_PNG_B64,
+      UIMATCH_FIGMA_PNG_B64: RED_10X10_PNG_B64,
       UIMATCH_LOG_LEVEL: 'silent',
     },
     timeout: 30_000,
@@ -111,12 +113,14 @@ test(
         {
           name: 'text-gate-fallback',
           figma: 'bypass:test',
-          story: `data:text/html,${encodeURIComponent(
-            '<div id="target" style="width:10px;height:10px;background:red"></div>'
-          )}`,
+          story: RED_TARGET_STORY_URL,
           selector: '#target',
           size: 'pad',
           dpr: 1,
+          viewport: {
+            width: BROWSER_FIXTURE_VIEWPORT_SIZE,
+            height: BROWSER_FIXTURE_VIEWPORT_SIZE,
+          },
           textGate: true,
         },
       ],

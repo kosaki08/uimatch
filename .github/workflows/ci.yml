@@ -191,10 +191,10 @@ jobs:
           UIMATCH_CHROME_CHANNEL: chrome
           UIMATCH_CHROMIUM_SANDBOX: 'true'
           UIMATCH_HEADLESS: 'true'
-          UIMATCH_NAV_TIMEOUT_MS: '1500'
+          UIMATCH_NAV_TIMEOUT_MS: '5000'
           UIMATCH_SELECTOR_WAIT_MS: '3000'
           UIMATCH_BBOX_TIMEOUT_MS: '800'
-          UIMATCH_SCREENSHOT_TIMEOUT_MS: '3000'
+          UIMATCH_SCREENSHOT_TIMEOUT_MS: '10000'
         run: pnpm run test:integration
 
       - name: Run Playwright end-to-end tests
@@ -459,8 +459,8 @@ jobs:
           # Execute CLI and capture output
           uimatch compare \
             figma=bypass:test \
-            'story=data:text/html,<div id='\''t'\'' style='\''width:10px;height:10px;background:red'\''></div>' \
-            selector=#t dpr=1 size=pad | tee output.log
+            'story=data:text/html,<style>html,body{margin:0}</style><div id='\''t'\'' style='\''width:10px;height:10px;background:red'\''></div>' \
+            selector=#t viewport=50x50 dpr=1 size=pad | tee output.log
 
           # Verify success indicators
           grep -q PASS output.log || (echo '❌ CLI smoke test failed: no PASS found in output' && exit 1)

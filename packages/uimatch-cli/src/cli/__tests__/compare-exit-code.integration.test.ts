@@ -3,13 +3,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, test } from 'vitest';
+import {
+  BLUE_TARGET_STORY_URL,
+  BROWSER_FIXTURE_VIEWPORT_SIZE,
+  RED_10X10_PNG_B64,
+} from '../../../../../test-utils/browser-fixtures.js';
 import { cliProcessArgs } from '../../../../../test-utils/run-cli.js';
-
-const FIGMA_PNG_B64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC';
-const DIFFERENT_HTML = `data:text/html,${encodeURIComponent(
-  '<div id="target" style="width:10px;height:10px;background:blue"></div>'
-)}`;
 const tempDirectories: string[] = [];
 
 afterEach(() => {
@@ -24,9 +23,10 @@ test('claude format preserves a failing quality gate exit code', { timeout: 20_0
     cliProcessArgs([
       'compare',
       'figma=bypass:test',
-      `story=${DIFFERENT_HTML}`,
+      `story=${BLUE_TARGET_STORY_URL}`,
       'selector=#target',
       'size=pad',
+      `viewport=${BROWSER_FIXTURE_VIEWPORT_SIZE}x${BROWSER_FIXTURE_VIEWPORT_SIZE}`,
       'dpr=1',
       'format=claude',
     ]),
@@ -35,7 +35,7 @@ test('claude format preserves a failing quality gate exit code', { timeout: 20_0
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        UIMATCH_FIGMA_PNG_B64: FIGMA_PNG_B64,
+        UIMATCH_FIGMA_PNG_B64: RED_10X10_PNG_B64,
         UIMATCH_LOG_LEVEL: 'silent',
       },
       timeout: 15_000,
@@ -54,7 +54,7 @@ test('rejects an unknown quality gate profile before comparison', () => {
     cliProcessArgs([
       'compare',
       'figma=bypass:test',
-      `story=${DIFFERENT_HTML}`,
+      `story=${BLUE_TARGET_STORY_URL}`,
       'selector=#target',
       'profile=does-not-exist',
     ]),
@@ -76,7 +76,7 @@ test('rejects an invalid area gap threshold before comparison', () => {
     cliProcessArgs([
       'compare',
       'figma=bypass:test',
-      `story=${DIFFERENT_HTML}`,
+      `story=${BLUE_TARGET_STORY_URL}`,
       'selector=#target',
       'areaGapCritical=0.1junk',
     ]),
@@ -104,7 +104,7 @@ test('rejects selector anchors outside the project root before comparison', () =
     cliProcessArgs([
       'compare',
       'figma=bypass:test',
-      `story=${DIFFERENT_HTML}`,
+      `story=${BLUE_TARGET_STORY_URL}`,
       'selector=#target',
       'selectors=../outside.json',
     ]),
@@ -127,7 +127,7 @@ test('rejects an invalid selector plugin timeout before comparison', () => {
     cliProcessArgs([
       'compare',
       'figma=bypass:test',
-      `story=${DIFFERENT_HTML}`,
+      `story=${BLUE_TARGET_STORY_URL}`,
       'selector=#target',
       'selectorsPlugin=@uimatch/selector-anchors',
     ]),

@@ -4,6 +4,11 @@ import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { browserPool } from '../../packages/uimatch-core/src/adapters/browser-pool';
+import {
+  BROWSER_FIXTURE_VIEWPORT_SIZE,
+  RED_10X10_PNG_B64,
+  RED_TEST_STORY_URL,
+} from '../../test-utils/browser-fixtures.js';
 import { cliProcessArgs } from '../../test-utils/run-cli.js';
 
 function runCli(args: readonly string[], env: NodeJS.ProcessEnv): void {
@@ -26,21 +31,13 @@ interface TestReport {
 describe('E2E: outDir artifact saving', () => {
   const testOutDir = join(import.meta.dirname, 'fixtures', 'test-out');
 
-  // A minimal 10x10 red PNG in base64 (for UIMATCH_FIGMA_PNG_B64 bypass)
-  const RED_PNG_B64 =
-    'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC';
-  // Remove the browser default body margin so the target fits the 10x10 viewport.
-  const STORY_URL = `data:text/html,${encodeURIComponent(
-    '<style>html,body{margin:0}</style><div id="test" style="width:10px;height:10px;background:red"></div>'
-  )}`;
-
   beforeEach(async () => {
     // Clean test output directory
     await rm(testOutDir, { recursive: true, force: true });
     await mkdir(testOutDir, { recursive: true });
 
     // Set bypass mode environment variable
-    process.env.UIMATCH_FIGMA_PNG_B64 = RED_PNG_B64;
+    process.env.UIMATCH_FIGMA_PNG_B64 = RED_10X10_PNG_B64;
 
     // Set internal timer defaults for E2E tests (to avoid timeout)
     process.env.UIMATCH_NAV_TIMEOUT_MS = process.env.UIMATCH_NAV_TIMEOUT_MS ?? '1500';
@@ -66,7 +63,7 @@ describe('E2E: outDir artifact saving', () => {
     // Execute CLI same way as smoke/distribution tests (stable, fast)
     const env = {
       ...process.env,
-      UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
+      UIMATCH_FIGMA_PNG_B64: RED_10X10_PNG_B64,
       UIMATCH_HEADLESS: 'true',
       NODE_ENV: 'test',
     };
@@ -75,12 +72,12 @@ describe('E2E: outDir artifact saving', () => {
       [
         'compare',
         'figma=bypass:test',
-        `story=${STORY_URL}`,
+        `story=${RED_TEST_STORY_URL}`,
         'selector=#test',
         `outDir=${testOutDir}`,
         'timestampOutDir=false',
         'size=pad',
-        'viewport=10x10',
+        `viewport=${BROWSER_FIXTURE_VIEWPORT_SIZE}x${BROWSER_FIXTURE_VIEWPORT_SIZE}`,
         'dpr=1',
       ],
       env
@@ -99,7 +96,7 @@ describe('E2E: outDir artifact saving', () => {
     // Verify figma.png content matches bypass
     const figmaContent = await readFile(join(testOutDir, 'figma.png'));
     const figmaB64 = figmaContent.toString('base64');
-    expect(figmaB64).toBe(RED_PNG_B64);
+    expect(figmaB64).toBe(RED_10X10_PNG_B64);
 
     // Verify report.json does NOT contain artifacts (jsonOnly=true default)
     const reportContent = await readFile(join(testOutDir, 'report.json'), 'utf-8');
@@ -111,7 +108,7 @@ describe('E2E: outDir artifact saving', () => {
   test('should include artifacts in JSON when jsonOnly=false', { timeout: 20000 }, async () => {
     const env = {
       ...process.env,
-      UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
+      UIMATCH_FIGMA_PNG_B64: RED_10X10_PNG_B64,
       UIMATCH_HEADLESS: 'true',
       NODE_ENV: 'test',
     };
@@ -120,13 +117,13 @@ describe('E2E: outDir artifact saving', () => {
       [
         'compare',
         'figma=bypass:test',
-        `story=${STORY_URL}`,
+        `story=${RED_TEST_STORY_URL}`,
         'selector=#test',
         `outDir=${testOutDir}`,
         'timestampOutDir=false',
         'jsonOnly=false',
         'size=pad',
-        'viewport=10x10',
+        `viewport=${BROWSER_FIXTURE_VIEWPORT_SIZE}x${BROWSER_FIXTURE_VIEWPORT_SIZE}`,
         'dpr=1',
       ],
       env
@@ -148,7 +145,7 @@ describe('E2E: outDir artifact saving', () => {
     // by checking that artifacts are actually saved (which requires emitArtifacts=true)
     const env = {
       ...process.env,
-      UIMATCH_FIGMA_PNG_B64: RED_PNG_B64,
+      UIMATCH_FIGMA_PNG_B64: RED_10X10_PNG_B64,
       UIMATCH_HEADLESS: 'true',
       NODE_ENV: 'test',
     };
@@ -159,12 +156,12 @@ describe('E2E: outDir artifact saving', () => {
       [
         'compare',
         'figma=bypass:test',
-        `story=${STORY_URL}`,
+        `story=${RED_TEST_STORY_URL}`,
         'selector=#test',
         `outDir=${testOutDir}`,
         'timestampOutDir=false',
         'size=pad',
-        'viewport=10x10',
+        `viewport=${BROWSER_FIXTURE_VIEWPORT_SIZE}x${BROWSER_FIXTURE_VIEWPORT_SIZE}`,
         'dpr=1',
       ],
       env

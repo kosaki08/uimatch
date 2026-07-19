@@ -5,6 +5,11 @@
  */
 
 import { describe, expect, test } from 'vitest';
+import {
+  BROWSER_FIXTURE_VIEWPORT_SIZE,
+  RED_10X10_PNG_B64,
+  RED_TEST_STORY_URL,
+} from '../../../../test-utils/browser-fixtures.js';
 
 describe('Selector resolution plugin integration', () => {
   describe('Plugin-disabled mode (fallback)', () => {
@@ -13,24 +18,23 @@ describe('Selector resolution plugin integration', () => {
         // Phase 3 Acceptance: Comparison should work as before when plugin is not available
         const { uiMatchCompare } = await import('./compare.js');
 
-        // Mock minimal comparison (no actual browser needed for this test)
-        const mockFigmaPng =
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
         // Set environment variable to bypass Figma fetch
         const originalEnv = process.env.UIMATCH_FIGMA_PNG_B64;
-        process.env.UIMATCH_FIGMA_PNG_B64 = mockFigmaPng;
+        process.env.UIMATCH_FIGMA_PNG_B64 = RED_10X10_PNG_B64;
 
         try {
           // Call without selectorsPlugin or selectorsPath
           // Should fall back to original selector
           const result = await uiMatchCompare({
             figma: 'test:1-2',
-            story:
-              'data:text/html,<div id="test" style="width:1px;height:1px;background:red"></div>',
+            story: RED_TEST_STORY_URL,
             selector: '#test',
             // No selectorsPlugin, no selectorsPath
             sizeMode: 'pad', // Handle dimension mismatch gracefully
+            viewport: {
+              width: BROWSER_FIXTURE_VIEWPORT_SIZE,
+              height: BROWSER_FIXTURE_VIEWPORT_SIZE,
+            },
           });
 
           // Should complete without error
@@ -58,18 +62,20 @@ describe('Selector resolution plugin integration', () => {
       // Integration test with real plugin
       const { uiMatchCompare } = await import('./compare.js');
 
-      const mockFigmaPng =
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       const originalEnv = process.env.UIMATCH_FIGMA_PNG_B64;
-      process.env.UIMATCH_FIGMA_PNG_B64 = mockFigmaPng;
+      process.env.UIMATCH_FIGMA_PNG_B64 = RED_10X10_PNG_B64;
 
       try {
         const result = await uiMatchCompare({
           figma: 'test:1-2',
-          story: 'data:text/html,<div id="test" style="width:1px;height:1px;background:red"></div>',
+          story: RED_TEST_STORY_URL,
           selector: '#test',
           selectorsPlugin: '@uimatch/selector-anchors',
           sizeMode: 'pad',
+          viewport: {
+            width: BROWSER_FIXTURE_VIEWPORT_SIZE,
+            height: BROWSER_FIXTURE_VIEWPORT_SIZE,
+          },
         });
 
         expect(result).toBeDefined();
