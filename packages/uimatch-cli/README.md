@@ -177,8 +177,12 @@ Create `.uimatchrc.json` in your project root:
 ```bash
 FIGMA_ACCESS_TOKEN=your_token_here       # Required for Figma API
 UIMATCH_HEADLESS=true|false              # Browser headless mode (default: true)
+UIMATCH_CHROMIUM_SANDBOX=true|false      # Chromium sandbox (default: true)
 UIMATCH_LOG_LEVEL=info|debug|silent      # Logging verbosity (default: info)
 ```
+
+Use `UIMATCH_CHROMIUM_SANDBOX=false` only as an explicit opt-out for environments
+that cannot run the Chromium sandbox, such as some root containers.
 
 ## Documentation
 

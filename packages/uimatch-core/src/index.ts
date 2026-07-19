@@ -1,4 +1,11 @@
-export { PlaywrightAdapter, browserPool, captureTarget, resolveLocator } from './adapters/index';
+export {
+  PlaywrightAdapter,
+  browserPool,
+  captureTarget,
+  getChromiumLaunchPolicy,
+  launchChromium,
+  resolveLocator,
+} from './adapters/index';
 export {
   DEFAULT_CONFIG,
   QUALITY_GATE_PROFILES,

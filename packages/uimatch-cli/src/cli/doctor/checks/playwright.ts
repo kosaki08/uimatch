@@ -2,6 +2,7 @@
  * Playwright checks - browser availability and basic launch test
  */
 
+import { getChromiumLaunchPolicy, launchChromium } from '@uimatch/core';
 import type { DoctorCheck } from '../types.js';
 
 export const checkPlaywrightInstalled: DoctorCheck = async () => {
@@ -35,10 +36,8 @@ export const checkPlaywrightInstalled: DoctorCheck = async () => {
 export const checkChromiumBrowser: DoctorCheck = async () => {
   const t0 = Date.now();
   try {
-    const { chromium } = await import('playwright');
-    const headless = process.env.UIMATCH_HEADLESS !== 'false';
-
-    const browser = await chromium.launch({ headless, timeout: 10000 });
+    const policy = getChromiumLaunchPolicy();
+    const browser = await launchChromium({ timeout: 10000 });
     await browser.close();
 
     return {
@@ -47,22 +46,17 @@ export const checkChromiumBrowser: DoctorCheck = async () => {
       status: 'pass',
       severity: 'high',
       durationMs: Date.now() - t0,
-      details: `Chromium launched successfully (headless: ${headless})`,
+      details: `Chromium launched successfully (headless: ${policy.headless}, sandbox: ${policy.chromiumSandbox})`,
       category: 'playwright',
     };
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    const isMissingBrowser = message.includes('Executable') || message.includes('browser');
-
     return {
       id: 'playwright:chromium',
       title: 'Chromium browser launch',
       status: 'fail',
       severity: 'critical',
       durationMs: Date.now() - t0,
-      details: isMissingBrowser
-        ? 'Chromium not installed. Run: npx playwright install chromium'
-        : message,
+      details: e instanceof Error ? e.message : String(e),
       category: 'playwright',
     };
   }
@@ -71,10 +65,7 @@ export const checkChromiumBrowser: DoctorCheck = async () => {
 export const checkPlaywrightBasicCapture: DoctorCheck = async () => {
   const t0 = Date.now();
   try {
-    const { chromium } = await import('playwright');
-    const headless = process.env.UIMATCH_HEADLESS !== 'false';
-
-    const browser = await chromium.launch({ headless, timeout: 10000 });
+    const browser = await launchChromium({ timeout: 10000 });
     const context = await browser.newContext({ viewport: { width: 640, height: 360 } });
     const page = await context.newPage();
 

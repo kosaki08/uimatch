@@ -233,8 +233,14 @@ Optional:
 ```shell
 UIMATCH_LOG_LEVEL=debug        # silent | info | debug
 UIMATCH_HEADLESS=false         # Show browser during tests
+UIMATCH_CHROMIUM_SANDBOX=true  # Secure default; set false only for incompatible runtimes
 UIMATCH_ENABLE_BROWSER_TESTS=true   # Enable E2E tests
 ```
+
+If Chromium cannot start in a root container, prefer running as a non-root user
+with sandbox support. When that is not possible, opt out explicitly with
+`UIMATCH_CHROMIUM_SANDBOX=false`. uiMatch never retries without the sandbox
+automatically.
 
 ## CI/CD Issues
 

@@ -3,10 +3,11 @@
  */
 
 import { createLogger } from '@uimatch/shared-logging';
-import { chromium, type Browser, type BrowserContext, type Locator } from 'playwright';
+import type { Browser, BrowserContext, Locator } from 'playwright';
 import { DEFAULT_CONFIG } from '../config/defaults';
 import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/adapters';
 import { browserPool } from './browser-pool';
+import { launchChromium } from './chromium-launch';
 import { DEFAULT_PROPS, EXTENDED_PROPS } from './playwright/constants';
 import { resolveLocator } from './playwright/locator-resolver';
 import { createTimeBudget, getE2ETimeBudget, type TimeBudget } from './playwright/time-budget';
@@ -67,10 +68,7 @@ export class PlaywrightAdapter implements BrowserAdapter {
           httpCredentials: opts.basicAuth,
         });
       } else {
-        const headless = process.env.UIMATCH_HEADLESS !== 'false';
-        const channel = process.env.UIMATCH_CHROME_CHANNEL as 'chrome' | 'msedge' | undefined;
-        const args = process.env.UIMATCH_CHROME_ARGS?.split(/\s+/).filter(Boolean) ?? [];
-        browser = await chromium.launch({ headless, channel, args });
+        browser = await launchChromium();
         context = await browser.newContext({
           viewport: opts.viewport ?? { width: 1440, height: 900 },
           deviceScaleFactor: opts.dpr ?? 2,

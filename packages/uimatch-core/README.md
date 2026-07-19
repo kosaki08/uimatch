@@ -159,6 +159,7 @@ Role selectors support `name`, `level`, `pressed`, `selected`, `checked`, `expan
 ### Environment Variables
 
 - `UIMATCH_HEADLESS` - Headless mode (default: `true`)
+- `UIMATCH_CHROMIUM_SANDBOX` - Chromium sandbox (`true` or `false`, default: `true`)
 - `UIMATCH_CHROME_CHANNEL` - Chrome channel (`chrome`, `msedge`)
 - `UIMATCH_CHROME_ARGS` - Chrome arguments (space-separated)
 - `UIMATCH_HTTP_TIMEOUT_MS` - Navigation timeout (default: `30000`)
@@ -168,6 +169,11 @@ Role selectors support `name`, `level`, `pressed`, `selected`, `checked`, `expan
 - `DEBUG=uimatch:*` / `DEBUG=uimatch:selector` - Debug logging
 - `UIMATCH_LOG_LEVEL` - `silent` | `error` | `warn` | `info` | `debug`
 - `BASIC_AUTH_USER`, `BASIC_AUTH_PASS` - Basic authentication
+
+Set `UIMATCH_CHROMIUM_SANDBOX=false` only when the runtime cannot support the
+Chromium sandbox, such as a root container without the required user namespace
+configuration. Passing `--no-sandbox` through `UIMATCH_CHROME_ARGS` while the
+sandbox is enabled is rejected.
 
 ## API Reference
 

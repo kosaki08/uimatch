@@ -428,6 +428,8 @@ UIMATCH_LOG_LEVEL=info|debug|silent      # Logging verbosity (default: info)
 UIMATCH_HEADLESS=true|false              # Playwright headless mode (default: true)
                                           # Set to 'false' to show browser window
                                           # Applies to compare/suite/doctor commands
+UIMATCH_CHROMIUM_SANDBOX=true|false      # Chromium sandbox (default: true)
+                                          # Use false only when the runtime cannot support it
 ```
 
 ## Exit Codes

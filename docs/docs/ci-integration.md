@@ -87,13 +87,14 @@ Configure these secrets in your GitHub repository settings:
 
 ### Environment Variables
 
-| Variable             | Purpose                              | Default | CI Recommended |
-| -------------------- | ------------------------------------ | ------- | -------------- |
-| `FIGMA_ACCESS_TOKEN` | Figma API authentication             | -       | ✅ Required    |
-| `UIMATCH_HEADLESS`   | Run browser in headless mode         | `true`  | `true`         |
-| `UIMATCH_LOG_LEVEL`  | Logging verbosity                    | `info`  | `info`         |
-| `BASIC_AUTH_USER`    | Basic auth for Storybook (if needed) | -       | Optional       |
-| `BASIC_AUTH_PASS`    | Basic auth for Storybook (if needed) | -       | Optional       |
+| Variable                   | Purpose                              | Default | CI Recommended |
+| -------------------------- | ------------------------------------ | ------- | -------------- |
+| `FIGMA_ACCESS_TOKEN`       | Figma API authentication             | -       | ✅ Required    |
+| `UIMATCH_HEADLESS`         | Run browser in headless mode         | `true`  | `true`         |
+| `UIMATCH_CHROMIUM_SANDBOX` | Run Chromium with its sandbox        | `true`  | `true`         |
+| `UIMATCH_LOG_LEVEL`        | Logging verbosity                    | `info`  | `info`         |
+| `BASIC_AUTH_USER`          | Basic auth for Storybook (if needed) | -       | Optional       |
+| `BASIC_AUTH_PASS`          | Basic auth for Storybook (if needed) | -       | Optional       |
 
 ## Bypass Mode (Rate Limit Avoidance)
 

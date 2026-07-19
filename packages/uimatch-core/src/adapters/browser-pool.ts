@@ -4,7 +4,7 @@
  */
 
 import type { Browser, BrowserContext } from 'playwright';
-import { chromium } from 'playwright';
+import { launchChromium } from './chromium-launch';
 
 /**
  * Singleton browser pool manager
@@ -29,33 +29,11 @@ class BrowserPool {
       return this.launching;
     }
 
-    // Launch browser with environment-controlled options
-    const launchOpts = {
-      headless: process.env.UIMATCH_HEADLESS !== 'false',
-      channel: process.env.UIMATCH_CHROME_CHANNEL as 'chrome' | 'msedge' | undefined,
-      args: [
-        ...(process.env.UIMATCH_CHROME_ARGS?.split(' ') ?? []),
-        '--disable-gpu',
-        '--no-sandbox',
-      ],
-      timeout: Number(process.env.UIMATCH_LAUNCH_TIMEOUT_MS ?? 30000),
-    };
-
     this.launching = (async () => {
-      try {
-        this.browser = await chromium.launch(launchOpts);
-      } catch (e) {
-        // Fallback to system Chrome if bundled Chromium fails and no channel was specified
-        if (!launchOpts.channel) {
-          this.browser = await chromium.launch({
-            ...launchOpts,
-            channel: 'chrome',
-            args: [...launchOpts.args, '--disable-gpu', '--no-sandbox'],
-          });
-        } else {
-          throw e;
-        }
-      }
+      this.browser = await launchChromium({
+        additionalArgs: ['--disable-gpu'],
+        timeout: Number(process.env.UIMATCH_LAUNCH_TIMEOUT_MS ?? 30000),
+      });
       this.disconnectListenerAttached = false;
       return this.browser;
     })().finally(() => {
