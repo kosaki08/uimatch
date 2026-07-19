@@ -210,13 +210,7 @@ jobs:
           UIMATCH_SELECTOR_WAIT_MS: '3000'
           UIMATCH_BBOX_TIMEOUT_MS: '800'
           UIMATCH_SCREENSHOT_TIMEOUT_MS: '1000'
-        run: |
-          # Run E2E tests sequentially (--jobs=1) to avoid CI resource contention
-          # Use 60s timeout for CI environment (browser startup + font loading variability)
-          bun test --bail --jobs=1 --timeout 60000 \
-            packages/uimatch-cli/src/cli/__tests__/smoke.test.ts \
-            e2e/cli/outdir.e2e.test.ts \
-            e2e/commands/selector-resolution.e2e.test.ts
+        run: pnpm run test:e2e:bun
 
       - name: Upload test artifacts on failure
         if: failure()
