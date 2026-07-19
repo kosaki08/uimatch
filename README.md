@@ -184,11 +184,13 @@ npx @uimatch/cli compare \
 
 At a high level:
 
-- Fetch frame PNG from Figma (API / MCP / bypass)
-- Capture implementation screenshot via Playwright
-- Compare pixels + styles in `@uimatch/core`
-- Apply quality gates and compute DFS (0–100)
-- Report pass/fail and diff artifacts (for CI)
+```mermaid
+flowchart LR
+    F["Figma design<br/>(API / MCP / bypass)"] --> C["@uimatch/core<br/>Pixel + style comparison"]
+    I["Implementation<br/>(Playwright capture)"] --> C
+    C --> Q["Quality gates + DFS<br/>(0–100)"]
+    Q --> R["Pass/fail report<br/>+ diff artifacts"]
+```
 
 **👉 See [Concepts - Architecture](https://kosaki08.github.io/uimatch/docs/concepts#architecture-overview) for detailed diagrams and component explanation**
 
