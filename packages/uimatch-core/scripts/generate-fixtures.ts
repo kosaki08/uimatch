@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
 
@@ -52,6 +52,13 @@ function createSlightlyDifferentPng(width: number, height: number): PNG {
   return png;
 }
 
+function writeFixture(name: string, png: PNG): void {
+  const path = join(FIXTURES_DIR, name);
+  const contents = PNG.sync.write(png);
+  if (existsSync(path) && readFileSync(path).equals(contents)) return;
+  writeFileSync(path, contents);
+}
+
 // Generate test fixtures
 console.log('Generating test fixtures...');
 
@@ -59,32 +66,32 @@ console.log('Generating test fixtures...');
 const red1 = createColoredPng(100, 100, 255, 0, 0);
 const red2 = createColoredPng(100, 100, 255, 0, 0);
 
-writeFileSync(join(FIXTURES_DIR, 'red-100x100-1.png'), PNG.sync.write(red1));
-writeFileSync(join(FIXTURES_DIR, 'red-100x100-2.png'), PNG.sync.write(red2));
+writeFixture('red-100x100-1.png', red1);
+writeFixture('red-100x100-2.png', red2);
 console.log('✓ Created identical red images');
 
 // 2. Different colored images
 const red = createColoredPng(100, 100, 255, 0, 0);
 const blue = createColoredPng(100, 100, 0, 0, 255);
 
-writeFileSync(join(FIXTURES_DIR, 'red-100x100.png'), PNG.sync.write(red));
-writeFileSync(join(FIXTURES_DIR, 'blue-100x100.png'), PNG.sync.write(blue));
+writeFixture('red-100x100.png', red);
+writeFixture('blue-100x100.png', blue);
 console.log('✓ Created red and blue images');
 
 // 3. Slightly different images
 const redBase = createColoredPng(100, 100, 255, 0, 0);
 const redWithDiff = createSlightlyDifferentPng(100, 100);
 
-writeFileSync(join(FIXTURES_DIR, 'red-base.png'), PNG.sync.write(redBase));
-writeFileSync(join(FIXTURES_DIR, 'red-with-diff.png'), PNG.sync.write(redWithDiff));
+writeFixture('red-base.png', redBase);
+writeFixture('red-with-diff.png', redWithDiff);
 console.log('✓ Created slightly different images');
 
 // 4. Dimension mismatch fixtures
 const red100x100 = createColoredPng(100, 100, 255, 0, 0);
 const red200x100 = createColoredPng(200, 100, 255, 0, 0);
 
-writeFileSync(join(FIXTURES_DIR, 'red-100x100-dim.png'), PNG.sync.write(red100x100));
-writeFileSync(join(FIXTURES_DIR, 'red-200x100-dim.png'), PNG.sync.write(red200x100));
+writeFixture('red-100x100-dim.png', red100x100);
+writeFixture('red-200x100-dim.png', red200x100);
 console.log('✓ Created dimension mismatch fixtures');
 
 // 5. Transparent PNG fixtures
@@ -101,8 +108,8 @@ for (let y = 0; y < 100; y++) {
 
 const whiteOpaque = createColoredPng(100, 100, 255, 255, 255);
 
-writeFileSync(join(FIXTURES_DIR, 'transparent-white.png'), PNG.sync.write(transparent));
-writeFileSync(join(FIXTURES_DIR, 'opaque-white.png'), PNG.sync.write(whiteOpaque));
+writeFixture('transparent-white.png', transparent);
+writeFixture('opaque-white.png', whiteOpaque);
 console.log('✓ Created alpha blending fixtures');
 
 console.log('\nAll fixtures generated successfully!');
