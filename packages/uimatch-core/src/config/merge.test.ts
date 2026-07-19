@@ -1,22 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { DEFAULT_CONFIG } from './defaults';
-import { loadConfig, mergeConfig } from './loader';
+import { mergeConfig } from './merge';
 
-describe('configuration numeric boundaries', () => {
-  test.each([
-    ['PIXELMATCH_THRESHOLD', '-0.1'],
-    ['PIXELMATCH_THRESHOLD', 'NaN'],
-    ['PIXELMATCH_THRESHOLD', 'Infinity'],
-    ['PIXELMATCH_THRESHOLD', ''],
-    ['PIXELMATCH_THRESHOLD', '   '],
-    ['PIXELMATCH_THRESHOLD', '0.1junk'],
-    ['COLOR_DELTA_E_THRESHOLD', '-1'],
-    ['COLOR_DELTA_E_THRESHOLD', 'NaN'],
-    ['COLOR_DELTA_E_THRESHOLD', '3junk'],
-  ])('rejects invalid numeric environment value %s=%s', (name, value) => {
-    expect(() => loadConfig({ [name]: value })).toThrow();
-  });
-
+describe('mergeConfig', () => {
   test('allows explicit zero quality-gate thresholds', () => {
     const config = mergeConfig({
       comparison: {

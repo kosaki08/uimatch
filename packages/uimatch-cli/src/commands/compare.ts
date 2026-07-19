@@ -24,6 +24,7 @@ import {
   type Resolution,
 } from '@uimatch/selector-spi';
 import { createLogger } from '@uimatch/shared-logging';
+import { resolveColorDeltaEThresholds } from './comparison-thresholds.js';
 import {
   getSelectorPluginTimeoutMs,
   resolveSelectorPluginId,
@@ -317,6 +318,10 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
 export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> {
   const cfg = loadSkillConfig();
   const settings = getSettings(); // Read from .uimatchrc.json if exists
+  const colorDeltaEThresholds = resolveColorDeltaEThresholds(
+    args.thresholds?.deltaE,
+    settings.comparison
+  );
 
   // Selector resolution with dynamic plugin (Phase 1: safe NOP fallback)
   const resolved = await maybeResolveSelectorWithPlugin(args);
@@ -589,7 +594,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     meta: cap.meta,
     diffOptions: {
       thresholds: {
-        deltaE: args.thresholds?.deltaE,
+        deltaE: colorDeltaEThresholds.style,
         spacing: args.thresholds?.spacing,
         dimension: args.thresholds?.dimension,
         layoutGap: args.thresholds?.layoutGap,
@@ -620,7 +625,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   // Quality gate evaluation using settings
   const tPix = args.thresholds?.pixelDiffRatio ?? settings.comparison.acceptancePixelDiffRatio;
-  const tDe = args.thresholds?.deltaE ?? settings.comparison.acceptanceColorDeltaE;
+  const tDe = colorDeltaEThresholds.acceptance;
 
   // Evaluate quality gate with recommended thresholds
   const { evaluateQualityGate } = await import('@uimatch/core');
@@ -655,7 +660,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     styleSummary = computeStyleSummary(
       styleDiffs,
       {
-        deltaE: tDe,
+        deltaE: colorDeltaEThresholds.style,
         spacing: Number(settings.comparison.toleranceSpacing),
         dimension: Number(settings.comparison.toleranceDimension),
         layoutGap: Number(settings.comparison.toleranceLayoutGap),

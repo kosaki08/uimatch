@@ -3,7 +3,6 @@
  */
 
 import { getSettings, resetSettings } from '#plugin/commands/settings.js';
-import { runExperimentalClaudeReport } from '#plugin/experimental/claude-report.js';
 import { runCompare } from './compare.js';
 import { runDoctor } from './doctor/index.js';
 import { initLogger } from './logger.js';
@@ -43,8 +42,7 @@ function printHelp(): void {
   outln('  suite         Run multiple compares from a JSON suite file');
   outln('  text-diff     Compare two text strings and show similarity');
   outln('  doctor        Check environment and configuration');
-  outln('  settings      Manage plugin configuration (get|set|reset)');
-  outln('  experimental  Experimental commands (unstable, may change)');
+  outln('  settings      View or reset project configuration (get|reset)');
   outln('  help          Show this help message');
   outln('  version       Show version number');
   outln('');
@@ -77,27 +75,7 @@ async function main(): Promise<void> {
   // Initialize logger before running commands
   initLogger(args);
 
-  if (command === 'experimental') {
-    const subcommand = args[0];
-    if (!subcommand) {
-      errln('⚠️  Experimental commands are unstable and may change or be removed.');
-      errln('');
-      errln('Available experimental commands:');
-      errln('  claude-report  - Generate Claude-optimized comparison report');
-      errln('');
-      errln('Example:');
-      errln('  uimatch experimental claude-report --figma current --url http://localhost:3000');
-      process.exit(2);
-    }
-
-    if (subcommand === 'claude-report') {
-      process.exitCode = await runExperimentalClaudeReport(args.slice(1));
-    } else {
-      errln(`Unknown experimental command: ${subcommand}`);
-      errln('Run "uimatch experimental" to see available commands');
-      process.exit(2);
-    }
-  } else if (command === 'compare') {
+  if (command === 'compare') {
     process.exitCode = await runCompare(args);
   } else if (command === 'suite') {
     process.exitCode = await runSuite(args);

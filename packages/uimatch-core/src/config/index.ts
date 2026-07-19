@@ -1,5 +1,5 @@
 export { DEFAULT_CONFIG } from './defaults';
-export { loadConfig, mergeConfig } from './loader';
+export { mergeConfig } from './merge';
 export {
   QUALITY_GATE_PROFILES,
   getQualityGateProfile,

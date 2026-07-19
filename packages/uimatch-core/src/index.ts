@@ -11,7 +11,6 @@ export {
   QUALITY_GATE_PROFILES,
   getQualityGateProfile,
   listQualityGateProfiles,
-  loadConfig,
   mergeConfig,
 } from './config/index';
 export type {
