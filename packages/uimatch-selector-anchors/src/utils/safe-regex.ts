@@ -25,29 +25,30 @@ const MAX_INPUT_LENGTH = 10000;
  * RE2 provides linear-time regex execution, preventing ReDoS attacks
  */
 let RE2: RE2Constructor | null = null;
-let RE2_LOAD_ATTEMPTED = false;
+let re2LoadPromise: Promise<void> | undefined;
 
 /**
  * Attempt to load RE2 engine (optional dependency)
  * @returns Promise that resolves when load attempt is complete
  */
-async function loadRE2(): Promise<void> {
-  if (RE2_LOAD_ATTEMPTED) return;
-  RE2_LOAD_ATTEMPTED = true;
+function loadRE2(): Promise<void> {
+  re2LoadPromise ??= (async () => {
+    try {
+      // Dynamic import of optional dependency
+      // Using type guard to safely extract constructor
+      // Type assertion needed because re2 may not be installed (optional dependency).
+      // The rule only sees an environment where re2 happens to be installed, so it
+      // reports this as unnecessary; without it, tsc fails with TS2307 wherever the
+      // optional dependency was skipped.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const re2Module: unknown = await import('re2' as never);
+      RE2 = extractRE2Constructor(re2Module);
+    } catch {
+      // RE2 not available - will use safe-regex2 validation + standard RegExp
+    }
+  })();
 
-  try {
-    // Dynamic import of optional dependency
-    // Using type guard to safely extract constructor
-    // Type assertion needed because re2 may not be installed (optional dependency).
-    // The rule only sees an environment where re2 happens to be installed, so it
-    // reports this as unnecessary; without it, tsc fails with TS2307 wherever the
-    // optional dependency was skipped.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    const re2Module: unknown = await import('re2' as never);
-    RE2 = extractRE2Constructor(re2Module);
-  } catch {
-    // RE2 not available - will use safe-regex2 validation + standard RegExp
-  }
+  return re2LoadPromise;
 }
 
 /**
@@ -134,7 +135,7 @@ export async function compileSafeRegex(pattern: string, flags?: string): Promise
 }
 
 /**
- * Execute regex test with input length validation
+ * Execute a regex with input length validation
  *
  * This is a basic safeguard - input length limits prevent processing extremely
  * long strings even with safe patterns.
@@ -147,7 +148,7 @@ export async function compileSafeRegex(pattern: string, flags?: string): Promise
  *
  * @param regex - The compiled regex
  * @param input - The input string to test
- * @returns true if matches, false otherwise or if input is too long
+ * @returns The match result, or null if there is no match, the input is too long, or execution fails
  *
  * @example
  * ```ts
@@ -157,16 +158,16 @@ export async function compileSafeRegex(pattern: string, flags?: string): Promise
  * }
  * ```
  */
-export function execRegexSafe(regex: RegExp, input: string): boolean {
+export function execRegexSafe(regex: RegExp, input: string): RegExpExecArray | null {
   // Enforce input length limit
   if (input.length > MAX_INPUT_LENGTH) {
-    return false;
+    return null;
   }
 
   try {
-    return regex.test(input);
+    regex.lastIndex = 0;
+    return regex.exec(input);
   } catch {
-    // Any error during execution - return false
-    return false;
+    return null;
   }
 }

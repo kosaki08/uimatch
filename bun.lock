@@ -20,7 +20,6 @@
         "dotenv": "^17.2.3",
         "eslint": "^9.38.0",
         "husky": "^9.1.7",
-        "jsep": "^1.4.0",
         "lint-staged": "^16.2.6",
         "prettier": "^3.6.2",
         "prettier-plugin-organize-imports": "^4.3.0",
@@ -124,7 +123,6 @@
         "uimatch-anchors": "./dist/cli/add-anchor.js",
       },
       "dependencies": {
-        "jsep": "^1.4.0",
         "parse5": "^8.0.0",
         "safe-regex2": "^5.0.0",
         "typescript": "^5.9.3",
@@ -1830,8 +1828,6 @@
     "js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 
     "js-yaml": ["js-yaml@4.1.0", "", { "dependencies": { "argparse": "2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA=="],
-
-    "jsep": ["jsep@1.4.0", "", {}, "sha512-B7qPcEVE3NVkmSJbaYxvv4cHkVW7DQsZz13pUMrfS8z8Q/BuShN+gcTXrUlPiGqM2/t/EEaI030bpxMqY8gMlw=="],
 
     "jsesc": ["jsesc@3.1.0", "", { "bin": { "jsesc": "bin/jsesc" } }, "sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA=="],
 

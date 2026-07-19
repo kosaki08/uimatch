@@ -14,7 +14,7 @@
 
 import ts from 'typescript';
 import type { SelectorHint } from '../types/schema.js';
-import { compileSafeRegex } from '../utils/safe-regex.js';
+import { compileSafeRegex, execRegexSafe } from '../utils/safe-regex.js';
 import { buildHintFromAttributes, generateSelectorsFromAttributes } from './selector-utils.js';
 
 /**
@@ -223,7 +223,7 @@ export async function heuristicCandidates(
     // Try to extract data-testid
     const testidResult = await compileSafeRegex('data-testid=["\'](([^"\'])+)["\']');
     if (testidResult.success) {
-      const testidMatch = contextLines.match(testidResult.regex);
+      const testidMatch = execRegexSafe(testidResult.regex, contextLines);
       if (testidMatch?.[1]) {
         const testid = testidMatch[1];
         attributes['data-testid'] = testid;
@@ -233,7 +233,7 @@ export async function heuristicCandidates(
     } else {
       reasons.push(`data-testid regex failed: ${testidResult.error}, using literal search`);
       // Fallback to simple string search
-      const testidLiteral = contextLines.match(/data-testid="([^"]+)"/);
+      const testidLiteral = execRegexSafe(/data-testid="([^"]+)"/, contextLines);
       if (testidLiteral?.[1]) {
         const testid = testidLiteral[1];
         attributes['data-testid'] = testid;
@@ -245,7 +245,7 @@ export async function heuristicCandidates(
     // Try to extract id
     const idResult = await compileSafeRegex('\\bid=["\'](([^"\'])+)["\']');
     if (idResult.success) {
-      const idMatch = contextLines.match(idResult.regex);
+      const idMatch = execRegexSafe(idResult.regex, contextLines);
       if (idMatch?.[1]) {
         const id = idMatch[1];
         attributes['id'] = id;
@@ -254,7 +254,7 @@ export async function heuristicCandidates(
       }
     } else {
       reasons.push(`id regex failed: ${idResult.error}, using literal search`);
-      const idLiteral = contextLines.match(/id="([^"]+)"/);
+      const idLiteral = execRegexSafe(/id="([^"]+)"/, contextLines);
       if (idLiteral?.[1]) {
         const id = idLiteral[1];
         attributes['id'] = id;
@@ -266,7 +266,7 @@ export async function heuristicCandidates(
     // Try to extract role
     const roleResult = await compileSafeRegex('\\brole=["\'](([^"\'])+)["\']');
     if (roleResult.success) {
-      const roleMatch = contextLines.match(roleResult.regex);
+      const roleMatch = execRegexSafe(roleResult.regex, contextLines);
       if (roleMatch?.[1]) {
         const role = roleMatch[1];
         attributes['role'] = role;
@@ -275,7 +275,7 @@ export async function heuristicCandidates(
       }
     } else {
       reasons.push(`role regex failed: ${roleResult.error}, using literal search`);
-      const roleLiteral = contextLines.match(/role="([^"]+)"/);
+      const roleLiteral = execRegexSafe(/role="([^"]+)"/, contextLines);
       if (roleLiteral?.[1]) {
         const role = roleLiteral[1];
         attributes['role'] = role;
@@ -287,7 +287,7 @@ export async function heuristicCandidates(
     // Try to extract text content (between > and <)
     const textResult = await compileSafeRegex('>([^<]{1,24})<');
     if (textResult.success) {
-      const textMatch = targetLine.match(textResult.regex);
+      const textMatch = execRegexSafe(textResult.regex, targetLine);
       if (textMatch?.[1]) {
         const text = textMatch[1].trim();
         if (text) {
@@ -304,7 +304,7 @@ export async function heuristicCandidates(
     if (selectors.length === 0) {
       const tagResult = await compileSafeRegex('<(\\w+)\\b');
       if (tagResult.success) {
-        const tagMatch = targetLine.match(tagResult.regex);
+        const tagMatch = execRegexSafe(tagResult.regex, targetLine);
         if (tagMatch) {
           const tag = tagMatch[1];
           reasons.push(`Fallback to tag name: ${tag}`);

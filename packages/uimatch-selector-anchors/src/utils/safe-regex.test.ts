@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'bun:test';
-import { compileSafeRegex } from './safe-regex.js';
+import { compileSafeRegex, execRegexSafe } from './safe-regex.js';
 
 describe('compileSafeRegex', () => {
+  it('uses the same regex engine for concurrent cold-start compilations', async () => {
+    const results = await Promise.all([
+      compileSafeRegex('first'),
+      compileSafeRegex('second'),
+      compileSafeRegex('third'),
+    ]);
+    const constructors = results.flatMap((result) =>
+      result.success ? [result.regex.constructor] : []
+    );
+
+    expect(constructors).toHaveLength(3);
+    expect(new Set(constructors).size).toBe(1);
+  });
+
   describe('valid patterns', () => {
     it('should compile simple patterns successfully', async () => {
       const result = await compileSafeRegex('hello');
@@ -231,5 +245,26 @@ describe('compileSafeRegex', () => {
         expect(result.regex.flags).toBe('');
       }
     });
+  });
+});
+
+describe('execRegexSafe', () => {
+  it('returns capture groups for bounded input', () => {
+    const match = execRegexSafe(/data-testid="([^"]+)"/, 'data-testid="submit"');
+
+    expect(match?.[1]).toBe('submit');
+  });
+
+  it('rejects input over the maximum length', () => {
+    const match = execRegexSafe(/target/, `${'a'.repeat(10_001)}target`);
+
+    expect(match).toBeNull();
+  });
+
+  it('resets stateful regexes before execution', () => {
+    const regex = /a/g;
+
+    expect(execRegexSafe(regex, 'a')?.[0]).toBe('a');
+    expect(execRegexSafe(regex, 'a')?.[0]).toBe('a');
   });
 });

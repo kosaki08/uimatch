@@ -45,7 +45,6 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "jsep": "^1.4.0",
     "parse5": "^8.0.1",
     "safe-regex2": "^5.1.1",
     "typescript": "^5.9.3",

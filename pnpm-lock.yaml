@@ -48,9 +48,6 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
-      jsep:
-        specifier: ^1.4.0
-        version: 1.4.0
       lint-staged:
         specifier: ^16.4.0
         version: 16.4.0
@@ -215,9 +212,6 @@ importers:
 
   packages/uimatch-selector-anchors:
     dependencies:
-      jsep:
-        specifier: ^1.4.0
-        version: 1.4.0
       parse5:
         specifier: ^8.0.1
         version: 8.0.1
