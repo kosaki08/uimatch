@@ -2,6 +2,7 @@
  * Playwright adapter for browser automation
  */
 
+import { createLogger } from '@uimatch/shared-logging';
 import { chromium, type Browser, type BrowserContext, type Locator } from 'playwright';
 import { DEFAULT_CONFIG } from '../config/defaults';
 import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/adapters';
@@ -9,6 +10,8 @@ import { browserPool } from './browser-pool';
 import { DEFAULT_PROPS, EXTENDED_PROPS } from './playwright/constants';
 import { resolveLocator } from './playwright/locator-resolver';
 import { createTimeBudget, getE2ETimeBudget, type TimeBudget } from './playwright/time-budget';
+
+const logger = createLogger({ package: '@uimatch/core', module: 'playwright' });
 
 /**
  * Playwright implementation of BrowserAdapter.
@@ -52,33 +55,31 @@ export class PlaywrightAdapter implements BrowserAdapter {
       ? createTimeBudget(getE2ETimeBudget())
       : undefined;
 
-    let browser: Browser;
-    let context: BrowserContext;
-    let shouldCloseBrowser = true;
-
     const effectiveReuse = opts.reuseBrowser ?? this.reuseBrowser;
-    if (effectiveReuse) {
-      browser = await browserPool.getBrowser();
-      shouldCloseBrowser = false;
-      context = await browserPool.createContext({
-        viewport: opts.viewport ?? { width: 1440, height: 900 },
-        deviceScaleFactor: opts.dpr ?? 2,
-        httpCredentials: opts.basicAuth,
-      });
-    } else {
-      const headless = process.env.UIMATCH_HEADLESS !== 'false';
-      const channel = process.env.UIMATCH_CHROME_CHANNEL as 'chrome' | 'msedge' | undefined;
-      const args = process.env.UIMATCH_CHROME_ARGS?.split(/\s+/).filter(Boolean) ?? [];
-      browser = await chromium.launch({ headless, channel, args });
-      context = await browser.newContext({
-        viewport: opts.viewport ?? { width: 1440, height: 900 },
-        deviceScaleFactor: opts.dpr ?? 2,
-        httpCredentials: opts.basicAuth,
-      });
-    }
+    let browser: Browser | undefined;
+    let context: BrowserContext | undefined;
 
-    const page = await context.newPage();
     try {
+      if (effectiveReuse) {
+        context = await browserPool.createContext({
+          viewport: opts.viewport ?? { width: 1440, height: 900 },
+          deviceScaleFactor: opts.dpr ?? 2,
+          httpCredentials: opts.basicAuth,
+        });
+      } else {
+        const headless = process.env.UIMATCH_HEADLESS !== 'false';
+        const channel = process.env.UIMATCH_CHROME_CHANNEL as 'chrome' | 'msedge' | undefined;
+        const args = process.env.UIMATCH_CHROME_ARGS?.split(/\s+/).filter(Boolean) ?? [];
+        browser = await chromium.launch({ headless, channel, args });
+        context = await browser.newContext({
+          viewport: opts.viewport ?? { width: 1440, height: 900 },
+          deviceScaleFactor: opts.dpr ?? 2,
+          httpCredentials: opts.basicAuth,
+        });
+      }
+
+      const page = await context.newPage();
+
       // Set shorter default timeouts to ensure page-level timeout < test timeout
       // If time budget is enabled, dynamically adjust timeouts based on remaining budget
       const baseSelTimeout = Number(process.env.UIMATCH_SELECTOR_WAIT_MS ?? 6000);
@@ -426,28 +427,33 @@ export class PlaywrightAdapter implements BrowserAdapter {
         }
       );
 
-      if (effectiveReuse) {
-        await browserPool.closeContext(context);
-      } else {
-        await context.close();
-        if (shouldCloseBrowser) {
-          await browser.close();
-        }
-      }
       return { implPng: Buffer.from(implPng), styles, box, childBox, meta };
-    } catch (e) {
-      // Safe cleanup: check existence and wrap in try-catch to prevent secondary exceptions
-      try {
-        if (effectiveReuse) {
-          if (context) await browserPool.closeContext(context);
-        } else {
-          if (context) await context.close();
-          if (shouldCloseBrowser && browser) await browser.close();
+    } finally {
+      if (context) {
+        try {
+          if (effectiveReuse) {
+            await browserPool.closeContext(context);
+          } else {
+            await context.close();
+          }
+        } catch (error) {
+          logger.warn(
+            { error: error instanceof Error ? error.message : String(error) },
+            'Failed to close browser context'
+          );
         }
-      } catch {
-        // Suppress secondary exceptions during cleanup
       }
-      throw e as Error;
+
+      if (!effectiveReuse && browser) {
+        try {
+          await browser.close();
+        } catch (error) {
+          logger.warn(
+            { error: error instanceof Error ? error.message : String(error) },
+            'Failed to close browser'
+          );
+        }
+      }
     }
   }
 }

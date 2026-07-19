@@ -107,14 +107,28 @@ class BrowserPool {
    * Close all contexts and the browser
    */
   async closeAll(): Promise<void> {
-    // Close all contexts first
-    await Promise.all(Array.from(this.contexts).map((ctx) => ctx.close()));
+    const errors: unknown[] = [];
+    const contextResults = await Promise.allSettled(
+      Array.from(this.contexts).map((context) => context.close())
+    );
+    for (const result of contextResults) {
+      if (result.status === 'rejected') errors.push(result.reason);
+    }
     this.contexts.clear();
 
-    // Close browser
     if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
+      try {
+        await this.browser.close();
+      } catch (error) {
+        errors.push(error);
+      } finally {
+        this.browser = null;
+        this.disconnectListenerAttached = false;
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new AggregateError(errors, 'Failed to close browser pool');
     }
   }
 
