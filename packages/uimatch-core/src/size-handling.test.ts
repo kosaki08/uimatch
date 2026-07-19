@@ -155,6 +155,24 @@ describe('Size Handling Modes', () => {
     expect(result.dimensions.adjusted).toBe(true);
     expect(result.dimensions.compared.width).toBe(120);
   });
+
+  test('padColor auto composites a semi-transparent background over white', () => {
+    const compositedRed = { r: 255, g: 128, b: 128 };
+    const figmaPng = createTestPng(1, 1, compositedRed);
+    const implPng = createTestPng(3, 1, compositedRed);
+
+    const result = compareImages({
+      figmaPngB64: pngToBase64(figmaPng),
+      implPngB64: pngToBase64(implPng),
+      sizeMode: 'pad',
+      padColor: 'auto',
+      styles: {
+        __self__: { 'background-color': 'rgba(255, 0, 0, 0.5)' },
+      },
+    });
+
+    expect(result.diffPixelCount).toBe(0);
+  });
 });
 
 describe('Alignment Options', () => {

@@ -1,7 +1,7 @@
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 import type { ExpectedSpec, StyleDiff, TokenMap } from '../types/index';
-import { parseCssColorToRgb } from '../utils/normalize';
+import { parseCssColorToRgb, type RGB } from '../utils/normalize';
 import { buildStyleDiffs, type DiffOptions } from './diff';
 
 /**
@@ -55,6 +55,15 @@ export interface PadColor {
   r: number;
   g: number;
   b: number;
+}
+
+function compositeOverWhite(color: RGB): PadColor {
+  const alpha = Math.min(1, Math.max(0, color.a ?? 1));
+  return {
+    r: Math.round(color.r * alpha + 255 * (1 - alpha)),
+    g: Math.round(color.g * alpha + 255 * (1 - alpha)),
+    b: Math.round(color.b * alpha + 255 * (1 - alpha)),
+  };
 }
 
 /**
@@ -303,49 +312,44 @@ function calculateOffset(
 }
 
 /**
- * Count diff pixels within a specific content area from an existing diff image.
- * @param diffPng - Diff PNG image (result of pixelmatch)
+ * Count diff pixels within a specific content area using the same pixelmatch options as the full image.
+ * @param figmaPng - Padded Figma PNG
+ * @param implPng - Padded implementation PNG
  * @param contentRect - Rectangle defining content area {x1, y1, x2, y2}
- * @param canvasWidth - Canvas width
+ * @param options - Pixelmatch options
  * @returns Number of diff pixels within the content area
  */
 function countDiffPixelsInRect(
   figmaPng: PNG,
   implPng: PNG,
   contentRect: { x1: number; y1: number; x2: number; y2: number },
-  canvasWidth: number,
-  threshold: number
+  options: PixelmatchOptions
 ): number {
-  let diffCount = 0;
+  const width = Math.max(0, contentRect.x2 - contentRect.x1);
+  const height = Math.max(0, contentRect.y2 - contentRect.y1);
+  if (width === 0 || height === 0) return 0;
 
-  // Iterate through the content rectangle and directly compare pixels
-  for (let y = contentRect.y1; y < contentRect.y2; y++) {
-    for (let x = contentRect.x1; x < contentRect.x2; x++) {
-      const idx = (canvasWidth * y + x) * 4;
-
-      // Get pixel values from both images
-      const r1 = figmaPng.data[idx] ?? 0;
-      const g1 = figmaPng.data[idx + 1] ?? 0;
-      const b1 = figmaPng.data[idx + 2] ?? 0;
-
-      const r2 = implPng.data[idx] ?? 0;
-      const g2 = implPng.data[idx + 1] ?? 0;
-      const b2 = implPng.data[idx + 2] ?? 0;
-
-      // Calculate color difference (simple Euclidean distance)
-      const delta = Math.sqrt(Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2));
-
-      // Normalize to 0-1 range (max distance is sqrt(3 * 255^2) ≈ 441)
-      const normalizedDelta = delta / 441;
-
-      // Count as different if above threshold
-      if (normalizedDelta > threshold) {
-        diffCount++;
+  const cropToContentRect = (png: PNG): PNG => {
+    const cropped = new PNG({ width, height });
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const sourceIndex = (png.width * (contentRect.y1 + y) + contentRect.x1 + x) * 4;
+        const destinationIndex = (width * y + x) * 4;
+        for (let channel = 0; channel < 4; channel++) {
+          cropped.data[destinationIndex + channel] = png.data[sourceIndex + channel] ?? 0;
+        }
       }
     }
-  }
+    return cropped;
+  };
 
-  return diffCount;
+  const figmaContent = cropToContentRect(figmaPng);
+  const implContent = cropToContentRect(implPng);
+
+  return pixelmatch(figmaContent.data, implContent.data, null, width, height, {
+    threshold: options.threshold ?? 0.1,
+    includeAA: options.includeAA ?? false,
+  });
 }
 
 /**
@@ -601,7 +605,7 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
     const bgColor = input.styles?.['__self__']?.['background-color'];
     if (bgColor) {
       const rgb = parseCssColorToRgb(bgColor);
-      if (rgb) return { r: rgb.r, g: rgb.g, b: rgb.b };
+      if (rgb) return compositeOverWhite(rgb);
     }
     return { r: 255, g: 255, b: 255 }; // Default to white
   })();
@@ -726,8 +730,7 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
         figmaPng,
         implPng,
         contentMetrics.contentRect,
-        width,
-        opts.threshold ?? 0.1
+        opts
       );
       result.pixelDiffRatioContent = diffPixelCountInContent / contentMetrics.contentPixels;
     }
