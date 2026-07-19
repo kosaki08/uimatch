@@ -1,185 +1,102 @@
-/**
- * Library import smoke test
- * Ensures type-safe imports work from published packages
- */
-import { exec } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+/** Verify that public tarballs work from an isolated consumer project. */
+import { execFile } from 'node:child_process';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
-import { describe, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+const repositoryRoot = resolve(import.meta.dirname, '..');
 
-// Enable when published packages emit runtime JavaScript matching their exports.
-// Keeping these tests collected makes the unresolved distribution contract visible.
-describe.skip('@uimatch/selector-anchors + @uimatch/selector-spi type imports', () => {
-  test('should import and type-check successfully', { timeout: 60000 }, async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), 'uimatch-lib-smoke-'));
-    let packDir: string | undefined;
+test('public package tarballs import, type-check, and run', { timeout: 120_000 }, async () => {
+  const consumerDirectory = await mkdtemp(join(tmpdir(), 'uimatch-consumer-'));
+  const packDirectory = await mkdtemp(join(tmpdir(), 'uimatch-pack-'));
 
-    try {
-      // Create minimal package.json
-      await writeFile(
-        join(tmpDir, 'package.json'),
-        JSON.stringify(
-          {
-            name: 'lib-consumer-test',
-            type: 'module',
-            dependencies: {},
+  try {
+    await execFileAsync(
+      process.execPath,
+      [join(repositoryRoot, 'scripts', 'pack-public-packages.mjs'), packDirectory],
+      { cwd: repositoryRoot }
+    );
+
+    const tarballs = (await readdir(packDirectory))
+      .filter((name) => name.endsWith('.tgz'))
+      .sort()
+      .map((name) => join(packDirectory, name));
+    const packageNames = tarballs.map((path) =>
+      basename(path).replace(/-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\.tgz$/, '')
+    );
+    expect(packageNames).toEqual([
+      'uimatch-cli',
+      'uimatch-selector-anchors',
+      'uimatch-selector-spi',
+      'uimatch-shared-logging',
+    ]);
+
+    await writeFile(
+      join(consumerDirectory, 'package.json'),
+      JSON.stringify({ name: 'uimatch-consumer-smoke', private: true, type: 'module' }, null, 2)
+    );
+    await writeFile(
+      join(consumerDirectory, 'tsconfig.json'),
+      JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'ES2022',
+            module: 'NodeNext',
+            moduleResolution: 'NodeNext',
+            strict: true,
+            skipLibCheck: true,
           },
-          null,
-          2
-        )
-      );
+          include: ['consumer.ts'],
+        },
+        null,
+        2
+      )
+    );
+    await writeFile(
+      join(consumerDirectory, 'consumer.ts'),
+      `
+import { getSettings, type CompareArgs, type CompareResult } from '@uimatch/cli';
+import selectorPlugin from '@uimatch/selector-anchors';
+import { ResolutionSchema, type SelectorResolverPlugin } from '@uimatch/selector-spi';
+import { createLogger } from '@uimatch/shared-logging';
 
-      // Create tsconfig.json
-      await writeFile(
-        join(tmpDir, 'tsconfig.json'),
-        JSON.stringify(
-          {
-            compilerOptions: {
-              target: 'ES2022',
-              module: 'ESNext',
-              moduleResolution: 'nodenext',
-              lib: ['ES2022'],
-              strict: true,
-              skipLibCheck: true,
-              esModuleInterop: true,
-            },
-          },
-          null,
-          2
-        )
-      );
+const plugin: SelectorResolverPlugin = selectorPlugin;
+const args: CompareArgs = { figma: 'file:node', story: 'https://example.com', selector: '#root' };
+const result: Pick<CompareResult, 'summary'> = { summary: 'ok' };
+const resolution = ResolutionSchema.parse({ selector: args.selector, stabilityScore: 100 });
 
-      // Create test TypeScript file
-      const testCode = `
-import plugin from '@uimatch/selector-anchors';
-import type { SelectorResolverPlugin, Resolution } from '@uimatch/selector-spi';
-
-// Type check: plugin should conform to SPI
-const p: SelectorResolverPlugin = plugin;
-
-// Type check: Resolution type should be available
-const resolution: Resolution = {
-  selector: 'test',
-};
-
-void p;
+void getSettings;
+void plugin;
+void result;
 void resolution;
+void createLogger;
+`
+    );
 
-console.log('Type checks passed');
-export {};
-`;
-
-      await writeFile(join(tmpDir, 'test.ts'), testCode);
-
-      // Pack packages to a temporary directory
-      packDir = await mkdtemp(join(tmpdir(), 'uimatch-pack-'));
-      const packagesDir = join(process.cwd(), 'packages');
-
-      const { stdout: spiPack } = await execAsync(`pnpm pack --pack-destination ${packDir}`, {
-        cwd: join(packagesDir, 'uimatch-selector-spi'),
-      });
-      const { stdout: anchorsPack } = await execAsync(`pnpm pack --pack-destination ${packDir}`, {
-        cwd: join(packagesDir, 'uimatch-selector-anchors'),
-      });
-
-      // pnpm pack outputs the full path to the generated tarball
-      const spiTgzPath = spiPack.trim().split('\n').pop() ?? '';
-      const anchorsTgzPath = anchorsPack.trim().split('\n').pop() ?? '';
-
-      // Install packages
-      await execAsync(`pnpm add ${spiTgzPath} ${anchorsTgzPath} typescript`, {
-        cwd: tmpDir,
-      });
-
-      // Type check
-      const { stdout } = await execAsync('pnpm exec tsc --noEmit test.ts', {
-        cwd: tmpDir,
-      });
-
-      expect(stdout).toBe('');
-    } finally {
-      await rm(tmpDir, { recursive: true, force: true });
-      if (packDir) {
-        await rm(packDir, { recursive: true, force: true });
-      }
-    }
-  });
-});
-
-describe.skip('@uimatch/shared-logging type imports', () => {
-  test('should import Logger types successfully', { timeout: 60000 }, async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), 'uimatch-logging-smoke-'));
-    let packDir: string | undefined;
-
-    try {
-      await writeFile(
-        join(tmpDir, 'package.json'),
-        JSON.stringify({ name: 'logging-test', type: 'module' }, null, 2)
-      );
-
-      await writeFile(
-        join(tmpDir, 'tsconfig.json'),
-        JSON.stringify(
-          {
-            compilerOptions: {
-              target: 'ES2022',
-              module: 'ESNext',
-              moduleResolution: 'nodenext',
-              lib: ['ES2022'],
-              strict: true,
-              skipLibCheck: true,
-              esModuleInterop: true,
-            },
-          },
-          null,
-          2
-        )
-      );
-
-      const testCode = `
-import { createLogger, silentLogger } from '@uimatch/shared-logging';
-import type { Logger, LogLevel } from '@uimatch/shared-logging';
-
-const logger: Logger = createLogger({ module: 'test' });
-const silent: Logger = silentLogger;
-const level: LogLevel = 'info';
-
-logger.info({ level }, 'Logger type checks passed');
-silent.debug('No-op');
-
-console.log('Logger type checks passed');
-export {};
-`;
-
-      await writeFile(join(tmpDir, 'test.ts'), testCode);
-
-      // Pack package to a temporary directory
-      packDir = await mkdtemp(join(tmpdir(), 'uimatch-pack-'));
-      const { stdout: loggingPack } = await execAsync(`pnpm pack --pack-destination ${packDir}`, {
-        cwd: join(process.cwd(), 'packages', 'shared-logging'),
-      });
-
-      // pnpm pack outputs the full path to the generated tarball
-      const loggingTgzPath = loggingPack.trim().split('\n').pop() ?? '';
-
-      await execAsync(`pnpm add ${loggingTgzPath} typescript`, {
-        cwd: tmpDir,
-      });
-
-      const { stdout } = await execAsync('pnpm exec tsc --noEmit test.ts', {
-        cwd: tmpDir,
-      });
-
-      expect(stdout).toBe('');
-    } finally {
-      await rm(tmpDir, { recursive: true, force: true });
-      if (packDir) {
-        await rm(packDir, { recursive: true, force: true });
-      }
-    }
-  });
+    await execFileAsync('pnpm', ['add', ...tarballs, 'playwright@1.56.1', 'typescript@5.9.3'], {
+      cwd: consumerDirectory,
+    });
+    await execFileAsync('pnpm', ['exec', 'tsc', '--noEmit'], { cwd: consumerDirectory });
+    await execFileAsync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '--eval',
+        "await Promise.all([import('@uimatch/cli'), import('@uimatch/selector-anchors'), import('@uimatch/selector-spi'), import('@uimatch/shared-logging')])",
+      ],
+      { cwd: consumerDirectory }
+    );
+    const { stdout } = await execFileAsync('pnpm', ['exec', 'uimatch', 'version'], {
+      cwd: consumerDirectory,
+    });
+    expect(stdout).toMatch(/\d+\.\d+\.\d+/);
+  } finally {
+    await Promise.all([
+      rm(consumerDirectory, { recursive: true, force: true }),
+      rm(packDirectory, { recursive: true, force: true }),
+    ]);
+  }
 });

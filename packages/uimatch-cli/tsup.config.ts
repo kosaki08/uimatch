@@ -3,7 +3,12 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: ['src/index.ts', 'src/cli/index.ts'],
   format: ['esm'],
-  dts: false,
+  dts: {
+    resolve: true,
+    compilerOptions: {
+      composite: false,
+    },
+  },
   clean: true,
   outDir: 'dist',
   // Disable default shims to inject createRequire for dynamic require support

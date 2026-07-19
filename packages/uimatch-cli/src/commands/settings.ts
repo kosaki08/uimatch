@@ -2,9 +2,10 @@
  * Settings management command
  */
 
-import { DEFAULT_CONFIG, mergeConfig, type AppConfig } from '@uimatch/core';
+import { DEFAULT_CONFIG, mergeConfig } from '@uimatch/core';
 import fs from 'node:fs';
 import path from 'node:path';
+import type { AppConfig } from '../types/index.js';
 
 /**
  * Configuration file path (currently looks in working directory only)

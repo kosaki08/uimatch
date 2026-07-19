@@ -8,7 +8,7 @@
 
 import type { CompareResult } from '#plugin/types/index.js';
 import { dedupKey, scoreIssue, type Issue, type ScoredIssue } from '#plugin/utils/scoring.js';
-import type { StyleDiff } from '@uimatch/core';
+import type { StyleDiff } from '../types/index.js';
 
 /**
  * Confidence level for patch suggestions (compatibility with existing code)

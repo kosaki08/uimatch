@@ -3,7 +3,6 @@
  */
 
 import type { StyleSummary } from '#plugin/utils/style-score';
-import type { ExpectedSpec, QualityGateResult, StyleDiff, TokenMap } from '@uimatch/core';
 
 /**
  * Figma design variable (color, number, or string).
@@ -21,6 +20,133 @@ export interface FigmaVariable {
 export interface FigmaRef {
   fileKey: string;
   nodeId: string;
+}
+
+/** Public design-token map accepted by the CLI API. */
+export interface TokenMap {
+  color?: Record<string, string>;
+  spacing?: Record<string, string>;
+  radius?: Record<string, string>;
+  typography?: Record<string, string>;
+}
+
+/** Public expected-style input accepted by the CLI API. */
+export type ExpectedSpec = Record<string, Partial<Record<string, string>>>;
+
+export type DiffScope = 'ancestor' | 'self' | 'descendant';
+
+export interface PatchHint {
+  property: string;
+  suggestedValue: string;
+  file?: string;
+  line?: number;
+  severity: 'low' | 'medium' | 'high';
+}
+
+/** Serializable style difference returned in comparison reports. */
+export interface StyleDiff {
+  selector: string;
+  isRoot?: boolean;
+  properties: Record<
+    string,
+    {
+      actual?: string;
+      expected?: string;
+      expectedToken?: string;
+      delta?: number;
+      unit?: string;
+    }
+  >;
+  severity: 'low' | 'medium' | 'high';
+  patchHints?: PatchHint[];
+  autoFixable?: boolean;
+  meta?: {
+    tag: string;
+    id?: string;
+    class?: string;
+    testid?: string;
+    cssSelector?: string;
+    height?: number;
+  };
+  priorityScore?: number;
+  scope?: DiffScope;
+}
+
+export interface HardGateViolation {
+  type: 'area_gap' | 'suspicion' | 're_evaluation' | 'high_severity';
+  reason: string;
+  severity: 'critical' | 'high';
+}
+
+export interface SuspicionDetection {
+  detected: boolean;
+  reasons: string[];
+}
+
+export interface CQIBreakdownComponent {
+  name: 'pixel' | 'color' | 'area' | 'severity';
+  rawValue: number;
+  threshold: number;
+  penalty: number;
+  weight: number;
+}
+
+export interface CQIBreakdown {
+  components: CQIBreakdownComponent[];
+  totalPenalty: number;
+  baseScore: number;
+}
+
+/** Serializable quality-gate result returned in comparison reports. */
+export interface QualityGateResult {
+  pass: boolean;
+  cqi: number;
+  cqiBreakdown?: CQIBreakdown;
+  hardGateViolations: HardGateViolation[];
+  suspicions: SuspicionDetection;
+  reEvaluated: boolean;
+  originalMetrics?: {
+    pixelDiffRatioContent: number;
+    contentBasis: string;
+  };
+  reasons: string[];
+  thresholds: {
+    pixelDiffRatio: number;
+    deltaE: number;
+  };
+}
+
+/** Public shape returned by getSettings() and resetSettings(). */
+export interface AppConfig {
+  capture: {
+    defaultViewportWidth: number;
+    defaultViewportHeight: number;
+    defaultDpr: number;
+    defaultMaxChildren: number;
+    defaultMaxDepth: number;
+    defaultIdleWaitMs: number;
+    basicAuthUser?: string;
+    basicAuthPass?: string;
+    defaultFigmaScale: number;
+    figmaAutoRoi: boolean;
+  };
+  comparison: {
+    pixelmatchThreshold: number;
+    includeAA: boolean;
+    colorDeltaEThreshold: number;
+    acceptancePixelDiffRatio: number;
+    acceptanceColorDeltaE: number;
+    toleranceSpacing: number;
+    toleranceDimension: number;
+    toleranceLayoutGap: number;
+    toleranceRadius: number;
+    toleranceBorderWidth: number;
+    toleranceShadowBlur: number;
+    toleranceShadowColorExtraDE: number;
+    ignoreProperties: string[];
+    areaGapCritical: number;
+    areaGapWarning: number;
+  };
 }
 
 /**
