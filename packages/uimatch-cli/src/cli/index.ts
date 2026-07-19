@@ -98,14 +98,14 @@ async function main(): Promise<void> {
     }
 
     if (subcommand === 'claude-report') {
-      await runExperimentalClaudeReport(args.slice(1));
+      process.exitCode = await runExperimentalClaudeReport(args.slice(1));
     } else {
       errln(`Unknown experimental command: ${subcommand}`);
       errln('Run "uimatch experimental" to see available commands');
       process.exit(2);
     }
   } else if (command === 'compare') {
-    await runCompare(args);
+    process.exitCode = await runCompare(args);
   } else if (command === 'suite') {
     await runSuite(args);
   } else if (command === 'text-diff') {

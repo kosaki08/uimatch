@@ -1,6 +1,28 @@
+import { getQualityGateProfile } from '@uimatch/core';
 import { describe, expect, test } from 'bun:test';
+import type { CompareResult } from '../types/index';
 import type { ParsedArgs } from './compare';
-import { buildCompareConfig } from './compare';
+import { buildCompareConfig, evaluateGateDecision } from './compare';
+
+function createReport(pass: boolean): CompareResult['report'] {
+  return {
+    metrics: {
+      pixelDiffRatio: pass ? 0 : 1,
+      colorDeltaEAvg: pass ? 0 : 100,
+      dfs: pass ? 100 : 0,
+    },
+    styleDiffs: [],
+    qualityGate: {
+      pass,
+      cqi: pass ? 100 : 0,
+      hardGateViolations: [],
+      suspicions: { detected: false, reasons: [] },
+      reEvaluated: false,
+      reasons: [],
+      thresholds: { pixelDiffRatio: 0.01, deltaE: 3 },
+    },
+  };
+}
 
 describe('buildCompareConfig', () => {
   describe('emitArtifacts auto-enable', () => {
@@ -523,5 +545,49 @@ describe('buildCompareConfig', () => {
 
       expect(config.weights).toBeUndefined();
     });
+  });
+});
+
+describe('evaluateGateDecision', () => {
+  test('fails when the base quality gate fails', () => {
+    const decision = evaluateGateDecision(createReport(false), {});
+
+    expect(decision.finalPass).toBe(false);
+  });
+
+  test('allows an enabled text gate to override a visual failure', () => {
+    const report = createReport(false);
+    report.textMatch = {
+      enabled: true,
+      mode: 'self',
+      normalize: 'nfkc_ws',
+      caseSensitive: false,
+      match: 'exact',
+      minRatio: 1,
+      figma: { raw: 'Save', normalized: 'save' },
+      impl: { raw: 'Save', normalized: 'save' },
+      equal: true,
+      ratio: 1,
+    };
+
+    const decision = evaluateGateDecision(report, { textGate: true });
+
+    expect(decision.finalPass).toBe(true);
+    expect(decision.notices).toContain('✅ Text gate: PASS (text match)');
+  });
+
+  test('applies profile-specific layout limits to a passing base gate', () => {
+    const report = createReport(true);
+    report.styleDiffs.push({
+      selector: '#target',
+      properties: { display: { expected: 'flex', actual: 'block' } },
+      severity: 'high',
+    });
+
+    const decision = evaluateGateDecision(report, {}, getQualityGateProfile('component/strict'));
+
+    expect(decision.finalPass).toBe(false);
+    expect(decision.profile?.pass).toBe(false);
+    expect(decision.profile?.reasons).toContain('layoutHighCount 1 > 0');
   });
 });

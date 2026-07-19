@@ -3,6 +3,7 @@
  * Focuses on uncovered paths: parseArgs, error cases, text match, profiles
  */
 
+import { getQualityGateProfile } from '@uimatch/core';
 import { beforeEach, describe, expect, test } from 'bun:test';
 import type { ParsedArgs } from '../compare';
 import { buildCompareConfig } from '../compare';
@@ -434,7 +435,7 @@ describe('buildCompareConfig - Profile Integration', () => {
       profile: 'component/strict',
     };
 
-    const config = buildCompareConfig(args);
+    const config = buildCompareConfig(args, getQualityGateProfile('component/strict'));
 
     expect(config.thresholds).not.toBeUndefined();
     expect(config.thresholds?.pixelDiffRatio).not.toBeUndefined();
@@ -447,7 +448,7 @@ describe('buildCompareConfig - Profile Integration', () => {
       profile: 'component/strict',
     };
 
-    const config = buildCompareConfig(args);
+    const config = buildCompareConfig(args, getQualityGateProfile('component/strict'));
 
     // component/strict profile has contentBasis setting
     // Profile's contentBasis is only applied if profile.contentBasis exists AND args.contentBasis is not set
@@ -461,7 +462,7 @@ describe('buildCompareConfig - Profile Integration', () => {
       contentBasis: 'union',
     };
 
-    const config = buildCompareConfig(args);
+    const config = buildCompareConfig(args, getQualityGateProfile('component/strict'));
 
     expect(config.contentBasis).toBe('union');
   });
@@ -473,23 +474,10 @@ describe('buildCompareConfig - Profile Integration', () => {
       size: 'pad',
     };
 
-    const config = buildCompareConfig(args);
+    const config = buildCompareConfig(args, getQualityGateProfile('component/strict'));
 
     // Profile enforces contentBasis for pad mode only when profile.contentBasis is defined
     expect(config.sizeMode).toBe('pad');
-  });
-
-  test('handles invalid profile gracefully without throwing', () => {
-    const args: ParsedArgs = {
-      ...baseArgs,
-      profile: 'non-existent-profile',
-    };
-
-    // Should not throw, just warn and continue
-    const config = buildCompareConfig(args);
-
-    expect(config).toBeDefined();
-    expect(config.figma).toBe('AbCdEf:1-23');
   });
 
   test('applies known profiles without errors', () => {
@@ -501,7 +489,7 @@ describe('buildCompareConfig - Profile Integration', () => {
         profile,
       };
 
-      const config = buildCompareConfig(args);
+      const config = buildCompareConfig(args, getQualityGateProfile(profile));
 
       expect(config.thresholds).not.toBeUndefined();
     });

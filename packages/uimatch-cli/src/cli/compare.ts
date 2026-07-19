@@ -5,9 +5,10 @@
  */
 
 import { uiMatchCompare } from '#plugin/commands/compare';
-import type { CompareArgs } from '#plugin/types/index';
+import type { CompareArgs, CompareResult } from '#plugin/types/index';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#plugin/utils/sanitize';
-import { getQualityGateProfile } from '@uimatch/core';
+import type { QualityGateProfile } from '@uimatch/core';
+import { browserPool, getQualityGateProfile } from '@uimatch/core';
 import { silentLogger } from '@uimatch/shared-logging';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -75,7 +76,7 @@ export interface ParsedArgs {
   textMinRatio?: string;
   areaGapCritical?: string;
   areaGapWarning?: string;
-  textGate?: string;
+  textGate?: string | boolean;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
@@ -309,7 +310,10 @@ function printUsage(): void {
  * - detectStorybookIframe auto-defaults based on URL pattern
  * - All optional parameters are conditionally added
  */
-export function buildCompareConfig(args: ParsedArgs): CompareArgs {
+export function buildCompareConfig(
+  args: ParsedArgs,
+  qualityGateProfile?: QualityGateProfile
+): CompareArgs {
   // Validate required parameters
   if (!args.figma) {
     throw new Error('Missing required parameter: figma');
@@ -435,36 +439,25 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
   const bootstrap = parseBool(args.bootstrap) ?? true;
   config.bootstrapExpectedFromFigma = bootstrap;
 
-  // Apply quality gate profile if specified
-  if (args.profile) {
-    try {
-      const profile = getQualityGateProfile(args.profile);
+  // Apply the quality gate profile resolved by the command boundary.
+  if (qualityGateProfile) {
+    config.thresholds = {
+      pixelDiffRatio: qualityGateProfile.thresholds.pixelDiffRatio,
+      deltaE: qualityGateProfile.thresholds.deltaE,
+      areaGapCritical: qualityGateProfile.thresholds.areaGapCritical,
+      areaGapWarning: qualityGateProfile.thresholds.areaGapWarning,
+    };
 
-      // Override thresholds from profile
-      config.thresholds = {
-        pixelDiffRatio: profile.thresholds.pixelDiffRatio,
-        deltaE: profile.thresholds.deltaE,
-        areaGapCritical: profile.thresholds.areaGapCritical,
-        areaGapWarning: profile.thresholds.areaGapWarning,
-      };
+    if (qualityGateProfile.contentBasis && !args.contentBasis) {
+      config.contentBasis = qualityGateProfile.contentBasis;
+    }
 
-      // Override contentBasis if profile specifies it
-      if (profile.contentBasis && !args.contentBasis) {
-        config.contentBasis = profile.contentBasis;
-      }
-
-      // For pad mode profiles, enforce contentBasis if not explicitly set
-      if (
-        profile.contentBasis === 'intersection' &&
-        config.sizeMode === 'pad' &&
-        !args.contentBasis
-      ) {
-        config.contentBasis = 'intersection';
-      }
-    } catch (e) {
-      getOrSilentLogger().warn(
-        `Failed to load quality gate profile: ${(e as Error)?.message ?? String(e)}`
-      );
+    if (
+      qualityGateProfile.contentBasis === 'intersection' &&
+      config.sizeMode === 'pad' &&
+      !args.contentBasis
+    ) {
+      config.contentBasis = 'intersection';
     }
   }
 
@@ -512,7 +505,199 @@ export function buildCompareConfig(args: ParsedArgs): CompareArgs {
   return config;
 }
 
-export async function runCompare(argv: string[]): Promise<void> {
+interface ProfileGateDecision {
+  name: string;
+  pass: boolean;
+  reasons: string[];
+}
+
+export interface GateDecision {
+  baseGatePass: boolean;
+  finalPass: boolean;
+  profile?: ProfileGateDecision;
+  notices: string[];
+}
+
+/**
+ * Evaluate all quality-gate inputs independently from output formatting.
+ */
+export function evaluateGateDecision(
+  report: CompareResult['report'],
+  args: ParsedArgs,
+  qualityGateProfile?: QualityGateProfile
+): GateDecision {
+  const baseGatePass = report.qualityGate?.pass ?? false;
+  let profile: ProfileGateDecision | undefined;
+  let profileGatePass = baseGatePass;
+
+  if (qualityGateProfile) {
+    const reasons: string[] = [];
+    const layoutKeys = new Set([
+      'display',
+      'position',
+      'flex-direction',
+      'flex-wrap',
+      'justify-content',
+      'align-items',
+      'align-content',
+      'grid-template-columns',
+      'grid-template-rows',
+      'grid-auto-flow',
+      'place-items',
+      'place-content',
+    ]);
+
+    const layoutHighCount = report.styleDiffs.filter(
+      (diff) =>
+        diff.severity === 'high' &&
+        Object.keys(diff.properties).some((property) => layoutKeys.has(property))
+    ).length;
+    if (layoutHighCount > qualityGateProfile.thresholds.maxLayoutHighIssues) {
+      reasons.push(
+        `layoutHighCount ${layoutHighCount} > ${qualityGateProfile.thresholds.maxLayoutHighIssues}`
+      );
+    }
+
+    const highCount = report.styleSummary?.highCount ?? 0;
+    if (highCount > qualityGateProfile.thresholds.maxHighSeverityIssues) {
+      reasons.push(
+        `highSeverityCount ${highCount} > ${qualityGateProfile.thresholds.maxHighSeverityIssues}`
+      );
+    }
+
+    profileGatePass = baseGatePass && reasons.length === 0;
+    profile = { name: qualityGateProfile.name, pass: profileGatePass, reasons };
+  }
+
+  const rawTextGate = args.textGate;
+  const textGateMode = rawTextGate === 'true' || rawTextGate === true || rawTextGate === '';
+  const textMatch = report.textMatch;
+  const notices: string[] = [];
+  let finalPass: boolean;
+
+  if (textGateMode && textMatch?.enabled) {
+    finalPass = Boolean(textMatch.equal);
+    if (!finalPass && baseGatePass) {
+      notices.push('⚠️  Text gate: ❌ FAIL (text mismatch)');
+      notices.push('  Visual gate would have passed, but text content differs');
+    } else if (finalPass && !baseGatePass) {
+      notices.push('✅ Text gate: PASS (text match)');
+      notices.push('  Note: Visual differences detected but ignored in text gate mode');
+    }
+  } else {
+    finalPass = baseGatePass && profileGatePass;
+    if (textGateMode) {
+      notices.push('ℹ️  textGate is enabled but textCheck is not active.');
+      notices.push('    Enable text match with: text=true textMatch=ratio ...');
+    }
+  }
+
+  return { baseGatePass, finalPass, profile, notices };
+}
+
+function printStandardOutput(
+  result: CompareResult,
+  args: ParsedArgs,
+  verbose: boolean,
+  decision: GateDecision
+): void {
+  outln(result.summary);
+  outln('');
+
+  if (decision.profile) {
+    outln(
+      `Profile gate (${decision.profile.name}): ${decision.profile.pass ? '✅ PASS' : '❌ FAIL'}`
+    );
+    decision.profile.reasons.forEach((reason) => outln(`  - ${reason}`));
+  }
+  if (verbose) {
+    outln('Details:');
+    outln(JSON.stringify(result.report, null, 2));
+  } else {
+    outln(`Gate: ${decision.finalPass ? '✅ PASS' : '❌ FAIL'}`);
+    outln(`Visual gate: ${decision.baseGatePass ? '✅ PASS' : '❌ FAIL'}`);
+    outln(`Pixel diff ratio: ${result.report.metrics.pixelDiffRatio.toFixed(4)}`);
+    outln(`Color delta E (avg): ${result.report.metrics.colorDeltaEAvg.toFixed(2)}`);
+
+    const gate = result.report.qualityGate;
+    const showCqi = parseBool(args.showCqi) !== false;
+    const showSuspicions = parseBool(args.showSuspicions) !== false;
+    const showReEval = parseBool(args.showReEval) !== false;
+
+    if (showCqi && gate?.cqi !== undefined) {
+      const cqiEmoji = gate.cqi >= 90 ? '🟢' : gate.cqi >= 70 ? '🟡' : '🔴';
+      outln(`CQI: ${cqiEmoji} ${gate.cqi}/100`);
+    }
+
+    if (gate?.hardGateViolations && gate.hardGateViolations.length > 0) {
+      outln('\n⚠️  Hard Gate Violations:');
+      gate.hardGateViolations.forEach((violation) => {
+        const severityEmoji = violation.severity === 'critical' ? '🚨' : '⚠️';
+        outln(`  ${severityEmoji} [${violation.type}] ${violation.reason}`);
+      });
+    }
+
+    if (showSuspicions && gate?.suspicions?.detected) {
+      outln('\n🔍 Suspicions Detected:');
+      gate.suspicions.reasons.forEach((reason) => outln(`  • ${reason}`));
+    }
+
+    if (showReEval && gate?.reEvaluated) {
+      outln('\n💡 Re-evaluation Recommended:');
+      outln('  Consider using contentBasis=intersection for more accurate metrics');
+      if (gate.originalMetrics) {
+        outln(
+          `  Original: ${(gate.originalMetrics.pixelDiffRatioContent * 100).toFixed(2)}% (${gate.originalMetrics.contentBasis})`
+        );
+      }
+    }
+
+    if (result.report.styleSummary) {
+      outln(`\nStyle Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`);
+      outln(
+        `  Breakdown: ${result.report.styleSummary.highCount} high, ${result.report.styleSummary.mediumCount} medium, ${result.report.styleSummary.lowCount} low`
+      );
+      outln(
+        `  Autofixable: ${result.report.styleSummary.autofixableCount}/${result.report.styleSummary.totalDiffs}`
+      );
+    }
+  }
+
+  decision.notices.forEach((notice, index) => outln(index === 0 ? `\n${notice}` : notice));
+}
+
+async function printClaudeOutput(
+  result: CompareResult,
+  args: ParsedArgs,
+  decision: GateDecision
+): Promise<void> {
+  const { formatForLLM, generateLLMPrompt } = await import('../experimental/claude-formatter.js');
+
+  if (args.patchTarget) {
+    getOrSilentLogger().warn(
+      'patchTarget parameter is deprecated and will be removed. Output format is now CSS-only for maximum compatibility.'
+    );
+  }
+
+  const llmPayload = formatForLLM(result, { preferTokens: true });
+  outln('');
+  outln('=== LLM-Formatted Output ===');
+  outln('');
+  outln(generateLLMPrompt(llmPayload));
+  outln('');
+
+  errln(`Gate: ${decision.finalPass ? '✅ PASS' : '❌ FAIL'}`);
+  errln(`  Visual gate: ${decision.baseGatePass ? '✅ PASS' : '❌ FAIL'}`);
+  if (decision.profile) {
+    errln(
+      `  Profile gate (${decision.profile.name}): ${decision.profile.pass ? '✅ PASS' : '❌ FAIL'}`
+    );
+    decision.profile.reasons.forEach((reason) => errln(`    - ${reason}`));
+  }
+  decision.notices.forEach((notice) => errln(notice));
+}
+
+export async function runCompare(argv: string[]): Promise<number> {
   // Lazy initialize logger for tests that call runCompare directly without going through CLI entry point
   try {
     getLogger();
@@ -520,16 +705,25 @@ export async function runCompare(argv: string[]): Promise<void> {
     initLogger(argv); // respects --log-level / --log-format / --log-file flags if present
   }
 
-  const args = parseArgs(argv);
-
-  if (!args.figma || !args.story || !args.selector) {
-    printUsage();
-    process.exit(2);
-  }
-
   try {
+    const args = parseArgs(argv);
+    if (!args.figma || !args.story || !args.selector) {
+      printUsage();
+      return 2;
+    }
+
+    let qualityGateProfile: QualityGateProfile | undefined;
+    if (args.profile) {
+      try {
+        qualityGateProfile = getQualityGateProfile(args.profile);
+      } catch (error) {
+        errln(error instanceof Error ? error.message : String(error));
+        return 2;
+      }
+    }
+
     // Build configuration using extracted function (this includes verbose decision)
-    const config = buildCompareConfig(args);
+    const config = buildCompareConfig(args, qualityGateProfile);
     const saveExpectedPath = args.saveExpected;
 
     // Use config.verbose as the single source of truth
@@ -711,181 +905,24 @@ export async function runCompare(argv: string[]): Promise<void> {
       }
     }
 
-    // Output format handling
+    const decision = evaluateGateDecision(result.report, args, qualityGateProfile);
     if (args.format === 'claude') {
-      const { formatForLLM, generateLLMPrompt } = await import(
-        '../experimental/claude-formatter.js'
-      );
-
-      // Deprecation warning for patchTarget parameter
-      if (args.patchTarget) {
-        logger.warn(
-          'patchTarget parameter is deprecated and will be removed. Output format is now CSS-only for maximum compatibility.'
-        );
-      }
-
-      const llmPayload = formatForLLM(result, { preferTokens: true });
-
-      outln('');
-      outln('=== LLM-Formatted Output ===');
-      outln('');
-      outln(generateLLMPrompt(llmPayload));
-      outln('');
-      process.exit(0);
-    }
-
-    // Standard output
-    outln(result.summary);
-    outln('');
-
-    // Additional profile-based quality gate checks
-    let profileGatePass = result.report.qualityGate?.pass ?? false;
-    const additionalReasons: string[] = [];
-
-    if (args.profile) {
-      try {
-        const profile = getQualityGateProfile(args.profile);
-
-        // Check layout-specific high severity count
-        const LAYOUT_KEYS = new Set([
-          'display',
-          'position',
-          'flex-direction',
-          'flex-wrap',
-          'justify-content',
-          'align-items',
-          'align-content',
-          'grid-template-columns',
-          'grid-template-rows',
-          'grid-auto-flow',
-          'place-items',
-          'place-content',
-        ]);
-
-        const layoutHighCount = result.report.styleDiffs.filter((d) => {
-          return d.severity === 'high' && Object.keys(d.properties).some((k) => LAYOUT_KEYS.has(k));
-        }).length;
-
-        if (layoutHighCount > profile.thresholds.maxLayoutHighIssues) {
-          profileGatePass = false;
-          additionalReasons.push(
-            `layoutHighCount ${layoutHighCount} > ${profile.thresholds.maxLayoutHighIssues}`
-          );
-        }
-
-        // Check overall high severity count
-        const highCount = result.report.styleSummary?.highCount ?? 0;
-        if (highCount > profile.thresholds.maxHighSeverityIssues) {
-          profileGatePass = false;
-          additionalReasons.push(
-            `highSeverityCount ${highCount} > ${profile.thresholds.maxHighSeverityIssues}`
-          );
-        }
-
-        if (additionalReasons.length > 0) {
-          outln(`Profile gate (${profile.name}): ❌ FAIL`);
-          additionalReasons.forEach((r) => outln(`  - ${r}`));
-        } else if (args.profile) {
-          outln(`Profile gate (${profile.name}): ✅ PASS`);
-        }
-      } catch (e) {
-        logger.warn(`Failed to evaluate profile gate: ${(e as Error)?.message ?? String(e)}`);
-      }
-    }
-
-    if (verbose) {
-      outln('Details:');
-      outln(JSON.stringify(result.report, null, 2));
+      await printClaudeOutput(result, args, decision);
     } else {
-      outln(`Gate: ${result.report.qualityGate?.pass ? '✅ PASS' : '❌ FAIL'}`);
-      outln(`Pixel diff ratio: ${result.report.metrics.pixelDiffRatio.toFixed(4)}`);
-      outln(`Color delta E (avg): ${result.report.metrics.colorDeltaEAvg.toFixed(2)}`);
-
-      // === Quality gate metrics (optional display) ===
-      const gate = result.report.qualityGate;
-      const showCqi = parseBool(args.showCqi) !== false; // Default: true
-      const showSuspicions = parseBool(args.showSuspicions) !== false; // Default: true
-      const showReEval = parseBool(args.showReEval) !== false; // Default: true
-
-      // Show CQI if available and enabled
-      if (showCqi && gate?.cqi !== undefined) {
-        const cqiEmoji = gate.cqi >= 90 ? '🟢' : gate.cqi >= 70 ? '🟡' : '🔴';
-        outln(`CQI: ${cqiEmoji} ${gate.cqi}/100`);
-      }
-
-      // Show hard gate violations (always show if present)
-      if (gate?.hardGateViolations && gate.hardGateViolations.length > 0) {
-        outln('\n⚠️  Hard Gate Violations:');
-        gate.hardGateViolations.forEach((v) => {
-          const severityEmoji = v.severity === 'critical' ? '🚨' : '⚠️';
-          outln(`  ${severityEmoji} [${v.type}] ${v.reason}`);
-        });
-      }
-
-      // Show suspicions if enabled
-      if (showSuspicions && gate?.suspicions?.detected) {
-        outln('\n🔍 Suspicions Detected:');
-        gate.suspicions.reasons.forEach((r) => {
-          outln(`  • ${r}`);
-        });
-      }
-
-      // Show re-evaluation recommendation if enabled
-      if (showReEval && gate?.reEvaluated) {
-        outln('\n💡 Re-evaluation Recommended:');
-        outln('  Consider using contentBasis=intersection for more accurate metrics');
-        if (gate.originalMetrics) {
-          outln(
-            `  Original: ${(gate.originalMetrics.pixelDiffRatioContent * 100).toFixed(2)}% (${gate.originalMetrics.contentBasis})`
-          );
-        }
-      }
-
-      // Show SFS if available
-      if (result.report.styleSummary) {
-        outln(`\nStyle Fidelity Score: ${result.report.styleSummary.styleFidelityScore}/100`);
-        outln(
-          `  Breakdown: ${result.report.styleSummary.highCount} high, ${result.report.styleSummary.mediumCount} medium, ${result.report.styleSummary.lowCount} low`
-        );
-        outln(
-          `  Autofixable: ${result.report.styleSummary.autofixableCount}/${result.report.styleSummary.totalDiffs}`
-        );
-      }
+      printStandardOutput(result, args, Boolean(verbose), decision);
     }
 
-    // Text gate mode: use text match result for pass/fail decision
-    // Support both textGate=true and --textGate formats
-    const rawTextGate = (args as unknown as { textGate?: string | boolean }).textGate;
-    const textGateMode = rawTextGate === 'true' || rawTextGate === true || rawTextGate === '';
-    const textMatch = result.report.textMatch;
-
-    let finalPass: boolean;
-
-    if (textGateMode && textMatch?.enabled) {
-      // Text gate mode: pass if text matches, regardless of visual differences
-      finalPass = Boolean(textMatch?.equal);
-
-      if (!finalPass && result.report.qualityGate?.pass) {
-        outln('\n⚠️  Text gate: ❌ FAIL (text mismatch)');
-        outln('  Visual gate would have passed, but text content differs');
-      } else if (finalPass && !result.report.qualityGate?.pass) {
-        outln('\n✅ Text gate: PASS (text match)');
-        outln('  Note: Visual differences detected but ignored in text gate mode');
-      }
-    } else {
-      // Standard mode: use profile gate result if more restrictive than base gate
-      finalPass = (result.report.qualityGate?.pass ?? false) && profileGatePass;
-
-      // Warn if textGate is enabled but textCheck is not active
-      if (textGateMode && !textMatch?.enabled) {
-        outln('\nℹ️  textGate is enabled but textCheck is not active.');
-        outln('    Enable text match with: text=true textMatch=ratio ...');
-      }
-    }
-
-    process.exit(finalPass ? 0 : 1);
+    return decision.finalPass ? 0 : 1;
   } catch (error) {
     errln('❌ Error:', error instanceof Error ? error.message : String(error));
-    process.exit(1);
+    return 1;
+  } finally {
+    try {
+      await browserPool.closeAll();
+    } catch (error) {
+      getOrSilentLogger().warn(
+        `Failed to close browser pool: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 }
