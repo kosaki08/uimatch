@@ -4,6 +4,9 @@ export const evalRunIdPattern = /^\d{8}_[A-Za-z0-9][A-Za-z0-9._-]{0,118}$/;
 
 export type ConditionId = (typeof conditionIds)[number];
 
+export const evalArtifactPolicies = ['none', 'failures', 'all'] as const;
+export type EvalArtifactPolicy = (typeof evalArtifactPolicies)[number];
+
 export type EvalBackendId = 'codex-exec' | 'openrouter';
 export type EvalAuthMode = 'api' | 'subscription';
 
@@ -116,6 +119,43 @@ export interface VisibleComparisonMetrics {
   styleDiffCount: number;
 }
 
+export function visibleComparisonMatches(
+  left: VisibleComparisonMetrics | undefined,
+  right: VisibleComparisonMetrics | undefined
+): boolean {
+  if (left === undefined || right === undefined) return left === right;
+  return (
+    left.dfs === right.dfs &&
+    left.highSeverityIssues === right.highSeverityIssues &&
+    left.pass === right.pass &&
+    left.pixelDiffRatio === right.pixelDiffRatio &&
+    left.pixelDiffRatioContent === right.pixelDiffRatioContent &&
+    left.styleDiffCount === right.styleDiffCount
+  );
+}
+
+export interface EvalArtifactFile {
+  path: string;
+  sha256: string;
+}
+
+export interface EvalComparisonArtifacts {
+  diff: EvalArtifactFile;
+  implementation: EvalArtifactFile;
+  reference: EvalArtifactFile;
+}
+
+export interface EvalPerturbationArtifacts extends EvalComparisonArtifacts {
+  passed: boolean;
+}
+
+export interface EvalArtifacts {
+  final: EvalComparisonArtifacts;
+  perturbations?: Record<string, EvalPerturbationArtifacts>;
+  policy: Exclude<EvalArtifactPolicy, 'none'>;
+  turns?: Record<string, EvalComparisonArtifacts>;
+}
+
 export interface HiddenAcceptanceResult {
   accepted: boolean;
   finalComparisonPassed: boolean;
@@ -191,6 +231,7 @@ export interface EvalTurnRecord {
 export type EvalStatus = 'aborted_budget' | 'error' | 'passed' | 'protocol_error' | 'repair_failed';
 
 export interface EvalResult {
+  artifacts?: EvalArtifacts;
   authMode: EvalAuthMode;
   backend: EvalBackendId;
   backendVersion: string;

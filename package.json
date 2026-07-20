@@ -22,6 +22,8 @@
     "eval:smoke": "tsx evals/runners/run-eval.ts --self-check",
     "eval:run": "tsx evals/runners/run-eval.ts",
     "eval:report": "tsx evals/runners/report.ts",
+    "eval:artifacts": "tsx evals/runners/artifacts.ts",
+    "eval:contact-sheet": "tsx evals/runners/contact-sheet.ts",
     "test:ci": "pnpm test",
     "test:coverage": "UIMATCH_LOG_LEVEL=silent vitest run --config vitest.config.ts --coverage",
     "test:coverage:html": "UIMATCH_LOG_LEVEL=silent vitest run --config vitest.config.ts --coverage",

@@ -8,7 +8,10 @@ import {
   conditionOrderForTrial,
   evalRunIdPattern,
   expectedMetadataMatches,
+  visibleComparisonMatches,
   type ConditionId,
+  type EvalArtifactFile,
+  type EvalArtifacts,
   type EvalAuthMode,
   type EvalBackendId,
   type EvalBudget,
@@ -25,6 +28,12 @@ import {
 } from '../types.js';
 
 class ReportUsageError extends Error {}
+
+export interface StoredEvalResult {
+  path: string;
+  raw: Record<string, unknown>;
+  result: EvalResult;
+}
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -179,6 +188,105 @@ function parsePerturbationOutcome(value: unknown, label: string): HiddenPerturba
     expectedMetadata,
     id: asString(record.id, `${label}.id`),
     passed,
+  };
+}
+
+function parseArtifactFile(
+  value: unknown,
+  label: string,
+  expectedPrefix: string
+): EvalArtifactFile {
+  const record = asRecord(value, label);
+  const path = asString(record.path, `${label}.path`);
+  const sha256 = asString(record.sha256, `${label}.sha256`);
+  if (!path.startsWith(expectedPrefix) || path.includes('\\') || path.split('/').includes('..')) {
+    throw new TypeError(`${label}.path must stay inside the result artifact directory`);
+  }
+  if (!/^[a-f0-9]{64}$/.test(sha256)) {
+    throw new TypeError(`${label}.sha256 must be a lowercase SHA-256 digest`);
+  }
+  return { path, sha256 };
+}
+
+function parseComparisonArtifacts(
+  value: unknown,
+  label: string,
+  expectedPrefix: string
+): EvalArtifacts['final'] {
+  const record = asRecord(value, label);
+  return {
+    diff: parseArtifactFile(record.diff, `${label}.diff`, expectedPrefix),
+    implementation: parseArtifactFile(
+      record.implementation,
+      `${label}.implementation`,
+      expectedPrefix
+    ),
+    reference: parseArtifactFile(record.reference, `${label}.reference`, expectedPrefix),
+  };
+}
+
+function parseArtifacts(
+  value: unknown,
+  label: string,
+  identity: {
+    condition: ConditionId;
+    fixtureId: string;
+    mutationId: string;
+    runId: string;
+    trial: number;
+  }
+): EvalArtifacts {
+  const record = asRecord(value, label);
+  if (record.policy !== 'failures' && record.policy !== 'all') {
+    throw new TypeError(`${label}.policy must be failures or all`);
+  }
+  const expectedPrefix = `artifacts/${identity.runId}/${identity.fixtureId}/${identity.mutationId}/${identity.condition}/trial-${identity.trial}/`;
+  const perturbationRecord =
+    record.perturbations === undefined
+      ? undefined
+      : asRecord(record.perturbations, `${label}.perturbations`);
+  const perturbations = perturbationRecord
+    ? Object.fromEntries(
+        Object.entries(perturbationRecord).map(([id, entry]) => {
+          const perturbation = asRecord(entry, `${label}.perturbations.${id}`);
+          const passed = asBoolean(perturbation.passed, `${label}.perturbations.${id}.passed`);
+          if (record.policy === 'failures' && passed) {
+            throw new TypeError(`${label}.perturbations.${id} must be a failed perturbation`);
+          }
+          return [
+            id,
+            {
+              ...parseComparisonArtifacts(
+                perturbation,
+                `${label}.perturbations.${id}`,
+                expectedPrefix
+              ),
+              passed,
+            },
+          ];
+        })
+      )
+    : undefined;
+  const turnRecord =
+    record.turns === undefined ? undefined : asRecord(record.turns, `${label}.turns`);
+  if (record.policy === 'failures' && turnRecord !== undefined) {
+    throw new TypeError(`${label}.turns requires the all artifact policy`);
+  }
+  const turns = turnRecord
+    ? Object.fromEntries(
+        Object.entries(turnRecord).map(([turn, entry]) => {
+          if (!/^[1-9]\d*$/.test(turn)) {
+            throw new TypeError(`${label}.turns keys must be positive integers`);
+          }
+          return [turn, parseComparisonArtifacts(entry, `${label}.turns.${turn}`, expectedPrefix)];
+        })
+      )
+    : undefined;
+  return {
+    final: parseComparisonArtifacts(record.final, `${label}.final`, expectedPrefix),
+    ...(perturbations === undefined ? {} : { perturbations }),
+    policy: record.policy,
+    ...(turns === undefined ? {} : { turns }),
   };
 }
 
@@ -385,21 +493,6 @@ function parseAcceptance(
   };
 }
 
-function sameVisibleComparison(
-  left: VisibleComparisonMetrics | undefined,
-  right: VisibleComparisonMetrics | undefined
-): boolean {
-  if (left === undefined || right === undefined) return left === right;
-  return (
-    left.dfs === right.dfs &&
-    left.highSeverityIssues === right.highSeverityIssues &&
-    left.pass === right.pass &&
-    left.pixelDiffRatio === right.pixelDiffRatio &&
-    left.pixelDiffRatioContent === right.pixelDiffRatioContent &&
-    left.styleDiffCount === right.styleDiffCount
-  );
-}
-
 function sameBilling(left: ModelBilling, right: ModelBilling): boolean {
   if (left.mode !== right.mode) return false;
   if (left.mode === 'subscription' || right.mode === 'subscription') return true;
@@ -435,7 +528,7 @@ function aggregateTurnBilling(
   };
 }
 
-function parseResult(value: unknown, file: string): EvalResult {
+export function parseEvalResult(value: unknown, file: string): EvalResult {
   const record = asRecord(value, file);
   if (record.schemaVersion !== 3 && record.schemaVersion !== 4) {
     throw new TypeError(`${file}.schemaVersion must be 3 or 4`);
@@ -504,7 +597,7 @@ function parseResult(value: unknown, file: string): EvalResult {
   const derivedFinalComparison = [...turnRecords]
     .reverse()
     .find((turnRecord) => turnRecord.visibleComparison !== undefined)?.visibleComparison;
-  if (!sameVisibleComparison(finalComparison, derivedFinalComparison)) {
+  if (!visibleComparisonMatches(finalComparison, derivedFinalComparison)) {
     throw new TypeError(`${file}.finalComparison does not match turnRecords`);
   }
   const initialComparison = parseVisibleComparison(
@@ -554,25 +647,73 @@ function parseResult(value: unknown, file: string): EvalResult {
   if (backend !== 'codex-exec' && turnTimeoutMs !== undefined) {
     throw new TypeError(`${file}.turnTimeoutMs is only valid for Codex results`);
   }
+  const condition = asCondition(record.condition, `${file}.condition`);
+  const fixtureId = asString(record.fixtureId, `${file}.fixtureId`);
+  const mutationId = asString(record.mutationId, `${file}.mutationId`);
+  const runId = asString(record.runId, `${file}.runId`);
+  const artifacts =
+    record.artifacts === undefined
+      ? undefined
+      : parseArtifacts(record.artifacts, `${file}.artifacts`, {
+          condition,
+          fixtureId,
+          mutationId,
+          runId,
+          trial,
+        });
+  if (artifacts) {
+    if (!finalComparison || !acceptance?.perturbationOutcomes) {
+      throw new TypeError(`${file}.artifacts requires a final evaluated proposal`);
+    }
+    const expectedPerturbationIds = acceptance.perturbationOutcomes
+      .filter((outcome) => artifacts.policy === 'all' || !outcome.passed)
+      .map((outcome) => outcome.id)
+      .sort();
+    const artifactPerturbationIds = Object.keys(artifacts.perturbations ?? {}).sort();
+    if (expectedPerturbationIds.join('\0') !== artifactPerturbationIds.join('\0')) {
+      throw new TypeError(`${file}.artifacts.perturbations does not match its policy`);
+    }
+    for (const [id, artifact] of Object.entries(artifacts.perturbations ?? {})) {
+      if (
+        acceptance.perturbationOutcomes.find((outcome) => outcome.id === id)?.passed !==
+        artifact.passed
+      ) {
+        throw new TypeError(`${file}.artifacts.perturbations.${id}.passed is inconsistent`);
+      }
+    }
+    const expectedTurns =
+      artifacts.policy === 'all'
+        ? turnRecords
+            .filter(
+              (turnRecord) =>
+                turnRecord.proposal !== undefined && turnRecord.visibleComparison !== undefined
+            )
+            .map((turnRecord) => String(turnRecord.turn))
+        : [];
+    if (expectedTurns.join('\0') !== Object.keys(artifacts.turns ?? {}).join('\0')) {
+      throw new TypeError(`${file}.artifacts.turns does not match its policy`);
+    }
+  }
   return {
     ...(acceptance ? { acceptance } : {}),
+    ...(artifacts ? { artifacts } : {}),
     authMode,
     backend,
     backendVersion,
     billing,
     budget,
-    condition: asCondition(record.condition, `${file}.condition`),
+    condition,
     conditionOrder,
     ...(error ? { error } : {}),
     ...(finalComparison ? { finalComparison } : {}),
-    fixtureId: asString(record.fixtureId, `${file}.fixtureId`),
+    fixtureId,
     initialComparison,
     maxTurns: asPositiveInteger(record.maxTurns, `${file}.maxTurns`),
     model,
-    mutationId: asString(record.mutationId, `${file}.mutationId`),
+    mutationId,
     promptHash: asString(record.promptHash, `${file}.promptHash`),
     protocolErrors,
-    runId: asString(record.runId, `${file}.runId`),
+    runId,
     schemaVersion,
     status,
     tokensUsed,
@@ -609,7 +750,7 @@ export function runReportContractSelfCheck(): void {
     turns: 1,
     uimatchCommit: 'self-check-commit',
   };
-  const subscription = parseResult(
+  const subscription = parseEvalResult(
     {
       ...common,
       authMode: 'subscription',
@@ -652,7 +793,11 @@ export function runReportContractSelfCheck(): void {
     scrollWidth: 96,
     width: 96,
   };
-  const passed = parseResult(
+  const artifactFile = (name: string) => ({
+    path: `artifacts/${common.runId}/${common.fixtureId}/${common.mutationId}/${common.condition}/trial-${common.trial}/${name}.png`,
+    sha256: 'a'.repeat(64),
+  });
+  const passed = parseEvalResult(
     {
       ...common,
       acceptance: {
@@ -672,6 +817,29 @@ export function runReportContractSelfCheck(): void {
         perturbationsSurvived: ['self-check-perturbation'],
         rootCauseRepaired: true,
         unmatchedChangeCount: 0,
+      },
+      artifacts: {
+        final: {
+          diff: artifactFile('final-diff'),
+          implementation: artifactFile('final'),
+          reference: artifactFile('reference'),
+        },
+        perturbations: {
+          'self-check-perturbation': {
+            diff: artifactFile('self-check-perturbation-diff'),
+            implementation: artifactFile('self-check-perturbation'),
+            passed: true,
+            reference: artifactFile('self-check-perturbation-reference'),
+          },
+        },
+        policy: 'all',
+        turns: {
+          '1': {
+            diff: artifactFile('turn-1-diff'),
+            implementation: artifactFile('turn-1'),
+            reference: artifactFile('reference'),
+          },
+        },
       },
       authMode: 'subscription',
       backend: 'codex-exec',
@@ -708,11 +876,14 @@ export function runReportContractSelfCheck(): void {
     },
     'passed self-check'
   );
-  if (passed.acceptance?.perturbationOutcomes?.[0]?.passed !== true) {
+  if (
+    passed.acceptance?.perturbationOutcomes?.[0]?.passed !== true ||
+    passed.artifacts?.perturbations?.['self-check-perturbation']?.passed !== true
+  ) {
     throw new Error('Perturbation outcome result contract self-check failed');
   }
 
-  const metered = parseResult(
+  const metered = parseEvalResult(
     {
       ...common,
       authMode: 'api',
@@ -914,6 +1085,23 @@ function assertResultPath(result: EvalResult, file: string): void {
   }
 }
 
+export async function loadEvalRunResults(runId: string): Promise<StoredEvalResult[]> {
+  const runDirectory = resolve(evalRoot, 'results', runId);
+  const files = (await readdir(runDirectory, { recursive: true }))
+    .filter((file) => file.endsWith('.json'))
+    .sort();
+  return await Promise.all(
+    files.map(async (file) => {
+      const path = resolve(runDirectory, file);
+      const parsed: unknown = JSON.parse(await readFile(path, 'utf8')) as unknown;
+      const raw = asRecord(parsed, `${runId}/${file}`);
+      const result = parseEvalResult(raw, `${runId}/${file}`);
+      assertResultPath(result, `${runId}${sep}${file}`);
+      return { path, raw, result };
+    })
+  );
+}
+
 function singleton<T>(values: T[], label: string): T {
   const unique = [...new Set(values)];
   if (unique.length !== 1 || unique[0] === undefined) {
@@ -982,17 +1170,7 @@ async function main(): Promise<void> {
   if (!runId || !availableRunIds.includes(runId)) {
     throw new ReportUsageError(`No eval results found for run ${runId ?? '(unknown)'}.`);
   }
-  const selectedFiles = files.filter((file) => runDirectory(file) === runId);
-  const results = await Promise.all(
-    selectedFiles.map(async (file) => {
-      const parsed: unknown = JSON.parse(
-        await readFile(resolve(resultsDirectory, file), 'utf8')
-      ) as unknown;
-      const result = parseResult(parsed, file);
-      assertResultPath(result, file);
-      return result;
-    })
-  );
+  const results = (await loadEvalRunResults(runId)).map((stored) => stored.result);
   if (results.some((result) => result.runId !== runId)) {
     throw new TypeError(`Result contents do not match selected run directory ${runId}`);
   }

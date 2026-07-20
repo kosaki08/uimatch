@@ -63,6 +63,7 @@ packages/**/tsup.config.js
 .uimatch-out/
 *.uimatch.log
 evals/results/
+evals/artifacts/
 
 # Test artifacts (generated during test execution)
 **/fixtures/test-out/

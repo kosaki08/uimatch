@@ -8,6 +8,7 @@ import {
   type ComparisonSnapshot,
   type EvalManifest,
   type EvalMutation,
+  type EvalPerturbation,
   type ExpectedMetadata,
   type HiddenAcceptanceResult,
   type HiddenPerturbationOutcome,
@@ -34,6 +35,11 @@ interface RenderedVariant {
 export interface RenderedReference {
   metadata: ExpectedMetadata;
   pngB64: string;
+}
+
+export interface PerturbationReplay {
+  comparison: ComparisonSnapshot;
+  metadata: ExpectedMetadata;
 }
 
 type CompareVariantOptions = {
@@ -265,23 +271,19 @@ export async function evaluateFinalProposal(options: {
     if (!story || !reference) {
       throw new Error(`Perturbation evaluation inputs are incomplete for ${perturbation.id}`);
     }
-    const comparison = await compareVariant({
+    const replay = await replayPerturbation({
       manifest: options.manifest,
-      purpose: 'hidden',
-      referencePngB64: reference.pngB64,
+      perturbation,
+      reference,
       server: options.server,
       story,
     });
-    const rendered = await renderVariant(options.manifest, story, true);
-    if (!rendered.metadata) {
-      throw new Error(`Perturbation ${perturbation.id} metadata was not captured after repair`);
-    }
     const passed =
-      comparison.visible.pass &&
-      expectedMetadataMatches(rendered.metadata, perturbation.expectedMetadata);
+      replay.comparison.visible.pass &&
+      expectedMetadataMatches(replay.metadata, perturbation.expectedMetadata);
     perturbationOutcomes.push({
-      actualMetadata: rendered.metadata,
-      comparison: comparison.visible,
+      actualMetadata: replay.metadata,
+      comparison: replay.comparison.visible,
       expectedMetadata: perturbation.expectedMetadata,
       id: perturbation.id,
       passed,
@@ -291,6 +293,29 @@ export async function evaluateFinalProposal(options: {
     finalComparisonPassed: options.finalComparison.visible.pass,
     perturbationOutcomes,
   });
+}
+
+export async function replayPerturbation(options: {
+  manifest: EvalManifest;
+  perturbation: EvalPerturbation;
+  reference: RenderedReference;
+  server: EvalFixtureServer;
+  story: string;
+}): Promise<PerturbationReplay> {
+  const comparison = await compareVariant({
+    manifest: options.manifest,
+    purpose: 'hidden',
+    referencePngB64: options.reference.pngB64,
+    server: options.server,
+    story: options.story,
+  });
+  const rendered = await renderVariant(options.manifest, options.story, true);
+  if (!rendered.metadata) {
+    throw new Error(
+      `Perturbation ${options.perturbation.id} metadata was not captured after repair`
+    );
+  }
+  return { comparison, metadata: rendered.metadata };
 }
 
 export async function createFixtureContext(

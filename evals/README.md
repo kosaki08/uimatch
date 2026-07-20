@@ -10,6 +10,8 @@ integration, Playwright, and live Figma smoke suites.
 pnpm eval:smoke
 pnpm eval:run
 pnpm eval:report -- --run <run-id>
+pnpm eval:artifacts -- --run <run-id>
+pnpm eval:contact-sheet -- --run <run-id>
 ```
 
 `eval:smoke` does not call an LLM. It builds the public CLI package and verifies
@@ -197,8 +199,46 @@ screenshots, source file keys, node IDs, URLs, timestamps, or base64 artifacts i
 Git.
 
 Reference and current HTML/CSS plus manifests are committed. Raw results are
-written to ignored `evals/results/`; only reviewed aggregates may be promoted to
-`evals/summaries/`.
+written to ignored `evals/results/`. Audit screenshots and contact sheets are
+written to ignored `evals/artifacts/`; only reviewed aggregates may be promoted
+to `evals/summaries/`.
+
+## Audit artifacts
+
+Artifact generation is a post-processing step and never calls a model. It
+reapplies recorded proposals to fresh fixture copies, reruns uiMatch, and
+refuses to write images if the visible metrics or hidden metadata no longer
+match the recorded result. This keeps model input and acceptance behavior
+unchanged while making visible/hidden divergence reviewable.
+
+Choose the saved evidence with `EVAL_ARTIFACT_POLICY`:
+
+```text
+none      generate nothing
+failures  save the final visible comparison and failed hidden perturbations
+all       additionally save every applied turn and all hidden perturbations
+```
+
+The default is `failures`. Each saved image is referenced from the result JSON
+by a repository-relative path and SHA-256 digest; PNG bytes and base64 data are
+never embedded in JSON. Existing files are reused only when their bytes match,
+so a rerun cannot silently replace audit evidence. An existing `all` record is
+never downgraded by a later `failures` run.
+
+For the initial atomic audit, regenerate all evidence and create the focused
+reference/pixel-diff/flat-diff sheet with:
+
+```bash
+EVAL_ARTIFACT_POLICY=all pnpm eval:artifacts -- --run 20260720_codex-mini-atomic-pilot2
+pnpm eval:contact-sheet -- \
+  --run 20260720_codex-mini-atomic-pilot2 \
+  --conditions pixel-diff,flat-diff \
+  --perturbations long-label
+```
+
+Without `--perturbations`, contact sheets include perturbations that failed in
+at least one selected condition. The default condition columns are
+`pixel-diff,flat-diff`; missing images are reported instead of silently omitted.
 
 `eval:report` refuses to mix multiple run IDs. `--run` may be omitted only when
 the results directory contains exactly one run, and a selected run must contain
@@ -231,6 +271,7 @@ Every raw result includes:
 - `status` and `protocolErrors`
 - initial/final visible metrics and per-turn DFS, pixel ratios, quality-gate
   result, high-severity count, and StyleDiff count
+- optional audit artifact paths and SHA-256 digests added by `eval:artifacts`
 - per-turn proposal, response finish reason, request attempts, retry delays,
   usage, and protocol or execution error
 

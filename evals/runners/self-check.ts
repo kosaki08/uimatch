@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, sep } from 'node:path';
+import { parseArtifactPolicy } from '../artifacts.js';
 import { runCodexExecSelfCheck } from '../backends/codex-exec-self-check.js';
 import { runOpenRouterRetrySelfCheck } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
@@ -19,6 +20,19 @@ function pathIsWithin(root: string, target: string): boolean {
 }
 
 export async function runSelfCheck(): Promise<void> {
+  if (
+    parseArtifactPolicy(undefined) !== 'failures' ||
+    parseArtifactPolicy('none') !== 'none' ||
+    parseArtifactPolicy('all') !== 'all'
+  ) {
+    throw new Error('Eval artifact policy self-check failed');
+  }
+  try {
+    parseArtifactPolicy('invalid');
+    throw new Error('Eval artifact policy accepted an invalid value');
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+  }
   if (!evalRunIdPattern.test('20260720_self-check') || evalRunIdPattern.test('self-check')) {
     throw new Error('Eval run ID format self-check failed');
   }
