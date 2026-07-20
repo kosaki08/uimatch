@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "fixtureId": "atomic-button",
   "selector": "#atomic",
+  "editableSelectors": ["#atomic", "#atomic span", "#fixture"],
   "viewport": { "width": 320, "height": 160 },
   "reference": {
     "html": "fixtures/atomic-button/reference/index.html",

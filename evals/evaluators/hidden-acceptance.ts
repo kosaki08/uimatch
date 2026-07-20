@@ -17,7 +17,11 @@ function changesMatch(left: RepairChange, right: RepairChange): boolean {
 export function evaluateHiddenAcceptance(
   manifest: EvalManifest,
   mutation: EvalMutation,
-  proposal: RepairProposal
+  proposal: RepairProposal,
+  evidence: {
+    finalComparisonPassed: boolean;
+    perturbationPasses: ReadonlyMap<string, boolean>;
+  }
 ): HiddenAcceptanceResult {
   const matchedRepairIndex = mutation.rootCause.acceptedRepairs.findIndex((repair) =>
     repair.every((expected) => proposal.changes.some((change) => changesMatch(change, expected)))
@@ -27,14 +31,19 @@ export function evaluateHiddenAcceptance(
     (change) => !matchedRepair?.some((expected) => changesMatch(change, expected))
   ).length;
   const rootCauseRepaired = matchedRepairIndex >= 0;
-  const accepted = rootCauseRepaired && symptomPatchCount === 0;
+  const perturbationsSurvived = manifest.perturbations
+    .filter((perturbation) => evidence.perturbationPasses.get(perturbation.id) === true)
+    .map((perturbation) => perturbation.id);
+  const accepted =
+    evidence.finalComparisonPassed &&
+    perturbationsSurvived.length === manifest.perturbations.length;
 
   return {
     accepted,
+    finalComparisonPassed: evidence.finalComparisonPassed,
     ...(rootCauseRepaired ? { matchedRepairIndex } : {}),
-    perturbationsSurvived: accepted
-      ? manifest.perturbations.map((perturbation) => perturbation.id)
-      : [],
+    perturbationsEvaluated: manifest.perturbations.length,
+    perturbationsSurvived,
     rootCauseRepaired,
     symptomPatchCount,
   };

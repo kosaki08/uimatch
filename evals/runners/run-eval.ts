@@ -1,59 +1,59 @@
 import 'dotenv/config';
 
-import { chromium } from '@playwright/test';
-import type { CompareResult } from '@uimatch/cli';
-import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
+import { access, link, mkdir, unlink, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { buildRenderOnlyFeedback } from '../conditions/render-only.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
-import { evaluateHiddenAcceptance } from '../evaluators/hidden-acceptance.js';
-import { evalRoot, loadManifest, resolveEvalPath } from '../manifest.js';
+import { compareVariant, createFixtureContext, evaluateFinalProposal } from '../harness.js';
+import { evalRoot, loadManifest } from '../manifest.js';
+import type { RepairWorkspace } from '../repair-workspace.js';
 import {
   conditionIds,
+  evalIdentifierPattern,
   type ComparisonSnapshot,
   type ConditionFeedback,
   type ConditionId,
   type EvalManifest,
   type EvalMutation,
   type EvalResult,
-  type ExpectedMetadata,
+  type EvalStatus,
+  type HiddenAcceptanceResult,
+  type ModelTurnUsage,
   type RepairChange,
   type RepairProposal,
 } from '../types.js';
-import { startEvalFixtureServer, type EvalFixtureServer } from './fixture-server.js';
-
-const openRouterEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
-const modelRequestTimeoutMs = 120_000;
-
-class EvalUsageError extends Error {}
+import { buildCli, EvalUsageError } from './build-cli.js';
+import type { EvalFixtureServer } from './fixture-server.js';
+import { requestOpenRouterTurn, type ModelMessage, type ModelTurn } from './openrouter.js';
+import { runSelfCheck } from './self-check.js';
 
 interface EvalConfig {
   apiKey: string;
   budgetUsd: number;
   maxTurns: number;
   model: string;
+  runId: string;
+  trial: number;
   uimatchCommit: string;
 }
 
-interface ModelMessage {
-  content:
-    | string
-    | Array<{ text: string; type: 'text' } | { image_url: { url: string }; type: 'image_url' }>;
-  role: 'assistant' | 'system' | 'user';
+interface JobContext {
+  condition: ConditionId;
+  config: EvalConfig;
+  manifest: EvalManifest;
+  mutation: EvalMutation;
 }
 
-interface ModelTurn {
-  content: string;
+interface JobState {
   costUsd: number;
+  promptHash: string;
+  proposals: RepairProposal[];
+  protocolErrors: number;
   tokensUsed: number;
-}
-
-interface RenderedReference {
-  metadata: ExpectedMetadata;
-  pngB64: string;
+  turns: number;
+  turnUsage: ModelTurnUsage[];
 }
 
 function requireEnvironment(name: string): string {
@@ -62,8 +62,7 @@ function requireEnvironment(name: string): string {
   return value;
 }
 
-function parsePositiveInteger(name: string): number {
-  const raw = requireEnvironment(name);
+function parsePositiveIntegerValue(name: string, raw: string): number {
   if (!/^[1-9]\d*$/.test(raw)) {
     throw new EvalUsageError(`${name} must be a positive safe integer.`);
   }
@@ -83,29 +82,27 @@ function parsePositiveNumber(name: string): number {
   return value;
 }
 
+function parseRunId(): string {
+  const value = process.env.EVAL_RUN_ID?.trim() || randomUUID();
+  if (!evalIdentifierPattern.test(value)) {
+    throw new EvalUsageError(
+      'EVAL_RUN_ID must contain only letters, numbers, dots, underscores, and hyphens.'
+    );
+  }
+  return value;
+}
+
 function loadEvalConfig(): EvalConfig {
+  const trialValue = process.env.EVAL_TRIAL?.trim();
   return {
     apiKey: requireEnvironment('OPENROUTER_API_KEY'),
     budgetUsd: parsePositiveNumber('EVAL_BUDGET_USD'),
-    maxTurns: parsePositiveInteger('EVAL_MAX_TURNS'),
+    maxTurns: parsePositiveIntegerValue('EVAL_MAX_TURNS', requireEnvironment('EVAL_MAX_TURNS')),
     model: requireEnvironment('EVAL_MODEL'),
+    runId: parseRunId(),
+    trial: trialValue ? parsePositiveIntegerValue('EVAL_TRIAL', trialValue) : 1,
     uimatchCommit: requireEnvironment('UIMATCH_EVAL_COMMIT'),
   };
-}
-
-function buildCli(): void {
-  const pnpmEntrypoint = process.env.npm_execpath;
-  if (!pnpmEntrypoint) {
-    throw new EvalUsageError('Run eval commands through pnpm.');
-  }
-  const result = spawnSync(process.execPath, [pnpmEntrypoint, 'run', 'build'], {
-    env: process.env,
-    stdio: 'inherit',
-  });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(`pnpm run build failed with exit code ${result.status ?? 1}`);
-  }
 }
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {
@@ -115,203 +112,11 @@ function asRecord(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function asNonNegativeNumber(value: unknown, label: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    throw new TypeError(`${label} must be a non-negative finite number`);
-  }
-  return value;
-}
-
-function asNonNegativeInteger(value: unknown, label: string): number {
-  if (!Number.isSafeInteger(value) || (value as number) < 0) {
-    throw new TypeError(`${label} must be a non-negative safe integer`);
-  }
-  return value as number;
-}
-
-function asExpectedMetadata(value: unknown): ExpectedMetadata {
-  const record = asRecord(value, 'rendered reference metadata');
-  if (!Array.isArray(record.padding) || record.padding.length !== 4) {
-    throw new TypeError('rendered reference metadata.padding must contain four values');
-  }
-  return {
-    childCount: asNonNegativeInteger(record.childCount, 'rendered reference metadata.childCount'),
-    height: asNonNegativeNumber(record.height, 'rendered reference metadata.height'),
-    padding: [
-      asNonNegativeNumber(record.padding[0], 'rendered reference metadata.padding[0]'),
-      asNonNegativeNumber(record.padding[1], 'rendered reference metadata.padding[1]'),
-      asNonNegativeNumber(record.padding[2], 'rendered reference metadata.padding[2]'),
-      asNonNegativeNumber(record.padding[3], 'rendered reference metadata.padding[3]'),
-    ],
-    width: asNonNegativeNumber(record.width, 'rendered reference metadata.width'),
-  };
-}
-
 function asString(value: unknown, label: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
-}
-
-async function renderReference(
-  manifest: EvalManifest,
-  server: EvalFixtureServer
-): Promise<RenderedReference> {
-  const channel = process.env.UIMATCH_CHROME_CHANNEL?.trim() || undefined;
-  const browser = await chromium.launch({
-    ...(channel ? { channel } : {}),
-    chromiumSandbox: process.env.UIMATCH_CHROMIUM_SANDBOX !== 'false',
-    headless: true,
-  });
-  try {
-    const page = await browser.newPage({ viewport: manifest.viewport });
-    await page.goto(server.referenceUrl, { waitUntil: 'networkidle', timeout: 30_000 });
-    await page.evaluate('document.fonts.ready');
-    await page.addStyleTag({
-      content:
-        '*{animation:none!important;transition:none!important}body{background:#fff!important}',
-    });
-    const locator = page.locator(manifest.selector);
-    await locator.waitFor({ state: 'visible', timeout: 10_000 });
-    const selector = JSON.stringify(manifest.selector);
-    const metadataValue: unknown = await page.evaluate(`(() => {
-      const element = document.querySelector(${selector});
-      if (!element) throw new Error('Reference selector was not found');
-      const style = getComputedStyle(element);
-      const bounds = element.getBoundingClientRect();
-      return {
-        childCount: element.children.length,
-        height: bounds.height,
-        padding: [
-          Number.parseFloat(style.paddingTop),
-          Number.parseFloat(style.paddingRight),
-          Number.parseFloat(style.paddingBottom),
-          Number.parseFloat(style.paddingLeft)
-        ],
-        width: bounds.width
-      };
-    })()`);
-    const metadata = asExpectedMetadata(metadataValue);
-    const png = await locator.screenshot({ animations: 'disabled', type: 'png' });
-    return { metadata, pngB64: png.toString('base64') };
-  } finally {
-    await browser.close();
-  }
-}
-
-function snapshotFromResult(result: CompareResult): ComparisonSnapshot {
-  const artifacts = result.report.artifacts;
-  if (!artifacts) throw new Error('uiMatch comparison did not return requested image artifacts');
-  return {
-    artifacts,
-    metrics: { dfs: result.report.metrics.dfs },
-    styleDiffs: result.report.styleDiffs,
-  };
-}
-
-async function compareVariant(
-  manifest: EvalManifest,
-  server: EvalFixtureServer,
-  story: string,
-  referencePngB64: string
-): Promise<CompareResult> {
-  const previousBypass = process.env.UIMATCH_FIGMA_PNG_B64;
-  process.env.UIMATCH_FIGMA_PNG_B64 = referencePngB64;
-  try {
-    const { uiMatchCompare } = await import('@uimatch/cli');
-    return await uiMatchCompare({
-      contentBasis: 'intersection',
-      dpr: 1,
-      emitArtifacts: true,
-      figma: 'eval:1-1',
-      figmaScale: 1,
-      fontPreload: [server.fontUrl],
-      expectedSpec: manifest.reference.expectedSpec,
-      reuseBrowser: false,
-      selector: manifest.selector,
-      sizeMode: 'pad',
-      story,
-      thresholds: { maxHighSeverityIssues: 0, pixelDiffRatio: 0.001 },
-      viewport: manifest.viewport,
-    });
-  } finally {
-    if (previousBypass === undefined) delete process.env.UIMATCH_FIGMA_PNG_B64;
-    else process.env.UIMATCH_FIGMA_PNG_B64 = previousBypass;
-  }
-}
-
-function metadataMatches(actual: ExpectedMetadata, expected: ExpectedMetadata): boolean {
-  return (
-    actual.childCount === expected.childCount &&
-    actual.height === expected.height &&
-    actual.width === expected.width &&
-    actual.padding.every((value, index) => value === expected.padding[index])
-  );
-}
-
-async function runSelfCheck(): Promise<void> {
-  buildCli();
-  const manifest = await loadManifest();
-  const server = await startEvalFixtureServer(manifest);
-  try {
-    const reference = await renderReference(manifest, server);
-    if (!metadataMatches(reference.metadata, manifest.reference.expectedMetadata)) {
-      throw new Error(
-        `Reference metadata does not match manifest: ${JSON.stringify(reference.metadata)}`
-      );
-    }
-    const result = await compareVariant(manifest, server, server.referenceUrl, reference.pngB64);
-    if (!result.report.qualityGate?.pass) {
-      throw new Error(`Reference self-comparison failed: ${result.summary}`);
-    }
-    if (result.report.styleDiffs.length !== 0) {
-      throw new Error(
-        `Reference self-comparison unexpectedly returned style differences: ${JSON.stringify(result.report.styleDiffs)}`
-      );
-    }
-    if (!Number.isFinite(result.report.metrics.dfs)) {
-      throw new Error('Reference self-comparison returned a non-finite DFS score');
-    }
-    const mutation = manifest.mutations[0];
-    const acceptedRepair = mutation?.rootCause.acceptedRepairs[0];
-    if (!mutation || !acceptedRepair) {
-      throw new Error('Eval self-check requires one mutation with an accepted repair');
-    }
-    const accepted = evaluateHiddenAcceptance(manifest, mutation, {
-      changes: acceptedRepair,
-      diagnosis: 'self-check',
-    });
-    if (
-      !accepted.accepted ||
-      accepted.perturbationsSurvived.length !== manifest.perturbations.length
-    ) {
-      throw new Error('Hidden acceptance rejected the manifest ground truth');
-    }
-    const repairWithSymptomPatch = evaluateHiddenAcceptance(manifest, mutation, {
-      changes: [
-        ...acceptedRepair,
-        { property: 'width', selector: manifest.selector, value: '96px' },
-      ],
-      diagnosis: 'self-check repair with symptom patch',
-    });
-    if (
-      repairWithSymptomPatch.accepted ||
-      !repairWithSymptomPatch.rootCauseRepaired ||
-      repairWithSymptomPatch.symptomPatchCount !== 1
-    ) {
-      throw new Error('Hidden acceptance did not reject a repair with an extra symptom patch');
-    }
-    for (const [perturbationId, url] of server.perturbationUrls) {
-      const response = await fetch(url, { signal: AbortSignal.timeout(5_000) });
-      if (!response.ok) {
-        throw new Error(`Perturbation ${perturbationId} was not served: HTTP ${response.status}`);
-      }
-    }
-    console.log(`Eval self-check passed: ${manifest.fixtureId}, DFS ${result.report.metrics.dfs}`);
-  } finally {
-    await server.close();
-  }
 }
 
 function buildConditionFeedback(
@@ -351,264 +156,326 @@ function parseRepairProposal(content: string): RepairProposal {
   };
 }
 
-async function requestModelTurn(config: EvalConfig, messages: ModelMessage[]): Promise<ModelTurn> {
-  const response = await fetch(openRouterEndpoint, {
-    body: JSON.stringify({
-      max_tokens: 800,
-      messages,
-      model: config.model,
-      stream: false,
-      temperature: 0,
-    }),
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
-    signal: AbortSignal.timeout(modelRequestTimeoutMs),
-  });
-  if (!response.ok) {
-    throw new Error(`OpenRouter request failed with HTTP ${response.status}`);
+function feedbackContent(prefix: string, feedback: ConditionFeedback): ModelMessage['content'] {
+  const content: Extract<ModelMessage['content'], unknown[]> = [
+    { text: `${prefix}\n\n${feedback.text}`, type: 'text' },
+  ];
+  for (const image of feedback.images) {
+    content.push({ text: image.label, type: 'text' });
+    content.push({ image_url: { url: image.dataUrl }, type: 'image_url' });
   }
-
-  const body: unknown = await response.json();
-  const record = asRecord(body, 'OpenRouter response');
-  const choices = record.choices;
-  if (!Array.isArray(choices) || choices.length === 0) {
-    throw new TypeError('OpenRouter response choices must be a non-empty array');
-  }
-  const choice = asRecord(choices[0], 'OpenRouter response choices[0]');
-  const finishReason = asString(
-    choice.finish_reason,
-    'OpenRouter response choices[0].finish_reason'
-  );
-  if (finishReason !== 'stop') {
-    throw new Error(`OpenRouter response ended with finish reason ${finishReason}`);
-  }
-  const message = asRecord(choice.message, 'OpenRouter response choices[0].message');
-  const usage = asRecord(record.usage, 'OpenRouter response usage');
-  return {
-    content: asString(message.content, 'OpenRouter response message.content'),
-    costUsd: asNonNegativeNumber(usage.cost, 'OpenRouter response usage.cost'),
-    tokensUsed: asNonNegativeInteger(usage.total_tokens, 'OpenRouter response usage.total_tokens'),
-  };
+  return content;
 }
 
-async function buildInitialMessages(
-  manifest: EvalManifest,
-  mutation: EvalMutation,
+function buildInitialMessages(
+  workspace: RepairWorkspace,
   feedback: ConditionFeedback
-): Promise<ModelMessage[]> {
-  const [baseCss, mutationHtml, mutationCss] = await Promise.all([
-    readFile(resolve(evalRoot, 'fixtures', manifest.fixtureId, 'base.css'), 'utf8'),
-    readFile(resolveEvalPath(mutation.html), 'utf8'),
-    readFile(resolveEvalPath(mutation.css), 'utf8'),
-  ]);
+): ModelMessage[] {
   const prompt = [
-    'Repair the mutated UI at its root cause with the smallest CSS change.',
-    'Do not patch symptoms such as width, margin, position, or transforms.',
-    feedback.text,
+    'Repair the current UI so that it matches the reference rendering.',
+    'Return a complete CSS change proposal against the original current styles.css. Each later proposal replaces the previous proposal.',
     'Return JSON only with this shape:',
     '{"diagnosis":"...","changes":[{"selector":"...","property":"...","value":"..."}]}',
-    'base.css:',
-    baseCss,
-    'mutation index.html:',
-    mutationHtml,
-    'mutation styles.css:',
-    mutationCss,
+    'current index.html:',
+    workspace.implementationSource.html,
+    'current styles.css:',
+    workspace.implementationSource.css,
   ].join('\n\n');
-  const userContent: Extract<ModelMessage['content'], unknown[]> = [{ text: prompt, type: 'text' }];
-  for (const image of feedback.images) {
-    userContent.push({ text: image.label, type: 'text' });
-    userContent.push({ image_url: { url: image.dataUrl }, type: 'image_url' });
-  }
   return [
     {
       content:
         'You repair HTML and CSS from visual comparison feedback. Return the requested JSON and no Markdown.',
       role: 'system',
     },
-    { content: userContent, role: 'user' },
+    { content: feedbackContent(prompt, feedback), role: 'user' },
   ];
 }
 
+function hashMessages(messages: ModelMessage[]): string {
+  return createHash('sha256').update(JSON.stringify(messages)).digest('hex');
+}
+
+function createJobState(promptHash: string): JobState {
+  return {
+    costUsd: 0,
+    promptHash,
+    proposals: [],
+    protocolErrors: 0,
+    tokensUsed: 0,
+    turns: 0,
+    turnUsage: [],
+  };
+}
+
+function buildResult(
+  context: JobContext,
+  state: JobState,
+  status: EvalStatus,
+  extras: { acceptance?: HiddenAcceptanceResult; error?: string } = {}
+): EvalResult {
+  return {
+    ...(extras.acceptance ? { acceptance: extras.acceptance } : {}),
+    condition: context.condition,
+    costUsd: state.costUsd,
+    ...(extras.error ? { error: extras.error } : {}),
+    fixtureId: context.manifest.fixtureId,
+    model: context.config.model,
+    mutationId: context.mutation.id,
+    promptHash: state.promptHash,
+    proposals: state.proposals,
+    protocolErrors: state.protocolErrors,
+    runId: context.config.runId,
+    status,
+    tokensUsed: state.tokensUsed,
+    trial: context.config.trial,
+    turns: state.turns,
+    turnUsage: state.turnUsage,
+    uimatchCommit: context.config.uimatchCommit,
+  };
+}
+
+function recordModelTurn(state: JobState, turn: number, modelTurn: ModelTurn): void {
+  state.costUsd += modelTurn.usage.costUsd;
+  state.tokensUsed += modelTurn.usage.totalTokens;
+  state.turns = turn;
+  state.turnUsage.push(modelTurn.usage);
+}
+
+function isProposalError(error: unknown): error is SyntaxError | TypeError | RangeError {
+  return error instanceof SyntaxError || error instanceof TypeError || error instanceof RangeError;
+}
+
 async function writeResult(result: EvalResult): Promise<void> {
-  const resultsDirectory = resolve(evalRoot, 'results');
-  await mkdir(resultsDirectory, { recursive: true });
-  const name = `${result.fixtureId}--${result.mutationId}--${result.condition}.json`;
-  const destination = resolve(resultsDirectory, name);
-  const temporary = `${destination}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
-  await rename(temporary, destination);
+  const destination = resultDestination(result);
+  await mkdir(dirname(destination), { recursive: true });
+  const temporary = `${destination}.${randomUUID()}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(result, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  });
+  try {
+    await link(temporary, destination);
+  } finally {
+    await unlink(temporary);
+  }
+}
+
+function resultDestination(identity: {
+  condition: ConditionId;
+  fixtureId: string;
+  mutationId: string;
+  runId: string;
+  trial: number;
+}): string {
+  const segments = [
+    identity.runId,
+    identity.fixtureId,
+    identity.mutationId,
+    identity.condition,
+    String(identity.trial),
+  ];
+  if (!segments.every((segment) => evalIdentifierPattern.test(segment))) {
+    throw new RangeError('Eval result identifiers must be safe path segments');
+  }
+  return resolve(
+    evalRoot,
+    'results',
+    identity.runId,
+    identity.fixtureId,
+    identity.mutationId,
+    identity.condition,
+    `${identity.trial}.json`
+  );
+}
+
+async function assertResultDestinationsAvailable(
+  config: EvalConfig,
+  manifest: EvalManifest
+): Promise<void> {
+  for (const mutation of manifest.mutations) {
+    for (const condition of conditionIds) {
+      const destination = resultDestination({
+        condition,
+        fixtureId: manifest.fixtureId,
+        mutationId: mutation.id,
+        runId: config.runId,
+        trial: config.trial,
+      });
+      try {
+        await access(destination);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+        throw error;
+      }
+      throw new EvalUsageError(
+        `Results already exist for run ${config.runId}, mutation ${mutation.id}, condition ${condition}, trial ${config.trial}. Choose a new EVAL_RUN_ID or EVAL_TRIAL.`
+      );
+    }
+  }
 }
 
 async function runJob(options: {
   budgetRemaining: number;
-  comparison: ComparisonSnapshot;
-  condition: ConditionId;
-  config: EvalConfig;
-  manifest: EvalManifest;
-  mutation: EvalMutation;
+  initialComparison: ComparisonSnapshot;
+  context: JobContext;
+  perturbationReferences: ReadonlyMap<string, string>;
+  referencePngB64: string;
+  server: EvalFixtureServer;
+  workspace: RepairWorkspace;
 }): Promise<EvalResult> {
-  const feedback = buildConditionFeedback(options.condition, options.comparison);
-  const messages = await buildInitialMessages(options.manifest, options.mutation, feedback);
-  const promptHash = createHash('sha256').update(JSON.stringify(messages)).digest('hex');
-  const proposals: RepairProposal[] = [];
-  let costUsd = 0;
-  let tokensUsed = 0;
-  let lastAcceptance: EvalResult['acceptance'];
+  const initialFeedback = buildConditionFeedback(
+    options.context.condition,
+    options.initialComparison
+  );
+  const messages = buildInitialMessages(options.workspace, initialFeedback);
+  const state = createJobState(hashMessages(messages));
 
-  for (let turn = 1; turn <= options.config.maxTurns; turn += 1) {
+  for (let turn = 1; turn <= options.context.config.maxTurns; turn += 1) {
     let modelTurn: ModelTurn;
     try {
-      modelTurn = await requestModelTurn(options.config, messages);
+      modelTurn = await requestOpenRouterTurn({
+        apiKey: options.context.config.apiKey,
+        messages,
+        model: options.context.config.model,
+      });
     } catch (error) {
-      return {
-        condition: options.condition,
-        costUsd,
+      state.turns = turn;
+      return buildResult(options.context, state, 'error', {
         error: error instanceof Error ? error.message : String(error),
-        fixtureId: options.manifest.fixtureId,
-        model: options.config.model,
-        mutationId: options.mutation.id,
-        promptHash,
-        proposals,
-        status: 'error',
-        tokensUsed,
-        turns: turn,
-        uimatchCommit: options.config.uimatchCommit,
-      };
+      });
     }
-    costUsd += modelTurn.costUsd;
-    tokensUsed += modelTurn.tokensUsed;
-    if (costUsd > options.budgetRemaining) {
-      return {
-        condition: options.condition,
-        costUsd,
-        fixtureId: options.manifest.fixtureId,
-        model: options.config.model,
-        mutationId: options.mutation.id,
-        promptHash,
-        status: 'aborted_budget',
-        tokensUsed,
-        turns: turn,
-        uimatchCommit: options.config.uimatchCommit,
-        proposals,
-      };
+    recordModelTurn(state, turn, modelTurn);
+    if (state.costUsd > options.budgetRemaining) {
+      return buildResult(options.context, state, 'aborted_budget');
     }
 
     messages.push({ content: modelTurn.content, role: 'assistant' });
-    try {
-      const proposal = parseRepairProposal(modelTurn.content);
-      proposals.push(proposal);
-      lastAcceptance = evaluateHiddenAcceptance(options.manifest, options.mutation, proposal);
-      if (lastAcceptance.accepted) {
-        return {
-          acceptance: lastAcceptance,
-          condition: options.condition,
-          costUsd,
-          fixtureId: options.manifest.fixtureId,
-          model: options.config.model,
-          mutationId: options.mutation.id,
-          promptHash,
-          proposals,
-          status: 'passed',
-          tokensUsed,
-          turns: turn,
-          uimatchCommit: options.config.uimatchCommit,
-        };
+    if (modelTurn.finishReason !== 'stop') {
+      state.protocolErrors += 1;
+      if (turn < options.context.config.maxTurns) {
+        messages.push({
+          content: `The response ended with finish reason ${modelTurn.finishReason}. Return one complete JSON proposal.`,
+          role: 'user',
+        });
+        continue;
       }
-    } catch (error) {
-      if (
-        !(error instanceof SyntaxError || error instanceof TypeError || error instanceof RangeError)
-      ) {
-        throw error;
-      }
+      return buildResult(options.context, state, 'protocol_error');
     }
+
+    let proposal: RepairProposal;
+    try {
+      proposal = parseRepairProposal(modelTurn.content);
+      await options.workspace.applyProposal(proposal);
+    } catch (error) {
+      if (!isProposalError(error)) {
+        return buildResult(options.context, state, 'error', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      state.protocolErrors += 1;
+      if (turn < options.context.config.maxTurns) {
+        messages.push({
+          content: `The proposal could not be applied: ${error.message}. Return one complete replacement proposal using the required JSON shape.`,
+          role: 'user',
+        });
+        continue;
+      }
+      return buildResult(options.context, state, 'protocol_error');
+    }
+    state.proposals.push(proposal);
+
+    let finalComparison: ComparisonSnapshot;
+    try {
+      finalComparison = await compareVariant(
+        options.context.manifest,
+        options.server,
+        options.server.workspaceImplementationUrl,
+        options.referencePngB64,
+        options.context.manifest.reference.expectedSpec
+      );
+    } catch (error) {
+      return buildResult(options.context, state, 'error', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    if (finalComparison.pass || turn === options.context.config.maxTurns) {
+      let acceptance: HiddenAcceptanceResult;
+      try {
+        acceptance = await evaluateFinalProposal({
+          finalComparison,
+          manifest: options.context.manifest,
+          mutation: options.context.mutation,
+          perturbationReferences: options.perturbationReferences,
+          proposal,
+          server: options.server,
+        });
+      } catch (error) {
+        return buildResult(options.context, state, 'error', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return buildResult(options.context, state, acceptance.accepted ? 'passed' : 'repair_failed', {
+        acceptance,
+      });
+    }
+
+    const feedback = buildConditionFeedback(options.context.condition, finalComparison);
     messages.push({
-      content:
-        'The hidden evaluator rejected that response. Return a revised repair using the same JSON shape only.',
+      content: feedbackContent(
+        'The proposal was applied to a fresh copy of the original current styles.css, but the visible comparison still differs. Return a complete replacement proposal.',
+        feedback
+      ),
       role: 'user',
     });
   }
 
-  return {
-    ...(lastAcceptance ? { acceptance: lastAcceptance } : {}),
-    condition: options.condition,
-    costUsd,
-    fixtureId: options.manifest.fixtureId,
-    model: options.config.model,
-    mutationId: options.mutation.id,
-    promptHash,
-    proposals,
-    status: 'failed',
-    tokensUsed,
-    turns: options.config.maxTurns,
-    uimatchCommit: options.config.uimatchCommit,
-  };
+  return buildResult(options.context, state, 'repair_failed');
 }
 
 async function runEvaluation(config: EvalConfig): Promise<void> {
-  buildCli();
   const manifest = await loadManifest();
-  const server = await startEvalFixtureServer(manifest);
+  await assertResultDestinationsAvailable(config, manifest);
+  buildCli();
   let totalCostUsd = 0;
-  try {
-    const reference = await renderReference(manifest, server);
-    for (const mutation of manifest.mutations) {
-      const mutationUrl = server.mutationUrls.get(mutation.id);
-      if (!mutationUrl) throw new Error(`Fixture server omitted mutation ${mutation.id}`);
-      const comparison = snapshotFromResult(
-        await compareVariant(manifest, server, mutationUrl, reference.pngB64)
+  for (const mutation of manifest.mutations) {
+    const fixture = await createFixtureContext(manifest, mutation);
+    try {
+      const initialComparison = await compareVariant(
+        manifest,
+        fixture.server,
+        fixture.server.workspaceImplementationUrl,
+        fixture.reference.pngB64,
+        manifest.reference.expectedSpec
       );
+      if (initialComparison.pass) {
+        throw new Error(`Mutation ${mutation.id} does not produce a failing comparison`);
+      }
       for (const condition of conditionIds) {
+        await fixture.workspace.reset();
+        const context: JobContext = { condition, config, manifest, mutation };
         if (totalCostUsd >= config.budgetUsd) {
-          const result: EvalResult = {
-            condition,
-            costUsd: 0,
-            fixtureId: manifest.fixtureId,
-            model: config.model,
-            mutationId: mutation.id,
-            promptHash: createHash('sha256')
-              .update(`${manifest.fixtureId}:${mutation.id}:${condition}`)
-              .digest('hex'),
-            status: 'aborted_budget',
-            tokensUsed: 0,
-            turns: 0,
-            uimatchCommit: config.uimatchCommit,
-          };
+          const messages = buildInitialMessages(
+            fixture.workspace,
+            buildConditionFeedback(condition, initialComparison)
+          );
+          const result = buildResult(
+            context,
+            createJobState(hashMessages(messages)),
+            'aborted_budget'
+          );
           await writeResult(result);
           console.error(`Eval budget exhausted before ${mutation.id}/${condition}.`);
           return;
         }
-        let result: EvalResult;
-        try {
-          result = await runJob({
-            budgetRemaining: config.budgetUsd - totalCostUsd,
-            comparison,
-            condition,
-            config,
-            manifest,
-            mutation,
-          });
-        } catch (error) {
-          result = {
-            condition,
-            costUsd: 0,
-            error: error instanceof Error ? error.message : String(error),
-            fixtureId: manifest.fixtureId,
-            model: config.model,
-            mutationId: mutation.id,
-            promptHash: createHash('sha256')
-              .update(`${manifest.fixtureId}:${mutation.id}:${condition}:error`)
-              .digest('hex'),
-            status: 'error',
-            tokensUsed: 0,
-            turns: 0,
-            uimatchCommit: config.uimatchCommit,
-          };
-          await writeResult(result);
-          throw error;
-        }
+        const result = await runJob({
+          budgetRemaining: config.budgetUsd - totalCostUsd,
+          context,
+          initialComparison,
+          perturbationReferences: fixture.perturbationReferences,
+          referencePngB64: fixture.reference.pngB64,
+          server: fixture.server,
+          workspace: fixture.workspace,
+        });
         totalCostUsd += result.costUsd;
         await writeResult(result);
         console.log(
@@ -616,9 +483,9 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
         );
         if (result.status === 'aborted_budget') return;
       }
+    } finally {
+      await fixture.close();
     }
-  } finally {
-    await server.close();
   }
 }
 

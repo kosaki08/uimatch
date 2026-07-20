@@ -9,7 +9,7 @@ export function buildRenderOnlyFeedback(comparison: ComparisonSnapshot): Conditi
       },
       {
         dataUrl: `data:image/png;base64,${comparison.artifacts.implPngB64}`,
-        label: 'Mutated implementation rendering',
+        label: 'Current implementation rendering',
       },
       {
         dataUrl: `data:image/png;base64,${comparison.artifacts.diffPngB64}`,

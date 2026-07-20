@@ -1,5 +1,43 @@
-@import url('../../base.css');
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: block;
+  font-weight: 100 900;
+  src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+}
 
 #atomic {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   padding: 8px 28px;
+  border: 0;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #ffffff;
+  font: inherit;
+}
+
+#atomic span {
+  width: 64px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: center;
+  white-space: nowrap;
 }

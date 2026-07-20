@@ -1,13 +1,14 @@
 import { access, readFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
-import type {
-  EvalManifest,
-  EvalMutation,
-  EvalPerturbation,
-  ExpectedMetadata,
-  FixtureVariant,
-  RepairChange,
-  RootCause,
+import {
+  evalIdentifierPattern,
+  type EvalManifest,
+  type EvalMutation,
+  type EvalPerturbation,
+  type ExpectedMetadata,
+  type FixtureVariant,
+  type RepairChange,
+  type RootCause,
 } from './types.js';
 
 export const evalRoot = resolve(import.meta.dirname);
@@ -33,6 +34,14 @@ function asString(value: unknown, label: string): string {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
+}
+
+function asIdentifier(value: unknown, label: string): string {
+  const parsed = asString(value, label);
+  if (!evalIdentifierPattern.test(parsed)) {
+    throw new TypeError(`${label} must be a safe eval identifier`);
+  }
+  return parsed;
 }
 
 function asNonNegativeInteger(value: unknown, label: string): number {
@@ -88,7 +97,7 @@ function parseMutation(value: unknown, index: number): EvalMutation {
   const record = asRecord(value, label);
   return {
     ...parseVariant(record, label),
-    id: asString(record.id, `${label}.id`),
+    id: asIdentifier(record.id, `${label}.id`),
     rootCause: parseRootCause(record.rootCause, `${label}.rootCause`),
   };
 }
@@ -98,7 +107,7 @@ function parsePerturbation(value: unknown, index: number): EvalPerturbation {
   const record = asRecord(value, label);
   return {
     ...parseVariant(record, label),
-    id: asString(record.id, `${label}.id`),
+    id: asIdentifier(record.id, `${label}.id`),
   };
 }
 
@@ -180,8 +189,18 @@ export async function loadManifest(
 
   const referenceRecord = asRecord(record.reference, 'manifest.reference');
   const viewportRecord = asRecord(record.viewport, 'manifest.viewport');
+  const editableSelectors = asArray(record.editableSelectors, 'manifest.editableSelectors').map(
+    (selector, index) => asString(selector, `manifest.editableSelectors[${index}]`)
+  );
+  if (
+    editableSelectors.length === 0 ||
+    new Set(editableSelectors).size !== editableSelectors.length
+  ) {
+    throw new TypeError('manifest.editableSelectors must contain unique selectors');
+  }
   const manifest: EvalManifest = {
-    fixtureId: asString(record.fixtureId, 'manifest.fixtureId'),
+    editableSelectors,
+    fixtureId: asIdentifier(record.fixtureId, 'manifest.fixtureId'),
     mutations: asArray(record.mutations, 'manifest.mutations').map(parseMutation),
     perturbations: asArray(record.perturbations, 'manifest.perturbations').map(parsePerturbation),
     reference: {
@@ -198,6 +217,10 @@ export async function loadManifest(
   };
   if (manifest.mutations.length === 0) {
     throw new TypeError('manifest.mutations must not be empty');
+  }
+  const variantIds = [...manifest.mutations, ...manifest.perturbations].map(({ id }) => id);
+  if (new Set(variantIds).size !== variantIds.length) {
+    throw new TypeError('manifest mutation and perturbation IDs must be unique');
   }
 
   await verifyFixtureFiles(manifest);

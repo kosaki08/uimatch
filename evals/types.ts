@@ -1,4 +1,5 @@
 export const conditionIds = ['render-only', 'scalar', 'flat-diff'] as const;
+export const evalIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 export type ConditionId = (typeof conditionIds)[number];
 
@@ -40,6 +41,7 @@ export interface EvalPerturbation extends FixtureVariant {
 }
 
 export interface EvalManifest {
+  editableSelectors: string[];
   fixtureId: string;
   mutations: EvalMutation[];
   perturbations: EvalPerturbation[];
@@ -71,6 +73,7 @@ export interface ComparisonSnapshot {
   metrics: {
     dfs: number;
   };
+  pass: boolean;
   styleDiffs: Array<{
     isRoot?: boolean;
     properties: Record<string, { actual?: string; expected?: string }>;
@@ -81,13 +84,27 @@ export interface ComparisonSnapshot {
 
 export interface HiddenAcceptanceResult {
   accepted: boolean;
+  finalComparisonPassed: boolean;
   matchedRepairIndex?: number;
+  perturbationsEvaluated: number;
   perturbationsSurvived: string[];
   rootCauseRepaired: boolean;
   symptomPatchCount: number;
 }
 
-export type EvalStatus = 'aborted_budget' | 'error' | 'failed' | 'passed';
+export interface ModelTurnUsage {
+  completionTokens: number;
+  costUsd: number;
+  fallbackUsed?: boolean;
+  generationId: string;
+  promptTokens: number;
+  provider?: string;
+  reasoningTokens?: number;
+  responseModel: string;
+  totalTokens: number;
+}
+
+export type EvalStatus = 'aborted_budget' | 'error' | 'passed' | 'protocol_error' | 'repair_failed';
 
 export interface EvalResult {
   condition: ConditionId;
@@ -96,8 +113,12 @@ export interface EvalResult {
   model: string;
   mutationId: string;
   promptHash: string;
+  protocolErrors: number;
+  runId: string;
   status: EvalStatus;
   tokensUsed: number;
+  trial: number;
+  turnUsage: ModelTurnUsage[];
   turns: number;
   uimatchCommit: string;
   acceptance?: HiddenAcceptanceResult;
