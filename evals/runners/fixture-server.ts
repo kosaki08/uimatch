@@ -52,7 +52,11 @@ export async function startEvalFixtureServer(
 ): Promise<EvalFixtureServer> {
   const routes = new Map<string, FixtureRoute>();
   addVariantRoutes(routes, manifest.reference);
-  for (const perturbation of manifest.perturbations) addVariantRoutes(routes, perturbation);
+  // Only the oracle is served straight from the fixture. The candidate reaches the browser through
+  // the workspace copy, so that it is always the proposal-applied file that renders.
+  for (const perturbation of manifest.perturbations) {
+    addVariantRoutes(routes, perturbation.reference);
+  }
   addWorkspaceVariantRoutes(routes, '/workspace/current', workspace.implementation);
   for (const [id, variant] of workspace.perturbations) {
     addWorkspaceVariantRoutes(routes, `/workspace/perturbations/${id}`, variant);
@@ -82,7 +86,7 @@ export async function startEvalFixtureServer(
     perturbationReferenceUrls: new Map(
       manifest.perturbations.map((perturbation) => [
         perturbation.id,
-        `${server.origin}${routePath(perturbation.html)}`,
+        `${server.origin}${routePath(perturbation.reference.html)}`,
       ])
     ),
     referenceUrl: `${server.origin}${routePath(manifest.reference.html)}`,

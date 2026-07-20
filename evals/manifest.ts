@@ -115,23 +115,60 @@ function parseRootCause(value: unknown, label: string): RootCause {
   };
 }
 
-function parseMutation(value: unknown, index: number): EvalMutation {
+function parseMutation(
+  value: unknown,
+  index: number,
+  perturbations: readonly EvalPerturbation[]
+): EvalMutation {
   const label = `manifest.mutations[${index}]`;
   const record = asRecord(value, label);
   return {
     ...parseVariant(record, label),
+    candidates: parseCandidates(record.candidates, `${label}.candidates`, perturbations),
     id: asIdentifier(record.id, `${label}.id`),
     rootCause: parseRootCause(record.rootCause, `${label}.rootCause`),
   };
+}
+
+// A candidate declares CSS only. Its markup is always the perturbation's, because the oracle and
+// the candidate must show the same content for their comparison to mean anything. The CSS itself
+// cannot fall back to the oracle, which would reintroduce the omission blind spot described on
+// EvalPerturbation.
+function parseCandidates(
+  value: unknown,
+  label: string,
+  perturbations: readonly EvalPerturbation[]
+): ReadonlyMap<string, FixtureVariant> {
+  const record = asRecord(value, label);
+  const candidates = new Map<string, FixtureVariant>();
+  for (const perturbation of perturbations) {
+    const entryLabel = `${label}.${perturbation.id}`;
+    const entry = asRecord(record[perturbation.id], entryLabel);
+    const extraKeys = Object.keys(entry).filter((key) => key !== 'css');
+    if (extraKeys.length > 0) {
+      throw new TypeError(`${entryLabel} has unexpected fields: ${extraKeys.join(', ')}`);
+    }
+    candidates.set(perturbation.id, {
+      css: asString(entry.css, `${entryLabel}.css`),
+      html: perturbation.reference.html,
+    });
+  }
+  const unknown = Object.keys(record).filter((id) => !candidates.has(id));
+  if (unknown.length > 0) {
+    throw new TypeError(
+      `${label} declares candidates for unknown perturbations: ${unknown.join(', ')}`
+    );
+  }
+  return candidates;
 }
 
 function parsePerturbation(value: unknown, index: number): EvalPerturbation {
   const label = `manifest.perturbations[${index}]`;
   const record = asRecord(value, label);
   return {
-    ...parseVariant(record, label),
     expectedMetadata: parseExpectedMetadata(record.expectedMetadata, `${label}.expectedMetadata`),
     id: asIdentifier(record.id, `${label}.id`),
+    reference: parseVariant(record.reference, `${label}.reference`),
   };
 }
 
@@ -249,8 +286,8 @@ async function verifyFixtureFiles(manifest: EvalManifest): Promise<void> {
   const fixtureRoot = evalFixtureRoot(manifest.fixtureId);
   const variants: FixtureVariant[] = [
     manifest.reference,
-    ...manifest.mutations,
-    ...manifest.perturbations,
+    ...manifest.mutations.flatMap((mutation) => [mutation, ...mutation.candidates.values()]),
+    ...manifest.perturbations.map((perturbation) => perturbation.reference),
   ];
   for (const variant of variants) {
     for (const file of [variant.html, variant.css]) {
@@ -276,8 +313,8 @@ export async function loadManifest(
 ): Promise<EvalManifest> {
   const parsed: unknown = JSON.parse(await readFile(manifestPath, 'utf8')) as unknown;
   const record = asRecord(parsed, 'manifest');
-  if (record.schemaVersion !== 3) {
-    throw new TypeError('manifest.schemaVersion must be 3');
+  if (record.schemaVersion !== 4) {
+    throw new TypeError('manifest.schemaVersion must be 4');
   }
 
   const referenceRecord = asRecord(record.reference, 'manifest.reference');
@@ -292,11 +329,17 @@ export async function loadManifest(
   ) {
     throw new TypeError('manifest.editableSelectors must contain unique selectors');
   }
+  // Perturbations parse first because every mutation must supply a candidate for each of them.
+  const perturbations = asArray(record.perturbations, 'manifest.perturbations').map(
+    parsePerturbation
+  );
   const manifest: EvalManifest = {
     editableSelectors,
     fixtureId: asIdentifier(record.fixtureId, 'manifest.fixtureId'),
-    mutations: asArray(record.mutations, 'manifest.mutations').map(parseMutation),
-    perturbations: asArray(record.perturbations, 'manifest.perturbations').map(parsePerturbation),
+    mutations: asArray(record.mutations, 'manifest.mutations').map((value, index) =>
+      parseMutation(value, index, perturbations)
+    ),
+    perturbations,
     reference: {
       ...parseVariant(referenceRecord, 'manifest.reference'),
       expectedMetadata: referenceMetadata,
@@ -306,7 +349,7 @@ export async function loadManifest(
         referenceMetadata
       ),
     },
-    schemaVersion: 3,
+    schemaVersion: 4,
     selector: asString(record.selector, 'manifest.selector'),
     viewport: {
       height: asPositiveInteger(viewportRecord.height, 'manifest.viewport.height'),

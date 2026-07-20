@@ -86,9 +86,15 @@ export async function createRepairWorkspace(
     const implementationHtml = await readFile(current.variant.htmlPath, 'utf8');
     const perturbationEntries = await Promise.all(
       manifest.perturbations.map(async (perturbation) => {
+        const candidate = mutation.candidates.get(perturbation.id);
+        if (!candidate) {
+          throw new Error(
+            `Mutation ${mutation.id} has no repair candidate for perturbation ${perturbation.id}`
+          );
+        }
         const copied = await copyVariant(
           join(harnessRootDirectory, 'perturbations', perturbation.id),
-          perturbation
+          candidate
         );
         return [perturbation.id, copied] as const;
       })
