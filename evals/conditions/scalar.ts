@@ -5,6 +5,6 @@ export function buildScalarFeedback(comparison: ComparisonSnapshot): ConditionFe
   const feedback = buildRenderOnlyFeedback(comparison);
   return {
     ...feedback,
-    text: `${feedback.text}\nuiMatch DFS score: ${comparison.metrics.dfs.toFixed(2)}`,
+    text: `${feedback.text}\nuiMatch DFS score: ${comparison.visible.dfs.toFixed(2)}`,
   };
 }

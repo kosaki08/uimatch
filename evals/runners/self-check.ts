@@ -1,9 +1,18 @@
 import { compareVariant, createFixtureContext, evaluateFinalProposal } from '../harness.js';
 import { loadManifest } from '../manifest.js';
-import type { RepairProposal } from '../types.js';
+import { conditionOrderForTrial, type RepairProposal } from '../types.js';
 import { buildCli } from './build-cli.js';
+import { runOpenRouterRetrySelfCheck } from './openrouter.js';
 
 export async function runSelfCheck(): Promise<void> {
+  const rotatedConditions = [1, 2, 3].map((trial) => conditionOrderForTrial(trial).join(','));
+  if (
+    rotatedConditions.join('|') !==
+    'render-only,scalar,flat-diff|scalar,flat-diff,render-only|flat-diff,render-only,scalar'
+  ) {
+    throw new Error('Eval condition rotation self-check failed');
+  }
+  await runOpenRouterRetrySelfCheck();
   buildCli();
   const manifest = await loadManifest();
   const mutation = manifest.mutations[0];
@@ -13,37 +22,27 @@ export async function runSelfCheck(): Promise<void> {
   }
   const context = await createFixtureContext(manifest, mutation);
   try {
-    const actualMetadata = context.reference.metadata;
-    const expectedMetadata = manifest.reference.expectedMetadata;
-    const metadataMatches =
-      actualMetadata.childCount === expectedMetadata.childCount &&
-      actualMetadata.height === expectedMetadata.height &&
-      actualMetadata.width === expectedMetadata.width &&
-      actualMetadata.padding.every((value, index) => value === expectedMetadata.padding[index]);
-    if (!metadataMatches) {
-      throw new Error(
-        `Reference metadata does not match manifest: ${JSON.stringify(context.reference.metadata)}`
-      );
-    }
-    const referenceComparison = await compareVariant(
+    const referenceComparison = await compareVariant({
+      expectedSpec: manifest.reference.expectedSpec,
       manifest,
-      context.server,
-      context.server.referenceUrl,
-      context.reference.pngB64,
-      manifest.reference.expectedSpec
-    );
-    if (!referenceComparison.pass || referenceComparison.styleDiffs.length !== 0) {
+      purpose: 'visible',
+      referencePngB64: context.reference.pngB64,
+      server: context.server,
+      story: context.server.referenceUrl,
+    });
+    if (!referenceComparison.visible.pass || referenceComparison.styleDiffs.length !== 0) {
       throw new Error('Reference self-comparison did not pass cleanly');
     }
 
-    const initialComparison = await compareVariant(
+    const initialComparison = await compareVariant({
+      expectedSpec: manifest.reference.expectedSpec,
       manifest,
-      context.server,
-      context.server.workspaceImplementationUrl,
-      context.reference.pngB64,
-      manifest.reference.expectedSpec
-    );
-    if (initialComparison.pass) {
+      purpose: 'visible',
+      referencePngB64: context.reference.pngB64,
+      server: context.server,
+      story: context.server.workspaceImplementationUrl,
+    });
+    if (initialComparison.visible.pass) {
       throw new Error('Mutation self-check unexpectedly passed before repair');
     }
 
@@ -52,13 +51,14 @@ export async function runSelfCheck(): Promise<void> {
       diagnosis: 'self-check root repair',
     };
     await context.workspace.applyProposal(rootProposal);
-    const repairedComparison = await compareVariant(
+    const repairedComparison = await compareVariant({
+      expectedSpec: manifest.reference.expectedSpec,
       manifest,
-      context.server,
-      context.server.workspaceImplementationUrl,
-      context.reference.pngB64,
-      manifest.reference.expectedSpec
-    );
+      purpose: 'visible',
+      referencePngB64: context.reference.pngB64,
+      server: context.server,
+      story: context.server.workspaceImplementationUrl,
+    });
     const accepted = await evaluateFinalProposal({
       finalComparison: repairedComparison,
       manifest,
@@ -71,6 +71,34 @@ export async function runSelfCheck(): Promise<void> {
       throw new Error('Hidden acceptance rejected the applied manifest ground truth');
     }
 
+    const firstPerturbation = manifest.perturbations[0];
+    if (!firstPerturbation) throw new Error('Eval self-check requires one perturbation');
+    const metadataMismatch = await evaluateFinalProposal({
+      finalComparison: repairedComparison,
+      manifest: {
+        ...manifest,
+        perturbations: [
+          {
+            ...firstPerturbation,
+            expectedMetadata: {
+              ...firstPerturbation.expectedMetadata,
+              width: firstPerturbation.expectedMetadata.width + 1,
+            },
+          },
+        ],
+      },
+      mutation,
+      perturbationReferences: context.perturbationReferences,
+      proposal: rootProposal,
+      server: context.server,
+    });
+    if (
+      metadataMismatch.accepted ||
+      metadataMismatch.perturbationsSurvived.length === metadataMismatch.perturbationsEvaluated
+    ) {
+      throw new Error('Hidden acceptance ignored a perturbation metadata mismatch');
+    }
+
     const repairWithSymptom: RepairProposal = {
       changes: [
         ...acceptedRepair,
@@ -79,13 +107,14 @@ export async function runSelfCheck(): Promise<void> {
       diagnosis: 'self-check repair with symptom patch',
     };
     await context.workspace.applyProposal(repairWithSymptom);
-    const symptomComparison = await compareVariant(
+    const symptomComparison = await compareVariant({
+      expectedSpec: manifest.reference.expectedSpec,
       manifest,
-      context.server,
-      context.server.workspaceImplementationUrl,
-      context.reference.pngB64,
-      manifest.reference.expectedSpec
-    );
+      purpose: 'visible',
+      referencePngB64: context.reference.pngB64,
+      server: context.server,
+      story: context.server.workspaceImplementationUrl,
+    });
     const rejected = await evaluateFinalProposal({
       finalComparison: symptomComparison,
       manifest,
@@ -98,7 +127,7 @@ export async function runSelfCheck(): Promise<void> {
       rejected.accepted ||
       !rejected.finalComparisonPassed ||
       !rejected.rootCauseRepaired ||
-      rejected.symptomPatchCount !== 1 ||
+      rejected.unmatchedChangeCount !== 1 ||
       rejected.perturbationsSurvived.length === rejected.perturbationsEvaluated
     ) {
       throw new Error('Hidden perturbations did not reject an applied symptom patch');
@@ -120,7 +149,7 @@ export async function runSelfCheck(): Promise<void> {
     }
 
     console.log(
-      `Eval self-check passed: ${manifest.fixtureId}, repaired DFS ${repairedComparison.metrics.dfs}`
+      `Eval self-check passed: ${manifest.fixtureId}, repaired DFS ${repairedComparison.visible.dfs}`
     );
   } finally {
     await context.close();

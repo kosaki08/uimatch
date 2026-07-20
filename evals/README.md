@@ -9,7 +9,7 @@ integration, Playwright, and live Figma smoke suites.
 ```bash
 pnpm eval:smoke
 pnpm eval:run
-pnpm eval:report
+pnpm eval:report -- --run <run-id>
 ```
 
 `eval:smoke` does not call an LLM. It builds the public CLI package and verifies
@@ -23,6 +23,12 @@ rejected by a perturbation.
 - `render-only`: reference, implementation, and diff images
 - `scalar`: render-only feedback plus one DFS score
 - `flat-diff`: scalar feedback plus flat `styleDiffs`
+
+Trial numbers rotate the condition order to avoid always placing the same
+condition last: trial 1 runs render-only, scalar, flat-diff; trials 2 and 3
+rotate that order. Formal comparisons should reuse one `EVAL_RUN_ID` while
+running `EVAL_TRIAL=1`, `2`, and `3`; each trial has a distinct result path. The
+chosen order is recorded in every result.
 
 For each turn the runner applies the proposed declarations to a fresh copy of
 the original current CSS, renders that copy, and generates new feedback. A new
@@ -65,15 +71,21 @@ launching a browser, or calling the model. The runner never derives
 `UIMATCH_EVAL_COMMIT` with Git, because packaged or restricted environments may
 not contain repository metadata.
 
-The USD budget applies to the whole command. Calls are sequential. OpenRouter
-reports a completed request's exact cost, so the runner stops immediately and
-records `"status": "aborted_budget"` when that response crosses the remaining
-budget. Use a dedicated OpenRouter key with a matching provider-side credit
-limit when a strict no-overshoot ceiling is required.
+The USD budget applies to the whole command and is divided equally across all
+fixture/condition jobs. Calls are sequential. OpenRouter reports a completed
+request's exact cost, so a job records `"status": "aborted_budget"` when a
+response crosses its share or the remaining command budget. Use a dedicated
+OpenRouter key with a matching provider-side credit limit when a strict
+no-overshoot ceiling is required.
 
 Each turn requests at most 800 output tokens. Non-normal finish reasons and
 invalid JSON proposals are recorded as protocol errors. Model/API failures are
 recorded separately from valid proposals that fail repair acceptance.
+Transient network failures and HTTP 429, 502, 503, 504, and 529 responses are
+retried at most twice. A valid `Retry-After` value is honored up to two minutes;
+otherwise the runner uses a short exponential delay. Attempts and actual delays
+are retained in the turn record, while non-transient HTTP errors are not
+retried.
 
 Requests do not send app-attribution headers. Routing metadata is requested so
 results can record the generation ID, actual model, selected provider, fallback
@@ -94,8 +106,11 @@ patcher:
   perturbation
 
 Acceptance is based on the final uiMatch comparison and actual perturbation
-comparisons. `acceptedRepairs` is only an auxiliary root-cause classification;
-equivalent CSS can pass even when it does not exactly match a listed repair.
+comparisons. Visible feedback uses the normal intersection content basis.
+Hidden perturbations use the union basis and must also match manifest-pinned
+element width, height, padding, child count, scroll size, and overflow state.
+`acceptedRepairs` is only an auxiliary root-cause classification; equivalent
+CSS can pass even when it does not exactly match a listed repair.
 
 The model sees only the current implementation HTML/CSS and feedback allowed by
 the condition. Reference source, manifest root-cause labels, mutation IDs, and
@@ -115,6 +130,11 @@ Reference and current HTML/CSS plus manifests are committed. Raw results are
 written to ignored `evals/results/`; only reviewed aggregates may be promoted to
 `evals/summaries/`.
 
+`eval:report` refuses to mix multiple run IDs. `--run` may be omitted only when
+the results directory contains exactly one run, and a selected run must contain
+one requested model, uiMatch commit, budget, and turn limit. Trials within that
+boundary are aggregated.
+
 ## Result contract
 
 Results are stored under:
@@ -125,14 +145,21 @@ evals/results/<run-id>/<fixture>/<mutation>/<condition>/<trial>.json
 
 Every raw result includes:
 
+- result `schemaVersion`
 - requested `model` and per-turn actual model/provider routing data
 - `promptHash`
 - `uimatchCommit`
 - `runId` and `trial`
-- `fixtureId`, `mutationId`, and `condition`
+- command/job budgets and the turn limit
+- `fixtureId`, `mutationId`, `condition`, and the trial's condition order
 - `turns`, input/output/total tokens, and cost
 - `status` and `protocolErrors`
+- initial/final visible metrics and per-turn DFS, pixel ratios, quality-gate
+  result, high-severity count, and StyleDiff count
+- per-turn proposal, response finish reason, request attempts, retry delays,
+  usage, and protocol or execution error
 
 Final results also record visible comparison acceptance, perturbation survival,
-root-cause classification, and symptom patch count. API keys are used only in
-the authorization header and are never written to results or logs.
+root-cause classification, and the number of changes unmatched by the manifest's
+accepted-repair hints. API keys are used only in the authorization header and
+are never written to results or logs.

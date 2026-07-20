@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "fixtureId": "atomic-button",
   "selector": "#atomic",
   "editableSelectors": ["#atomic", "#atomic span", "#fixture"],
@@ -11,7 +11,10 @@
       "width": 96,
       "height": 40,
       "childCount": 1,
-      "padding": [8, 16, 8, 16]
+      "overflowing": false,
+      "padding": [8, 16, 8, 16],
+      "scrollHeight": 40,
+      "scrollWidth": 96
     },
     "expectedSpec": {
       "__self__": {
@@ -58,12 +61,30 @@
     {
       "id": "long-label",
       "html": "fixtures/atomic-button/perturbations/long-label/index.html",
-      "css": "fixtures/atomic-button/perturbations/long-label/styles.css"
+      "css": "fixtures/atomic-button/perturbations/long-label/styles.css",
+      "expectedMetadata": {
+        "width": 192,
+        "height": 40,
+        "childCount": 1,
+        "overflowing": false,
+        "padding": [8, 16, 8, 16],
+        "scrollHeight": 40,
+        "scrollWidth": 192
+      }
     },
     {
       "id": "narrow-container",
       "html": "fixtures/atomic-button/perturbations/narrow-container/index.html",
-      "css": "fixtures/atomic-button/perturbations/narrow-container/styles.css"
+      "css": "fixtures/atomic-button/perturbations/narrow-container/styles.css",
+      "expectedMetadata": {
+        "width": 88,
+        "height": 40,
+        "childCount": 1,
+        "overflowing": false,
+        "padding": [8, 16, 8, 16],
+        "scrollHeight": 40,
+        "scrollWidth": 88
+      }
     }
   ]
 }

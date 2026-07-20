@@ -6,11 +6,17 @@ import { dirname, resolve } from 'node:path';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { buildRenderOnlyFeedback } from '../conditions/render-only.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
-import { compareVariant, createFixtureContext, evaluateFinalProposal } from '../harness.js';
+import {
+  compareVariant,
+  createFixtureContext,
+  evaluateFinalProposal,
+  type RenderedReference,
+} from '../harness.js';
 import { evalRoot, loadManifest } from '../manifest.js';
 import type { RepairWorkspace } from '../repair-workspace.js';
 import {
   conditionIds,
+  conditionOrderForTrial,
   evalIdentifierPattern,
   type ComparisonSnapshot,
   type ConditionFeedback,
@@ -19,19 +25,21 @@ import {
   type EvalMutation,
   type EvalResult,
   type EvalStatus,
+  type EvalTurnRecord,
   type HiddenAcceptanceResult,
-  type ModelTurnUsage,
   type RepairChange,
   type RepairProposal,
+  type VisibleComparisonMetrics,
 } from '../types.js';
 import { buildCli, EvalUsageError } from './build-cli.js';
 import type { EvalFixtureServer } from './fixture-server.js';
-import { requestOpenRouterTurn, type ModelMessage, type ModelTurn } from './openrouter.js';
+import { OpenRouterCallError, requestOpenRouterTurn, type ModelMessage } from './openrouter.js';
 import { runSelfCheck } from './self-check.js';
 
 interface EvalConfig {
   apiKey: string;
   budgetUsd: number;
+  conditionOrder: ConditionId[];
   maxTurns: number;
   model: string;
   runId: string;
@@ -42,18 +50,15 @@ interface EvalConfig {
 interface JobContext {
   condition: ConditionId;
   config: EvalConfig;
+  initialComparison: VisibleComparisonMetrics;
+  jobBudgetUsd: number;
   manifest: EvalManifest;
   mutation: EvalMutation;
 }
 
 interface JobState {
-  costUsd: number;
   promptHash: string;
-  proposals: RepairProposal[];
-  protocolErrors: number;
-  tokensUsed: number;
-  turns: number;
-  turnUsage: ModelTurnUsage[];
+  turnRecords: EvalTurnRecord[];
 }
 
 function requireEnvironment(name: string): string {
@@ -94,13 +99,15 @@ function parseRunId(): string {
 
 function loadEvalConfig(): EvalConfig {
   const trialValue = process.env.EVAL_TRIAL?.trim();
+  const trial = trialValue ? parsePositiveIntegerValue('EVAL_TRIAL', trialValue) : 1;
   return {
     apiKey: requireEnvironment('OPENROUTER_API_KEY'),
     budgetUsd: parsePositiveNumber('EVAL_BUDGET_USD'),
+    conditionOrder: conditionOrderForTrial(trial),
     maxTurns: parsePositiveIntegerValue('EVAL_MAX_TURNS', requireEnvironment('EVAL_MAX_TURNS')),
     model: requireEnvironment('EVAL_MODEL'),
     runId: parseRunId(),
-    trial: trialValue ? parsePositiveIntegerValue('EVAL_TRIAL', trialValue) : 1,
+    trial,
     uimatchCommit: requireEnvironment('UIMATCH_EVAL_COMMIT'),
   };
 }
@@ -197,14 +204,17 @@ function hashMessages(messages: ModelMessage[]): string {
 
 function createJobState(promptHash: string): JobState {
   return {
-    costUsd: 0,
     promptHash,
-    proposals: [],
-    protocolErrors: 0,
-    tokensUsed: 0,
-    turns: 0,
-    turnUsage: [],
+    turnRecords: [],
   };
+}
+
+function completedUsages(state: JobState) {
+  return state.turnRecords.flatMap((record) => (record.usage ? [record.usage] : []));
+}
+
+function jobCostUsd(state: JobState): number {
+  return completedUsages(state).reduce((sum, usage) => sum + usage.costUsd, 0);
 }
 
 function buildResult(
@@ -213,32 +223,35 @@ function buildResult(
   status: EvalStatus,
   extras: { acceptance?: HiddenAcceptanceResult; error?: string } = {}
 ): EvalResult {
+  const usages = completedUsages(state);
+  const finalComparison = [...state.turnRecords]
+    .reverse()
+    .find((record) => record.visibleComparison !== undefined)?.visibleComparison;
   return {
     ...(extras.acceptance ? { acceptance: extras.acceptance } : {}),
+    budgetUsd: context.config.budgetUsd,
     condition: context.condition,
-    costUsd: state.costUsd,
+    conditionOrder: context.config.conditionOrder,
+    costUsd: jobCostUsd(state),
     ...(extras.error ? { error: extras.error } : {}),
+    ...(finalComparison ? { finalComparison } : {}),
     fixtureId: context.manifest.fixtureId,
+    initialComparison: context.initialComparison,
+    jobBudgetUsd: context.jobBudgetUsd,
+    maxTurns: context.config.maxTurns,
     model: context.config.model,
     mutationId: context.mutation.id,
     promptHash: state.promptHash,
-    proposals: state.proposals,
-    protocolErrors: state.protocolErrors,
+    protocolErrors: state.turnRecords.filter((record) => record.protocolError !== undefined).length,
     runId: context.config.runId,
+    schemaVersion: 1,
     status,
-    tokensUsed: state.tokensUsed,
+    tokensUsed: usages.reduce((sum, usage) => sum + usage.totalTokens, 0),
     trial: context.config.trial,
-    turns: state.turns,
-    turnUsage: state.turnUsage,
+    turnRecords: state.turnRecords,
+    turns: state.turnRecords.length,
     uimatchCommit: context.config.uimatchCommit,
   };
-}
-
-function recordModelTurn(state: JobState, turn: number, modelTurn: ModelTurn): void {
-  state.costUsd += modelTurn.usage.costUsd;
-  state.tokensUsed += modelTurn.usage.totalTokens;
-  state.turns = turn;
-  state.turnUsage.push(modelTurn.usage);
 }
 
 function isProposalError(error: unknown): error is SyntaxError | TypeError | RangeError {
@@ -318,7 +331,7 @@ async function runJob(options: {
   budgetRemaining: number;
   initialComparison: ComparisonSnapshot;
   context: JobContext;
-  perturbationReferences: ReadonlyMap<string, string>;
+  perturbationReferences: ReadonlyMap<string, RenderedReference>;
   referencePngB64: string;
   server: EvalFixtureServer;
   workspace: RepairWorkspace;
@@ -331,7 +344,10 @@ async function runJob(options: {
   const state = createJobState(hashMessages(messages));
 
   for (let turn = 1; turn <= options.context.config.maxTurns; turn += 1) {
-    let modelTurn: ModelTurn;
+    if (jobCostUsd(state) >= options.budgetRemaining) {
+      return buildResult(options.context, state, 'aborted_budget');
+    }
+    let modelTurn;
     try {
       modelTurn = await requestOpenRouterTurn({
         apiKey: options.context.config.apiKey,
@@ -339,19 +355,34 @@ async function runJob(options: {
         model: options.context.config.model,
       });
     } catch (error) {
-      state.turns = turn;
+      const message = error instanceof Error ? error.message : String(error);
+      state.turnRecords.push({
+        error: message,
+        requestAttempts: error instanceof OpenRouterCallError ? error.attempts : 1,
+        retryDelaysMs: error instanceof OpenRouterCallError ? error.retryDelaysMs : [],
+        turn,
+      });
       return buildResult(options.context, state, 'error', {
-        error: error instanceof Error ? error.message : String(error),
+        error: message,
       });
     }
-    recordModelTurn(state, turn, modelTurn);
-    if (state.costUsd > options.budgetRemaining) {
+    const turnRecord: EvalTurnRecord = {
+      finishReason: modelTurn.finishReason,
+      requestAttempts: modelTurn.requestAttempts,
+      retryDelaysMs: modelTurn.retryDelaysMs,
+      turn,
+      usage: modelTurn.usage,
+    };
+    const costUsd = jobCostUsd(state) + modelTurn.usage.costUsd;
+    if (costUsd > options.budgetRemaining) {
+      state.turnRecords.push(turnRecord);
       return buildResult(options.context, state, 'aborted_budget');
     }
 
     messages.push({ content: modelTurn.content, role: 'assistant' });
     if (modelTurn.finishReason !== 'stop') {
-      state.protocolErrors += 1;
+      turnRecord.protocolError = `Response ended with finish reason ${modelTurn.finishReason}`;
+      state.turnRecords.push(turnRecord);
       if (turn < options.context.config.maxTurns) {
         messages.push({
           content: `The response ended with finish reason ${modelTurn.finishReason}. Return one complete JSON proposal.`,
@@ -368,11 +399,15 @@ async function runJob(options: {
       await options.workspace.applyProposal(proposal);
     } catch (error) {
       if (!isProposalError(error)) {
+        const message = error instanceof Error ? error.message : String(error);
+        turnRecord.error = message;
+        state.turnRecords.push(turnRecord);
         return buildResult(options.context, state, 'error', {
-          error: error instanceof Error ? error.message : String(error),
+          error: message,
         });
       }
-      state.protocolErrors += 1;
+      turnRecord.protocolError = error.message;
+      state.turnRecords.push(turnRecord);
       if (turn < options.context.config.maxTurns) {
         messages.push({
           content: `The proposal could not be applied: ${error.message}. Return one complete replacement proposal using the required JSON shape.`,
@@ -382,23 +417,29 @@ async function runJob(options: {
       }
       return buildResult(options.context, state, 'protocol_error');
     }
-    state.proposals.push(proposal);
+    turnRecord.proposal = proposal;
 
     let finalComparison: ComparisonSnapshot;
     try {
-      finalComparison = await compareVariant(
-        options.context.manifest,
-        options.server,
-        options.server.workspaceImplementationUrl,
-        options.referencePngB64,
-        options.context.manifest.reference.expectedSpec
-      );
+      finalComparison = await compareVariant({
+        expectedSpec: options.context.manifest.reference.expectedSpec,
+        manifest: options.context.manifest,
+        purpose: 'visible',
+        referencePngB64: options.referencePngB64,
+        server: options.server,
+        story: options.server.workspaceImplementationUrl,
+      });
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      turnRecord.error = message;
+      state.turnRecords.push(turnRecord);
       return buildResult(options.context, state, 'error', {
-        error: error instanceof Error ? error.message : String(error),
+        error: message,
       });
     }
-    if (finalComparison.pass || turn === options.context.config.maxTurns) {
+    turnRecord.visibleComparison = finalComparison.visible;
+    state.turnRecords.push(turnRecord);
+    if (finalComparison.visible.pass || turn === options.context.config.maxTurns) {
       let acceptance: HiddenAcceptanceResult;
       try {
         acceptance = await evaluateFinalProposal({
@@ -410,8 +451,10 @@ async function runJob(options: {
           server: options.server,
         });
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        turnRecord.error = message;
         return buildResult(options.context, state, 'error', {
-          error: error instanceof Error ? error.message : String(error),
+          error: message,
         });
       }
       return buildResult(options.context, state, acceptance.accepted ? 'passed' : 'repair_failed', {
@@ -429,7 +472,7 @@ async function runJob(options: {
     });
   }
 
-  return buildResult(options.context, state, 'repair_failed');
+  throw new Error('Eval job exhausted its turn loop without producing a terminal result');
 }
 
 async function runEvaluation(config: EvalConfig): Promise<void> {
@@ -437,22 +480,33 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
   await assertResultDestinationsAvailable(config, manifest);
   buildCli();
   let totalCostUsd = 0;
+  const totalJobs = manifest.mutations.length * conditionIds.length;
+  if (totalJobs === 0) throw new Error('Eval manifest does not contain any jobs');
+  const jobBudgetUsd = config.budgetUsd / totalJobs;
   for (const mutation of manifest.mutations) {
     const fixture = await createFixtureContext(manifest, mutation);
     try {
-      const initialComparison = await compareVariant(
+      const initialComparison = await compareVariant({
+        expectedSpec: manifest.reference.expectedSpec,
         manifest,
-        fixture.server,
-        fixture.server.workspaceImplementationUrl,
-        fixture.reference.pngB64,
-        manifest.reference.expectedSpec
-      );
-      if (initialComparison.pass) {
+        purpose: 'visible',
+        referencePngB64: fixture.reference.pngB64,
+        server: fixture.server,
+        story: fixture.server.workspaceImplementationUrl,
+      });
+      if (initialComparison.visible.pass) {
         throw new Error(`Mutation ${mutation.id} does not produce a failing comparison`);
       }
-      for (const condition of conditionIds) {
+      for (const condition of config.conditionOrder) {
         await fixture.workspace.reset();
-        const context: JobContext = { condition, config, manifest, mutation };
+        const context: JobContext = {
+          condition,
+          config,
+          initialComparison: initialComparison.visible,
+          jobBudgetUsd,
+          manifest,
+          mutation,
+        };
         if (totalCostUsd >= config.budgetUsd) {
           const messages = buildInitialMessages(
             fixture.workspace,
@@ -465,10 +519,10 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
           );
           await writeResult(result);
           console.error(`Eval budget exhausted before ${mutation.id}/${condition}.`);
-          return;
+          continue;
         }
         const result = await runJob({
-          budgetRemaining: config.budgetUsd - totalCostUsd,
+          budgetRemaining: Math.min(jobBudgetUsd, config.budgetUsd - totalCostUsd),
           context,
           initialComparison,
           perturbationReferences: fixture.perturbationReferences,
@@ -481,7 +535,6 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
         console.log(
           `${mutation.id}/${condition}: ${result.status}, turns=${result.turns}, cost=$${result.costUsd.toFixed(6)}`
         );
-        if (result.status === 'aborted_budget') return;
       }
     } finally {
       await fixture.close();

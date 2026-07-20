@@ -27,7 +27,7 @@ export function evaluateHiddenAcceptance(
     repair.every((expected) => proposal.changes.some((change) => changesMatch(change, expected)))
   );
   const matchedRepair = mutation.rootCause.acceptedRepairs[matchedRepairIndex];
-  const symptomPatchCount = proposal.changes.filter(
+  const unmatchedChangeCount = proposal.changes.filter(
     (change) => !matchedRepair?.some((expected) => changesMatch(change, expected))
   ).length;
   const rootCauseRepaired = matchedRepairIndex >= 0;
@@ -45,6 +45,6 @@ export function evaluateHiddenAcceptance(
     perturbationsEvaluated: manifest.perturbations.length,
     perturbationsSurvived,
     rootCauseRepaired,
-    symptomPatchCount,
+    unmatchedChangeCount,
   };
 }

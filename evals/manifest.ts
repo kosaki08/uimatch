@@ -36,6 +36,13 @@ function asString(value: unknown, label: string): string {
   return value;
 }
 
+function asBoolean(value: unknown, label: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`${label} must be a boolean`);
+  }
+  return value;
+}
+
 function asIdentifier(value: unknown, label: string): string {
   const parsed = asString(value, label);
   if (!evalIdentifierPattern.test(parsed)) {
@@ -49,6 +56,19 @@ function asNonNegativeInteger(value: unknown, label: string): number {
     throw new TypeError(`${label} must be a non-negative safe integer`);
   }
   return value as number;
+}
+
+function asNonNegativeNumber(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new TypeError(`${label} must be a non-negative finite number`);
+  }
+  return value;
+}
+
+function asPositiveInteger(value: unknown, label: string): number {
+  const parsed = asNonNegativeInteger(value, label);
+  if (parsed === 0) throw new TypeError(`${label} must be positive`);
+  return parsed;
 }
 
 function parseVariant(value: unknown, label: string): FixtureVariant {
@@ -107,15 +127,18 @@ function parsePerturbation(value: unknown, index: number): EvalPerturbation {
   const record = asRecord(value, label);
   return {
     ...parseVariant(record, label),
+    expectedMetadata: parseExpectedMetadata(record.expectedMetadata, `${label}.expectedMetadata`),
     id: asIdentifier(record.id, `${label}.id`),
   };
 }
 
-function parseExpectedMetadata(value: unknown): ExpectedMetadata {
-  const label = 'manifest.reference.expectedMetadata';
+function parseExpectedMetadata(
+  value: unknown,
+  label = 'manifest.reference.expectedMetadata'
+): ExpectedMetadata {
   const record = asRecord(value, label);
   const padding = asArray(record.padding, `${label}.padding`).map((entry, index) =>
-    asNonNegativeInteger(entry, `${label}.padding[${index}]`)
+    asNonNegativeNumber(entry, `${label}.padding[${index}]`)
   );
   if (padding.length !== 4) {
     throw new TypeError(`${label}.padding must contain four values`);
@@ -123,9 +146,12 @@ function parseExpectedMetadata(value: unknown): ExpectedMetadata {
 
   return {
     childCount: asNonNegativeInteger(record.childCount, `${label}.childCount`),
-    height: asNonNegativeInteger(record.height, `${label}.height`),
+    height: asNonNegativeNumber(record.height, `${label}.height`),
+    overflowing: asBoolean(record.overflowing, `${label}.overflowing`),
     padding: [padding[0] ?? 0, padding[1] ?? 0, padding[2] ?? 0, padding[3] ?? 0],
-    width: asNonNegativeInteger(record.width, `${label}.width`),
+    scrollHeight: asNonNegativeInteger(record.scrollHeight, `${label}.scrollHeight`),
+    scrollWidth: asNonNegativeInteger(record.scrollWidth, `${label}.scrollWidth`),
+    width: asNonNegativeNumber(record.width, `${label}.width`),
   };
 }
 
@@ -183,8 +209,8 @@ export async function loadManifest(
 ): Promise<EvalManifest> {
   const parsed: unknown = JSON.parse(await readFile(manifestPath, 'utf8')) as unknown;
   const record = asRecord(parsed, 'manifest');
-  if (record.schemaVersion !== 1) {
-    throw new TypeError('manifest.schemaVersion must be 1');
+  if (record.schemaVersion !== 2) {
+    throw new TypeError('manifest.schemaVersion must be 2');
   }
 
   const referenceRecord = asRecord(record.reference, 'manifest.reference');
@@ -208,15 +234,18 @@ export async function loadManifest(
       expectedMetadata: parseExpectedMetadata(referenceRecord.expectedMetadata),
       expectedSpec: parseExpectedSpec(referenceRecord.expectedSpec),
     },
-    schemaVersion: 1,
+    schemaVersion: 2,
     selector: asString(record.selector, 'manifest.selector'),
     viewport: {
-      height: asNonNegativeInteger(viewportRecord.height, 'manifest.viewport.height'),
-      width: asNonNegativeInteger(viewportRecord.width, 'manifest.viewport.width'),
+      height: asPositiveInteger(viewportRecord.height, 'manifest.viewport.height'),
+      width: asPositiveInteger(viewportRecord.width, 'manifest.viewport.width'),
     },
   };
   if (manifest.mutations.length === 0) {
     throw new TypeError('manifest.mutations must not be empty');
+  }
+  if (manifest.perturbations.length === 0) {
+    throw new TypeError('manifest.perturbations must not be empty');
   }
   const variantIds = [...manifest.mutations, ...manifest.perturbations].map(({ id }) => id);
   if (new Set(variantIds).size !== variantIds.length) {
