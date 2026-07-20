@@ -52,8 +52,8 @@ export async function startEvalFixtureServer(
 ): Promise<EvalFixtureServer> {
   const routes = new Map<string, FixtureRoute>();
   addVariantRoutes(routes, manifest.reference);
-  // Only the oracle is served straight from the fixture. The candidate reaches the browser through
-  // the workspace copy, so that it is always the proposal-applied file that renders.
+  // Candidates are deliberately not routed: they reach the browser only as workspace copies, so
+  // what renders is always the proposal-applied file.
   for (const perturbation of manifest.perturbations) {
     addVariantRoutes(routes, perturbation.reference);
   }

@@ -40,9 +40,8 @@ function pathIsWithin(root: string, target: string): boolean {
   );
 }
 
-// Positive control for the FIXED wiring: the drifted width is authored in the mutation CSS, so
-// every condition can repair it without reading the sizing contract. The discriminating case is
-// padding-drift-missing-fixed-width, checked by runContractPairSelfCheck.
+// Positive control only: the drifted width is authored in the mutation CSS, so every condition can
+// repair it without reading the contract. The discriminating case is runContractPairSelfCheck.
 async function runFixedSizingSelfCheck(): Promise<void> {
   const manifest = await loadManifestById('atomic-button-fixed');
   const mutation = manifest.mutations.find(({ id }) => id === 'width-drift');
@@ -179,9 +178,8 @@ function rootDeclarations(css: string, rootSelector: string): Map<string, string
   return declarations;
 }
 
-// A candidate is a copy of its mutation's stylesheet carrying a content delta, so nothing keeps the
-// two in sync on its own. Every root declaration the mutation makes must survive into the
-// candidate at the same value; the candidate may add more, which is how content deltas land.
+// Candidates are copies, so nothing keeps them in sync with their mutation. Superset rather than
+// equality because the content delta is what the candidate adds.
 async function assertCandidatesTrackTheirMutation(
   manifest: EvalManifest,
   mutation: EvalMutation
@@ -265,8 +263,6 @@ async function evaluateContractPairRepair(
   });
 }
 
-// Everything an agent sees before the contract is identical on both sides, so a difference in
-// behaviour cannot be attributed to anything but the sizing contract.
 function assertPairInputsAreIdentical(hug: ContractPairSide, fixed: ContractPairSide): void {
   if (hug.manifest.selector !== fixed.manifest.selector) {
     throw new Error('Contract-pair sides do not share a root selector');
@@ -287,9 +283,18 @@ function assertPairInputsAreIdentical(hug: ContractPairSide, fixed: ContractPair
   }
 }
 
-// Untyped conditions observe identical payloads on both sides. Typed-diff is the only condition
-// that carries the contract, and it must carry opposite actionability across the pair.
-function assertOnlyTypedDiffCarriesTheContract(
+function rootStyleDiffProperties(side: ContractPairSide): Record<string, unknown> {
+  return (
+    side.initialComparison.styleDiffs.find((styleDiff) => styleDiff.isRoot === true)?.properties ??
+    {}
+  );
+}
+
+// Pinned because the conditions are not equally blind, and the paired trial is read accordingly.
+// Flat-diff is asymmetric: only the FIXED reference authors a width, so its expectedSpec yields a
+// root width diff naming the target value. That makes flat-diff a structured baseline, not a blind
+// one.
+function assertConditionsLeakTheContractAsExpected(
   hug: ContractPairSide,
   fixed: ContractPairSide
 ): void {
@@ -301,6 +306,19 @@ function assertOnlyTypedDiffCarriesTheContract(
   if (untypedFeedback(hug) !== untypedFeedback(fixed)) {
     throw new Error('Contract-pair pixel-diff or scalar payloads differ across the pair');
   }
+
+  if ('width' in rootStyleDiffProperties(hug)) {
+    throw new Error('Contract-pair flat-diff exposed a root width on the HUG side');
+  }
+  const fixedWidthDiff = rootStyleDiffProperties(fixed).width;
+  if (
+    typeof fixedWidthDiff !== 'object' ||
+    fixedWidthDiff === null ||
+    (fixedWidthDiff as { expected?: unknown }).expected !== '96px'
+  ) {
+    throw new Error('Contract-pair flat-diff no longer names the FIXED width on the FIXED side');
+  }
+
   const horizontalSignal = (side: ContractPairSide): TypedDimensionSignal | undefined =>
     buildTypedDiffEvidence(
       side.initialComparison,
@@ -320,8 +338,8 @@ function assertOnlyTypedDiffCarriesTheContract(
   }
 }
 
-// The FIXED candidate must not carry the width the agent is expected to supply, otherwise hidden
-// acceptance cannot observe an omission. Asserted on the source, not only the render.
+// Asserted on the source, not the render: if the candidate carried the width, hidden acceptance
+// could not observe the agent omitting it.
 async function assertFixedCandidatesOmitTheWidth(fixed: ContractPairSide): Promise<void> {
   for (const [perturbationId, candidate] of fixed.mutation.candidates) {
     const candidateCss = await readFile(resolveEvalPath(candidate.css), 'utf8');
@@ -333,7 +351,6 @@ async function assertFixedCandidatesOmitTheWidth(fixed: ContractPairSide): Promi
   }
 }
 
-// The four cells that define the pair. The same proposal must earn opposite verdicts on each side.
 async function assertContractDiscriminationMatrix(
   hug: ContractPairSide,
   fixed: ContractPairSide
@@ -371,10 +388,9 @@ async function assertContractDiscriminationMatrix(
   }
 }
 
-// The counterfactual pair: atomic-button (HUG) and atomic-button-fixed (FIXED) render identically
-// and receive byte-identical mutated HTML and CSS, so only the sizing contract can tell an agent
-// which repair is correct. Restoring padding alone is right under HUG and overfits under FIXED;
-// also declaring the width is right under FIXED and overfits under HUG.
+// Counterfactual pair: both sides render identically from byte-identical mutated sources, so the
+// same proposal must be correct on one side and an overfit on the other. Padding alone is right
+// under HUG; padding plus an explicit width is right under FIXED.
 async function runContractPairSelfCheck(): Promise<void> {
   const hug = await openContractPairSide('atomic-button', 'padding-drift');
   try {
@@ -384,7 +400,7 @@ async function runContractPairSelfCheck(): Promise<void> {
     );
     try {
       assertPairInputsAreIdentical(hug, fixed);
-      assertOnlyTypedDiffCarriesTheContract(hug, fixed);
+      assertConditionsLeakTheContractAsExpected(hug, fixed);
       await assertFixedCandidatesOmitTheWidth(fixed);
       await assertContractDiscriminationMatrix(hug, fixed);
     } finally {

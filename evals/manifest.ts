@@ -130,10 +130,8 @@ function parseMutation(
   };
 }
 
-// A candidate declares CSS only. Its markup is always the perturbation's, because the oracle and
-// the candidate must show the same content for their comparison to mean anything. The CSS itself
-// cannot fall back to the oracle, which would reintroduce the omission blind spot described on
-// EvalPerturbation.
+// CSS only, with no fallback: markup must match the oracle's for the comparison to mean anything,
+// and a CSS fallback would reintroduce the blind spot described on EvalPerturbation.
 function parseCandidates(
   value: unknown,
   label: string,

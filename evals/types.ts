@@ -89,19 +89,15 @@ export interface RootCause {
 }
 
 export interface EvalMutation extends FixtureVariant {
-  // The repair target for each perturbation, keyed by perturbation ID. A candidate is this
-  // mutation's stylesheet carrying the perturbation's content delta, so it holds the same contract
-  // state the agent actually edited. Candidates belong to the mutation rather than the
-  // perturbation because two mutations of one fixture erase different declarations.
+  // Repair target per perturbation ID: this mutation's stylesheet carrying the perturbation's
+  // content delta. Keyed off the mutation because two mutations erase different declarations.
   candidates: ReadonlyMap<string, FixtureVariant>;
   id: string;
   rootCause: RootCause;
 }
 
-// A perturbation is purely the oracle: the correctly styled fixture under the perturbed content,
-// rendered untouched. The repair target lives on EvalMutation.candidates. Applying proposals to
-// the oracle instead would let it supply declarations the agent omitted, which hides omission
-// failures from hidden acceptance.
+// Oracle only. Applying proposals here instead of to EvalMutation.candidates would let the
+// correct styling supply declarations the agent omitted, hiding omissions from hidden acceptance.
 export interface EvalPerturbation {
   expectedMetadata: ExpectedMetadata;
   id: string;
