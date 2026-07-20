@@ -2,10 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, sep } from 'node:path';
 import { runCodexExecSelfCheck } from '../backends/codex-exec-self-check.js';
 import { runOpenRouterRetrySelfCheck } from '../backends/openrouter.js';
+import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { compareVariant, createFixtureContext, evaluateFinalProposal } from '../harness.js';
 import { loadManifest } from '../manifest.js';
 import { parseRepairProposal } from '../repair-proposal.js';
-import { conditionOrderForTrial, type RepairProposal } from '../types.js';
+import { conditionOrderForTrial, evalRunIdPattern, type RepairProposal } from '../types.js';
 import { buildCli } from './build-cli.js';
 import { runReportContractSelfCheck } from './report.js';
 
@@ -18,6 +19,9 @@ function pathIsWithin(root: string, target: string): boolean {
 }
 
 export async function runSelfCheck(): Promise<void> {
+  if (!evalRunIdPattern.test('20260720_self-check') || evalRunIdPattern.test('self-check')) {
+    throw new Error('Eval run ID format self-check failed');
+  }
   const rotatedConditions = [1, 2, 3].map((trial) => conditionOrderForTrial(trial).join(','));
   if (
     rotatedConditions.join('|') !==
@@ -85,6 +89,16 @@ export async function runSelfCheck(): Promise<void> {
     if (initialComparison.visible.pass) {
       throw new Error('Mutation self-check unexpectedly passed before repair');
     }
+    const rootDiff = initialComparison.styleDiffs.find((styleDiff) => styleDiff.isRoot === true);
+    const flatDiffFeedback = buildFlatDiffFeedback(initialComparison, manifest.selector);
+    if (
+      rootDiff &&
+      rootDiff.selector !== manifest.selector &&
+      (flatDiffFeedback.text.includes(`"selector": "${rootDiff.selector}"`) ||
+        !flatDiffFeedback.text.includes(`"selector": "${manifest.selector}"`))
+    ) {
+      throw new Error('Flat-diff feedback did not normalize the root selector for repair');
+    }
 
     const rootProposal: RepairProposal = {
       changes: acceptedRepair,
@@ -110,7 +124,11 @@ export async function runSelfCheck(): Promise<void> {
       proposal: rootProposal,
       server: context.server,
     });
-    if (!accepted.accepted || !accepted.rootCauseRepaired) {
+    if (
+      !accepted.accepted ||
+      !accepted.rootCauseRepaired ||
+      accepted.perturbationOutcomes?.length !== manifest.perturbations.length
+    ) {
       throw new Error('Hidden acceptance rejected the applied manifest ground truth');
     }
 

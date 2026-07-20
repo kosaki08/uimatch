@@ -2,6 +2,7 @@ import type {
   EvalManifest,
   EvalMutation,
   HiddenAcceptanceResult,
+  HiddenPerturbationOutcome,
   RepairChange,
   RepairProposal,
 } from '../types.js';
@@ -20,9 +21,20 @@ export function evaluateHiddenAcceptance(
   proposal: RepairProposal,
   evidence: {
     finalComparisonPassed: boolean;
-    perturbationPasses: ReadonlyMap<string, boolean>;
+    perturbationOutcomes: HiddenPerturbationOutcome[];
   }
 ): HiddenAcceptanceResult {
+  const expectedPerturbationIds = manifest.perturbations.map((perturbation) => perturbation.id);
+  const outcomeIds = evidence.perturbationOutcomes.map((outcome) => outcome.id);
+  if (
+    outcomeIds.length !== expectedPerturbationIds.length ||
+    new Set(outcomeIds).size !== outcomeIds.length ||
+    expectedPerturbationIds.some((id) => !outcomeIds.includes(id))
+  ) {
+    throw new RangeError(
+      'Hidden perturbation outcomes must cover every manifest perturbation once'
+    );
+  }
   const matchedRepairIndex = mutation.rootCause.acceptedRepairs.findIndex((repair) =>
     repair.every((expected) => proposal.changes.some((change) => changesMatch(change, expected)))
   );
@@ -31,9 +43,12 @@ export function evaluateHiddenAcceptance(
     (change) => !matchedRepair?.some((expected) => changesMatch(change, expected))
   ).length;
   const rootCauseRepaired = matchedRepairIndex >= 0;
-  const perturbationsSurvived = manifest.perturbations
-    .filter((perturbation) => evidence.perturbationPasses.get(perturbation.id) === true)
-    .map((perturbation) => perturbation.id);
+  const outcomesById = new Map(
+    evidence.perturbationOutcomes.map((outcome) => [outcome.id, outcome] as const)
+  );
+  const perturbationsSurvived = manifest.perturbations.flatMap((perturbation) =>
+    outcomesById.get(perturbation.id)?.passed === true ? [perturbation.id] : []
+  );
   const accepted =
     evidence.finalComparisonPassed &&
     perturbationsSurvived.length === manifest.perturbations.length;
@@ -42,6 +57,7 @@ export function evaluateHiddenAcceptance(
     accepted,
     finalComparisonPassed: evidence.finalComparisonPassed,
     ...(rootCauseRepaired ? { matchedRepairIndex } : {}),
+    perturbationOutcomes: evidence.perturbationOutcomes,
     perturbationsEvaluated: manifest.perturbations.length,
     perturbationsSurvived,
     rootCauseRepaired,

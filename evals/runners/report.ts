@@ -6,7 +6,8 @@ import { parseRepairProposal } from '../repair-proposal.js';
 import {
   conditionIds,
   conditionOrderForTrial,
-  evalIdentifierPattern,
+  evalRunIdPattern,
+  expectedMetadataMatches,
   type ConditionId,
   type EvalAuthMode,
   type EvalBackendId,
@@ -14,7 +15,9 @@ import {
   type EvalResult,
   type EvalStatus,
   type EvalTurnRecord,
+  type ExpectedMetadata,
   type HiddenAcceptanceResult,
+  type HiddenPerturbationOutcome,
   type ModelBilling,
   type ModelTokenUsage,
   type ModelTurnUsage,
@@ -134,6 +137,48 @@ function parseVisibleComparison(value: unknown, label: string): VisibleCompariso
     pixelDiffRatio: asNonNegativeNumber(record.pixelDiffRatio, `${label}.pixelDiffRatio`),
     ...(pixelDiffRatioContent === undefined ? {} : { pixelDiffRatioContent }),
     styleDiffCount: asNonNegativeInteger(record.styleDiffCount, `${label}.styleDiffCount`),
+  };
+}
+
+function parseExpectedMetadata(value: unknown, label: string): ExpectedMetadata {
+  const record = asRecord(value, label);
+  if (!Array.isArray(record.padding) || record.padding.length !== 4) {
+    throw new TypeError(`${label}.padding must contain four values`);
+  }
+  return {
+    childCount: asNonNegativeInteger(record.childCount, `${label}.childCount`),
+    height: asNonNegativeNumber(record.height, `${label}.height`),
+    overflowing: asBoolean(record.overflowing, `${label}.overflowing`),
+    padding: [
+      asNonNegativeNumber(record.padding[0], `${label}.padding[0]`),
+      asNonNegativeNumber(record.padding[1], `${label}.padding[1]`),
+      asNonNegativeNumber(record.padding[2], `${label}.padding[2]`),
+      asNonNegativeNumber(record.padding[3], `${label}.padding[3]`),
+    ],
+    scrollHeight: asNonNegativeNumber(record.scrollHeight, `${label}.scrollHeight`),
+    scrollWidth: asNonNegativeNumber(record.scrollWidth, `${label}.scrollWidth`),
+    width: asNonNegativeNumber(record.width, `${label}.width`),
+  };
+}
+
+function parsePerturbationOutcome(value: unknown, label: string): HiddenPerturbationOutcome {
+  const record = asRecord(value, label);
+  const actualMetadata = parseExpectedMetadata(record.actualMetadata, `${label}.actualMetadata`);
+  const comparison = parseVisibleComparison(record.comparison, `${label}.comparison`);
+  const expectedMetadata = parseExpectedMetadata(
+    record.expectedMetadata,
+    `${label}.expectedMetadata`
+  );
+  const passed = asBoolean(record.passed, `${label}.passed`);
+  if (passed !== (comparison.pass && expectedMetadataMatches(actualMetadata, expectedMetadata))) {
+    throw new TypeError(`${label}.passed does not match comparison and metadata`);
+  }
+  return {
+    actualMetadata,
+    comparison,
+    expectedMetadata,
+    id: asString(record.id, `${label}.id`),
+    passed,
   };
 }
 
@@ -268,7 +313,11 @@ function parseTurnRecord(value: unknown, label: string): EvalTurnRecord {
   };
 }
 
-function parseAcceptance(value: unknown, label: string): HiddenAcceptanceResult {
+function parseAcceptance(
+  value: unknown,
+  label: string,
+  requirePerturbationOutcomes: boolean
+): HiddenAcceptanceResult {
   const record = asRecord(value, label);
   if (!Array.isArray(record.perturbationsSurvived)) {
     throw new TypeError(`${label}.perturbationsSurvived must be an array`);
@@ -290,6 +339,34 @@ function parseAcceptance(value: unknown, label: string): HiddenAcceptanceResult 
   ) {
     throw new TypeError(`${label}.perturbationsSurvived is inconsistent`);
   }
+  const perturbationOutcomes =
+    record.perturbationOutcomes === undefined
+      ? undefined
+      : (() => {
+          if (!Array.isArray(record.perturbationOutcomes)) {
+            throw new TypeError(`${label}.perturbationOutcomes must be an array`);
+          }
+          return record.perturbationOutcomes.map((entry, index) =>
+            parsePerturbationOutcome(entry, `${label}.perturbationOutcomes[${index}]`)
+          );
+        })();
+  if (requirePerturbationOutcomes && perturbationOutcomes === undefined) {
+    throw new TypeError(`${label}.perturbationOutcomes is required for schema version 4`);
+  }
+  if (perturbationOutcomes) {
+    const outcomeIds = perturbationOutcomes.map((outcome) => outcome.id);
+    const survivedIds = perturbationOutcomes
+      .filter((outcome) => outcome.passed)
+      .map((outcome) => outcome.id);
+    if (
+      perturbationOutcomes.length !== perturbationsEvaluated ||
+      new Set(outcomeIds).size !== outcomeIds.length ||
+      survivedIds.length !== perturbationsSurvived.length ||
+      survivedIds.some((id) => !perturbationsSurvived.includes(id))
+    ) {
+      throw new TypeError(`${label}.perturbationOutcomes is inconsistent`);
+    }
+  }
   return {
     accepted: asBoolean(record.accepted, `${label}.accepted`),
     finalComparisonPassed: asBoolean(
@@ -297,6 +374,7 @@ function parseAcceptance(value: unknown, label: string): HiddenAcceptanceResult 
       `${label}.finalComparisonPassed`
     ),
     ...(matchedRepairIndex === undefined ? {} : { matchedRepairIndex }),
+    ...(perturbationOutcomes === undefined ? {} : { perturbationOutcomes }),
     perturbationsEvaluated,
     perturbationsSurvived,
     rootCauseRepaired: asBoolean(record.rootCauseRepaired, `${label}.rootCauseRepaired`),
@@ -359,7 +437,10 @@ function aggregateTurnBilling(
 
 function parseResult(value: unknown, file: string): EvalResult {
   const record = asRecord(value, file);
-  if (record.schemaVersion !== 3) throw new TypeError(`${file}.schemaVersion must be 3`);
+  if (record.schemaVersion !== 3 && record.schemaVersion !== 4) {
+    throw new TypeError(`${file}.schemaVersion must be 3 or 4`);
+  }
+  const schemaVersion = record.schemaVersion;
   if (!Array.isArray(record.turnRecords)) {
     throw new TypeError(`${file}.turnRecords must be an array`);
   }
@@ -443,7 +524,7 @@ function parseResult(value: unknown, file: string): EvalResult {
   const acceptance =
     record.acceptance === undefined
       ? undefined
-      : parseAcceptance(record.acceptance, `${file}.acceptance`);
+      : parseAcceptance(record.acceptance, `${file}.acceptance`, schemaVersion === 4);
   if (acceptance && acceptance.finalComparisonPassed !== finalComparison?.pass) {
     throw new TypeError(`${file}.acceptance does not match finalComparison`);
   }
@@ -462,6 +543,16 @@ function parseResult(value: unknown, file: string): EvalResult {
   }
   if (status === 'aborted_budget' && budget.mode !== 'metered-usd') {
     throw new TypeError(`${file}.aborted_budget requires metered billing`);
+  }
+  const turnTimeoutMs =
+    record.turnTimeoutMs === undefined
+      ? undefined
+      : asPositiveInteger(record.turnTimeoutMs, `${file}.turnTimeoutMs`);
+  if (schemaVersion === 4 && backend === 'codex-exec' && turnTimeoutMs === undefined) {
+    throw new TypeError(`${file}.turnTimeoutMs is required for Codex schema version 4 results`);
+  }
+  if (backend !== 'codex-exec' && turnTimeoutMs !== undefined) {
+    throw new TypeError(`${file}.turnTimeoutMs is only valid for Codex results`);
   }
   return {
     ...(acceptance ? { acceptance } : {}),
@@ -482,10 +573,11 @@ function parseResult(value: unknown, file: string): EvalResult {
     promptHash: asString(record.promptHash, `${file}.promptHash`),
     protocolErrors,
     runId: asString(record.runId, `${file}.runId`),
-    schemaVersion: 3,
+    schemaVersion,
     status,
     tokensUsed,
     trial,
+    ...(turnTimeoutMs === undefined ? {} : { turnTimeoutMs }),
     turnRecords,
     turns,
     uimatchCommit: asString(record.uimatchCommit, `${file}.uimatchCommit`),
@@ -510,8 +602,8 @@ export function runReportContractSelfCheck(): void {
     mutationId: 'self-check-mutation',
     promptHash: 'self-check-prompt',
     protocolErrors: 0,
-    runId: 'self-check-run',
-    schemaVersion: 3 as const,
+    runId: '20260720_self-check-run',
+    schemaVersion: 4 as const,
     tokensUsed: 0,
     trial: 1,
     turns: 1,
@@ -527,6 +619,7 @@ export function runReportContractSelfCheck(): void {
       budget: { mode: 'subscription' },
       error: 'self-check error',
       status: 'error',
+      turnTimeoutMs: 120_000,
       turnRecords: [
         {
           billing: { mode: 'subscription' },
@@ -541,6 +634,82 @@ export function runReportContractSelfCheck(): void {
   );
   if (subscription.billing.mode !== 'subscription') {
     throw new Error('Subscription result contract self-check failed');
+  }
+
+  const passingComparison: VisibleComparisonMetrics = {
+    dfs: 100,
+    highSeverityIssues: 0,
+    pass: true,
+    pixelDiffRatio: 0,
+    styleDiffCount: 0,
+  };
+  const expectedMetadata: ExpectedMetadata = {
+    childCount: 1,
+    height: 40,
+    overflowing: false,
+    padding: [8, 16, 8, 16],
+    scrollHeight: 40,
+    scrollWidth: 96,
+    width: 96,
+  };
+  const passed = parseResult(
+    {
+      ...common,
+      acceptance: {
+        accepted: true,
+        finalComparisonPassed: true,
+        matchedRepairIndex: 0,
+        perturbationOutcomes: [
+          {
+            actualMetadata: expectedMetadata,
+            comparison: passingComparison,
+            expectedMetadata,
+            id: 'self-check-perturbation',
+            passed: true,
+          },
+        ],
+        perturbationsEvaluated: 1,
+        perturbationsSurvived: ['self-check-perturbation'],
+        rootCauseRepaired: true,
+        unmatchedChangeCount: 0,
+      },
+      authMode: 'subscription',
+      backend: 'codex-exec',
+      backendVersion: 'self-check',
+      billing: { mode: 'subscription' },
+      budget: { mode: 'subscription' },
+      finalComparison: passingComparison,
+      status: 'passed',
+      tokensUsed: 0,
+      turnRecords: [
+        {
+          billing: { mode: 'subscription' },
+          finishReason: 'stop',
+          proposal: {
+            changes: [{ property: 'padding', selector: '#atomic', value: '8px 16px' }],
+            diagnosis: 'self-check repair',
+          },
+          requestAttempts: 1,
+          retryDelaysMs: [],
+          turn: 1,
+          usage: {
+            authMode: 'subscription',
+            backend: 'codex-exec',
+            backendVersion: 'self-check',
+            inputTokens: 0,
+            outputTokens: 0,
+            requestedModel: 'self-check-model',
+            totalTokens: 0,
+          },
+          visibleComparison: passingComparison,
+        },
+      ],
+      turnTimeoutMs: 120_000,
+    },
+    'passed self-check'
+  );
+  if (passed.acceptance?.perturbationOutcomes?.[0]?.passed !== true) {
+    throw new Error('Perturbation outcome result contract self-check failed');
   }
 
   const metered = parseResult(
@@ -718,8 +887,8 @@ function parseRunArgument(args: string[]): string | undefined {
   if (normalized.length !== 2 || normalized[0] !== '--run' || !normalized[1]) {
     throw new ReportUsageError('Usage: pnpm eval:report -- [--run <run-id>]');
   }
-  if (!evalIdentifierPattern.test(normalized[1])) {
-    throw new ReportUsageError('--run must be a safe eval identifier');
+  if (!evalRunIdPattern.test(normalized[1])) {
+    throw new ReportUsageError('--run must use YYYYMMDD_<name>');
   }
   return normalized[1];
 }
@@ -852,6 +1021,10 @@ async function main(): Promise<void> {
     results.map((result) => result.maxTurns),
     'turn limit'
   );
+  const turnTimeoutMs = singleton(
+    results.map((result) => result.turnTimeoutMs ?? null),
+    'turn timeout'
+  );
   const serializedBudget = singleton(
     results.map((result) => JSON.stringify(result.budget)),
     'budget policy'
@@ -876,6 +1049,7 @@ async function main(): Promise<void> {
         runId,
         tokensUsed: results.reduce((sum, result) => sum + result.tokensUsed, 0),
         trials,
+        ...(turnTimeoutMs === null ? {} : { turnTimeoutMs }),
         uimatchCommit,
       },
       null,

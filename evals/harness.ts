@@ -3,14 +3,16 @@ import type { CompareResult } from '@uimatch/cli';
 import { evaluateHiddenAcceptance } from './evaluators/hidden-acceptance.js';
 import { createRepairWorkspace, type RepairWorkspace } from './repair-workspace.js';
 import { startEvalFixtureServer, type EvalFixtureServer } from './runners/fixture-server.js';
-import type {
-  ComparisonSnapshot,
-  EvalManifest,
-  EvalMutation,
-  ExpectedMetadata,
-  HiddenAcceptanceResult,
-  RepairProposal,
-  VisibleComparisonMetrics,
+import {
+  expectedMetadataMatches,
+  type ComparisonSnapshot,
+  type EvalManifest,
+  type EvalMutation,
+  type ExpectedMetadata,
+  type HiddenAcceptanceResult,
+  type HiddenPerturbationOutcome,
+  type RepairProposal,
+  type VisibleComparisonMetrics,
 } from './types.js';
 
 export interface FixtureContext {
@@ -99,24 +101,12 @@ function asExpectedMetadata(value: unknown): ExpectedMetadata {
   };
 }
 
-function metadataMatches(actual: ExpectedMetadata, expected: ExpectedMetadata): boolean {
-  return (
-    actual.childCount === expected.childCount &&
-    actual.height === expected.height &&
-    actual.overflowing === expected.overflowing &&
-    actual.scrollHeight === expected.scrollHeight &&
-    actual.scrollWidth === expected.scrollWidth &&
-    actual.width === expected.width &&
-    actual.padding.every((value, index) => value === expected.padding[index])
-  );
-}
-
 function assertMetadataMatches(
   actual: ExpectedMetadata,
   expected: ExpectedMetadata,
   label: string
 ): void {
-  if (!metadataMatches(actual, expected)) {
+  if (!expectedMetadataMatches(actual, expected)) {
     throw new Error(
       `${label} metadata does not match the manifest: expected=${JSON.stringify(expected)} actual=${JSON.stringify(actual)}`
     );
@@ -268,7 +258,7 @@ export async function evaluateFinalProposal(options: {
   proposal: RepairProposal;
   server: EvalFixtureServer;
 }): Promise<HiddenAcceptanceResult> {
-  const perturbationPasses = new Map<string, boolean>();
+  const perturbationOutcomes: HiddenPerturbationOutcome[] = [];
   for (const perturbation of options.manifest.perturbations) {
     const story = options.server.workspacePerturbationUrls.get(perturbation.id);
     const reference = options.perturbationReferences.get(perturbation.id);
@@ -286,14 +276,20 @@ export async function evaluateFinalProposal(options: {
     if (!rendered.metadata) {
       throw new Error(`Perturbation ${perturbation.id} metadata was not captured after repair`);
     }
-    perturbationPasses.set(
-      perturbation.id,
-      comparison.visible.pass && metadataMatches(rendered.metadata, perturbation.expectedMetadata)
-    );
+    const passed =
+      comparison.visible.pass &&
+      expectedMetadataMatches(rendered.metadata, perturbation.expectedMetadata);
+    perturbationOutcomes.push({
+      actualMetadata: rendered.metadata,
+      comparison: comparison.visible,
+      expectedMetadata: perturbation.expectedMetadata,
+      id: perturbation.id,
+      passed,
+    });
   }
   return evaluateHiddenAcceptance(options.manifest, options.mutation, options.proposal, {
     finalComparisonPassed: options.finalComparison.visible.pass,
-    perturbationPasses,
+    perturbationOutcomes,
   });
 }
 

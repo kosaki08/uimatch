@@ -11,7 +11,8 @@ import {
   type TurnBackend,
 } from './backend.js';
 
-const defaultTurnTimeoutMs = 120_000;
+export const defaultCodexTurnTimeoutMs = 120_000;
+export const maximumCodexTurnTimeoutMs = 2_147_483_647;
 const processTerminationGraceMs = 2_000;
 const maximumProcessOutputBytes = 5 * 1024 * 1024;
 const versionTimeoutMs = 10_000;
@@ -513,7 +514,7 @@ export async function createCodexExecBackend(options: CodexExecOptions = {}): Pr
         command,
         input,
         prefixArgs,
-        timeoutMs: options.timeoutMs ?? defaultTurnTimeoutMs,
+        timeoutMs: options.timeoutMs ?? defaultCodexTurnTimeoutMs,
         version,
       }),
     version,

@@ -74,6 +74,7 @@ EVAL_BACKEND=codex-exec
 EVAL_AUTH_MODE=subscription
 EVAL_MODEL=<codex-model-id>
 EVAL_MAX_TURNS=3
+EVAL_CODEX_TURN_TIMEOUT_MS=120000
 UIMATCH_EVAL_COMMIT=<commit supplied by the caller or build>
 ```
 
@@ -105,16 +106,21 @@ execution settings as an agent configuration. The runner flattens the harness
 message history into each new CLI prompt, so those results are not presented as
 equivalent to a raw API model using native chat roles.
 
+`EVAL_CODEX_TURN_TIMEOUT_MS` is optional and defaults to 120000 milliseconds.
+The resolved value applies equally to every condition in the command and is
+recorded in each result. Use a new run ID when changing it.
+
 Optional result identity variables:
 
 ```dotenv
-EVAL_RUN_ID=experiment-001
+EVAL_RUN_ID=20260720_experiment-001
 EVAL_TRIAL=1
 ```
 
-When `EVAL_RUN_ID` is omitted, the runner generates a UUID. Reusing the same run
-ID, fixture, mutation, condition, and trial is rejected instead of overwriting
-an existing result.
+Explicit run IDs must use `YYYYMMDD_<name>`. When `EVAL_RUN_ID` is omitted, the
+runner prefixes a generated UUID with the current UTC date. Reusing the same
+run ID, fixture, mutation, condition, and trial is rejected instead of
+overwriting an existing result.
 
 Missing or invalid required configuration exits with code 2 before building,
 launching a browser, or calling the model. The runner never derives
@@ -175,10 +181,12 @@ element width, height, padding, child count, scroll size, and overflow state.
 CSS can pass even when it does not exactly match a listed repair.
 
 The model sees only the current implementation HTML/CSS and feedback allowed by
-the condition. Reference source, manifest root-cause labels, mutation IDs, and
-hidden evaluator outcomes are not included in prompts. The fixture source must
-therefore keep answer-bearing names and reference declarations out of the
-current implementation presented to the model.
+the condition. The prompt lists the allowed editable selectors, and root
+StyleDiff selectors are normalized to the manifest's editable root selector.
+Reference source, manifest root-cause labels, mutation IDs, and hidden evaluator
+outcomes are not included in prompts. The fixture source must therefore keep
+answer-bearing names and reference declarations out of the current
+implementation presented to the model.
 
 ## Fixtures and data policy
 
@@ -203,7 +211,7 @@ aggregated.
 Results are stored under:
 
 ```text
-evals/results/<run-id>/<fixture>/<mutation>/<condition>/<trial>.json
+evals/results/YYYYMMDD_<run-id>/<fixture>/<mutation>/<condition>/<trial>.json
 ```
 
 Every raw result includes:
@@ -227,6 +235,7 @@ Every raw result includes:
   usage, and protocol or execution error
 
 Final results also record visible comparison acceptance, perturbation survival,
-root-cause classification, and the number of changes unmatched by the manifest's
+each perturbation's visible metrics and actual/expected metadata, root-cause
+classification, and the number of changes unmatched by the manifest's
 accepted-repair hints. API keys are used only in the authorization header and
 are never written to results or logs.

@@ -4,7 +4,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { access, link, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { TurnBackendError, type ModelMessage, type TurnBackend } from '../backends/backend.js';
-import { createCodexExecBackend } from '../backends/codex-exec.js';
+import {
+  createCodexExecBackend,
+  defaultCodexTurnTimeoutMs,
+  maximumCodexTurnTimeoutMs,
+} from '../backends/codex-exec.js';
 import { createOpenRouterBackend } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { buildPixelDiffFeedback } from '../conditions/pixel-diff.js';
@@ -22,6 +26,7 @@ import {
   conditionIds,
   conditionOrderForTrial,
   evalIdentifierPattern,
+  evalRunIdPattern,
   type ComparisonSnapshot,
   type ConditionFeedback,
   type ConditionId,
@@ -47,6 +52,7 @@ interface EvalConfig {
   model: string;
   runId: string;
   trial: number;
+  turnTimeoutMs?: number;
   uimatchCommit: string;
 }
 
@@ -91,10 +97,24 @@ function parsePositiveNumber(name: string): number {
 }
 
 function parseRunId(): string {
-  const value = process.env.EVAL_RUN_ID?.trim() || randomUUID();
-  if (!evalIdentifierPattern.test(value)) {
+  const configured = process.env.EVAL_RUN_ID?.trim();
+  const value =
+    configured ?? `${new Date().toISOString().slice(0, 10).replaceAll('-', '')}_${randomUUID()}`;
+  if (!evalRunIdPattern.test(value)) {
     throw new EvalUsageError(
-      'EVAL_RUN_ID must contain only letters, numbers, dots, underscores, and hyphens.'
+      'EVAL_RUN_ID must use YYYYMMDD_<name> with only letters, numbers, dots, underscores, and hyphens.'
+    );
+  }
+  return value;
+}
+
+function parseCodexTurnTimeoutMs(): number {
+  const raw = process.env.EVAL_CODEX_TURN_TIMEOUT_MS?.trim();
+  if (!raw) return defaultCodexTurnTimeoutMs;
+  const value = parsePositiveIntegerValue('EVAL_CODEX_TURN_TIMEOUT_MS', raw);
+  if (value > maximumCodexTurnTimeoutMs) {
+    throw new EvalUsageError(
+      `EVAL_CODEX_TURN_TIMEOUT_MS must not exceed ${maximumCodexTurnTimeoutMs}.`
     );
   }
   return value;
@@ -114,11 +134,13 @@ async function loadEvalConfig(): Promise<EvalConfig> {
   const uimatchCommit = requireEnvironment('UIMATCH_EVAL_COMMIT');
   let backend: TurnBackend;
   let budget: EvalConfig['budget'];
+  let turnTimeoutMs: number | undefined;
   if (backendId === 'openrouter' && authMode === 'api') {
     backend = createOpenRouterBackend(requireEnvironment('OPENROUTER_API_KEY'));
     budget = { commandBudgetUsd: parsePositiveNumber('EVAL_BUDGET_USD'), mode: 'metered-usd' };
   } else if (backendId === 'codex-exec' && authMode === 'subscription') {
-    backend = await createCodexExecBackend();
+    turnTimeoutMs = parseCodexTurnTimeoutMs();
+    backend = await createCodexExecBackend({ timeoutMs: turnTimeoutMs });
     budget = { mode: 'subscription' };
   } else {
     throw new EvalUsageError(
@@ -133,13 +155,15 @@ async function loadEvalConfig(): Promise<EvalConfig> {
     model,
     runId,
     trial,
+    ...(turnTimeoutMs === undefined ? {} : { turnTimeoutMs }),
     uimatchCommit,
   };
 }
 
 function buildConditionFeedback(
   condition: ConditionId,
-  comparison: ComparisonSnapshot
+  comparison: ComparisonSnapshot,
+  rootSelector: string
 ): ConditionFeedback {
   switch (condition) {
     case 'pixel-diff':
@@ -147,7 +171,7 @@ function buildConditionFeedback(
     case 'scalar':
       return buildScalarFeedback(comparison);
     case 'flat-diff':
-      return buildFlatDiffFeedback(comparison);
+      return buildFlatDiffFeedback(comparison, rootSelector);
   }
 }
 
@@ -164,13 +188,15 @@ function feedbackContent(prefix: string, feedback: ConditionFeedback): ModelMess
 
 function buildInitialMessages(
   workspace: RepairWorkspace,
-  feedback: ConditionFeedback
+  feedback: ConditionFeedback,
+  editableSelectors: readonly string[]
 ): ModelMessage[] {
   const prompt = [
     'Repair the current UI so that it matches the reference rendering.',
     'Return a complete CSS change proposal against the original current styles.css. Each later proposal replaces the previous proposal.',
     'Return JSON only with this shape:',
     '{"diagnosis":"...","changes":[{"selector":"...","property":"...","value":"..."}]}',
+    `Use only these editable selectors: ${JSON.stringify(editableSelectors)}`,
     'current index.html:',
     workspace.implementationSource.html,
     'current styles.css:',
@@ -249,10 +275,13 @@ function buildResult(
     promptHash: state.promptHash,
     protocolErrors: state.turnRecords.filter((record) => record.protocolError !== undefined).length,
     runId: context.config.runId,
-    schemaVersion: 3,
+    schemaVersion: 4,
     status,
     tokensUsed: usages.reduce((sum, usage) => sum + usage.totalTokens, 0),
     trial: context.config.trial,
+    ...(context.config.turnTimeoutMs === undefined
+      ? {}
+      : { turnTimeoutMs: context.config.turnTimeoutMs }),
     turnRecords: state.turnRecords,
     turns: state.turnRecords.length,
     uimatchCommit: context.config.uimatchCommit,
@@ -292,7 +321,10 @@ function resultDestination(identity: {
     identity.condition,
     String(identity.trial),
   ];
-  if (!segments.every((segment) => evalIdentifierPattern.test(segment))) {
+  if (
+    !evalRunIdPattern.test(identity.runId) ||
+    !segments.slice(1).every((segment) => evalIdentifierPattern.test(segment))
+  ) {
     throw new RangeError('Eval result identifiers must be safe path segments');
   }
   return resolve(
@@ -343,9 +375,14 @@ async function runJob(options: {
 }): Promise<EvalResult> {
   const initialFeedback = buildConditionFeedback(
     options.context.condition,
-    options.initialComparison
+    options.initialComparison,
+    options.context.manifest.selector
   );
-  const messages = buildInitialMessages(options.workspace, initialFeedback);
+  const messages = buildInitialMessages(
+    options.workspace,
+    initialFeedback,
+    options.context.manifest.editableSelectors
+  );
   const state = createJobState(hashMessages(messages));
 
   for (let turn = 1; turn <= options.context.config.maxTurns; turn += 1) {
@@ -473,7 +510,11 @@ async function runJob(options: {
       });
     }
 
-    const feedback = buildConditionFeedback(options.context.condition, finalComparison);
+    const feedback = buildConditionFeedback(
+      options.context.condition,
+      finalComparison,
+      options.context.manifest.selector
+    );
     messages.push({
       content: feedbackContent(
         'The proposal was applied to a fresh copy of the original current styles.css, but the visible comparison still differs. Return a complete replacement proposal.',
@@ -532,7 +573,8 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
         ) {
           const messages = buildInitialMessages(
             fixture.workspace,
-            buildConditionFeedback(condition, initialComparison)
+            buildConditionFeedback(condition, initialComparison, manifest.selector),
+            manifest.editableSelectors
           );
           const result = buildResult(
             context,

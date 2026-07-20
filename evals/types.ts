@@ -1,5 +1,6 @@
 export const conditionIds = ['pixel-diff', 'scalar', 'flat-diff'] as const;
 export const evalIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+export const evalRunIdPattern = /^\d{8}_[A-Za-z0-9][A-Za-z0-9._-]{0,118}$/;
 
 export type ConditionId = (typeof conditionIds)[number];
 
@@ -38,6 +39,18 @@ export interface ExpectedMetadata {
   scrollHeight: number;
   scrollWidth: number;
   width: number;
+}
+
+export function expectedMetadataMatches(left: ExpectedMetadata, right: ExpectedMetadata): boolean {
+  return (
+    left.childCount === right.childCount &&
+    left.height === right.height &&
+    left.overflowing === right.overflowing &&
+    left.scrollHeight === right.scrollHeight &&
+    left.scrollWidth === right.scrollWidth &&
+    left.width === right.width &&
+    left.padding.every((value, index) => value === right.padding[index])
+  );
 }
 
 export interface RootCause {
@@ -107,10 +120,19 @@ export interface HiddenAcceptanceResult {
   accepted: boolean;
   finalComparisonPassed: boolean;
   matchedRepairIndex?: number;
+  perturbationOutcomes?: HiddenPerturbationOutcome[];
   perturbationsEvaluated: number;
   perturbationsSurvived: string[];
   rootCauseRepaired: boolean;
   unmatchedChangeCount: number;
+}
+
+export interface HiddenPerturbationOutcome {
+  actualMetadata: ExpectedMetadata;
+  comparison: VisibleComparisonMetrics;
+  expectedMetadata: ExpectedMetadata;
+  id: string;
+  passed: boolean;
 }
 
 export interface ModelTokenUsage {
@@ -185,10 +207,11 @@ export interface EvalResult {
   promptHash: string;
   protocolErrors: number;
   runId: string;
-  schemaVersion: 3;
+  schemaVersion: 3 | 4;
   status: EvalStatus;
   tokensUsed: number;
   trial: number;
+  turnTimeoutMs?: number;
   turnRecords: EvalTurnRecord[];
   turns: number;
   uimatchCommit: string;
