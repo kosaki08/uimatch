@@ -126,7 +126,7 @@ function renderCell(
   return `<section><h3>${escapeHtml(heading)}</h3>${
     artifact
       ? `<img src="${escapeHtml(imageSource(sheetPath, artifact))}" alt="${escapeHtml(heading)}">`
-      : '<p class="missing">Artifact not saved. Regenerate with EVAL_ARTIFACT_POLICY=all.</p>'
+      : '<p class="missing">No audit artifact is available for this result.</p>'
   }<p>${escapeHtml(caption)}</p></section>`;
 }
 

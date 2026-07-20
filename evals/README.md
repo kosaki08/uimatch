@@ -225,6 +225,10 @@ never embedded in JSON. Existing files are reused only when their bytes match,
 so a rerun cannot silently replace audit evidence. An existing `all` record is
 never downgraded by a later `failures` run.
 
+When a run ends before hidden acceptance, artifact replay preserves the latest
+recorded visible comparison. Hidden artifacts remain absent and the contact
+sheet labels that case as unevaluated rather than inferring an outcome.
+
 For the initial atomic audit, regenerate all evidence and create the focused
 reference/pixel-diff/flat-diff sheet with:
 

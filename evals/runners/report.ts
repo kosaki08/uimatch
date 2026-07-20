@@ -662,10 +662,11 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
           trial,
         });
   if (artifacts) {
-    if (!finalComparison || !acceptance?.perturbationOutcomes) {
-      throw new TypeError(`${file}.artifacts requires a final evaluated proposal`);
+    if (!finalComparison) {
+      throw new TypeError(`${file}.artifacts requires a recorded final comparison`);
     }
-    const expectedPerturbationIds = acceptance.perturbationOutcomes
+    const perturbationOutcomes = acceptance?.perturbationOutcomes ?? [];
+    const expectedPerturbationIds = perturbationOutcomes
       .filter((outcome) => artifacts.policy === 'all' || !outcome.passed)
       .map((outcome) => outcome.id)
       .sort();
@@ -674,10 +675,7 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
       throw new TypeError(`${file}.artifacts.perturbations does not match its policy`);
     }
     for (const [id, artifact] of Object.entries(artifacts.perturbations ?? {})) {
-      if (
-        acceptance.perturbationOutcomes.find((outcome) => outcome.id === id)?.passed !==
-        artifact.passed
-      ) {
+      if (perturbationOutcomes.find((outcome) => outcome.id === id)?.passed !== artifact.passed) {
         throw new TypeError(`${file}.artifacts.perturbations.${id}.passed is inconsistent`);
       }
     }
@@ -797,69 +795,111 @@ export function runReportContractSelfCheck(): void {
     path: `artifacts/${common.runId}/${common.fixtureId}/${common.mutationId}/${common.condition}/trial-${common.trial}/${name}.png`,
     sha256: 'a'.repeat(64),
   });
-  const passed = parseEvalResult(
-    {
-      ...common,
-      acceptance: {
-        accepted: true,
-        finalComparisonPassed: true,
-        matchedRepairIndex: 0,
-        perturbationOutcomes: [
-          {
-            actualMetadata: expectedMetadata,
-            comparison: passingComparison,
-            expectedMetadata,
-            id: 'self-check-perturbation',
-            passed: true,
-          },
-        ],
-        perturbationsEvaluated: 1,
-        perturbationsSurvived: ['self-check-perturbation'],
-        rootCauseRepaired: true,
-        unmatchedChangeCount: 0,
+  const passedRaw = {
+    ...common,
+    acceptance: {
+      accepted: true,
+      finalComparisonPassed: true,
+      matchedRepairIndex: 0,
+      perturbationOutcomes: [
+        {
+          actualMetadata: expectedMetadata,
+          comparison: passingComparison,
+          expectedMetadata,
+          id: 'self-check-perturbation',
+          passed: true,
+        },
+      ],
+      perturbationsEvaluated: 1,
+      perturbationsSurvived: ['self-check-perturbation'],
+      rootCauseRepaired: true,
+      unmatchedChangeCount: 0,
+    },
+    artifacts: {
+      final: {
+        diff: artifactFile('final-diff'),
+        implementation: artifactFile('final'),
+        reference: artifactFile('reference'),
       },
-      artifacts: {
-        final: {
-          diff: artifactFile('final-diff'),
-          implementation: artifactFile('final'),
+      perturbations: {
+        'self-check-perturbation': {
+          diff: artifactFile('self-check-perturbation-diff'),
+          implementation: artifactFile('self-check-perturbation'),
+          passed: true,
+          reference: artifactFile('self-check-perturbation-reference'),
+        },
+      },
+      policy: 'all',
+      turns: {
+        '1': {
+          diff: artifactFile('turn-1-diff'),
+          implementation: artifactFile('turn-1'),
           reference: artifactFile('reference'),
         },
-        perturbations: {
-          'self-check-perturbation': {
-            diff: artifactFile('self-check-perturbation-diff'),
-            implementation: artifactFile('self-check-perturbation'),
-            passed: true,
-            reference: artifactFile('self-check-perturbation-reference'),
-          },
-        },
-        policy: 'all',
-        turns: {
-          '1': {
-            diff: artifactFile('turn-1-diff'),
-            implementation: artifactFile('turn-1'),
-            reference: artifactFile('reference'),
-          },
-        },
       },
-      authMode: 'subscription',
-      backend: 'codex-exec',
-      backendVersion: 'self-check',
-      billing: { mode: 'subscription' },
-      budget: { mode: 'subscription' },
-      finalComparison: passingComparison,
-      status: 'passed',
-      tokensUsed: 0,
+    },
+    authMode: 'subscription',
+    backend: 'codex-exec',
+    backendVersion: 'self-check',
+    billing: { mode: 'subscription' },
+    budget: { mode: 'subscription' },
+    finalComparison: passingComparison,
+    status: 'passed',
+    tokensUsed: 0,
+    turnRecords: [
+      {
+        billing: { mode: 'subscription' },
+        finishReason: 'stop',
+        proposal: {
+          changes: [{ property: 'padding', selector: '#atomic', value: '8px 16px' }],
+          diagnosis: 'self-check repair',
+        },
+        requestAttempts: 1,
+        retryDelaysMs: [],
+        turn: 1,
+        usage: {
+          authMode: 'subscription',
+          backend: 'codex-exec',
+          backendVersion: 'self-check',
+          inputTokens: 0,
+          outputTokens: 0,
+          requestedModel: 'self-check-model',
+          totalTokens: 0,
+        },
+        visibleComparison: passingComparison,
+      },
+    ],
+    turnTimeoutMs: 120_000,
+  };
+  const passed = parseEvalResult(passedRaw, 'passed self-check');
+  if (
+    passed.acceptance?.perturbationOutcomes?.[0]?.passed !== true ||
+    passed.artifacts?.perturbations?.['self-check-perturbation']?.passed !== true
+  ) {
+    throw new Error('Perturbation outcome result contract self-check failed');
+  }
+
+  const protocolErrorWithArtifacts = parseEvalResult(
+    {
+      ...passedRaw,
+      acceptance: undefined,
+      artifacts: {
+        final: passedRaw.artifacts.final,
+        policy: 'all',
+        turns: passedRaw.artifacts.turns,
+      },
+      maxTurns: 2,
+      protocolErrors: 1,
+      status: 'protocol_error',
       turnRecords: [
+        passedRaw.turnRecords[0],
         {
           billing: { mode: 'subscription' },
           finishReason: 'stop',
-          proposal: {
-            changes: [{ property: 'padding', selector: '#atomic', value: '8px 16px' }],
-            diagnosis: 'self-check repair',
-          },
+          protocolError: 'self-check protocol error',
           requestAttempts: 1,
           retryDelaysMs: [],
-          turn: 1,
+          turn: 2,
           usage: {
             authMode: 'subscription',
             backend: 'codex-exec',
@@ -869,18 +909,16 @@ export function runReportContractSelfCheck(): void {
             requestedModel: 'self-check-model',
             totalTokens: 0,
           },
-          visibleComparison: passingComparison,
         },
       ],
-      turnTimeoutMs: 120_000,
+      turns: 2,
     },
-    'passed self-check'
+    'protocol artifact self-check'
   );
   if (
-    passed.acceptance?.perturbationOutcomes?.[0]?.passed !== true ||
-    passed.artifacts?.perturbations?.['self-check-perturbation']?.passed !== true
+    protocolErrorWithArtifacts.artifacts?.final.implementation.path !== artifactFile('final').path
   ) {
-    throw new Error('Perturbation outcome result contract self-check failed');
+    throw new Error('Protocol-error artifact result contract self-check failed');
   }
 
   const metered = parseEvalResult(

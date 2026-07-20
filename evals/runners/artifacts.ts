@@ -58,8 +58,8 @@ async function generateResultArtifacts(
   const policy = stored.result.artifacts?.policy === 'all' ? 'all' : requestedPolicy;
   const proposal = finalProposal(stored.result);
   const finalMetrics = stored.result.finalComparison;
-  const outcomes = stored.result.acceptance?.perturbationOutcomes;
-  if (!proposal || !finalMetrics || !outcomes) return false;
+  if (!proposal || !finalMetrics) return false;
+  const outcomes = stored.result.acceptance?.perturbationOutcomes ?? [];
   if (
     !evalIdentifierPattern.test(stored.result.fixtureId) ||
     !evalIdentifierPattern.test(stored.result.mutationId)
