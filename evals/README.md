@@ -36,24 +36,63 @@ proposal replaces the previous proposal; source fixtures are never edited.
 Hidden acceptance runs only when the visible comparison passes or the turn
 limit is reached. Its result is never sent back to the model.
 
-## Configuration
+## Backends and configuration
 
-The initial model transport is OpenRouter's non-streaming
+The runner supports two explicit backends. Select one backend and its matching
+authentication mode; unsupported pairs fail before building, launching a
+browser, or calling a model.
+
+OpenRouter uses the non-streaming
 [Chat Completions API](https://openrouter.ai/docs/api/reference/overview). It is
 called with `fetch`; no provider SDK or local pricing table is maintained. The
-runner requires OpenRouter's returned prompt, completion, and total token counts
-plus [cost](https://openrouter.ai/docs/cookbook/administration/usage-accounting),
-and fails closed if they are missing or inconsistent.
-
-Set the following variables in an ignored `.env` file:
+runner requires OpenRouter's returned input, output, and total token counts plus
+[cost](https://openrouter.ai/docs/cookbook/administration/usage-accounting), and
+fails closed if they are missing or inconsistent:
 
 ```dotenv
+EVAL_BACKEND=openrouter
+EVAL_AUTH_MODE=api
 OPENROUTER_API_KEY=...
 EVAL_MODEL=provider/model-id
 EVAL_MAX_TURNS=3
 EVAL_BUDGET_USD=1.00
 UIMATCH_EVAL_COMMIT=<commit supplied by the caller or build>
 ```
+
+Codex runs one ephemeral `codex exec` process per harness turn using the locally
+installed CLI and its existing subscription authentication. The backend pins a
+read-only sandbox, ignores user configuration and repository instruction files,
+passes only an allowlisted process environment needed for local authentication
+and network transport, prevents model-generated shell commands from inheriting
+that environment, passes images explicitly, requires the committed
+repair-proposal output schema, and parses JSONL usage from the completed turn:
+
+```dotenv
+EVAL_BACKEND=codex-exec
+EVAL_AUTH_MODE=subscription
+EVAL_MODEL=<codex-model-id>
+EVAL_MAX_TURNS=3
+UIMATCH_EVAL_COMMIT=<commit supplied by the caller or build>
+```
+
+The Codex backend deliberately does not treat a subscription turn as a zero-cost
+API request. Results record subscription billing separately and do not require
+or record a USD harness budget. Codex API-key billing is not supported by this backend yet,
+because the CLI JSONL contract does not provide a request-level USD cost for the
+harness to validate. `EVAL_AUTH_MODE=subscription` is an operator assertion;
+formal runs should use a dedicated authenticated CLI environment.
+
+The Codex process starts in the temporary current-fixture directory. It receives
+the current HTML/CSS, allowed feedback, and explicit conversation history, while
+reference source, manifests, and hidden outcomes are omitted. `-C` and the
+read-only Codex sandbox are an evaluation boundary, not an operating-system
+confidentiality boundary. Run formal or private evaluations inside an isolated
+container if the wider host filesystem must be unreadable.
+
+Codex results describe the named Codex CLI version, requested model, and pinned
+execution settings as an agent configuration. The runner flattens the harness
+message history into each new CLI prompt, so those results are not presented as
+equivalent to a raw API model using native chat roles.
 
 Optional result identity variables:
 
@@ -71,18 +110,19 @@ launching a browser, or calling the model. The runner never derives
 `UIMATCH_EVAL_COMMIT` with Git, because packaged or restricted environments may
 not contain repository metadata.
 
-The USD budget applies to one command, which executes one trial, and is divided
-equally across all fixture/condition jobs. Calls are sequential. OpenRouter
-reports a completed request's exact cost, so a job records
+For OpenRouter, the USD budget applies to one command, which executes one trial,
+and is divided equally across all fixture/condition jobs. Calls are sequential.
+OpenRouter reports a completed request's exact cost, so a job records
 `"status": "aborted_budget"` when a response crosses its share or the remaining
 command budget. A report that combines trials shows both the per-trial command
 budget and the aggregate configured budget represented by those trials. Use a
 dedicated OpenRouter key with a matching provider-side credit limit when a
 strict no-overshoot ceiling is required.
 
-Each turn requests at most 800 output tokens. Non-normal finish reasons and
-invalid JSON proposals are recorded as protocol errors. Model/API failures are
-recorded separately from valid proposals that fail repair acceptance.
+Each OpenRouter turn requests at most 800 output tokens. Non-normal finish
+reasons and invalid JSON proposals are recorded as protocol errors. Model or
+backend failures are recorded separately from valid proposals that fail repair
+acceptance.
 HTTP 429, 502, 503, 504, and 529 responses are retried at most twice. A valid
 `Retry-After` value is honored up to two minutes; otherwise the runner uses a
 short exponential delay. Network failures are not retried because delivery may
@@ -90,7 +130,7 @@ have succeeded before the response was lost, and replaying the POST could cause
 a second generation and charge. Attempts and actual delays are retained in the
 turn record, while non-transient HTTP errors are not retried.
 
-If an HTTP success response contains valid billing usage but fails later output
+If an OpenRouter HTTP success response contains valid billing usage but fails later output
 validation, the turn records that partial usage and known cost. Routing metadata
 is diagnostic: invalid metadata is recorded without discarding a valid model
 response. If billing usage cannot be validated, the result records
@@ -143,8 +183,9 @@ written to ignored `evals/results/`; only reviewed aggregates may be promoted to
 
 `eval:report` refuses to mix multiple run IDs. `--run` may be omitted only when
 the results directory contains exactly one run, and a selected run must contain
-one requested model, uiMatch commit, budget, and turn limit. Trials within that
-boundary are aggregated.
+one backend, backend version, authentication mode, requested model, uiMatch
+commit, budget policy, and turn limit. Trials within that boundary are
+aggregated.
 
 ## Result contract
 
@@ -157,14 +198,17 @@ evals/results/<run-id>/<fixture>/<mutation>/<condition>/<trial>.json
 Every raw result includes:
 
 - result `schemaVersion`
-- requested `model` and per-turn actual model/provider routing data
+- backend ID/version, authentication mode, requested `model`, and available
+  per-turn actual model/provider routing data
 - `promptHash`
 - `uimatchCommit`
 - `runId` and `trial`
-- per-trial command/job budgets and the turn limit
+- a metered USD command/job budget or an explicit subscription billing mode,
+  plus the turn limit
 - `fixtureId`, `mutationId`, `condition`, and the trial's condition order
-- `turns`, observed input/output/total tokens, known cost, and whether any cost
-  is unknown
+- `turns`, observed input/cached-input/output/reasoning/total tokens, and a
+  discriminated billing record; subscription usage is never represented as an
+  unknown or zero USD cost
 - `status` and `protocolErrors`
 - initial/final visible metrics and per-turn DFS, pixel ratios, quality-gate
   result, high-severity count, and StyleDiff count

@@ -3,6 +3,9 @@ export const evalIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 export type ConditionId = (typeof conditionIds)[number];
 
+export type EvalBackendId = 'codex-exec' | 'openrouter';
+export type EvalAuthMode = 'api' | 'subscription';
+
 export function conditionOrderForTrial(trial: number): ConditionId[] {
   if (!Number.isSafeInteger(trial) || trial < 1) {
     throw new RangeError('Eval trial must be a positive safe integer');
@@ -110,27 +113,50 @@ export interface HiddenAcceptanceResult {
   unmatchedChangeCount: number;
 }
 
-export interface ModelBillingUsage {
-  completionTokens: number;
-  costUsd: number;
-  promptTokens: number;
+export interface ModelTokenUsage {
+  cachedInputTokens?: number;
+  inputTokens: number;
+  outputTokens: number;
   reasoningTokens?: number;
   totalTokens: number;
 }
 
-export interface ModelTurnUsage extends ModelBillingUsage {
+export interface ModelTurnUsage extends ModelTokenUsage {
+  authMode: EvalAuthMode;
+  backend: EvalBackendId;
+  backendVersion: string;
   fallbackUsed?: boolean;
-  generationId: string;
+  generationId?: string;
   provider?: string;
-  responseModel: string;
+  requestedModel: string;
+  responseModel?: string;
   routingMetadataError?: string;
 }
 
+export type ModelBilling =
+  | {
+      costUnknown: boolean;
+      knownCostUsd: number;
+      mode: 'metered-usd';
+    }
+  | {
+      mode: 'subscription';
+    };
+
+export type EvalBudget =
+  | {
+      commandBudgetUsd: number;
+      jobBudgetUsd: number;
+      mode: 'metered-usd';
+    }
+  | {
+      mode: 'subscription';
+    };
+
 export interface EvalTurnRecord {
-  costUnknown: boolean;
+  billing: ModelBilling;
   error?: string;
   finishReason?: string;
-  partialUsage?: ModelBillingUsage;
   proposal?: RepairProposal;
   protocolError?: string;
   requestAttempts: number;
@@ -143,22 +169,23 @@ export interface EvalTurnRecord {
 export type EvalStatus = 'aborted_budget' | 'error' | 'passed' | 'protocol_error' | 'repair_failed';
 
 export interface EvalResult {
-  commandBudgetUsd: number;
+  authMode: EvalAuthMode;
+  backend: EvalBackendId;
+  backendVersion: string;
+  billing: ModelBilling;
+  budget: EvalBudget;
   condition: ConditionId;
   conditionOrder: ConditionId[];
-  costUnknown: boolean;
   finalComparison?: VisibleComparisonMetrics;
   fixtureId: string;
   initialComparison: VisibleComparisonMetrics;
-  jobBudgetUsd: number;
-  knownCostUsd: number;
   maxTurns: number;
   model: string;
   mutationId: string;
   promptHash: string;
   protocolErrors: number;
   runId: string;
-  schemaVersion: 2;
+  schemaVersion: 3;
   status: EvalStatus;
   tokensUsed: number;
   trial: number;

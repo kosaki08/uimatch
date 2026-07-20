@@ -1,19 +1,23 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { evalRoot } from '../manifest.js';
+import { parseRepairProposal } from '../repair-proposal.js';
 import {
   conditionIds,
   conditionOrderForTrial,
   evalIdentifierPattern,
   type ConditionId,
+  type EvalAuthMode,
+  type EvalBackendId,
+  type EvalBudget,
   type EvalResult,
   type EvalStatus,
   type EvalTurnRecord,
   type HiddenAcceptanceResult,
-  type ModelBillingUsage,
+  type ModelBilling,
+  type ModelTokenUsage,
   type ModelTurnUsage,
-  type RepairChange,
-  type RepairProposal,
   type VisibleComparisonMetrics,
 } from '../types.js';
 
@@ -27,7 +31,7 @@ function asRecord(value: unknown, label: string): Record<string, unknown> {
 }
 
 function asString(value: unknown, label: string): string {
-  if (typeof value !== 'string' || value.length === 0) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
@@ -68,6 +72,20 @@ function asPositiveInteger(value: unknown, label: string): number {
   return parsed;
 }
 
+function asBackend(value: unknown, label: string): EvalBackendId {
+  if (value !== 'codex-exec' && value !== 'openrouter') {
+    throw new TypeError(`${label} must be a known eval backend`);
+  }
+  return value;
+}
+
+function asAuthMode(value: unknown, label: string): EvalAuthMode {
+  if (value !== 'api' && value !== 'subscription') {
+    throw new TypeError(`${label} must be a known auth mode`);
+  }
+  return value;
+}
+
 function asCondition(value: unknown, label: string): ConditionId {
   if (!conditionIds.some((condition) => condition === value)) {
     throw new TypeError(`${label} must be a known eval condition`);
@@ -100,28 +118,6 @@ function asStatus(value: unknown, label: string): EvalStatus {
   return value as EvalStatus;
 }
 
-function parseRepairChange(value: unknown, label: string): RepairChange {
-  const record = asRecord(value, label);
-  return {
-    property: asString(record.property, `${label}.property`),
-    selector: asString(record.selector, `${label}.selector`),
-    value: asString(record.value, `${label}.value`),
-  };
-}
-
-function parseProposal(value: unknown, label: string): RepairProposal {
-  const record = asRecord(value, label);
-  if (!Array.isArray(record.changes) || record.changes.length === 0) {
-    throw new TypeError(`${label}.changes must be a non-empty array`);
-  }
-  return {
-    changes: record.changes.map((change, index) =>
-      parseRepairChange(change, `${label}.changes[${index}]`)
-    ),
-    diagnosis: asString(record.diagnosis, `${label}.diagnosis`),
-  };
-}
-
 function parseVisibleComparison(value: unknown, label: string): VisibleComparisonMetrics {
   const record = asRecord(value, label);
   const pixelDiffRatioContent =
@@ -141,21 +137,25 @@ function parseVisibleComparison(value: unknown, label: string): VisibleCompariso
   };
 }
 
-function parseBillingUsage(value: unknown, label: string): ModelBillingUsage {
+function parseTokenUsage(value: unknown, label: string): ModelTokenUsage {
   const record = asRecord(value, label);
-  const completionTokens = asNonNegativeInteger(
-    record.completionTokens,
-    `${label}.completionTokens`
-  );
-  const promptTokens = asNonNegativeInteger(record.promptTokens, `${label}.promptTokens`);
+  const inputTokens = asNonNegativeInteger(record.inputTokens, `${label}.inputTokens`);
+  const outputTokens = asNonNegativeInteger(record.outputTokens, `${label}.outputTokens`);
   const totalTokens = asNonNegativeInteger(record.totalTokens, `${label}.totalTokens`);
-  if (promptTokens + completionTokens !== totalTokens) {
+  if (inputTokens + outputTokens !== totalTokens) {
     throw new TypeError(`${label} token totals are inconsistent`);
   }
+  const cachedInputTokens =
+    record.cachedInputTokens === undefined
+      ? undefined
+      : asNonNegativeInteger(record.cachedInputTokens, `${label}.cachedInputTokens`);
+  if (cachedInputTokens !== undefined && cachedInputTokens > inputTokens) {
+    throw new TypeError(`${label}.cachedInputTokens must not exceed inputTokens`);
+  }
   return {
-    completionTokens,
-    costUsd: asNonNegativeNumber(record.costUsd, `${label}.costUsd`),
-    promptTokens,
+    ...(cachedInputTokens === undefined ? {} : { cachedInputTokens }),
+    inputTokens,
+    outputTokens,
     ...(record.reasoningTokens === undefined
       ? {}
       : {
@@ -167,21 +167,53 @@ function parseBillingUsage(value: unknown, label: string): ModelBillingUsage {
 
 function parseTurnUsage(value: unknown, label: string): ModelTurnUsage {
   const record = asRecord(value, label);
-  const billing = parseBillingUsage(record, label);
+  const tokens = parseTokenUsage(record, label);
+  const generationId = asOptionalString(record.generationId, `${label}.generationId`);
   const provider = asOptionalString(record.provider, `${label}.provider`);
+  const responseModel = asOptionalString(record.responseModel, `${label}.responseModel`);
   const routingMetadataError = asOptionalString(
     record.routingMetadataError,
     `${label}.routingMetadataError`
   );
   return {
-    ...billing,
+    ...tokens,
+    authMode: asAuthMode(record.authMode, `${label}.authMode`),
+    backend: asBackend(record.backend, `${label}.backend`),
+    backendVersion: asString(record.backendVersion, `${label}.backendVersion`),
     ...(record.fallbackUsed === undefined
       ? {}
       : { fallbackUsed: asBoolean(record.fallbackUsed, `${label}.fallbackUsed`) }),
-    generationId: asString(record.generationId, `${label}.generationId`),
+    ...(generationId ? { generationId } : {}),
     ...(provider ? { provider } : {}),
-    responseModel: asString(record.responseModel, `${label}.responseModel`),
+    requestedModel: asString(record.requestedModel, `${label}.requestedModel`),
+    ...(responseModel ? { responseModel } : {}),
     ...(routingMetadataError ? { routingMetadataError } : {}),
+  };
+}
+
+function parseBilling(value: unknown, label: string): ModelBilling {
+  const record = asRecord(value, label);
+  if (record.mode === 'subscription') return { mode: 'subscription' };
+  if (record.mode !== 'metered-usd') {
+    throw new TypeError(`${label}.mode must be metered-usd or subscription`);
+  }
+  return {
+    costUnknown: asBoolean(record.costUnknown, `${label}.costUnknown`),
+    knownCostUsd: asNonNegativeNumber(record.knownCostUsd, `${label}.knownCostUsd`),
+    mode: 'metered-usd',
+  };
+}
+
+function parseBudget(value: unknown, label: string): EvalBudget {
+  const record = asRecord(value, label);
+  if (record.mode === 'subscription') return { mode: 'subscription' };
+  if (record.mode !== 'metered-usd') {
+    throw new TypeError(`${label}.mode must be metered-usd or subscription`);
+  }
+  return {
+    commandBudgetUsd: asPositiveNumber(record.commandBudgetUsd, `${label}.commandBudgetUsd`),
+    jobBudgetUsd: asPositiveNumber(record.jobBudgetUsd, `${label}.jobBudgetUsd`),
+    mode: 'metered-usd',
   };
 }
 
@@ -197,34 +229,27 @@ function parseTurnRecord(value: unknown, label: string): EvalTurnRecord {
   if (retryDelaysMs.length !== requestAttempts - 1) {
     throw new TypeError(`${label}.retryDelaysMs must describe every retry`);
   }
+  const billing = parseBilling(record.billing, `${label}.billing`);
   const finishReason = asOptionalString(record.finishReason, `${label}.finishReason`);
+  const error = asOptionalString(record.error, `${label}.error`);
   const usage =
     record.usage === undefined ? undefined : parseTurnUsage(record.usage, `${label}.usage`);
-  const partialUsage =
-    record.partialUsage === undefined
-      ? undefined
-      : parseBillingUsage(record.partialUsage, `${label}.partialUsage`);
-  if (usage && partialUsage) {
-    throw new TypeError(`${label} cannot contain both usage and partialUsage`);
+  if (finishReason !== undefined && usage === undefined) {
+    throw new TypeError(`${label}.finishReason requires usage`);
   }
-  if ((finishReason === undefined) !== (usage === undefined)) {
-    throw new TypeError(`${label}.finishReason and usage must describe the same response`);
+  if (finishReason === undefined && error === undefined) {
+    throw new TypeError(`${label}.error is required when no completed response was returned`);
   }
-  if (finishReason === undefined && record.error === undefined) {
-    throw new TypeError(`${label}.error is required when no model response was returned`);
-  }
-  const costUnknown = asBoolean(record.costUnknown, `${label}.costUnknown`);
-  if (costUnknown === (usage !== undefined || partialUsage !== undefined)) {
-    throw new TypeError(`${label}.costUnknown must reflect whether billing usage was recorded`);
+  if (billing.mode === 'metered-usd' && !billing.costUnknown && usage === undefined) {
+    throw new TypeError(`${label}.usage is required when metered billing is known`);
   }
   return {
-    costUnknown,
-    ...(record.error === undefined ? {} : { error: asString(record.error, `${label}.error`) }),
+    billing,
+    ...(error ? { error } : {}),
     ...(finishReason ? { finishReason } : {}),
-    ...(partialUsage ? { partialUsage } : {}),
     ...(record.proposal === undefined
       ? {}
-      : { proposal: parseProposal(record.proposal, `${label}.proposal`) }),
+      : { proposal: parseRepairProposal(record.proposal, `${label}.proposal`) }),
     ...(record.protocolError === undefined
       ? {}
       : { protocolError: asString(record.protocolError, `${label}.protocolError`) }),
@@ -297,11 +322,44 @@ function sameVisibleComparison(
   );
 }
 
+function sameBilling(left: ModelBilling, right: ModelBilling): boolean {
+  if (left.mode !== right.mode) return false;
+  if (left.mode === 'subscription' || right.mode === 'subscription') return true;
+  return (
+    left.costUnknown === right.costUnknown &&
+    Math.abs(left.knownCostUsd - right.knownCostUsd) <= 1e-9
+  );
+}
+
+function aggregateTurnBilling(
+  turnRecords: EvalTurnRecord[],
+  mode: ModelBilling['mode']
+): ModelBilling {
+  if (mode === 'subscription') {
+    if (turnRecords.some((turnRecord) => turnRecord.billing.mode !== 'subscription')) {
+      throw new TypeError('Turn billing modes are inconsistent');
+    }
+    return { mode: 'subscription' };
+  }
+  if (turnRecords.some((turnRecord) => turnRecord.billing.mode !== 'metered-usd')) {
+    throw new TypeError('Turn billing modes are inconsistent');
+  }
+  return {
+    costUnknown: turnRecords.some(
+      (turnRecord) => turnRecord.billing.mode === 'metered-usd' && turnRecord.billing.costUnknown
+    ),
+    knownCostUsd: turnRecords.reduce(
+      (sum, turnRecord) =>
+        sum + (turnRecord.billing.mode === 'metered-usd' ? turnRecord.billing.knownCostUsd : 0),
+      0
+    ),
+    mode: 'metered-usd',
+  };
+}
+
 function parseResult(value: unknown, file: string): EvalResult {
   const record = asRecord(value, file);
-  if (record.schemaVersion !== 2) {
-    throw new TypeError(`${file}.schemaVersion must be 2`);
-  }
+  if (record.schemaVersion !== 3) throw new TypeError(`${file}.schemaVersion must be 3`);
   if (!Array.isArray(record.turnRecords)) {
     throw new TypeError(`${file}.turnRecords must be an array`);
   }
@@ -314,25 +372,42 @@ function parseResult(value: unknown, file: string): EvalResult {
     }
   });
   const turns = asNonNegativeInteger(record.turns, `${file}.turns`);
-  if (turns !== turnRecords.length) {
-    throw new TypeError(`${file}.turns does not match turnRecords`);
+  if (turns !== turnRecords.length) throw new TypeError(`${file}.turns does not match turnRecords`);
+
+  const backend = asBackend(record.backend, `${file}.backend`);
+  const authMode = asAuthMode(record.authMode, `${file}.authMode`);
+  const backendVersion = asString(record.backendVersion, `${file}.backendVersion`);
+  const model = asString(record.model, `${file}.model`);
+  const billing = parseBilling(record.billing, `${file}.billing`);
+  const budget = parseBudget(record.budget, `${file}.budget`);
+  if (billing.mode !== budget.mode) throw new TypeError(`${file} billing and budget modes differ`);
+  if (
+    (backend === 'openrouter' && (authMode !== 'api' || billing.mode !== 'metered-usd')) ||
+    (backend === 'codex-exec' && (authMode !== 'subscription' || billing.mode !== 'subscription'))
+  ) {
+    throw new TypeError(`${file} backend, auth, and billing modes are inconsistent`);
   }
-  const billingUsages = turnRecords.flatMap((turnRecord) => {
-    if (turnRecord.usage) return [turnRecord.usage];
-    return turnRecord.partialUsage ? [turnRecord.partialUsage] : [];
-  });
+  const derivedBilling = aggregateTurnBilling(turnRecords, billing.mode);
+  if (!sameBilling(billing, derivedBilling)) {
+    throw new TypeError(`${file}.billing does not match turnRecords`);
+  }
+  for (const turnRecord of turnRecords) {
+    if (
+      turnRecord.usage &&
+      (turnRecord.usage.backend !== backend ||
+        turnRecord.usage.authMode !== authMode ||
+        turnRecord.usage.backendVersion !== backendVersion ||
+        turnRecord.usage.requestedModel !== model)
+    ) {
+      throw new TypeError(`${file}.turnRecords contain inconsistent backend metadata`);
+    }
+  }
   const tokensUsed = asNonNegativeInteger(record.tokensUsed, `${file}.tokensUsed`);
-  const knownCostUsd = asNonNegativeNumber(record.knownCostUsd, `${file}.knownCostUsd`);
-  if (billingUsages.reduce((sum, usage) => sum + usage.totalTokens, 0) !== tokensUsed) {
+  if (
+    turnRecords.reduce((sum, turnRecord) => sum + (turnRecord.usage?.totalTokens ?? 0), 0) !==
+    tokensUsed
+  ) {
     throw new TypeError(`${file}.tokensUsed does not match turnRecords`);
-  }
-  const turnCost = billingUsages.reduce((sum, usage) => sum + usage.costUsd, 0);
-  if (Math.abs(turnCost - knownCostUsd) > 1e-9) {
-    throw new TypeError(`${file}.knownCostUsd does not match turnRecords`);
-  }
-  const costUnknown = asBoolean(record.costUnknown, `${file}.costUnknown`);
-  if (costUnknown !== turnRecords.some((turnRecord) => turnRecord.costUnknown)) {
-    throw new TypeError(`${file}.costUnknown does not match turnRecords`);
   }
   const protocolErrors = asNonNegativeInteger(record.protocolErrors, `${file}.protocolErrors`);
   if (
@@ -382,28 +457,32 @@ function parseResult(value: unknown, file: string): EvalResult {
   if ((status === 'error') !== (error !== undefined)) {
     throw new TypeError(`${file}.error must exist exactly when status is error`);
   }
-  if (costUnknown && status !== 'error') {
-    throw new TypeError(`${file}.costUnknown requires error status`);
+  if (billing.mode === 'metered-usd' && billing.costUnknown && status !== 'error') {
+    throw new TypeError(`${file}.billing.costUnknown requires error status`);
+  }
+  if (status === 'aborted_budget' && budget.mode !== 'metered-usd') {
+    throw new TypeError(`${file}.aborted_budget requires metered billing`);
   }
   return {
     ...(acceptance ? { acceptance } : {}),
-    commandBudgetUsd: asPositiveNumber(record.commandBudgetUsd, `${file}.commandBudgetUsd`),
+    authMode,
+    backend,
+    backendVersion,
+    billing,
+    budget,
     condition: asCondition(record.condition, `${file}.condition`),
     conditionOrder,
-    costUnknown,
     ...(error ? { error } : {}),
     ...(finalComparison ? { finalComparison } : {}),
     fixtureId: asString(record.fixtureId, `${file}.fixtureId`),
     initialComparison,
-    jobBudgetUsd: asPositiveNumber(record.jobBudgetUsd, `${file}.jobBudgetUsd`),
-    knownCostUsd,
     maxTurns: asPositiveInteger(record.maxTurns, `${file}.maxTurns`),
-    model: asString(record.model, `${file}.model`),
+    model,
     mutationId: asString(record.mutationId, `${file}.mutationId`),
     promptHash: asString(record.promptHash, `${file}.promptHash`),
     protocolErrors,
     runId: asString(record.runId, `${file}.runId`),
-    schemaVersion: 2,
+    schemaVersion: 3,
     status,
     tokensUsed,
     trial,
@@ -411,6 +490,76 @@ function parseResult(value: unknown, file: string): EvalResult {
     turns,
     uimatchCommit: asString(record.uimatchCommit, `${file}.uimatchCommit`),
   };
+}
+
+export function runReportContractSelfCheck(): void {
+  const initialComparison: VisibleComparisonMetrics = {
+    dfs: 50,
+    highSeverityIssues: 1,
+    pass: false,
+    pixelDiffRatio: 0.1,
+    styleDiffCount: 1,
+  };
+  const common = {
+    condition: 'pixel-diff' as const,
+    conditionOrder: conditionOrderForTrial(1),
+    fixtureId: 'self-check-fixture',
+    initialComparison,
+    maxTurns: 1,
+    model: 'self-check-model',
+    mutationId: 'self-check-mutation',
+    promptHash: 'self-check-prompt',
+    protocolErrors: 0,
+    runId: 'self-check-run',
+    schemaVersion: 3 as const,
+    tokensUsed: 0,
+    trial: 1,
+    turns: 1,
+    uimatchCommit: 'self-check-commit',
+  };
+  const subscription = parseResult(
+    {
+      ...common,
+      authMode: 'subscription',
+      backend: 'codex-exec',
+      backendVersion: 'self-check',
+      billing: { mode: 'subscription' },
+      budget: { mode: 'subscription' },
+      error: 'self-check error',
+      status: 'error',
+      turnRecords: [
+        {
+          billing: { mode: 'subscription' },
+          error: 'self-check error',
+          requestAttempts: 1,
+          retryDelaysMs: [],
+          turn: 1,
+        },
+      ],
+    },
+    'subscription self-check'
+  );
+  if (subscription.billing.mode !== 'subscription') {
+    throw new Error('Subscription result contract self-check failed');
+  }
+
+  const metered = parseResult(
+    {
+      ...common,
+      authMode: 'api',
+      backend: 'openrouter',
+      backendVersion: 'self-check',
+      billing: { costUnknown: false, knownCostUsd: 0, mode: 'metered-usd' },
+      budget: { commandBudgetUsd: 1, jobBudgetUsd: 1, mode: 'metered-usd' },
+      status: 'aborted_budget',
+      turnRecords: [],
+      turns: 0,
+    },
+    'metered self-check'
+  );
+  if (metered.billing.mode !== 'metered-usd' || metered.billing.costUnknown) {
+    throw new Error('Metered result contract self-check failed');
+  }
 }
 
 function median(values: number[]): number | null {
@@ -426,22 +575,54 @@ function ratio(numerator: number, denominator: number): number | null {
   return denominator === 0 ? null : numerator / denominator;
 }
 
+function summarizeBilling(
+  matches: EvalResult[],
+  billingMode: ModelBilling['mode']
+): Record<string, unknown> {
+  if (billingMode === 'subscription') return { mode: 'subscription' };
+  const costKnown = matches.filter(
+    (result) => result.billing.mode === 'metered-usd' && !result.billing.costUnknown
+  );
+  const knownCosts = matches.map((result) =>
+    result.billing.mode === 'metered-usd' ? result.billing.knownCostUsd : 0
+  );
+  return {
+    averageKnownCostUsd: ratio(
+      costKnown.reduce(
+        (sum, result) =>
+          sum + (result.billing.mode === 'metered-usd' ? result.billing.knownCostUsd : 0),
+        0
+      ),
+      costKnown.length
+    ),
+    comparableKnownCostUsd: costKnown.reduce(
+      (sum, result) =>
+        sum + (result.billing.mode === 'metered-usd' ? result.billing.knownCostUsd : 0),
+      0
+    ),
+    costKnownResults: costKnown.length,
+    costUnknownResults: matches.length - costKnown.length,
+    knownCostUsd: knownCosts.reduce((sum, value) => sum + value, 0),
+    medianKnownCostUsd: median(
+      costKnown.map((result) =>
+        result.billing.mode === 'metered-usd' ? result.billing.knownCostUsd : 0
+      )
+    ),
+    mode: 'metered-usd',
+  };
+}
+
 function summarize(results: EvalResult[]): Record<string, unknown> {
+  const billingMode = results[0]?.billing.mode;
+  if (!billingMode) throw new TypeError('Cannot summarize an empty eval run');
   return Object.fromEntries(
     conditionIds.map((condition) => {
       const matches = results.filter((result) => result.condition === condition);
-      const costKnownMatches = matches.filter((result) => !result.costUnknown);
       const acceptances = matches.flatMap((result) =>
         result.acceptance ? [result.acceptance] : []
       );
-      const successfulUsage = matches.flatMap((result) =>
+      const usage = matches.flatMap((result) =>
         result.turnRecords.flatMap((turnRecord) => (turnRecord.usage ? [turnRecord.usage] : []))
-      );
-      const billingUsage = matches.flatMap((result) =>
-        result.turnRecords.flatMap((turnRecord) => {
-          if (turnRecord.usage) return [turnRecord.usage];
-          return turnRecord.partialUsage ? [turnRecord.partialUsage] : [];
-        })
       );
       const finalComparisons = matches.flatMap((result) =>
         result.finalComparison ? [result.finalComparison] : []
@@ -465,11 +646,11 @@ function summarize(results: EvalResult[]): Record<string, unknown> {
       return [
         condition,
         {
-          actualModels: [...new Set(successfulUsage.map((usage) => usage.responseModel))].sort(),
-          averageKnownCostUsd: ratio(
-            costKnownMatches.reduce((sum, result) => sum + result.knownCostUsd, 0),
-            costKnownMatches.length
-          ),
+          actualModels: [
+            ...new Set(
+              usage.flatMap((entry) => (entry.responseModel ? [entry.responseModel] : []))
+            ),
+          ].sort(),
           averageDfsDelta: ratio(
             comparisonPairs.reduce(
               (sum, comparison) => sum + (comparison.final.dfs - comparison.initial.dfs),
@@ -489,46 +670,34 @@ function summarize(results: EvalResult[]): Record<string, unknown> {
             matches.reduce((sum, result) => sum + result.turns, 0),
             matches.length
           ),
-          completionTokens: billingUsage.reduce((sum, usage) => sum + usage.completionTokens, 0),
-          comparableKnownCostUsd: costKnownMatches.reduce(
-            (sum, result) => sum + result.knownCostUsd,
-            0
-          ),
-          costKnownResults: costKnownMatches.length,
-          costUnknownResults: matches.length - costKnownMatches.length,
-          fallbackTurns: successfulUsage.filter((usage) => usage.fallbackUsed === true).length,
+          billing: summarizeBilling(matches, billingMode),
+          cachedInputTokens: usage.reduce((sum, entry) => sum + (entry.cachedInputTokens ?? 0), 0),
+          fallbackTurns: usage.filter((entry) => entry.fallbackUsed === true).length,
           hiddenDivergenceRate: ratio(
             visibleHiddenPairs.filter((result) => result.acceptance?.accepted === false).length,
             visibleHiddenPairs.length
           ),
-          knownCostUsd: matches.reduce((sum, result) => sum + result.knownCostUsd, 0),
-          medianKnownCostUsd: median(costKnownMatches.map((result) => result.knownCostUsd)),
+          inputTokens: usage.reduce((sum, entry) => sum + entry.inputTokens, 0),
+          outputTokens: usage.reduce((sum, entry) => sum + entry.outputTokens, 0),
           perturbationSurvivalRate: ratio(perturbationsSurvived, perturbationsEvaluated),
-          promptTokens: billingUsage.reduce((sum, usage) => sum + usage.promptTokens, 0),
           protocolErrors: matches.reduce((sum, result) => sum + result.protocolErrors, 0),
           providers: [
-            ...new Set(
-              successfulUsage.flatMap((usage) => (usage.provider ? [usage.provider] : []))
-            ),
+            ...new Set(usage.flatMap((entry) => (entry.provider ? [entry.provider] : []))),
           ].sort(),
-          reasoningTokens: billingUsage.reduce(
-            (sum, usage) => sum + (usage.reasoningTokens ?? 0),
-            0
-          ),
-          routingMetadataErrors: successfulUsage.filter(
-            (usage) => usage.routingMetadataError !== undefined
-          ).length,
+          reasoningTokens: usage.reduce((sum, entry) => sum + (entry.reasoningTokens ?? 0), 0),
+          results: matches.length,
           rootCauseRepairRate: ratio(
             acceptances.filter((acceptance) => acceptance.rootCauseRepaired).length,
             acceptances.length
           ),
-          results: matches.length,
+          routingMetadataErrors: usage.filter((entry) => entry.routingMetadataError !== undefined)
+            .length,
           statusCounts: Object.fromEntries(
             ['aborted_budget', 'error', 'passed', 'protocol_error', 'repair_failed'].map(
               (status) => [status, matches.filter((result) => result.status === status).length]
             )
           ),
-          totalTokens: billingUsage.reduce((sum, usage) => sum + usage.totalTokens, 0),
+          totalTokens: usage.reduce((sum, entry) => sum + entry.totalTokens, 0),
           unmatchedChangeCount: acceptances.reduce(
             (sum, acceptance) => sum + acceptance.unmatchedChangeCount,
             0
@@ -576,6 +745,46 @@ function assertResultPath(result: EvalResult, file: string): void {
   }
 }
 
+function singleton<T>(values: T[], label: string): T {
+  const unique = [...new Set(values)];
+  if (unique.length !== 1 || unique[0] === undefined) {
+    throw new ReportUsageError(`A run must contain one ${label}. Use separate run IDs.`);
+  }
+  return unique[0];
+}
+
+function summarizeTopLevelBilling(results: EvalResult[]): Record<string, unknown> {
+  if (results[0]?.billing.mode === 'subscription') return { mode: 'subscription' };
+  const known = results.filter(
+    (result) => result.billing.mode === 'metered-usd' && !result.billing.costUnknown
+  );
+  return {
+    comparableKnownCostUsd: known.reduce(
+      (sum, result) =>
+        sum + (result.billing.mode === 'metered-usd' ? result.billing.knownCostUsd : 0),
+      0
+    ),
+    costKnownResults: known.length,
+    costUnknownResults: results.length - known.length,
+    knownCostUsd: results.reduce(
+      (sum, result) =>
+        sum + (result.billing.mode === 'metered-usd' ? result.billing.knownCostUsd : 0),
+      0
+    ),
+    mode: 'metered-usd',
+  };
+}
+
+function summarizeTopLevelBudget(budget: EvalBudget, trials: number[]): Record<string, unknown> {
+  if (budget.mode === 'subscription') return { mode: 'subscription' };
+  return {
+    aggregateBudgetUsd: budget.commandBudgetUsd * trials.length,
+    budgetUsdPerTrial: budget.commandBudgetUsd,
+    jobBudgetUsd: budget.jobBudgetUsd,
+    mode: 'metered-usd',
+  };
+}
+
 async function main(): Promise<void> {
   const requestedRunId = parseRunArgument(process.argv.slice(2));
   const resultsDirectory = resolve(evalRoot, 'results');
@@ -618,52 +827,56 @@ async function main(): Promise<void> {
   if (results.some((result) => result.runId !== runId)) {
     throw new TypeError(`Result contents do not match selected run directory ${runId}`);
   }
-  const models = [...new Set(results.map((result) => result.model))];
-  const commits = [...new Set(results.map((result) => result.uimatchCommit))];
-  const budgets = [...new Set(results.map((result) => result.commandBudgetUsd))];
-  const jobBudgets = [...new Set(results.map((result) => result.jobBudgetUsd))];
-  const turnLimits = [...new Set(results.map((result) => result.maxTurns))];
-  if (
-    models.length !== 1 ||
-    commits.length !== 1 ||
-    budgets.length !== 1 ||
-    jobBudgets.length !== 1 ||
-    turnLimits.length !== 1
-  ) {
-    throw new ReportUsageError(
-      'A run must contain one requested model, uiMatch commit, command budget, and turn limit. Use separate run IDs.'
-    );
-  }
-  const budgetUsdPerTrial = budgets[0];
-  if (budgetUsdPerTrial === undefined) {
-    throw new ReportUsageError('The selected run does not contain a command budget.');
-  }
 
+  const backend = singleton(
+    results.map((result) => result.backend),
+    'backend'
+  );
+  const backendVersion = singleton(
+    results.map((result) => result.backendVersion),
+    'backend version'
+  );
+  const authMode = singleton(
+    results.map((result) => result.authMode),
+    'auth mode'
+  );
+  const model = singleton(
+    results.map((result) => result.model),
+    'requested model'
+  );
+  const uimatchCommit = singleton(
+    results.map((result) => result.uimatchCommit),
+    'uiMatch commit'
+  );
+  const maxTurns = singleton(
+    results.map((result) => result.maxTurns),
+    'turn limit'
+  );
+  const serializedBudget = singleton(
+    results.map((result) => JSON.stringify(result.budget)),
+    'budget policy'
+  );
+  const budget = parseBudget(JSON.parse(serializedBudget) as unknown, 'selected run budget');
   const trials = [...new Set(results.map((result) => result.trial))].sort(
     (left, right) => left - right
   );
-  const costKnownResults = results.filter((result) => !result.costUnknown);
+
   console.log(
     JSON.stringify(
       {
+        authMode,
+        backend,
+        backendVersion,
+        billing: summarizeTopLevelBilling(results),
+        budget: summarizeTopLevelBudget(budget, trials),
         byCondition: summarize(results),
-        aggregateBudgetUsd: budgetUsdPerTrial * trials.length,
-        budgetUsdPerTrial,
-        costKnownResults: costKnownResults.length,
-        costUnknownResults: results.length - costKnownResults.length,
-        comparableKnownCostUsd: costKnownResults.reduce(
-          (sum, result) => sum + result.knownCostUsd,
-          0
-        ),
-        knownCostUsd: results.reduce((sum, result) => sum + result.knownCostUsd, 0),
-        jobBudgetUsd: jobBudgets[0],
-        requestedModel: models[0],
+        maxTurns,
+        requestedModel: model,
         results: results.length,
         runId,
         tokensUsed: results.reduce((sum, result) => sum + result.tokensUsed, 0),
-        maxTurns: turnLimits[0],
         trials,
-        uimatchCommit: commits[0],
+        uimatchCommit,
       },
       null,
       2
@@ -671,7 +884,7 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((error: unknown) => {
+function handleMainError(error: unknown): void {
   if (error instanceof ReportUsageError) {
     console.error(`Eval report error: ${error.message}`);
     process.exitCode = 2;
@@ -679,4 +892,9 @@ main().catch((error: unknown) => {
   }
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
-});
+}
+
+const entryPath = process.argv[1];
+if (entryPath && import.meta.url === pathToFileURL(resolve(entryPath)).href) {
+  void main().catch(handleMainError);
+}

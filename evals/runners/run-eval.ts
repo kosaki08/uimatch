@@ -3,6 +3,9 @@ import 'dotenv/config';
 import { createHash, randomUUID } from 'node:crypto';
 import { access, link, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { TurnBackendError, type ModelMessage, type TurnBackend } from '../backends/backend.js';
+import { createCodexExecBackend } from '../backends/codex-exec.js';
+import { createOpenRouterBackend } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { buildPixelDiffFeedback } from '../conditions/pixel-diff.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
@@ -13,6 +16,7 @@ import {
   type RenderedReference,
 } from '../harness.js';
 import { evalRoot, loadManifest } from '../manifest.js';
+import { parseRepairProposalJson } from '../repair-proposal.js';
 import type { RepairWorkspace } from '../repair-workspace.js';
 import {
   conditionIds,
@@ -21,24 +25,23 @@ import {
   type ComparisonSnapshot,
   type ConditionFeedback,
   type ConditionId,
+  type EvalBudget,
   type EvalManifest,
   type EvalMutation,
   type EvalResult,
   type EvalStatus,
   type EvalTurnRecord,
   type HiddenAcceptanceResult,
-  type RepairChange,
   type RepairProposal,
   type VisibleComparisonMetrics,
 } from '../types.js';
 import { buildCli, EvalUsageError } from './build-cli.js';
 import type { EvalFixtureServer } from './fixture-server.js';
-import { OpenRouterCallError, requestOpenRouterTurn, type ModelMessage } from './openrouter.js';
 import { runSelfCheck } from './self-check.js';
 
 interface EvalConfig {
-  apiKey: string;
-  commandBudgetUsd: number;
+  backend: TurnBackend;
+  budget: { commandBudgetUsd: number; mode: 'metered-usd' } | { mode: 'subscription' };
   conditionOrder: ConditionId[];
   maxTurns: number;
   model: string;
@@ -48,10 +51,10 @@ interface EvalConfig {
 }
 
 interface JobContext {
+  budget: EvalBudget;
   condition: ConditionId;
   config: EvalConfig;
   initialComparison: VisibleComparisonMetrics;
-  jobBudgetUsd: number;
   manifest: EvalManifest;
   mutation: EvalMutation;
 }
@@ -97,33 +100,41 @@ function parseRunId(): string {
   return value;
 }
 
-function loadEvalConfig(): EvalConfig {
+async function loadEvalConfig(): Promise<EvalConfig> {
   const trialValue = process.env.EVAL_TRIAL?.trim();
   const trial = trialValue ? parsePositiveIntegerValue('EVAL_TRIAL', trialValue) : 1;
+  const backendId = requireEnvironment('EVAL_BACKEND');
+  const authMode = requireEnvironment('EVAL_AUTH_MODE');
+  const maxTurns = parsePositiveIntegerValue(
+    'EVAL_MAX_TURNS',
+    requireEnvironment('EVAL_MAX_TURNS')
+  );
+  const model = requireEnvironment('EVAL_MODEL');
+  const runId = parseRunId();
+  const uimatchCommit = requireEnvironment('UIMATCH_EVAL_COMMIT');
+  let backend: TurnBackend;
+  let budget: EvalConfig['budget'];
+  if (backendId === 'openrouter' && authMode === 'api') {
+    backend = createOpenRouterBackend(requireEnvironment('OPENROUTER_API_KEY'));
+    budget = { commandBudgetUsd: parsePositiveNumber('EVAL_BUDGET_USD'), mode: 'metered-usd' };
+  } else if (backendId === 'codex-exec' && authMode === 'subscription') {
+    backend = await createCodexExecBackend();
+    budget = { mode: 'subscription' };
+  } else {
+    throw new EvalUsageError(
+      'EVAL_BACKEND/EVAL_AUTH_MODE must be openrouter/api or codex-exec/subscription.'
+    );
+  }
   return {
-    apiKey: requireEnvironment('OPENROUTER_API_KEY'),
-    commandBudgetUsd: parsePositiveNumber('EVAL_BUDGET_USD'),
+    backend,
+    budget,
     conditionOrder: conditionOrderForTrial(trial),
-    maxTurns: parsePositiveIntegerValue('EVAL_MAX_TURNS', requireEnvironment('EVAL_MAX_TURNS')),
-    model: requireEnvironment('EVAL_MODEL'),
-    runId: parseRunId(),
+    maxTurns,
+    model,
+    runId,
     trial,
-    uimatchCommit: requireEnvironment('UIMATCH_EVAL_COMMIT'),
+    uimatchCommit,
   };
-}
-
-function asRecord(value: unknown, label: string): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new TypeError(`${label} must be an object`);
-  }
-  return value as Record<string, unknown>;
-}
-
-function asString(value: unknown, label: string): string {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new TypeError(`${label} must be a non-empty string`);
-  }
-  return value;
 }
 
 function buildConditionFeedback(
@@ -138,29 +149,6 @@ function buildConditionFeedback(
     case 'flat-diff':
       return buildFlatDiffFeedback(comparison);
   }
-}
-
-function parseRepairProposal(content: string): RepairProposal {
-  const parsed: unknown = JSON.parse(content) as unknown;
-  const record = asRecord(parsed, 'model response');
-  if (!Array.isArray(record.changes) || record.changes.length === 0) {
-    throw new TypeError('model response changes must be a non-empty array');
-  }
-  if (record.changes.length > 20) {
-    throw new RangeError('model response changes must not exceed 20 entries');
-  }
-  const changes: RepairChange[] = record.changes.map((change, index) => {
-    const changeRecord = asRecord(change, `model response changes[${index}]`);
-    return {
-      property: asString(changeRecord.property, `model response changes[${index}].property`),
-      selector: asString(changeRecord.selector, `model response changes[${index}].selector`),
-      value: asString(changeRecord.value, `model response changes[${index}].value`),
-    };
-  });
-  return {
-    changes,
-    diagnosis: asString(record.diagnosis, 'model response diagnosis'),
-  };
 }
 
 function feedbackContent(prefix: string, feedback: ConditionFeedback): ModelMessage['content'] {
@@ -210,14 +198,26 @@ function createJobState(promptHash: string): JobState {
 }
 
 function recordedBillingUsages(state: JobState) {
-  return state.turnRecords.flatMap((record) => {
-    if (record.usage) return [record.usage];
-    return record.partialUsage ? [record.partialUsage] : [];
-  });
+  return state.turnRecords.flatMap((record) => (record.usage ? [record.usage] : []));
 }
 
 function jobCostUsd(state: JobState): number {
-  return recordedBillingUsages(state).reduce((sum, usage) => sum + usage.costUsd, 0);
+  return state.turnRecords.reduce(
+    (sum, record) =>
+      sum + (record.billing.mode === 'metered-usd' ? record.billing.knownCostUsd : 0),
+    0
+  );
+}
+
+function aggregateBilling(state: JobState, budget: EvalConfig['budget']) {
+  if (budget.mode === 'subscription') return { mode: 'subscription' as const };
+  return {
+    costUnknown: state.turnRecords.some(
+      (record) => record.billing.mode === 'metered-usd' && record.billing.costUnknown
+    ),
+    knownCostUsd: jobCostUsd(state),
+    mode: 'metered-usd' as const,
+  };
 }
 
 function buildResult(
@@ -232,23 +232,24 @@ function buildResult(
     .find((record) => record.visibleComparison !== undefined)?.visibleComparison;
   return {
     ...(extras.acceptance ? { acceptance: extras.acceptance } : {}),
-    commandBudgetUsd: context.config.commandBudgetUsd,
+    authMode: context.config.backend.authMode,
+    backend: context.config.backend.id,
+    backendVersion: context.config.backend.version,
+    billing: aggregateBilling(state, context.config.budget),
+    budget: context.budget,
     condition: context.condition,
     conditionOrder: context.config.conditionOrder,
-    costUnknown: state.turnRecords.some((record) => record.costUnknown),
     ...(extras.error ? { error: extras.error } : {}),
     ...(finalComparison ? { finalComparison } : {}),
     fixtureId: context.manifest.fixtureId,
     initialComparison: context.initialComparison,
-    jobBudgetUsd: context.jobBudgetUsd,
-    knownCostUsd: jobCostUsd(state),
     maxTurns: context.config.maxTurns,
     model: context.config.model,
     mutationId: context.mutation.id,
     promptHash: state.promptHash,
     protocolErrors: state.turnRecords.filter((record) => record.protocolError !== undefined).length,
     runId: context.config.runId,
-    schemaVersion: 2,
+    schemaVersion: 3,
     status,
     tokensUsed: usages.reduce((sum, usage) => sum + usage.totalTokens, 0),
     trial: context.config.trial,
@@ -332,7 +333,7 @@ async function assertResultDestinationsAvailable(
 }
 
 async function runJob(options: {
-  budgetRemaining: number;
+  budgetRemaining?: number;
   initialComparison: ComparisonSnapshot;
   context: JobContext;
   perturbationReferences: ReadonlyMap<string, RenderedReference>;
@@ -348,41 +349,43 @@ async function runJob(options: {
   const state = createJobState(hashMessages(messages));
 
   for (let turn = 1; turn <= options.context.config.maxTurns; turn += 1) {
-    if (jobCostUsd(state) >= options.budgetRemaining) {
+    if (options.budgetRemaining !== undefined && jobCostUsd(state) >= options.budgetRemaining) {
       return buildResult(options.context, state, 'aborted_budget');
     }
     let modelTurn;
     try {
-      modelTurn = await requestOpenRouterTurn({
-        apiKey: options.context.config.apiKey,
+      modelTurn = await options.context.config.backend.runTurn({
         messages,
         model: options.context.config.model,
+        workspacePath: dirname(options.workspace.implementation.htmlPath),
       });
     } catch (error) {
+      if (!(error instanceof TurnBackendError)) throw error;
       const message = error instanceof Error ? error.message : String(error);
-      const callError = error instanceof OpenRouterCallError ? error : undefined;
       state.turnRecords.push({
-        costUnknown: callError?.costUnknown ?? true,
+        billing: error.billing,
         error: message,
-        ...(callError?.partialUsage ? { partialUsage: callError.partialUsage } : {}),
-        requestAttempts: callError?.attempts ?? 1,
-        retryDelaysMs: callError?.retryDelaysMs ?? [],
+        requestAttempts: error.attempts,
+        retryDelaysMs: error.retryDelaysMs,
         turn,
+        ...(error.usage ? { usage: error.usage } : {}),
       });
       return buildResult(options.context, state, 'error', {
         error: message,
       });
     }
     const turnRecord: EvalTurnRecord = {
-      costUnknown: false,
+      billing: modelTurn.billing,
       finishReason: modelTurn.finishReason,
       requestAttempts: modelTurn.requestAttempts,
       retryDelaysMs: modelTurn.retryDelaysMs,
       turn,
       usage: modelTurn.usage,
     };
-    const costUsd = jobCostUsd(state) + modelTurn.usage.costUsd;
-    if (costUsd > options.budgetRemaining) {
+    const costUsd =
+      jobCostUsd(state) +
+      (modelTurn.billing.mode === 'metered-usd' ? modelTurn.billing.knownCostUsd : 0);
+    if (options.budgetRemaining !== undefined && costUsd > options.budgetRemaining) {
       state.turnRecords.push(turnRecord);
       return buildResult(options.context, state, 'aborted_budget');
     }
@@ -403,7 +406,7 @@ async function runJob(options: {
 
     let proposal: RepairProposal;
     try {
-      proposal = parseRepairProposal(modelTurn.content);
+      proposal = parseRepairProposalJson(modelTurn.content, 'model response');
       await options.workspace.applyProposal(proposal);
     } catch (error) {
       if (!isProposalError(error)) {
@@ -490,7 +493,8 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
   let totalKnownCostUsd = 0;
   const totalJobs = manifest.mutations.length * conditionIds.length;
   if (totalJobs === 0) throw new Error('Eval manifest does not contain any jobs');
-  const jobBudgetUsd = config.commandBudgetUsd / totalJobs;
+  const jobBudgetUsd =
+    config.budget.mode === 'metered-usd' ? config.budget.commandBudgetUsd / totalJobs : undefined;
   for (const mutation of manifest.mutations) {
     const fixture = await createFixtureContext(manifest, mutation);
     try {
@@ -508,14 +512,24 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
       for (const condition of config.conditionOrder) {
         await fixture.workspace.reset();
         const context: JobContext = {
+          budget:
+            config.budget.mode === 'metered-usd' && jobBudgetUsd !== undefined
+              ? {
+                  commandBudgetUsd: config.budget.commandBudgetUsd,
+                  jobBudgetUsd,
+                  mode: 'metered-usd',
+                }
+              : { mode: 'subscription' },
           condition,
           config,
           initialComparison: initialComparison.visible,
-          jobBudgetUsd,
           manifest,
           mutation,
         };
-        if (totalKnownCostUsd >= config.commandBudgetUsd) {
+        if (
+          config.budget.mode === 'metered-usd' &&
+          totalKnownCostUsd >= config.budget.commandBudgetUsd
+        ) {
           const messages = buildInitialMessages(
             fixture.workspace,
             buildConditionFeedback(condition, initialComparison)
@@ -530,7 +544,14 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
           continue;
         }
         const result = await runJob({
-          budgetRemaining: Math.min(jobBudgetUsd, config.commandBudgetUsd - totalKnownCostUsd),
+          ...(config.budget.mode === 'metered-usd' && jobBudgetUsd !== undefined
+            ? {
+                budgetRemaining: Math.min(
+                  jobBudgetUsd,
+                  config.budget.commandBudgetUsd - totalKnownCostUsd
+                ),
+              }
+            : {}),
           context,
           initialComparison,
           perturbationReferences: fixture.perturbationReferences,
@@ -538,14 +559,20 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
           server: fixture.server,
           workspace: fixture.workspace,
         });
-        totalKnownCostUsd += result.knownCostUsd;
+        if (result.billing.mode === 'metered-usd') {
+          totalKnownCostUsd += result.billing.knownCostUsd;
+        }
         await writeResult(result);
+        const billingSummary =
+          result.billing.mode === 'subscription'
+            ? 'billing=subscription'
+            : `knownCost=$${result.billing.knownCostUsd.toFixed(6)}${result.billing.costUnknown ? '+' : ''}`;
         console.log(
-          `${mutation.id}/${condition}: ${result.status}, turns=${result.turns}, knownCost=$${result.knownCostUsd.toFixed(6)}${result.costUnknown ? '+' : ''}`
+          `${mutation.id}/${condition}: ${result.status}, turns=${result.turns}, ${billingSummary}`
         );
-        if (result.costUnknown) {
+        if (result.billing.mode === 'metered-usd' && result.billing.costUnknown) {
           throw new Error(
-            `OpenRouter cost is unknown for ${mutation.id}/${condition}; the result was saved and the run stopped before another paid request.`
+            `Metered backend cost is unknown for ${mutation.id}/${condition}; the result was saved and the run stopped before another paid request.`
           );
         }
       }
@@ -564,7 +591,7 @@ async function main(): Promise<void> {
   if (args.length !== 0) {
     throw new EvalUsageError('Usage: pnpm eval:run or pnpm eval:smoke');
   }
-  const config = loadEvalConfig();
+  const config = await loadEvalConfig();
   await runEvaluation(config);
 }
 

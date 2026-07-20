@@ -1,8 +1,11 @@
+import { runCodexExecSelfCheck } from '../backends/codex-exec-self-check.js';
+import { runOpenRouterRetrySelfCheck } from '../backends/openrouter.js';
 import { compareVariant, createFixtureContext, evaluateFinalProposal } from '../harness.js';
 import { loadManifest } from '../manifest.js';
+import { parseRepairProposal } from '../repair-proposal.js';
 import { conditionOrderForTrial, type RepairProposal } from '../types.js';
 import { buildCli } from './build-cli.js';
-import { runOpenRouterRetrySelfCheck } from './openrouter.js';
+import { runReportContractSelfCheck } from './report.js';
 
 export async function runSelfCheck(): Promise<void> {
   const rotatedConditions = [1, 2, 3].map((trial) => conditionOrderForTrial(trial).join(','));
@@ -12,7 +15,22 @@ export async function runSelfCheck(): Promise<void> {
   ) {
     throw new Error('Eval condition rotation self-check failed');
   }
+  try {
+    parseRepairProposal(
+      {
+        changes: [{ property: 'padding', selector: '.button', value: '8px 16px' }],
+        diagnosis: 'padding drift',
+        hiddenOracle: 'must not be accepted',
+      },
+      'self-check proposal'
+    );
+    throw new Error('Eval proposal contract self-check did not reject an unexpected field');
+  } catch (error) {
+    if (!(error instanceof TypeError) || !error.message.includes('unexpected fields')) throw error;
+  }
   await runOpenRouterRetrySelfCheck();
+  await runCodexExecSelfCheck();
+  runReportContractSelfCheck();
   buildCli();
   const manifest = await loadManifest();
   const mutation = manifest.mutations[0];

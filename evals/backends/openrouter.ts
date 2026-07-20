@@ -1,51 +1,28 @@
-import type { ModelBillingUsage, ModelTurnUsage } from '../types.js';
+import type { ModelBilling, ModelTokenUsage, ModelTurnUsage } from '../types.js';
+import {
+  TurnBackendError,
+  type BackendTurnResult,
+  type ModelMessage,
+  type TurnBackend,
+} from './backend.js';
 
 const openRouterEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
 const modelRequestTimeoutMs = 120_000;
 const maximumRequestAttempts = 3;
 const maximumRetryDelayMs = 120_000;
 const transientHttpStatuses = new Set([429, 502, 503, 504, 529]);
+const openRouterBackendVersion = 'chat-completions-v1';
 
 type FetchFunction = (input: string, init: RequestInit) => Promise<Response>;
 type SleepFunction = (milliseconds: number) => Promise<void>;
 
-export interface ModelMessage {
-  content:
-    | string
-    | Array<{ text: string; type: 'text' } | { image_url: { url: string }; type: 'image_url' }>;
-  role: 'assistant' | 'system' | 'user';
+interface OpenRouterUsage {
+  billing: Extract<ModelBilling, { mode: 'metered-usd' }>;
+  tokens: ModelTokenUsage;
 }
 
-export interface ModelTurn {
-  content: string;
-  finishReason: string;
-  requestAttempts: number;
-  retryDelaysMs: number[];
-  usage: ModelTurnUsage;
-}
-
-export class OpenRouterCallError extends Error {
-  readonly attempts: number;
-  readonly costUnknown: boolean;
-  readonly partialUsage?: ModelBillingUsage;
-  readonly retryDelaysMs: number[];
-
-  constructor(
-    message: string,
-    options: {
-      attempts: number;
-      cause?: unknown;
-      partialUsage?: ModelBillingUsage;
-      retryDelaysMs: number[];
-    }
-  ) {
-    super(message, options.cause === undefined ? undefined : { cause: options.cause });
-    this.name = 'OpenRouterCallError';
-    this.attempts = options.attempts;
-    this.costUnknown = options.partialUsage === undefined;
-    this.partialUsage = options.partialUsage;
-    this.retryDelaysMs = options.retryDelaysMs;
-  }
+function unknownBilling(): Extract<ModelBilling, { mode: 'metered-usd' }> {
+  return { costUnknown: true, knownCostUsd: 0, mode: 'metered-usd' };
 }
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {
@@ -127,7 +104,7 @@ function readRoutingMetadata(value: unknown): {
   };
 }
 
-function readBillingUsage(value: unknown): ModelBillingUsage {
+function readBillingUsage(value: unknown): OpenRouterUsage {
   const usage = asRecord(value, 'OpenRouter response usage');
   const completionDetails =
     usage.completion_tokens_details === undefined
@@ -155,11 +132,17 @@ function readBillingUsage(value: unknown): ModelBillingUsage {
       )
     : undefined;
   return {
-    completionTokens,
-    costUsd: asNonNegativeNumber(usage.cost, 'OpenRouter response usage.cost'),
-    promptTokens,
-    ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
-    totalTokens,
+    billing: {
+      costUnknown: false,
+      knownCostUsd: asNonNegativeNumber(usage.cost, 'OpenRouter response usage.cost'),
+      mode: 'metered-usd',
+    },
+    tokens: {
+      inputTokens: promptTokens,
+      outputTokens: completionTokens,
+      ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
+      totalTokens,
+    },
   };
 }
 
@@ -208,9 +191,9 @@ async function requestWithRetry(
     try {
       response = await dependencies.fetch(input, createInit());
     } catch (error) {
-      throw new OpenRouterCallError(
+      throw new TurnBackendError(
         `OpenRouter network request failed on attempt ${attempt}: ${error instanceof Error ? error.message : String(error)}`,
-        { attempts: attempt, cause: error, retryDelaysMs }
+        { attempts: attempt, billing: unknownBilling(), cause: error, retryDelaysMs }
       );
     }
 
@@ -220,18 +203,18 @@ async function requestWithRetry(
     const retryAfter = response.headers.get('Retry-After');
     if (!transientHttpStatuses.has(response.status) || attempt === maximumRequestAttempts) {
       await discardResponseBody(response);
-      throw new OpenRouterCallError(
+      throw new TurnBackendError(
         `OpenRouter request failed with HTTP ${response.status}${retryAfter ? ` (Retry-After: ${retryAfter})` : ''}`,
-        { attempts: attempt, retryDelaysMs }
+        { attempts: attempt, billing: unknownBilling(), retryDelaysMs }
       );
     }
     const delayMs =
       parseRetryAfterMs(retryAfter, dependencies.now()) ?? defaultRetryDelayMs(attempt);
     if (delayMs > maximumRetryDelayMs) {
       await discardResponseBody(response);
-      throw new OpenRouterCallError(
+      throw new TurnBackendError(
         `OpenRouter requested a retry delay of ${delayMs}ms, exceeding the ${maximumRetryDelayMs}ms harness limit`,
-        { attempts: attempt, retryDelaysMs }
+        { attempts: attempt, billing: unknownBilling(), retryDelaysMs }
       );
     }
     await discardResponseBody(response);
@@ -243,9 +226,10 @@ async function requestWithRetry(
 
 function parseOpenRouterTurn(
   body: unknown,
-  request: { attempts: number; retryDelaysMs: number[] }
-): ModelTurn {
-  let partialUsage: ModelBillingUsage | undefined;
+  request: { attempts: number; retryDelaysMs: number[] },
+  requestedModel: string
+): BackendTurnResult {
+  let partialUsage: OpenRouterUsage | undefined;
   try {
     const record = asRecord(body, 'OpenRouter response');
     partialUsage = readBillingUsage(record.usage);
@@ -264,37 +248,52 @@ function parseOpenRouterTurn(
     }
 
     return {
+      billing: partialUsage.billing,
       content: asText(message.content, 'OpenRouter response message.content'),
       finishReason: asString(choice.finish_reason, 'OpenRouter response choices[0].finish_reason'),
       requestAttempts: request.attempts,
       retryDelaysMs: request.retryDelaysMs,
       usage: {
-        ...partialUsage,
+        ...partialUsage.tokens,
+        authMode: 'api',
+        backend: 'openrouter',
+        backendVersion: openRouterBackendVersion,
         ...(routing.fallbackUsed !== undefined ? { fallbackUsed: routing.fallbackUsed } : {}),
         generationId: asString(record.id, 'OpenRouter response id'),
         ...(routing.provider ? { provider: routing.provider } : {}),
+        requestedModel,
         responseModel: asString(record.model, 'OpenRouter response model'),
         ...(routingMetadataError ? { routingMetadataError } : {}),
       },
     };
   } catch (error) {
-    throw new OpenRouterCallError(
+    const partialTurnUsage: ModelTurnUsage | undefined = partialUsage
+      ? {
+          ...partialUsage.tokens,
+          authMode: 'api',
+          backend: 'openrouter',
+          backendVersion: openRouterBackendVersion,
+          requestedModel,
+        }
+      : undefined;
+    throw new TurnBackendError(
       `OpenRouter response validation failed: ${error instanceof Error ? error.message : String(error)}`,
       {
         attempts: request.attempts,
+        billing: partialUsage?.billing ?? unknownBilling(),
         cause: error,
-        ...(partialUsage ? { partialUsage } : {}),
         retryDelaysMs: request.retryDelaysMs,
+        ...(partialTurnUsage ? { usage: partialTurnUsage } : {}),
       }
     );
   }
 }
 
-export async function requestOpenRouterTurn(options: {
+async function requestOpenRouterTurn(options: {
   apiKey: string;
   messages: ModelMessage[];
   model: string;
-}): Promise<ModelTurn> {
+}): Promise<BackendTurnResult> {
   const request = await requestWithRetry(
     openRouterEndpoint,
     () => ({
@@ -325,12 +324,26 @@ export async function requestOpenRouterTurn(options: {
   try {
     body = await request.response.json();
   } catch (error) {
-    throw new OpenRouterCallError(
+    throw new TurnBackendError(
       `OpenRouter response validation failed: ${error instanceof Error ? error.message : String(error)}`,
-      { attempts: request.attempts, cause: error, retryDelaysMs: request.retryDelaysMs }
+      {
+        attempts: request.attempts,
+        billing: unknownBilling(),
+        cause: error,
+        retryDelaysMs: request.retryDelaysMs,
+      }
     );
   }
-  return parseOpenRouterTurn(body, request);
+  return parseOpenRouterTurn(body, request, options.model);
+}
+
+export function createOpenRouterBackend(apiKey: string): TurnBackend {
+  return {
+    authMode: 'api',
+    id: 'openrouter',
+    runTurn: ({ messages, model }) => requestOpenRouterTurn({ apiKey, messages, model }),
+    version: openRouterBackendVersion,
+  };
 }
 
 export async function runOpenRouterRetrySelfCheck(): Promise<void> {
@@ -377,11 +390,12 @@ export async function runOpenRouterRetrySelfCheck(): Promise<void> {
     throw new Error('OpenRouter network failure self-check did not fail');
   } catch (error) {
     if (
-      !(error instanceof OpenRouterCallError) ||
+      !(error instanceof TurnBackendError) ||
       error.attempts !== 1 ||
       error.retryDelaysMs.length !== 0 ||
       networkAttempts !== 1 ||
-      !error.costUnknown
+      error.billing.mode !== 'metered-usd' ||
+      !error.billing.costUnknown
     ) {
       throw error;
     }
@@ -395,7 +409,7 @@ export async function runOpenRouterRetrySelfCheck(): Promise<void> {
     });
     throw new Error('OpenRouter non-retryable response self-check did not fail');
   } catch (error) {
-    if (!(error instanceof OpenRouterCallError) || error.attempts !== 1) {
+    if (!(error instanceof TurnBackendError) || error.attempts !== 1) {
       throw error;
     }
   }
@@ -409,7 +423,7 @@ export async function runOpenRouterRetrySelfCheck(): Promise<void> {
     });
     throw new Error('OpenRouter excessive Retry-After self-check did not fail');
   } catch (error) {
-    if (!(error instanceof OpenRouterCallError) || error.retryDelaysMs.length !== 0) {
+    if (!(error instanceof TurnBackendError) || error.retryDelaysMs.length !== 0) {
       throw error;
     }
   }
@@ -423,14 +437,16 @@ export async function runOpenRouterRetrySelfCheck(): Promise<void> {
   try {
     parseOpenRouterTurn(
       { choices: [], id: 'generation-id', model: 'provider/model', usage: validUsage },
-      { attempts: 1, retryDelaysMs: [] }
+      { attempts: 1, retryDelaysMs: [] },
+      'requested/model'
     );
     throw new Error('OpenRouter partial usage self-check did not fail');
   } catch (error) {
     if (
-      !(error instanceof OpenRouterCallError) ||
-      error.costUnknown ||
-      error.partialUsage?.costUsd !== 0.001
+      !(error instanceof TurnBackendError) ||
+      error.billing.mode !== 'metered-usd' ||
+      error.billing.costUnknown ||
+      error.billing.knownCostUsd !== 0.001
     ) {
       throw error;
     }
@@ -444,11 +460,16 @@ export async function runOpenRouterRetrySelfCheck(): Promise<void> {
         model: 'provider/model',
         usage: { ...validUsage, cost: 'unknown' },
       },
-      { attempts: 1, retryDelaysMs: [] }
+      { attempts: 1, retryDelaysMs: [] },
+      'requested/model'
     );
     throw new Error('OpenRouter unknown cost self-check did not fail');
   } catch (error) {
-    if (!(error instanceof OpenRouterCallError) || !error.costUnknown) {
+    if (
+      !(error instanceof TurnBackendError) ||
+      error.billing.mode !== 'metered-usd' ||
+      !error.billing.costUnknown
+    ) {
       throw error;
     }
   }
@@ -461,7 +482,8 @@ export async function runOpenRouterRetrySelfCheck(): Promise<void> {
       openrouter_metadata: { endpoints: { available: 'invalid' } },
       usage: validUsage,
     },
-    { attempts: 1, retryDelaysMs: [] }
+    { attempts: 1, retryDelaysMs: [] },
+    'requested/model'
   );
   if (!metadataDiagnostic.usage.routingMetadataError) {
     throw new Error('OpenRouter routing metadata failure was not retained as a diagnostic');
