@@ -177,6 +177,10 @@ function normalizeDesignContract(atomic: JsonObject, composite: JsonObject): unk
     atomic: {
       type: asString(atomic.type, 'atomic.type'),
       size: sizeOf(atomic, 'atomic'),
+      sizing: {
+        horizontal: asString(atomic.layoutSizingHorizontal, 'atomic.layoutSizingHorizontal'),
+        vertical: asString(atomic.layoutSizingVertical, 'atomic.layoutSizingVertical'),
+      },
       layoutMode: asString(atomic.layoutMode, 'atomic.layoutMode'),
       gap: asNumber(atomic.itemSpacing, 'atomic.itemSpacing'),
       padding: paddingOf(atomic, 'atomic'),
@@ -192,6 +196,10 @@ function normalizeDesignContract(atomic: JsonObject, composite: JsonObject): unk
     composite: {
       type: asString(composite.type, 'composite.type'),
       size: sizeOf(composite, 'composite'),
+      sizing: {
+        horizontal: asString(composite.layoutSizingHorizontal, 'composite.layoutSizingHorizontal'),
+        vertical: asString(composite.layoutSizingVertical, 'composite.layoutSizingVertical'),
+      },
       layoutMode: asString(composite.layoutMode, 'composite.layoutMode'),
       gap: asNumber(composite.itemSpacing, 'composite.itemSpacing'),
       childCount: compositeChildren.length,
@@ -420,8 +428,8 @@ describe.sequential('live Figma smoke suite', () => {
       'padding-top': '8px',
       'padding-right': '16px',
       width: '96px',
-      height: '40px',
     });
+    expect(expected.__self__).not.toHaveProperty('height');
     expect(expected['__self__ > :nth-child(1)']).toMatchObject({
       'font-family': 'Inter',
       'font-size': '14px',
@@ -469,9 +477,9 @@ describe.sequential('live Figma smoke suite', () => {
       display: 'flex',
       'flex-direction': 'column',
       gap: '32px',
-      width: '969px',
-      height: '228px',
     });
+    expect(expected.__self__).not.toHaveProperty('width');
+    expect(expected.__self__).not.toHaveProperty('height');
     expect(expected['__self__ > :nth-child(1)']).toMatchObject({
       'font-family': 'Inter',
       'font-size': '30px',

@@ -13,6 +13,9 @@ type FigmaEffect = {
   radius?: number;
   spread?: number;
 };
+type FigmaLayoutSizing = 'FILL' | 'FIXED' | 'HUG';
+type FigmaLegacyAxisSizing = 'AUTO' | 'FIXED';
+type LayoutAxis = 'horizontal' | 'vertical';
 
 export interface FigmaNodeLite {
   type?: string;
@@ -28,6 +31,10 @@ export interface FigmaNodeLite {
   effects?: FigmaEffect[];
   // Auto layout
   layoutMode?: string;
+  layoutSizingHorizontal?: FigmaLayoutSizing;
+  layoutSizingVertical?: FigmaLayoutSizing;
+  primaryAxisSizingMode?: FigmaLegacyAxisSizing;
+  counterAxisSizingMode?: FigmaLegacyAxisSizing;
   itemSpacing?: number;
   paddingLeft?: number;
   paddingRight?: number;
@@ -94,6 +101,34 @@ function mapAutoLayoutAlign(v?: 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN'): str
     default:
       return undefined;
   }
+}
+
+function resolveLayoutSizing(node: FigmaNodeLite, axis: LayoutAxis): FigmaLayoutSizing | undefined {
+  const sizing = axis === 'horizontal' ? node.layoutSizingHorizontal : node.layoutSizingVertical;
+  if (sizing === 'FILL' || sizing === 'FIXED' || sizing === 'HUG') return sizing;
+  if (sizing !== undefined) {
+    throw new TypeError(`Unsupported Figma ${axis} sizing: ${String(sizing)}`);
+  }
+
+  if (node.layoutMode !== 'HORIZONTAL' && node.layoutMode !== 'VERTICAL') {
+    return undefined;
+  }
+
+  const isPrimaryAxis =
+    (axis === 'horizontal' && node.layoutMode === 'HORIZONTAL') ||
+    (axis === 'vertical' && node.layoutMode === 'VERTICAL');
+  const legacySizing = isPrimaryAxis ? node.primaryAxisSizingMode : node.counterAxisSizingMode;
+  if (legacySizing === 'FIXED') return 'FIXED';
+  if (legacySizing === 'AUTO') return 'HUG';
+  if (legacySizing !== undefined) {
+    throw new TypeError(`Unsupported legacy Figma ${axis} sizing: ${String(legacySizing)}`);
+  }
+  return undefined;
+}
+
+function shouldEmitFixedDimension(node: FigmaNodeLite, axis: LayoutAxis): boolean {
+  const sizing = resolveLayoutSizing(node, axis);
+  return sizing === undefined || sizing === 'FIXED';
 }
 
 /**
@@ -214,13 +249,15 @@ function build(
     }
   }
 
-  // ===== Optional: Fixed dimensions (width/height) only when not HUG =====
+  // ===== Fixed dimensions =====
+  // A bounding box is an observation for HUG/FILL sizing, not a fixed design constraint.
+  // Missing sizing metadata retains the legacy behavior for non-auto-layout and older inputs.
   if (isRoot) {
-    if (n.absoluteBoundingBox?.width) {
+    if (shouldEmitFixedDimension(n, 'horizontal') && n.absoluteBoundingBox?.width) {
       const width = px(n.absoluteBoundingBox.width);
       if (width) S['width'] = width;
     }
-    if (n.absoluteBoundingBox?.height) {
+    if (shouldEmitFixedDimension(n, 'vertical') && n.absoluteBoundingBox?.height) {
       const height = px(n.absoluteBoundingBox.height);
       if (height) S['height'] = height;
     }
