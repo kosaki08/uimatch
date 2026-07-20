@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { dirname, isAbsolute, relative, sep } from 'node:path';
 import { runCodexExecSelfCheck } from '../backends/codex-exec-self-check.js';
 import { runOpenRouterRetrySelfCheck } from '../backends/openrouter.js';
 import { compareVariant, createFixtureContext, evaluateFinalProposal } from '../harness.js';
@@ -6,6 +8,14 @@ import { parseRepairProposal } from '../repair-proposal.js';
 import { conditionOrderForTrial, type RepairProposal } from '../types.js';
 import { buildCli } from './build-cli.js';
 import { runReportContractSelfCheck } from './report.js';
+
+function pathIsWithin(root: string, target: string): boolean {
+  const relativePath = relative(root, target);
+  return (
+    relativePath === '' ||
+    (!isAbsolute(relativePath) && relativePath !== '..' && !relativePath.startsWith(`..${sep}`))
+  );
+}
 
 export async function runSelfCheck(): Promise<void> {
   const rotatedConditions = [1, 2, 3].map((trial) => conditionOrderForTrial(trial).join(','));
@@ -40,6 +50,18 @@ export async function runSelfCheck(): Promise<void> {
   }
   const context = await createFixtureContext(manifest, mutation);
   try {
+    const agentRoot = dirname(dirname(context.workspace.agentInput.htmlPath));
+    const harnessPaths = [
+      context.workspace.implementation.htmlPath,
+      ...[...context.workspace.perturbations.values()].map((variant) => variant.htmlPath),
+    ];
+    if (harnessPaths.some((path) => pathIsWithin(agentRoot, path))) {
+      throw new Error('Agent input workspace contains harness-only fixture paths');
+    }
+    const originalAgentCss = await readFile(context.workspace.agentInput.cssPath, 'utf8');
+    if (originalAgentCss !== context.workspace.implementationSource.css) {
+      throw new Error('Agent input workspace does not contain the original current CSS');
+    }
     const referenceComparison = await compareVariant({
       expectedSpec: manifest.reference.expectedSpec,
       manifest,
@@ -69,6 +91,9 @@ export async function runSelfCheck(): Promise<void> {
       diagnosis: 'self-check root repair',
     };
     await context.workspace.applyProposal(rootProposal);
+    if ((await readFile(context.workspace.agentInput.cssPath, 'utf8')) !== originalAgentCss) {
+      throw new Error('Applying a proposal mutated the agent input workspace');
+    }
     const repairedComparison = await compareVariant({
       expectedSpec: manifest.reference.expectedSpec,
       manifest,

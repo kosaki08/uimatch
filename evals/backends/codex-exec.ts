@@ -15,6 +15,22 @@ const defaultTurnTimeoutMs = 120_000;
 const processTerminationGraceMs = 2_000;
 const maximumProcessOutputBytes = 5 * 1024 * 1024;
 const versionTimeoutMs = 10_000;
+const codexRootFlags = {
+  approval: '--ask-for-approval',
+} as const;
+const codexExecFlags = {
+  config: '--config',
+  cwd: '--cd',
+  ephemeral: '--ephemeral',
+  ignoreRules: '--ignore-rules',
+  ignoreUserConfig: '--ignore-user-config',
+  image: '--image',
+  json: '--json',
+  model: '--model',
+  outputSchema: '--output-schema',
+  sandbox: '--sandbox',
+  skipGitRepoCheck: '--skip-git-repo-check',
+} as const;
 const codexEnvironmentKeys = [
   'ALL_PROXY',
   'CODEX_HOME',
@@ -92,6 +108,13 @@ function asNonNegativeInteger(value: unknown, label: string): number {
 
 function subscriptionBilling() {
   return { mode: 'subscription' as const };
+}
+
+function assertHelpSupports(help: string, flags: readonly string[], label: string): void {
+  const missing = flags.filter((flag) => !help.includes(flag));
+  if (missing.length > 0) {
+    throw new TypeError(`${label} is missing required options: ${missing.join(', ')}`);
+  }
 }
 
 function codexProcessEnvironment(): NodeJS.ProcessEnv {
@@ -379,28 +402,28 @@ async function runCodexTurn(options: {
   const inputDirectory = await mkdtemp(join(options.input.workspacePath, '.uimatch-codex-'));
   try {
     const imagePaths = await materializeImages(materialized.images, inputDirectory);
-    const imageArgs = imagePaths.flatMap((path) => ['--image', path]);
+    const imageArgs = imagePaths.flatMap((path) => [codexExecFlags.image, path]);
     const args = [
       ...options.prefixArgs,
-      '--ask-for-approval',
+      codexRootFlags.approval,
       'never',
       'exec',
-      '--ephemeral',
-      '--ignore-user-config',
-      '--ignore-rules',
-      '--skip-git-repo-check',
-      '--config',
+      codexExecFlags.ephemeral,
+      codexExecFlags.ignoreUserConfig,
+      codexExecFlags.ignoreRules,
+      codexExecFlags.skipGitRepoCheck,
+      codexExecFlags.config,
       'shell_environment_policy.inherit=none',
-      '--config',
+      codexExecFlags.config,
       'project_doc_max_bytes=0',
-      '--sandbox',
+      codexExecFlags.sandbox,
       'read-only',
-      '--json',
-      '--model',
+      codexExecFlags.json,
+      codexExecFlags.model,
       options.input.model,
-      '--output-schema',
+      codexExecFlags.outputSchema,
       repairProposalSchemaPath,
-      '-C',
+      codexExecFlags.cwd,
       options.input.workspacePath,
       ...imageArgs,
       '-',
@@ -447,14 +470,33 @@ async function runCodexTurn(options: {
 export async function createCodexExecBackend(options: CodexExecOptions = {}): Promise<TurnBackend> {
   const command = options.command ?? 'codex';
   const prefixArgs = options.prefixArgs ?? [];
-  let versionResult: ProcessResult;
+  let version: string;
   try {
-    versionResult = await runProcess({
+    const versionResult = await runProcess({
       args: [...prefixArgs, '--version'],
       command,
       cwd: process.cwd(),
       timeoutMs: versionTimeoutMs,
     });
+    const versionMatch = /^codex-cli\s+(\S+)\s*$/.exec(versionResult.stdout);
+    if (!versionMatch?.[1]) {
+      throw new TypeError('Codex CLI returned an unrecognized version string');
+    }
+    version = versionMatch[1];
+    const rootHelp = await runProcess({
+      args: [...prefixArgs, '--help'],
+      command,
+      cwd: process.cwd(),
+      timeoutMs: versionTimeoutMs,
+    });
+    assertHelpSupports(rootHelp.stdout, Object.values(codexRootFlags), 'Codex CLI help');
+    const execHelp = await runProcess({
+      args: [...prefixArgs, 'exec', '--help'],
+      command,
+      cwd: process.cwd(),
+      timeoutMs: versionTimeoutMs,
+    });
+    assertHelpSupports(execHelp.stdout, Object.values(codexExecFlags), 'Codex exec help');
   } catch (error) {
     throw new TurnBackendError(error instanceof Error ? error.message : String(error), {
       attempts: 1,
@@ -463,15 +505,6 @@ export async function createCodexExecBackend(options: CodexExecOptions = {}): Pr
       retryDelaysMs: [],
     });
   }
-  const versionMatch = /^codex-cli\s+(\S+)\s*$/.exec(versionResult.stdout);
-  if (!versionMatch?.[1]) {
-    throw new TurnBackendError('Codex CLI returned an unrecognized version string', {
-      attempts: 1,
-      billing: subscriptionBilling(),
-      retryDelaysMs: [],
-    });
-  }
-  const version = versionMatch[1];
   return {
     authMode: 'subscription',
     id: 'codex-exec',

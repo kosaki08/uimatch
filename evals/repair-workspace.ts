@@ -10,6 +10,7 @@ export interface WorkspaceVariant {
 }
 
 export interface RepairWorkspace {
+  agentInput: WorkspaceVariant;
   applyProposal(proposal: RepairProposal): Promise<void>;
   baseCssPath: string;
   close(): Promise<void>;
@@ -73,14 +74,20 @@ export async function createRepairWorkspace(
   manifest: EvalManifest,
   mutation: EvalMutation
 ): Promise<RepairWorkspace> {
-  const rootDirectory = await mkdtemp(join(tmpdir(), 'uimatch-eval-'));
+  const harnessRootDirectory = await mkdtemp(join(tmpdir(), 'uimatch-eval-harness-'));
+  let agentRootDirectory: string | undefined;
   try {
-    const current = await copyVariant(join(rootDirectory, 'current'), mutation);
+    const agentRoot = await mkdtemp(join(tmpdir(), 'uimatch-eval-agent-'));
+    agentRootDirectory = agentRoot;
+    const [current, agentInput] = await Promise.all([
+      copyVariant(join(harnessRootDirectory, 'current'), mutation),
+      copyVariant(join(agentRoot, 'input'), mutation),
+    ]);
     const implementationHtml = await readFile(current.variant.htmlPath, 'utf8');
     const perturbationEntries = await Promise.all(
       manifest.perturbations.map(async (perturbation) => {
         const copied = await copyVariant(
-          join(rootDirectory, 'perturbations', perturbation.id),
+          join(harnessRootDirectory, 'perturbations', perturbation.id),
           perturbation
         );
         return [perturbation.id, copied] as const;
@@ -110,12 +117,26 @@ export async function createRepairWorkspace(
     };
 
     return {
+      agentInput: agentInput.variant,
       async applyProposal(proposal): Promise<void> {
         await writeWorkspaceCss(proposal);
       },
       baseCssPath: resolve(evalRoot, 'fixtures', manifest.fixtureId, 'base.css'),
       async close(): Promise<void> {
-        await rm(rootDirectory, { force: true, recursive: true });
+        const cleanup = await Promise.allSettled([
+          rm(harnessRootDirectory, { force: true, recursive: true }),
+          rm(agentRoot, { force: true, recursive: true }),
+        ]);
+        const failures = cleanup.filter((result) => result.status === 'rejected');
+        if (failures.length > 0) {
+          throw new AggregateError(
+            failures.map((failure) => {
+              const reason: unknown = failure.reason;
+              return reason instanceof Error ? reason : new Error(String(reason));
+            }),
+            'Eval repair workspace cleanup failed'
+          );
+        }
       },
       implementation: current.variant,
       implementationSource: {
@@ -130,7 +151,10 @@ export async function createRepairWorkspace(
       },
     };
   } catch (error) {
-    await rm(rootDirectory, { force: true, recursive: true });
+    await Promise.allSettled([
+      rm(harnessRootDirectory, { force: true, recursive: true }),
+      ...(agentRootDirectory ? [rm(agentRootDirectory, { force: true, recursive: true })] : []),
+    ]);
     throw error;
   }
 }

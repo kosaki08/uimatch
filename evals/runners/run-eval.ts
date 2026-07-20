@@ -357,7 +357,7 @@ async function runJob(options: {
       modelTurn = await options.context.config.backend.runTurn({
         messages,
         model: options.context.config.model,
-        workspacePath: dirname(options.workspace.implementation.htmlPath),
+        workspacePath: dirname(options.workspace.agentInput.htmlPath),
       });
     } catch (error) {
       if (!(error instanceof TurnBackendError)) throw error;

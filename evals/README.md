@@ -64,8 +64,10 @@ installed CLI and its existing subscription authentication. The backend pins a
 read-only sandbox, ignores user configuration and repository instruction files,
 passes only an allowlisted process environment needed for local authentication
 and network transport, prevents model-generated shell commands from inheriting
-that environment, passes images explicitly, requires the committed
-repair-proposal output schema, and parses JSONL usage from the completed turn:
+that environment, verifies the installed CLI version and required root/exec
+options without calling a model, passes images explicitly, requires the
+committed repair-proposal output schema, and parses JSONL usage from the
+completed turn:
 
 ```dotenv
 EVAL_BACKEND=codex-exec
@@ -82,12 +84,21 @@ because the CLI JSONL contract does not provide a request-level USD cost for the
 harness to validate. `EVAL_AUTH_MODE=subscription` is an operator assertion;
 formal runs should use a dedicated authenticated CLI environment.
 
-The Codex process starts in the temporary current-fixture directory. It receives
-the current HTML/CSS, allowed feedback, and explicit conversation history, while
-reference source, manifests, and hidden outcomes are omitted. `-C` and the
-read-only Codex sandbox are an evaluation boundary, not an operating-system
-confidentiality boundary. Run formal or private evaluations inside an isolated
-container if the wider host filesystem must be unreadable.
+The Codex process starts in an immutable agent-input snapshot containing only
+the original current HTML/CSS. That snapshot uses a separate temporary root
+from the mutable render workspace and hidden perturbations, and it is not
+changed between turns. The model receives later proposals and visible feedback
+through the explicit flattened conversation instead of reading an applied
+proposal from disk. Reference source, manifests, and hidden outcomes are
+omitted. The agent starts in the snapshot's nested `input/` directory, so a
+routine parent-directory listing remains inside the agent-only root.
+
+This separation prevents accidental adjacency leaks but is not an
+operating-system confidentiality boundary. The Codex read-only sandbox controls
+writes and model-generated command execution; a deliberately broad filesystem
+search may still read paths outside the workspace. Run formal or private
+evaluations inside an isolated container that mounts only the agent input if the
+wider host filesystem must be unreadable.
 
 Codex results describe the named Codex CLI version, requested model, and pinned
 execution settings as an agent configuration. The runner flattens the harness
