@@ -4,6 +4,7 @@ import { parseArtifactPolicy } from '../artifacts.js';
 import { runCodexExecSelfCheck } from '../backends/codex-exec-self-check.js';
 import { runOpenRouterRetrySelfCheck } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
+import { buildTypedStyleDiffs } from '../conditions/typed-diff.js';
 import { compareVariant, createFixtureContext, evaluateFinalProposal } from '../harness.js';
 import { loadManifest } from '../manifest.js';
 import { parseRepairProposal } from '../repair-proposal.js';
@@ -36,10 +37,10 @@ export async function runSelfCheck(): Promise<void> {
   if (!evalRunIdPattern.test('20260720_self-check') || evalRunIdPattern.test('self-check')) {
     throw new Error('Eval run ID format self-check failed');
   }
-  const rotatedConditions = [1, 2, 3].map((trial) => conditionOrderForTrial(trial).join(','));
+  const rotatedConditions = [1, 2, 3, 4].map((trial) => conditionOrderForTrial(trial).join(','));
   if (
     rotatedConditions.join('|') !==
-    'pixel-diff,scalar,flat-diff|scalar,flat-diff,pixel-diff|flat-diff,pixel-diff,scalar'
+    'pixel-diff,scalar,flat-diff,typed-diff|scalar,flat-diff,typed-diff,pixel-diff|flat-diff,typed-diff,pixel-diff,scalar|typed-diff,pixel-diff,scalar,flat-diff'
   ) {
     throw new Error('Eval condition rotation self-check failed');
   }
@@ -112,6 +113,38 @@ export async function runSelfCheck(): Promise<void> {
         !flatDiffFeedback.text.includes(`"selector": "${manifest.selector}"`))
     ) {
       throw new Error('Flat-diff feedback did not normalize the root selector for repair');
+    }
+    const typedRootDiff = buildTypedStyleDiffs(
+      initialComparison,
+      manifest.selector,
+      context.workspace.implementationSource.css
+    ).find((styleDiff) => styleDiff.isRoot === true);
+    const typedProperties = new Map(
+      typedRootDiff?.properties.map((property) => [property.property, property])
+    );
+    if (
+      typedRootDiff?.selector !== manifest.selector ||
+      typedProperties.get('width')?.provenance !== 'derived-geometry' ||
+      typedProperties.get('width')?.actionability !== 'diagnostic-only' ||
+      typedProperties.get('padding-left')?.sourceDeclaration !== 'padding' ||
+      typedProperties.get('padding-left')?.actionability !== 'repair-candidate' ||
+      typedProperties.get('padding-right')?.sourceDeclaration !== 'padding'
+    ) {
+      throw new Error('Typed-diff feedback did not distinguish authored and derived values');
+    }
+    const explicitlyAuthoredWidth = buildTypedStyleDiffs(
+      initialComparison,
+      manifest.selector,
+      `${context.workspace.implementationSource.css}\n${manifest.selector} { width: 120px; }`
+    )
+      .find((styleDiff) => styleDiff.isRoot === true)
+      ?.properties.find((property) => property.property === 'width');
+    if (
+      explicitlyAuthoredWidth?.provenance !== 'authored-computed-style' ||
+      explicitlyAuthoredWidth.actionability !== 'repair-candidate' ||
+      explicitlyAuthoredWidth.sourceDeclaration !== 'width'
+    ) {
+      throw new Error('Typed-diff feedback did not classify an authored width as actionable');
     }
 
     const rootProposal: RepairProposal = {

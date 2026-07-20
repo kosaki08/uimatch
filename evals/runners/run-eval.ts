@@ -13,6 +13,7 @@ import { createOpenRouterBackend } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { buildPixelDiffFeedback } from '../conditions/pixel-diff.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
+import { buildTypedDiffFeedback } from '../conditions/typed-diff.js';
 import {
   compareVariant,
   createFixtureContext,
@@ -180,7 +181,8 @@ async function loadEvalConfig(): Promise<EvalConfig> {
 function buildConditionFeedback(
   condition: ConditionId,
   comparison: ComparisonSnapshot,
-  rootSelector: string
+  rootSelector: string,
+  sourceCss: string
 ): ConditionFeedback {
   switch (condition) {
     case 'pixel-diff':
@@ -189,6 +191,8 @@ function buildConditionFeedback(
       return buildScalarFeedback(comparison);
     case 'flat-diff':
       return buildFlatDiffFeedback(comparison, rootSelector);
+    case 'typed-diff':
+      return buildTypedDiffFeedback(comparison, rootSelector, sourceCss);
   }
 }
 
@@ -295,7 +299,7 @@ function buildResult(
       ? {}
       : { reasoningEffort: context.config.reasoningEffort }),
     runId: context.config.runId,
-    schemaVersion: 5,
+    schemaVersion: 6,
     status,
     tokensUsed: usages.reduce((sum, usage) => sum + usage.totalTokens, 0),
     trial: context.config.trial,
@@ -396,7 +400,8 @@ async function runJob(options: {
   const initialFeedback = buildConditionFeedback(
     options.context.condition,
     options.initialComparison,
-    options.context.manifest.selector
+    options.context.manifest.selector,
+    options.workspace.implementationSource.css
   );
   const messages = buildInitialMessages(
     options.workspace,
@@ -533,7 +538,8 @@ async function runJob(options: {
     const feedback = buildConditionFeedback(
       options.context.condition,
       finalComparison,
-      options.context.manifest.selector
+      options.context.manifest.selector,
+      options.workspace.implementationSource.css
     );
     messages.push({
       content: feedbackContent(
@@ -593,7 +599,12 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
         ) {
           const messages = buildInitialMessages(
             fixture.workspace,
-            buildConditionFeedback(condition, initialComparison, manifest.selector),
+            buildConditionFeedback(
+              condition,
+              initialComparison,
+              manifest.selector,
+              fixture.workspace.implementationSource.css
+            ),
             manifest.editableSelectors
           );
           const result = buildResult(

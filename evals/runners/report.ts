@@ -6,6 +6,7 @@ import { parseRepairProposal } from '../repair-proposal.js';
 import {
   codexReasoningEfforts,
   conditionIds,
+  conditionIdsForSchemaVersion,
   conditionOrderForTrial,
   evalRunIdPattern,
   expectedMetadataMatches,
@@ -100,19 +101,29 @@ function asAuthMode(value: unknown, label: string): EvalAuthMode {
   return value;
 }
 
-function asCondition(value: unknown, label: string): ConditionId {
-  if (!conditionIds.some((condition) => condition === value)) {
+function asCondition(
+  value: unknown,
+  label: string,
+  allowedConditions: readonly ConditionId[]
+): ConditionId {
+  if (!allowedConditions.some((condition) => condition === value)) {
     throw new TypeError(`${label} must be a known eval condition`);
   }
   return value as ConditionId;
 }
 
-function asConditionOrder(value: unknown, label: string): ConditionId[] {
-  if (!Array.isArray(value) || value.length !== conditionIds.length) {
+function asConditionOrder(
+  value: unknown,
+  label: string,
+  allowedConditions: readonly ConditionId[]
+): ConditionId[] {
+  if (!Array.isArray(value) || value.length !== allowedConditions.length) {
     throw new TypeError(`${label} must contain every eval condition once`);
   }
-  const parsed = value.map((entry, index) => asCondition(entry, `${label}[${index}]`));
-  if (new Set(parsed).size !== conditionIds.length) {
+  const parsed = value.map((entry, index) =>
+    asCondition(entry, `${label}[${index}]`, allowedConditions)
+  );
+  if (new Set(parsed).size !== allowedConditions.length) {
     throw new TypeError(`${label} must contain every eval condition once`);
   }
   return parsed;
@@ -539,10 +550,16 @@ function aggregateTurnBilling(
 
 export function parseEvalResult(value: unknown, file: string): EvalResult {
   const record = asRecord(value, file);
-  if (record.schemaVersion !== 3 && record.schemaVersion !== 4 && record.schemaVersion !== 5) {
-    throw new TypeError(`${file}.schemaVersion must be 3, 4, or 5`);
+  if (
+    record.schemaVersion !== 3 &&
+    record.schemaVersion !== 4 &&
+    record.schemaVersion !== 5 &&
+    record.schemaVersion !== 6
+  ) {
+    throw new TypeError(`${file}.schemaVersion must be 3, 4, 5, or 6`);
   }
   const schemaVersion = record.schemaVersion;
+  const resultConditionIds = conditionIdsForSchemaVersion(schemaVersion);
   if (!Array.isArray(record.turnRecords)) {
     throw new TypeError(`${file}.turnRecords must be an array`);
   }
@@ -617,8 +634,12 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     throw new TypeError(`${file}.initialComparison must describe a failing mutation`);
   }
   const trial = asPositiveInteger(record.trial, `${file}.trial`);
-  const conditionOrder = asConditionOrder(record.conditionOrder, `${file}.conditionOrder`);
-  const expectedConditionOrder = conditionOrderForTrial(trial);
+  const conditionOrder = asConditionOrder(
+    record.conditionOrder,
+    `${file}.conditionOrder`,
+    resultConditionIds
+  );
+  const expectedConditionOrder = conditionOrderForTrial(trial, resultConditionIds);
   if (!conditionOrder.every((condition, index) => condition === expectedConditionOrder[index])) {
     throw new TypeError(`${file}.conditionOrder does not match trial ${trial}`);
   }
@@ -650,11 +671,7 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     record.turnTimeoutMs === undefined
       ? undefined
       : asPositiveInteger(record.turnTimeoutMs, `${file}.turnTimeoutMs`);
-  if (
-    (schemaVersion === 4 || schemaVersion === 5) &&
-    backend === 'codex-exec' &&
-    turnTimeoutMs === undefined
-  ) {
+  if (schemaVersion >= 4 && backend === 'codex-exec' && turnTimeoutMs === undefined) {
     throw new TypeError(
       `${file}.turnTimeoutMs is required for Codex schema version ${schemaVersion} results`
     );
@@ -666,13 +683,15 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     record.reasoningEffort === undefined
       ? undefined
       : asCodexReasoningEffort(record.reasoningEffort, `${file}.reasoningEffort`);
-  if (schemaVersion === 5 && backend === 'codex-exec' && reasoningEffort === undefined) {
-    throw new TypeError(`${file}.reasoningEffort is required for Codex schema version 5 results`);
+  if (schemaVersion >= 5 && backend === 'codex-exec' && reasoningEffort === undefined) {
+    throw new TypeError(
+      `${file}.reasoningEffort is required for Codex schema version ${schemaVersion} results`
+    );
   }
   if (backend !== 'codex-exec' && reasoningEffort !== undefined) {
     throw new TypeError(`${file}.reasoningEffort is only valid for Codex results`);
   }
-  const condition = asCondition(record.condition, `${file}.condition`);
+  const condition = asCondition(record.condition, `${file}.condition`, resultConditionIds);
   const fixtureId = asString(record.fixtureId, `${file}.fixtureId`);
   const mutationId = asString(record.mutationId, `${file}.mutationId`);
   const runId = asString(record.runId, `${file}.runId`);
@@ -768,7 +787,7 @@ export function runReportContractSelfCheck(): void {
     promptHash: 'self-check-prompt',
     protocolErrors: 0,
     runId: '20260720_self-check-run',
-    schemaVersion: 5 as const,
+    schemaVersion: 6 as const,
     tokensUsed: 0,
     trial: 1,
     turns: 1,
@@ -800,6 +819,17 @@ export function runReportContractSelfCheck(): void {
   );
   if (subscription.billing.mode !== 'subscription') {
     throw new Error('Subscription result contract self-check failed');
+  }
+  const legacySubscription = parseEvalResult(
+    {
+      ...subscription,
+      conditionOrder: conditionOrderForTrial(1, conditionIdsForSchemaVersion(5)),
+      schemaVersion: 5,
+    },
+    'legacy subscription self-check'
+  );
+  if (legacySubscription.conditionOrder.length !== 3) {
+    throw new Error('Legacy condition-order result contract self-check failed');
   }
 
   const passingComparison: VisibleComparisonMetrics = {
@@ -1031,8 +1061,11 @@ function summarizeBilling(
 function summarize(results: EvalResult[]): Record<string, unknown> {
   const billingMode = results[0]?.billing.mode;
   if (!billingMode) throw new TypeError('Cannot summarize an empty eval run');
+  const presentConditions = conditionIds.filter((condition) =>
+    results.some((result) => result.condition === condition)
+  );
   return Object.fromEntries(
-    conditionIds.map((condition) => {
+    presentConditions.map((condition) => {
       const matches = results.filter((result) => result.condition === condition);
       const acceptances = matches.flatMap((result) =>
         result.acceptance ? [result.acceptance] : []

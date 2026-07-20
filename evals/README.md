@@ -20,23 +20,35 @@ manifest repair must be applied in a temporary workspace and pass, hidden
 perturbations must survive that repair, and an extra symptom patch must be
 rejected by a perturbation.
 
-`eval:run` evaluates every mutation under three conditions:
+`eval:run` evaluates each mutation with four feedback formats:
 
 - `pixel-diff`: reference and implementation screenshots plus the pixel diff image
 - `scalar`: pixel-diff feedback plus one DFS score
 - `flat-diff`: scalar feedback plus flat `styleDiffs`
+- `typed-diff`: `styleDiffs` annotated to distinguish values that may be useful
+  repair targets from values included only for diagnosis
 
-Trial numbers rotate the condition order to avoid always placing the same
-condition last: trial 1 runs pixel-diff, scalar, flat-diff; trials 2 and 3
-rotate that order. Formal comparisons should reuse one `EVAL_RUN_ID` while
-running `EVAL_TRIAL=1`, `2`, and `3`; each trial has a distinct result path. The
-chosen order is recorded in every result.
+The runner rotates the condition order between trials so that no condition
+always runs last. To compare all four conditions, use the same `EVAL_RUN_ID`
+for `EVAL_TRIAL=1` through `4`. Each trial is stored separately, together with
+the order in which its conditions ran.
 
 For each turn the runner applies the proposed declarations to a fresh copy of
 the original current CSS, renders that copy, and generates new feedback. A new
 proposal replaces the previous proposal; source fixtures are never edited.
 Hidden acceptance runs only when the visible comparison passes or the turn
 limit is reached. Its result is never sent back to the model.
+
+`typed-diff` classifies values using only the original implementation CSS
+already shown to the model. A property explicitly set on the matching selector
+is a `repair-candidate`; a `padding` shorthand also counts for its corresponding
+longhand properties. Width and height values that are not explicitly set are
+classified as `derived-geometry`, while other computed values are classified as
+`computed-observation`. Both are `diagnostic-only`.
+
+This classification does not use the reference CSS, accepted repairs, or hidden
+perturbations. The original `flat-diff` condition remains unchanged as the
+baseline.
 
 ## Backends and configuration
 

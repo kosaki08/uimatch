@@ -1,8 +1,10 @@
-export const conditionIds = ['pixel-diff', 'scalar', 'flat-diff'] as const;
+const legacyConditionIds = ['pixel-diff', 'scalar', 'flat-diff'] as const;
+export const conditionIds = [...legacyConditionIds, 'typed-diff'] as const;
 export const evalIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 export const evalRunIdPattern = /^\d{8}_[A-Za-z0-9][A-Za-z0-9._-]{0,118}$/;
 
 export type ConditionId = (typeof conditionIds)[number];
+export type EvalResultSchemaVersion = 3 | 4 | 5 | 6;
 
 export const evalArtifactPolicies = ['none', 'failures', 'all'] as const;
 export type EvalArtifactPolicy = (typeof evalArtifactPolicies)[number];
@@ -13,12 +15,21 @@ export type CodexReasoningEffort = (typeof codexReasoningEfforts)[number];
 export type EvalBackendId = 'codex-exec' | 'openrouter';
 export type EvalAuthMode = 'api' | 'subscription';
 
-export function conditionOrderForTrial(trial: number): ConditionId[] {
+export function conditionIdsForSchemaVersion(
+  schemaVersion: EvalResultSchemaVersion
+): readonly ConditionId[] {
+  return schemaVersion >= 6 ? conditionIds : legacyConditionIds;
+}
+
+export function conditionOrderForTrial(
+  trial: number,
+  conditions: readonly ConditionId[] = conditionIds
+): ConditionId[] {
   if (!Number.isSafeInteger(trial) || trial < 1) {
     throw new RangeError('Eval trial must be a positive safe integer');
   }
-  const offset = (trial - 1) % conditionIds.length;
-  return [...conditionIds.slice(offset), ...conditionIds.slice(0, offset)];
+  const offset = (trial - 1) % conditions.length;
+  return [...conditions.slice(offset), ...conditions.slice(0, offset)];
 }
 
 export interface RepairChange {
@@ -252,7 +263,7 @@ export interface EvalResult {
   protocolErrors: number;
   reasoningEffort?: CodexReasoningEffort;
   runId: string;
-  schemaVersion: 3 | 4 | 5;
+  schemaVersion: EvalResultSchemaVersion;
   status: EvalStatus;
   tokensUsed: number;
   trial: number;
