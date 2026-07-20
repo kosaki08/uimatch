@@ -4,7 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { access, link, mkdir, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
-import { buildRenderOnlyFeedback } from '../conditions/render-only.js';
+import { buildPixelDiffFeedback } from '../conditions/pixel-diff.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
 import {
   compareVariant,
@@ -38,7 +38,7 @@ import { runSelfCheck } from './self-check.js';
 
 interface EvalConfig {
   apiKey: string;
-  budgetUsd: number;
+  commandBudgetUsd: number;
   conditionOrder: ConditionId[];
   maxTurns: number;
   model: string;
@@ -102,7 +102,7 @@ function loadEvalConfig(): EvalConfig {
   const trial = trialValue ? parsePositiveIntegerValue('EVAL_TRIAL', trialValue) : 1;
   return {
     apiKey: requireEnvironment('OPENROUTER_API_KEY'),
-    budgetUsd: parsePositiveNumber('EVAL_BUDGET_USD'),
+    commandBudgetUsd: parsePositiveNumber('EVAL_BUDGET_USD'),
     conditionOrder: conditionOrderForTrial(trial),
     maxTurns: parsePositiveIntegerValue('EVAL_MAX_TURNS', requireEnvironment('EVAL_MAX_TURNS')),
     model: requireEnvironment('EVAL_MODEL'),
@@ -131,8 +131,8 @@ function buildConditionFeedback(
   comparison: ComparisonSnapshot
 ): ConditionFeedback {
   switch (condition) {
-    case 'render-only':
-      return buildRenderOnlyFeedback(comparison);
+    case 'pixel-diff':
+      return buildPixelDiffFeedback(comparison);
     case 'scalar':
       return buildScalarFeedback(comparison);
     case 'flat-diff':
@@ -209,12 +209,15 @@ function createJobState(promptHash: string): JobState {
   };
 }
 
-function completedUsages(state: JobState) {
-  return state.turnRecords.flatMap((record) => (record.usage ? [record.usage] : []));
+function recordedBillingUsages(state: JobState) {
+  return state.turnRecords.flatMap((record) => {
+    if (record.usage) return [record.usage];
+    return record.partialUsage ? [record.partialUsage] : [];
+  });
 }
 
 function jobCostUsd(state: JobState): number {
-  return completedUsages(state).reduce((sum, usage) => sum + usage.costUsd, 0);
+  return recordedBillingUsages(state).reduce((sum, usage) => sum + usage.costUsd, 0);
 }
 
 function buildResult(
@@ -223,28 +226,29 @@ function buildResult(
   status: EvalStatus,
   extras: { acceptance?: HiddenAcceptanceResult; error?: string } = {}
 ): EvalResult {
-  const usages = completedUsages(state);
+  const usages = recordedBillingUsages(state);
   const finalComparison = [...state.turnRecords]
     .reverse()
     .find((record) => record.visibleComparison !== undefined)?.visibleComparison;
   return {
     ...(extras.acceptance ? { acceptance: extras.acceptance } : {}),
-    budgetUsd: context.config.budgetUsd,
+    commandBudgetUsd: context.config.commandBudgetUsd,
     condition: context.condition,
     conditionOrder: context.config.conditionOrder,
-    costUsd: jobCostUsd(state),
+    costUnknown: state.turnRecords.some((record) => record.costUnknown),
     ...(extras.error ? { error: extras.error } : {}),
     ...(finalComparison ? { finalComparison } : {}),
     fixtureId: context.manifest.fixtureId,
     initialComparison: context.initialComparison,
     jobBudgetUsd: context.jobBudgetUsd,
+    knownCostUsd: jobCostUsd(state),
     maxTurns: context.config.maxTurns,
     model: context.config.model,
     mutationId: context.mutation.id,
     promptHash: state.promptHash,
     protocolErrors: state.turnRecords.filter((record) => record.protocolError !== undefined).length,
     runId: context.config.runId,
-    schemaVersion: 1,
+    schemaVersion: 2,
     status,
     tokensUsed: usages.reduce((sum, usage) => sum + usage.totalTokens, 0),
     trial: context.config.trial,
@@ -356,10 +360,13 @@ async function runJob(options: {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const callError = error instanceof OpenRouterCallError ? error : undefined;
       state.turnRecords.push({
+        costUnknown: callError?.costUnknown ?? true,
         error: message,
-        requestAttempts: error instanceof OpenRouterCallError ? error.attempts : 1,
-        retryDelaysMs: error instanceof OpenRouterCallError ? error.retryDelaysMs : [],
+        ...(callError?.partialUsage ? { partialUsage: callError.partialUsage } : {}),
+        requestAttempts: callError?.attempts ?? 1,
+        retryDelaysMs: callError?.retryDelaysMs ?? [],
         turn,
       });
       return buildResult(options.context, state, 'error', {
@@ -367,6 +374,7 @@ async function runJob(options: {
       });
     }
     const turnRecord: EvalTurnRecord = {
+      costUnknown: false,
       finishReason: modelTurn.finishReason,
       requestAttempts: modelTurn.requestAttempts,
       retryDelaysMs: modelTurn.retryDelaysMs,
@@ -479,10 +487,10 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
   const manifest = await loadManifest();
   await assertResultDestinationsAvailable(config, manifest);
   buildCli();
-  let totalCostUsd = 0;
+  let totalKnownCostUsd = 0;
   const totalJobs = manifest.mutations.length * conditionIds.length;
   if (totalJobs === 0) throw new Error('Eval manifest does not contain any jobs');
-  const jobBudgetUsd = config.budgetUsd / totalJobs;
+  const jobBudgetUsd = config.commandBudgetUsd / totalJobs;
   for (const mutation of manifest.mutations) {
     const fixture = await createFixtureContext(manifest, mutation);
     try {
@@ -507,7 +515,7 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
           manifest,
           mutation,
         };
-        if (totalCostUsd >= config.budgetUsd) {
+        if (totalKnownCostUsd >= config.commandBudgetUsd) {
           const messages = buildInitialMessages(
             fixture.workspace,
             buildConditionFeedback(condition, initialComparison)
@@ -522,7 +530,7 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
           continue;
         }
         const result = await runJob({
-          budgetRemaining: Math.min(jobBudgetUsd, config.budgetUsd - totalCostUsd),
+          budgetRemaining: Math.min(jobBudgetUsd, config.commandBudgetUsd - totalKnownCostUsd),
           context,
           initialComparison,
           perturbationReferences: fixture.perturbationReferences,
@@ -530,11 +538,16 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
           server: fixture.server,
           workspace: fixture.workspace,
         });
-        totalCostUsd += result.costUsd;
+        totalKnownCostUsd += result.knownCostUsd;
         await writeResult(result);
         console.log(
-          `${mutation.id}/${condition}: ${result.status}, turns=${result.turns}, cost=$${result.costUsd.toFixed(6)}`
+          `${mutation.id}/${condition}: ${result.status}, turns=${result.turns}, knownCost=$${result.knownCostUsd.toFixed(6)}${result.costUnknown ? '+' : ''}`
         );
+        if (result.costUnknown) {
+          throw new Error(
+            `OpenRouter cost is unknown for ${mutation.id}/${condition}; the result was saved and the run stopped before another paid request.`
+          );
+        }
       }
     } finally {
       await fixture.close();

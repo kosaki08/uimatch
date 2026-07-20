@@ -1,6 +1,6 @@
 import type { ComparisonSnapshot, ConditionFeedback } from '../types.js';
 
-export function buildRenderOnlyFeedback(comparison: ComparisonSnapshot): ConditionFeedback {
+export function buildPixelDiffFeedback(comparison: ComparisonSnapshot): ConditionFeedback {
   return {
     images: [
       {
@@ -16,6 +16,6 @@ export function buildRenderOnlyFeedback(comparison: ComparisonSnapshot): Conditi
         label: 'Pixel difference rendering',
       },
     ],
-    text: 'Use only the supplied renderings as comparison feedback.',
+    text: 'Use the supplied screenshots and pixel difference image as comparison feedback.',
   };
 }

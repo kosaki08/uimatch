@@ -1,4 +1,4 @@
-import type { ModelTurnUsage } from '../types.js';
+import type { ModelBillingUsage, ModelTurnUsage } from '../types.js';
 
 const openRouterEndpoint = 'https://openrouter.ai/api/v1/chat/completions';
 const modelRequestTimeoutMs = 120_000;
@@ -26,13 +26,25 @@ export interface ModelTurn {
 
 export class OpenRouterCallError extends Error {
   readonly attempts: number;
+  readonly costUnknown: boolean;
+  readonly partialUsage?: ModelBillingUsage;
   readonly retryDelaysMs: number[];
 
-  constructor(message: string, attempts: number, retryDelaysMs: number[], cause?: unknown) {
-    super(message, cause === undefined ? undefined : { cause });
+  constructor(
+    message: string,
+    options: {
+      attempts: number;
+      cause?: unknown;
+      partialUsage?: ModelBillingUsage;
+      retryDelaysMs: number[];
+    }
+  ) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = 'OpenRouterCallError';
-    this.attempts = attempts;
-    this.retryDelaysMs = retryDelaysMs;
+    this.attempts = options.attempts;
+    this.costUnknown = options.partialUsage === undefined;
+    this.partialUsage = options.partialUsage;
+    this.retryDelaysMs = options.retryDelaysMs;
   }
 }
 
@@ -115,6 +127,42 @@ function readRoutingMetadata(value: unknown): {
   };
 }
 
+function readBillingUsage(value: unknown): ModelBillingUsage {
+  const usage = asRecord(value, 'OpenRouter response usage');
+  const completionDetails =
+    usage.completion_tokens_details === undefined
+      ? undefined
+      : asRecord(usage.completion_tokens_details, 'OpenRouter response completion token details');
+  const completionTokens = asNonNegativeInteger(
+    usage.completion_tokens,
+    'OpenRouter response usage.completion_tokens'
+  );
+  const promptTokens = asNonNegativeInteger(
+    usage.prompt_tokens,
+    'OpenRouter response usage.prompt_tokens'
+  );
+  const totalTokens = asNonNegativeInteger(
+    usage.total_tokens,
+    'OpenRouter response usage.total_tokens'
+  );
+  if (promptTokens + completionTokens !== totalTokens) {
+    throw new TypeError('OpenRouter response token totals are inconsistent');
+  }
+  const reasoningTokens = completionDetails
+    ? optionalNonNegativeInteger(
+        completionDetails.reasoning_tokens,
+        'OpenRouter response usage.completion_tokens_details.reasoning_tokens'
+      )
+    : undefined;
+  return {
+    completionTokens,
+    costUsd: asNonNegativeNumber(usage.cost, 'OpenRouter response usage.cost'),
+    promptTokens,
+    ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
+    totalTokens,
+  };
+}
+
 function defaultRetryDelayMs(attempt: number): number {
   return 1_000 * 2 ** (attempt - 1);
 }
@@ -160,18 +208,10 @@ async function requestWithRetry(
     try {
       response = await dependencies.fetch(input, createInit());
     } catch (error) {
-      if (attempt === maximumRequestAttempts) {
-        throw new OpenRouterCallError(
-          `OpenRouter request failed after ${attempt} attempts: ${error instanceof Error ? error.message : String(error)}`,
-          attempt,
-          retryDelaysMs,
-          error
-        );
-      }
-      const delayMs = defaultRetryDelayMs(attempt);
-      retryDelaysMs.push(delayMs);
-      await dependencies.sleep(delayMs);
-      continue;
+      throw new OpenRouterCallError(
+        `OpenRouter network request failed on attempt ${attempt}: ${error instanceof Error ? error.message : String(error)}`,
+        { attempts: attempt, cause: error, retryDelaysMs }
+      );
     }
 
     if (response.ok) {
@@ -182,8 +222,7 @@ async function requestWithRetry(
       await discardResponseBody(response);
       throw new OpenRouterCallError(
         `OpenRouter request failed with HTTP ${response.status}${retryAfter ? ` (Retry-After: ${retryAfter})` : ''}`,
-        attempt,
-        retryDelaysMs
+        { attempts: attempt, retryDelaysMs }
       );
     }
     const delayMs =
@@ -192,8 +231,7 @@ async function requestWithRetry(
       await discardResponseBody(response);
       throw new OpenRouterCallError(
         `OpenRouter requested a retry delay of ${delayMs}ms, exceeding the ${maximumRetryDelayMs}ms harness limit`,
-        attempt,
-        retryDelaysMs
+        { attempts: attempt, retryDelaysMs }
       );
     }
     await discardResponseBody(response);
@@ -201,6 +239,55 @@ async function requestWithRetry(
     await dependencies.sleep(delayMs);
   }
   throw new Error('OpenRouter retry loop exhausted unexpectedly');
+}
+
+function parseOpenRouterTurn(
+  body: unknown,
+  request: { attempts: number; retryDelaysMs: number[] }
+): ModelTurn {
+  let partialUsage: ModelBillingUsage | undefined;
+  try {
+    const record = asRecord(body, 'OpenRouter response');
+    partialUsage = readBillingUsage(record.usage);
+    const choices = record.choices;
+    if (!Array.isArray(choices) || choices.length === 0) {
+      throw new TypeError('OpenRouter response choices must be a non-empty array');
+    }
+    const choice = asRecord(choices[0], 'OpenRouter response choices[0]');
+    const message = asRecord(choice.message, 'OpenRouter response choices[0].message');
+    let routing: ReturnType<typeof readRoutingMetadata> = {};
+    let routingMetadataError: string | undefined;
+    try {
+      routing = readRoutingMetadata(record.openrouter_metadata);
+    } catch (error) {
+      routingMetadataError = error instanceof Error ? error.message : String(error);
+    }
+
+    return {
+      content: asText(message.content, 'OpenRouter response message.content'),
+      finishReason: asString(choice.finish_reason, 'OpenRouter response choices[0].finish_reason'),
+      requestAttempts: request.attempts,
+      retryDelaysMs: request.retryDelaysMs,
+      usage: {
+        ...partialUsage,
+        ...(routing.fallbackUsed !== undefined ? { fallbackUsed: routing.fallbackUsed } : {}),
+        generationId: asString(record.id, 'OpenRouter response id'),
+        ...(routing.provider ? { provider: routing.provider } : {}),
+        responseModel: asString(record.model, 'OpenRouter response model'),
+        ...(routingMetadataError ? { routingMetadataError } : {}),
+      },
+    };
+  } catch (error) {
+    throw new OpenRouterCallError(
+      `OpenRouter response validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      {
+        attempts: request.attempts,
+        cause: error,
+        ...(partialUsage ? { partialUsage } : {}),
+        retryDelaysMs: request.retryDelaysMs,
+      }
+    );
+  }
 }
 
 export async function requestOpenRouterTurn(options: {
@@ -234,69 +321,16 @@ export async function requestOpenRouterTurn(options: {
     }
   );
 
+  let body: unknown;
   try {
-    const body: unknown = await request.response.json();
-    const record = asRecord(body, 'OpenRouter response');
-    const choices = record.choices;
-    if (!Array.isArray(choices) || choices.length === 0) {
-      throw new TypeError('OpenRouter response choices must be a non-empty array');
-    }
-    const choice = asRecord(choices[0], 'OpenRouter response choices[0]');
-    const message = asRecord(choice.message, 'OpenRouter response choices[0].message');
-    const usage = asRecord(record.usage, 'OpenRouter response usage');
-    const completionDetails =
-      usage.completion_tokens_details === undefined
-        ? undefined
-        : asRecord(usage.completion_tokens_details, 'OpenRouter response completion token details');
-    const routing = readRoutingMetadata(record.openrouter_metadata);
-    const costUsd = asNonNegativeNumber(usage.cost, 'OpenRouter response usage.cost');
-    const completionTokens = asNonNegativeInteger(
-      usage.completion_tokens,
-      'OpenRouter response usage.completion_tokens'
-    );
-    const promptTokens = asNonNegativeInteger(
-      usage.prompt_tokens,
-      'OpenRouter response usage.prompt_tokens'
-    );
-    const totalTokens = asNonNegativeInteger(
-      usage.total_tokens,
-      'OpenRouter response usage.total_tokens'
-    );
-    const reasoningTokens = completionDetails
-      ? optionalNonNegativeInteger(
-          completionDetails.reasoning_tokens,
-          'OpenRouter response usage.completion_tokens_details.reasoning_tokens'
-        )
-      : undefined;
-    if (promptTokens + completionTokens !== totalTokens) {
-      throw new TypeError('OpenRouter response token totals are inconsistent');
-    }
-
-    return {
-      content: asText(message.content, 'OpenRouter response message.content'),
-      finishReason: asString(choice.finish_reason, 'OpenRouter response choices[0].finish_reason'),
-      requestAttempts: request.attempts,
-      retryDelaysMs: request.retryDelaysMs,
-      usage: {
-        completionTokens,
-        costUsd,
-        generationId: asString(record.id, 'OpenRouter response id'),
-        promptTokens,
-        ...(routing.fallbackUsed !== undefined ? { fallbackUsed: routing.fallbackUsed } : {}),
-        ...(routing.provider ? { provider: routing.provider } : {}),
-        ...(reasoningTokens === undefined ? {} : { reasoningTokens }),
-        responseModel: asString(record.model, 'OpenRouter response model'),
-        totalTokens,
-      },
-    };
+    body = await request.response.json();
   } catch (error) {
     throw new OpenRouterCallError(
       `OpenRouter response validation failed: ${error instanceof Error ? error.message : String(error)}`,
-      request.attempts,
-      request.retryDelaysMs,
-      error
+      { attempts: request.attempts, cause: error, retryDelaysMs: request.retryDelaysMs }
     );
   }
+  return parseOpenRouterTurn(body, request);
 }
 
 export async function runOpenRouterRetrySelfCheck(): Promise<void> {
@@ -331,18 +365,26 @@ export async function runOpenRouterRetrySelfCheck(): Promise<void> {
   }
 
   let networkAttempts = 0;
-  const networkRetry = await requestWithRetry('https://example.invalid', () => ({}), {
-    fetch: () => {
-      networkAttempts += 1;
-      return networkAttempts === 1
-        ? Promise.reject(new Error('temporary network error'))
-        : Promise.resolve(new Response('{}', { status: 200 }));
-    },
-    now: () => 0,
-    sleep: () => Promise.resolve(),
-  });
-  if (networkRetry.attempts !== 2 || networkRetry.retryDelaysMs[0] !== 1_000) {
-    throw new Error('OpenRouter network retry self-check failed');
+  try {
+    await requestWithRetry('https://example.invalid', () => ({}), {
+      fetch: () => {
+        networkAttempts += 1;
+        return Promise.reject(new Error('ambiguous delivery failure'));
+      },
+      now: () => 0,
+      sleep: () => Promise.resolve(),
+    });
+    throw new Error('OpenRouter network failure self-check did not fail');
+  } catch (error) {
+    if (
+      !(error instanceof OpenRouterCallError) ||
+      error.attempts !== 1 ||
+      error.retryDelaysMs.length !== 0 ||
+      networkAttempts !== 1 ||
+      !error.costUnknown
+    ) {
+      throw error;
+    }
   }
 
   try {
@@ -370,5 +412,58 @@ export async function runOpenRouterRetrySelfCheck(): Promise<void> {
     if (!(error instanceof OpenRouterCallError) || error.retryDelaysMs.length !== 0) {
       throw error;
     }
+  }
+
+  const validUsage = {
+    completion_tokens: 3,
+    cost: 0.001,
+    prompt_tokens: 7,
+    total_tokens: 10,
+  };
+  try {
+    parseOpenRouterTurn(
+      { choices: [], id: 'generation-id', model: 'provider/model', usage: validUsage },
+      { attempts: 1, retryDelaysMs: [] }
+    );
+    throw new Error('OpenRouter partial usage self-check did not fail');
+  } catch (error) {
+    if (
+      !(error instanceof OpenRouterCallError) ||
+      error.costUnknown ||
+      error.partialUsage?.costUsd !== 0.001
+    ) {
+      throw error;
+    }
+  }
+
+  try {
+    parseOpenRouterTurn(
+      {
+        choices: [{ finish_reason: 'stop', message: { content: '{}' } }],
+        id: 'generation-id',
+        model: 'provider/model',
+        usage: { ...validUsage, cost: 'unknown' },
+      },
+      { attempts: 1, retryDelaysMs: [] }
+    );
+    throw new Error('OpenRouter unknown cost self-check did not fail');
+  } catch (error) {
+    if (!(error instanceof OpenRouterCallError) || !error.costUnknown) {
+      throw error;
+    }
+  }
+
+  const metadataDiagnostic = parseOpenRouterTurn(
+    {
+      choices: [{ finish_reason: 'stop', message: { content: '{}' } }],
+      id: 'generation-id',
+      model: 'provider/model',
+      openrouter_metadata: { endpoints: { available: 'invalid' } },
+      usage: validUsage,
+    },
+    { attempts: 1, retryDelaysMs: [] }
+  );
+  if (!metadataDiagnostic.usage.routingMetadataError) {
+    throw new Error('OpenRouter routing metadata failure was not retained as a diagnostic');
   }
 }

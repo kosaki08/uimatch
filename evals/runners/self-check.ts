@@ -8,7 +8,7 @@ export async function runSelfCheck(): Promise<void> {
   const rotatedConditions = [1, 2, 3].map((trial) => conditionOrderForTrial(trial).join(','));
   if (
     rotatedConditions.join('|') !==
-    'render-only,scalar,flat-diff|scalar,flat-diff,render-only|flat-diff,render-only,scalar'
+    'pixel-diff,scalar,flat-diff|scalar,flat-diff,pixel-diff|flat-diff,pixel-diff,scalar'
   ) {
     throw new Error('Eval condition rotation self-check failed');
   }

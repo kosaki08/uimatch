@@ -10,6 +10,7 @@ import {
   type EvalStatus,
   type EvalTurnRecord,
   type HiddenAcceptanceResult,
+  type ModelBillingUsage,
   type ModelTurnUsage,
   type RepairChange,
   type RepairProposal,
@@ -140,7 +141,7 @@ function parseVisibleComparison(value: unknown, label: string): VisibleCompariso
   };
 }
 
-function parseTurnUsage(value: unknown, label: string): ModelTurnUsage {
+function parseBillingUsage(value: unknown, label: string): ModelBillingUsage {
   const record = asRecord(value, label);
   const completionTokens = asNonNegativeInteger(
     record.completionTokens,
@@ -151,23 +152,36 @@ function parseTurnUsage(value: unknown, label: string): ModelTurnUsage {
   if (promptTokens + completionTokens !== totalTokens) {
     throw new TypeError(`${label} token totals are inconsistent`);
   }
-  const provider = asOptionalString(record.provider, `${label}.provider`);
   return {
     completionTokens,
     costUsd: asNonNegativeNumber(record.costUsd, `${label}.costUsd`),
-    ...(record.fallbackUsed === undefined
-      ? {}
-      : { fallbackUsed: asBoolean(record.fallbackUsed, `${label}.fallbackUsed`) }),
-    generationId: asString(record.generationId, `${label}.generationId`),
     promptTokens,
-    ...(provider ? { provider } : {}),
     ...(record.reasoningTokens === undefined
       ? {}
       : {
           reasoningTokens: asNonNegativeInteger(record.reasoningTokens, `${label}.reasoningTokens`),
         }),
-    responseModel: asString(record.responseModel, `${label}.responseModel`),
     totalTokens,
+  };
+}
+
+function parseTurnUsage(value: unknown, label: string): ModelTurnUsage {
+  const record = asRecord(value, label);
+  const billing = parseBillingUsage(record, label);
+  const provider = asOptionalString(record.provider, `${label}.provider`);
+  const routingMetadataError = asOptionalString(
+    record.routingMetadataError,
+    `${label}.routingMetadataError`
+  );
+  return {
+    ...billing,
+    ...(record.fallbackUsed === undefined
+      ? {}
+      : { fallbackUsed: asBoolean(record.fallbackUsed, `${label}.fallbackUsed`) }),
+    generationId: asString(record.generationId, `${label}.generationId`),
+    ...(provider ? { provider } : {}),
+    responseModel: asString(record.responseModel, `${label}.responseModel`),
+    ...(routingMetadataError ? { routingMetadataError } : {}),
   };
 }
 
@@ -186,15 +200,28 @@ function parseTurnRecord(value: unknown, label: string): EvalTurnRecord {
   const finishReason = asOptionalString(record.finishReason, `${label}.finishReason`);
   const usage =
     record.usage === undefined ? undefined : parseTurnUsage(record.usage, `${label}.usage`);
+  const partialUsage =
+    record.partialUsage === undefined
+      ? undefined
+      : parseBillingUsage(record.partialUsage, `${label}.partialUsage`);
+  if (usage && partialUsage) {
+    throw new TypeError(`${label} cannot contain both usage and partialUsage`);
+  }
   if ((finishReason === undefined) !== (usage === undefined)) {
     throw new TypeError(`${label}.finishReason and usage must describe the same response`);
   }
   if (finishReason === undefined && record.error === undefined) {
     throw new TypeError(`${label}.error is required when no model response was returned`);
   }
+  const costUnknown = asBoolean(record.costUnknown, `${label}.costUnknown`);
+  if (costUnknown === (usage !== undefined || partialUsage !== undefined)) {
+    throw new TypeError(`${label}.costUnknown must reflect whether billing usage was recorded`);
+  }
   return {
+    costUnknown,
     ...(record.error === undefined ? {} : { error: asString(record.error, `${label}.error`) }),
     ...(finishReason ? { finishReason } : {}),
+    ...(partialUsage ? { partialUsage } : {}),
     ...(record.proposal === undefined
       ? {}
       : { proposal: parseProposal(record.proposal, `${label}.proposal`) }),
@@ -272,8 +299,8 @@ function sameVisibleComparison(
 
 function parseResult(value: unknown, file: string): EvalResult {
   const record = asRecord(value, file);
-  if (record.schemaVersion !== 1) {
-    throw new TypeError(`${file}.schemaVersion must be 1`);
+  if (record.schemaVersion !== 2) {
+    throw new TypeError(`${file}.schemaVersion must be 2`);
   }
   if (!Array.isArray(record.turnRecords)) {
     throw new TypeError(`${file}.turnRecords must be an array`);
@@ -290,15 +317,22 @@ function parseResult(value: unknown, file: string): EvalResult {
   if (turns !== turnRecords.length) {
     throw new TypeError(`${file}.turns does not match turnRecords`);
   }
-  const usages = turnRecords.flatMap((turnRecord) => (turnRecord.usage ? [turnRecord.usage] : []));
+  const billingUsages = turnRecords.flatMap((turnRecord) => {
+    if (turnRecord.usage) return [turnRecord.usage];
+    return turnRecord.partialUsage ? [turnRecord.partialUsage] : [];
+  });
   const tokensUsed = asNonNegativeInteger(record.tokensUsed, `${file}.tokensUsed`);
-  const costUsd = asNonNegativeNumber(record.costUsd, `${file}.costUsd`);
-  if (usages.reduce((sum, usage) => sum + usage.totalTokens, 0) !== tokensUsed) {
+  const knownCostUsd = asNonNegativeNumber(record.knownCostUsd, `${file}.knownCostUsd`);
+  if (billingUsages.reduce((sum, usage) => sum + usage.totalTokens, 0) !== tokensUsed) {
     throw new TypeError(`${file}.tokensUsed does not match turnRecords`);
   }
-  const turnCost = usages.reduce((sum, usage) => sum + usage.costUsd, 0);
-  if (Math.abs(turnCost - costUsd) > 1e-9) {
-    throw new TypeError(`${file}.costUsd does not match turnRecords`);
+  const turnCost = billingUsages.reduce((sum, usage) => sum + usage.costUsd, 0);
+  if (Math.abs(turnCost - knownCostUsd) > 1e-9) {
+    throw new TypeError(`${file}.knownCostUsd does not match turnRecords`);
+  }
+  const costUnknown = asBoolean(record.costUnknown, `${file}.costUnknown`);
+  if (costUnknown !== turnRecords.some((turnRecord) => turnRecord.costUnknown)) {
+    throw new TypeError(`${file}.costUnknown does not match turnRecords`);
   }
   const protocolErrors = asNonNegativeInteger(record.protocolErrors, `${file}.protocolErrors`);
   if (
@@ -348,24 +382,28 @@ function parseResult(value: unknown, file: string): EvalResult {
   if ((status === 'error') !== (error !== undefined)) {
     throw new TypeError(`${file}.error must exist exactly when status is error`);
   }
+  if (costUnknown && status !== 'error') {
+    throw new TypeError(`${file}.costUnknown requires error status`);
+  }
   return {
     ...(acceptance ? { acceptance } : {}),
-    budgetUsd: asPositiveNumber(record.budgetUsd, `${file}.budgetUsd`),
+    commandBudgetUsd: asPositiveNumber(record.commandBudgetUsd, `${file}.commandBudgetUsd`),
     condition: asCondition(record.condition, `${file}.condition`),
     conditionOrder,
-    costUsd,
+    costUnknown,
     ...(error ? { error } : {}),
     ...(finalComparison ? { finalComparison } : {}),
     fixtureId: asString(record.fixtureId, `${file}.fixtureId`),
     initialComparison,
     jobBudgetUsd: asPositiveNumber(record.jobBudgetUsd, `${file}.jobBudgetUsd`),
+    knownCostUsd,
     maxTurns: asPositiveInteger(record.maxTurns, `${file}.maxTurns`),
     model: asString(record.model, `${file}.model`),
     mutationId: asString(record.mutationId, `${file}.mutationId`),
     promptHash: asString(record.promptHash, `${file}.promptHash`),
     protocolErrors,
     runId: asString(record.runId, `${file}.runId`),
-    schemaVersion: 1,
+    schemaVersion: 2,
     status,
     tokensUsed,
     trial,
@@ -392,11 +430,18 @@ function summarize(results: EvalResult[]): Record<string, unknown> {
   return Object.fromEntries(
     conditionIds.map((condition) => {
       const matches = results.filter((result) => result.condition === condition);
+      const costKnownMatches = matches.filter((result) => !result.costUnknown);
       const acceptances = matches.flatMap((result) =>
         result.acceptance ? [result.acceptance] : []
       );
-      const turnUsage = matches.flatMap((result) =>
+      const successfulUsage = matches.flatMap((result) =>
         result.turnRecords.flatMap((turnRecord) => (turnRecord.usage ? [turnRecord.usage] : []))
+      );
+      const billingUsage = matches.flatMap((result) =>
+        result.turnRecords.flatMap((turnRecord) => {
+          if (turnRecord.usage) return [turnRecord.usage];
+          return turnRecord.partialUsage ? [turnRecord.partialUsage] : [];
+        })
       );
       const finalComparisons = matches.flatMap((result) =>
         result.finalComparison ? [result.finalComparison] : []
@@ -420,10 +465,10 @@ function summarize(results: EvalResult[]): Record<string, unknown> {
       return [
         condition,
         {
-          actualModels: [...new Set(turnUsage.map((usage) => usage.responseModel))].sort(),
-          averageCostUsd: ratio(
-            matches.reduce((sum, result) => sum + result.costUsd, 0),
-            matches.length
+          actualModels: [...new Set(successfulUsage.map((usage) => usage.responseModel))].sort(),
+          averageKnownCostUsd: ratio(
+            costKnownMatches.reduce((sum, result) => sum + result.knownCostUsd, 0),
+            costKnownMatches.length
           ),
           averageDfsDelta: ratio(
             comparisonPairs.reduce(
@@ -444,21 +489,35 @@ function summarize(results: EvalResult[]): Record<string, unknown> {
             matches.reduce((sum, result) => sum + result.turns, 0),
             matches.length
           ),
-          completionTokens: turnUsage.reduce((sum, usage) => sum + usage.completionTokens, 0),
-          costUsd: matches.reduce((sum, result) => sum + result.costUsd, 0),
-          fallbackTurns: turnUsage.filter((usage) => usage.fallbackUsed === true).length,
+          completionTokens: billingUsage.reduce((sum, usage) => sum + usage.completionTokens, 0),
+          comparableKnownCostUsd: costKnownMatches.reduce(
+            (sum, result) => sum + result.knownCostUsd,
+            0
+          ),
+          costKnownResults: costKnownMatches.length,
+          costUnknownResults: matches.length - costKnownMatches.length,
+          fallbackTurns: successfulUsage.filter((usage) => usage.fallbackUsed === true).length,
           hiddenDivergenceRate: ratio(
             visibleHiddenPairs.filter((result) => result.acceptance?.accepted === false).length,
             visibleHiddenPairs.length
           ),
-          medianCostUsd: median(matches.map((result) => result.costUsd)),
+          knownCostUsd: matches.reduce((sum, result) => sum + result.knownCostUsd, 0),
+          medianKnownCostUsd: median(costKnownMatches.map((result) => result.knownCostUsd)),
           perturbationSurvivalRate: ratio(perturbationsSurvived, perturbationsEvaluated),
-          promptTokens: turnUsage.reduce((sum, usage) => sum + usage.promptTokens, 0),
+          promptTokens: billingUsage.reduce((sum, usage) => sum + usage.promptTokens, 0),
           protocolErrors: matches.reduce((sum, result) => sum + result.protocolErrors, 0),
           providers: [
-            ...new Set(turnUsage.flatMap((usage) => (usage.provider ? [usage.provider] : []))),
+            ...new Set(
+              successfulUsage.flatMap((usage) => (usage.provider ? [usage.provider] : []))
+            ),
           ].sort(),
-          reasoningTokens: turnUsage.reduce((sum, usage) => sum + (usage.reasoningTokens ?? 0), 0),
+          reasoningTokens: billingUsage.reduce(
+            (sum, usage) => sum + (usage.reasoningTokens ?? 0),
+            0
+          ),
+          routingMetadataErrors: successfulUsage.filter(
+            (usage) => usage.routingMetadataError !== undefined
+          ).length,
           rootCauseRepairRate: ratio(
             acceptances.filter((acceptance) => acceptance.rootCauseRepaired).length,
             acceptances.length
@@ -469,7 +528,7 @@ function summarize(results: EvalResult[]): Record<string, unknown> {
               (status) => [status, matches.filter((result) => result.status === status).length]
             )
           ),
-          totalTokens: turnUsage.reduce((sum, usage) => sum + usage.totalTokens, 0),
+          totalTokens: billingUsage.reduce((sum, usage) => sum + usage.totalTokens, 0),
           unmatchedChangeCount: acceptances.reduce(
             (sum, acceptance) => sum + acceptance.unmatchedChangeCount,
             0
@@ -561,7 +620,7 @@ async function main(): Promise<void> {
   }
   const models = [...new Set(results.map((result) => result.model))];
   const commits = [...new Set(results.map((result) => result.uimatchCommit))];
-  const budgets = [...new Set(results.map((result) => result.budgetUsd))];
+  const budgets = [...new Set(results.map((result) => result.commandBudgetUsd))];
   const jobBudgets = [...new Set(results.map((result) => result.jobBudgetUsd))];
   const turnLimits = [...new Set(results.map((result) => result.maxTurns))];
   if (
@@ -572,25 +631,38 @@ async function main(): Promise<void> {
     turnLimits.length !== 1
   ) {
     throw new ReportUsageError(
-      'A run must contain one requested model, uiMatch commit, budget, and turn limit. Use separate run IDs.'
+      'A run must contain one requested model, uiMatch commit, command budget, and turn limit. Use separate run IDs.'
     );
   }
+  const budgetUsdPerTrial = budgets[0];
+  if (budgetUsdPerTrial === undefined) {
+    throw new ReportUsageError('The selected run does not contain a command budget.');
+  }
 
+  const trials = [...new Set(results.map((result) => result.trial))].sort(
+    (left, right) => left - right
+  );
+  const costKnownResults = results.filter((result) => !result.costUnknown);
   console.log(
     JSON.stringify(
       {
         byCondition: summarize(results),
-        budgetUsd: budgets[0],
-        costUsd: results.reduce((sum, result) => sum + result.costUsd, 0),
+        aggregateBudgetUsd: budgetUsdPerTrial * trials.length,
+        budgetUsdPerTrial,
+        costKnownResults: costKnownResults.length,
+        costUnknownResults: results.length - costKnownResults.length,
+        comparableKnownCostUsd: costKnownResults.reduce(
+          (sum, result) => sum + result.knownCostUsd,
+          0
+        ),
+        knownCostUsd: results.reduce((sum, result) => sum + result.knownCostUsd, 0),
         jobBudgetUsd: jobBudgets[0],
         requestedModel: models[0],
         results: results.length,
         runId,
         tokensUsed: results.reduce((sum, result) => sum + result.tokensUsed, 0),
         maxTurns: turnLimits[0],
-        trials: [...new Set(results.map((result) => result.trial))].sort(
-          (left, right) => left - right
-        ),
+        trials,
         uimatchCommit: commits[0],
       },
       null,

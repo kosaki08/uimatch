@@ -1,4 +1,4 @@
-export const conditionIds = ['render-only', 'scalar', 'flat-diff'] as const;
+export const conditionIds = ['pixel-diff', 'scalar', 'flat-diff'] as const;
 export const evalIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 export type ConditionId = (typeof conditionIds)[number];
@@ -110,21 +110,27 @@ export interface HiddenAcceptanceResult {
   unmatchedChangeCount: number;
 }
 
-export interface ModelTurnUsage {
+export interface ModelBillingUsage {
   completionTokens: number;
   costUsd: number;
-  fallbackUsed?: boolean;
-  generationId: string;
   promptTokens: number;
-  provider?: string;
   reasoningTokens?: number;
-  responseModel: string;
   totalTokens: number;
 }
 
+export interface ModelTurnUsage extends ModelBillingUsage {
+  fallbackUsed?: boolean;
+  generationId: string;
+  provider?: string;
+  responseModel: string;
+  routingMetadataError?: string;
+}
+
 export interface EvalTurnRecord {
+  costUnknown: boolean;
   error?: string;
   finishReason?: string;
+  partialUsage?: ModelBillingUsage;
   proposal?: RepairProposal;
   protocolError?: string;
   requestAttempts: number;
@@ -137,21 +143,22 @@ export interface EvalTurnRecord {
 export type EvalStatus = 'aborted_budget' | 'error' | 'passed' | 'protocol_error' | 'repair_failed';
 
 export interface EvalResult {
-  budgetUsd: number;
+  commandBudgetUsd: number;
   condition: ConditionId;
   conditionOrder: ConditionId[];
-  costUsd: number;
+  costUnknown: boolean;
   finalComparison?: VisibleComparisonMetrics;
   fixtureId: string;
   initialComparison: VisibleComparisonMetrics;
   jobBudgetUsd: number;
+  knownCostUsd: number;
   maxTurns: number;
   model: string;
   mutationId: string;
   promptHash: string;
   protocolErrors: number;
   runId: string;
-  schemaVersion: 1;
+  schemaVersion: 2;
   status: EvalStatus;
   tokensUsed: number;
   trial: number;

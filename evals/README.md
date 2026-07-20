@@ -20,12 +20,12 @@ rejected by a perturbation.
 
 `eval:run` evaluates every mutation under three conditions:
 
-- `render-only`: reference, implementation, and diff images
-- `scalar`: render-only feedback plus one DFS score
+- `pixel-diff`: reference and implementation screenshots plus the pixel diff image
+- `scalar`: pixel-diff feedback plus one DFS score
 - `flat-diff`: scalar feedback plus flat `styleDiffs`
 
 Trial numbers rotate the condition order to avoid always placing the same
-condition last: trial 1 runs render-only, scalar, flat-diff; trials 2 and 3
+condition last: trial 1 runs pixel-diff, scalar, flat-diff; trials 2 and 3
 rotate that order. Formal comparisons should reuse one `EVAL_RUN_ID` while
 running `EVAL_TRIAL=1`, `2`, and `3`; each trial has a distinct result path. The
 chosen order is recorded in every result.
@@ -71,21 +71,32 @@ launching a browser, or calling the model. The runner never derives
 `UIMATCH_EVAL_COMMIT` with Git, because packaged or restricted environments may
 not contain repository metadata.
 
-The USD budget applies to the whole command and is divided equally across all
-fixture/condition jobs. Calls are sequential. OpenRouter reports a completed
-request's exact cost, so a job records `"status": "aborted_budget"` when a
-response crosses its share or the remaining command budget. Use a dedicated
-OpenRouter key with a matching provider-side credit limit when a strict
-no-overshoot ceiling is required.
+The USD budget applies to one command, which executes one trial, and is divided
+equally across all fixture/condition jobs. Calls are sequential. OpenRouter
+reports a completed request's exact cost, so a job records
+`"status": "aborted_budget"` when a response crosses its share or the remaining
+command budget. A report that combines trials shows both the per-trial command
+budget and the aggregate configured budget represented by those trials. Use a
+dedicated OpenRouter key with a matching provider-side credit limit when a
+strict no-overshoot ceiling is required.
 
 Each turn requests at most 800 output tokens. Non-normal finish reasons and
 invalid JSON proposals are recorded as protocol errors. Model/API failures are
 recorded separately from valid proposals that fail repair acceptance.
-Transient network failures and HTTP 429, 502, 503, 504, and 529 responses are
-retried at most twice. A valid `Retry-After` value is honored up to two minutes;
-otherwise the runner uses a short exponential delay. Attempts and actual delays
-are retained in the turn record, while non-transient HTTP errors are not
-retried.
+HTTP 429, 502, 503, 504, and 529 responses are retried at most twice. A valid
+`Retry-After` value is honored up to two minutes; otherwise the runner uses a
+short exponential delay. Network failures are not retried because delivery may
+have succeeded before the response was lost, and replaying the POST could cause
+a second generation and charge. Attempts and actual delays are retained in the
+turn record, while non-transient HTTP errors are not retried.
+
+If an HTTP success response contains valid billing usage but fails later output
+validation, the turn records that partial usage and known cost. Routing metadata
+is diagnostic: invalid metadata is recorded without discarding a valid model
+response. If billing usage cannot be validated, the result records
+`"costUnknown": true`, uses `knownCostUsd` only as a lower bound, and stops the
+command before another paid request. Reports exclude such results from cost
+averages and count them separately.
 
 Requests do not send app-attribution headers. Routing metadata is requested so
 results can record the generation ID, actual model, selected provider, fallback
@@ -150,9 +161,10 @@ Every raw result includes:
 - `promptHash`
 - `uimatchCommit`
 - `runId` and `trial`
-- command/job budgets and the turn limit
+- per-trial command/job budgets and the turn limit
 - `fixtureId`, `mutationId`, `condition`, and the trial's condition order
-- `turns`, input/output/total tokens, and cost
+- `turns`, observed input/output/total tokens, known cost, and whether any cost
+  is unknown
 - `status` and `protocolErrors`
 - initial/final visible metrics and per-turn DFS, pixel ratios, quality-gate
   result, high-severity count, and StyleDiff count
