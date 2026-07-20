@@ -7,8 +7,10 @@ import { runOpenRouterRetrySelfCheck } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { buildPixelDiffFeedback } from '../conditions/pixel-diff.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
+import { buildTypedContractEvidence } from '../conditions/typed-contract.js';
 import {
   buildTypedDiffEvidence,
+  buildTypedDiffFeedback,
   buildTypedStyleDiffs,
   type TypedDimensionSignal,
 } from '../conditions/typed-diff.js';
@@ -336,6 +338,30 @@ function assertConditionsLeakTheContractAsExpected(
   ) {
     throw new Error('Contract-pair typed-diff did not separate the HUG and FIXED contracts');
   }
+
+  const requirementType = (side: ContractPairSide): string | undefined =>
+    buildTypedContractEvidence(
+      side.initialComparison,
+      side.manifest.selector,
+      side.context.workspace.implementationSource.css,
+      side.manifest.reference.rootDimensionConstraints
+    ).dimensionConstraints.find((entry) => entry.property === 'width')?.behavioralRequirement.type;
+  if (
+    requirementType(hug) !== 'preserve-intrinsic-size' ||
+    requirementType(fixed) !== 'preserve-fixed-size'
+  ) {
+    throw new Error('Contract-pair typed-contract did not state opposite behavioural requirements');
+  }
+  if (
+    buildTypedDiffFeedback(
+      fixed.initialComparison,
+      fixed.manifest.selector,
+      fixed.context.workspace.implementationSource.css,
+      fixed.manifest.reference.rootDimensionConstraints
+    ).text.includes('behavioralRequirement')
+  ) {
+    throw new Error('Typed-diff leaked a behavioural requirement that belongs to typed-contract');
+  }
 }
 
 // Asserted on the source, not the render: if the candidate carried the width, hidden acceptance
@@ -428,12 +454,21 @@ export async function runSelfCheck(): Promise<void> {
   if (!evalRunIdPattern.test('20260720_self-check') || evalRunIdPattern.test('self-check')) {
     throw new Error('Eval run ID format self-check failed');
   }
-  const rotatedConditions = [1, 2, 3, 4].map((trial) => conditionOrderForTrial(trial).join(','));
+  const rotatedConditions = [1, 2, 3, 4, 5].map((trial) => conditionOrderForTrial(trial).join(','));
   if (
     rotatedConditions.join('|') !==
-    'pixel-diff,scalar,flat-diff,typed-diff|scalar,flat-diff,typed-diff,pixel-diff|flat-diff,typed-diff,pixel-diff,scalar|typed-diff,pixel-diff,scalar,flat-diff'
+    'pixel-diff,scalar,flat-diff,typed-diff,typed-contract|scalar,flat-diff,typed-diff,typed-contract,pixel-diff|flat-diff,typed-diff,typed-contract,pixel-diff,scalar|typed-diff,typed-contract,pixel-diff,scalar,flat-diff|typed-contract,pixel-diff,scalar,flat-diff,typed-diff'
   ) {
     throw new Error('Eval condition rotation self-check failed');
+  }
+  const subsetRotation = [1, 2, 3].map((trial) =>
+    conditionOrderForTrial(trial, ['flat-diff', 'typed-diff', 'typed-contract']).join(',')
+  );
+  if (
+    subsetRotation.join('|') !==
+    'flat-diff,typed-diff,typed-contract|typed-diff,typed-contract,flat-diff|typed-contract,flat-diff,typed-diff'
+  ) {
+    throw new Error('Eval condition subset rotation self-check failed');
   }
   try {
     parseRepairProposal(

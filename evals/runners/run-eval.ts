@@ -13,6 +13,7 @@ import { createOpenRouterBackend } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { buildPixelDiffFeedback } from '../conditions/pixel-diff.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
+import { buildTypedContractFeedback } from '../conditions/typed-contract.js';
 import { buildTypedDiffFeedback } from '../conditions/typed-diff.js';
 import {
   compareVariant,
@@ -135,6 +136,22 @@ function parseCodexReasoningEffort(): CodexReasoningEffort {
   return reasoningEffort;
 }
 
+// A run may compare a subset of the conditions. The subset keeps the canonical order so the
+// per-trial rotation stays deterministic, and the chosen subset is recorded on every result.
+function parseSelectedConditions(): ConditionId[] {
+  const raw = process.env.EVAL_CONDITIONS?.trim();
+  if (!raw) return [...conditionIds];
+  const requested = raw.split(',').map((value) => value.trim());
+  const unknown = requested.filter((value) => !conditionIds.some((id) => id === value));
+  if (unknown.length > 0) {
+    throw new EvalUsageError(`EVAL_CONDITIONS contains unknown conditions: ${unknown.join(', ')}`);
+  }
+  if (new Set(requested).size !== requested.length) {
+    throw new EvalUsageError('EVAL_CONDITIONS must not repeat a condition.');
+  }
+  return conditionIds.filter((condition) => requested.includes(condition));
+}
+
 async function loadEvalConfig(): Promise<EvalConfig> {
   const trialValue = process.env.EVAL_TRIAL?.trim();
   const trial = trialValue ? parsePositiveIntegerValue('EVAL_TRIAL', trialValue) : 1;
@@ -167,7 +184,7 @@ async function loadEvalConfig(): Promise<EvalConfig> {
   return {
     backend,
     budget,
-    conditionOrder: conditionOrderForTrial(trial),
+    conditionOrder: conditionOrderForTrial(trial, parseSelectedConditions()),
     maxTurns,
     model,
     ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
@@ -194,6 +211,8 @@ function buildConditionFeedback(
       return buildFlatDiffFeedback(comparison, rootSelector);
     case 'typed-diff':
       return buildTypedDiffFeedback(comparison, rootSelector, sourceCss, dimensionConstraints);
+    case 'typed-contract':
+      return buildTypedContractFeedback(comparison, rootSelector, sourceCss, dimensionConstraints);
   }
 }
 
@@ -300,7 +319,7 @@ function buildResult(
       ? {}
       : { reasoningEffort: context.config.reasoningEffort }),
     runId: context.config.runId,
-    schemaVersion: 6,
+    schemaVersion: 7,
     status,
     tokensUsed: usages.reduce((sum, usage) => sum + usage.totalTokens, 0),
     trial: context.config.trial,
@@ -368,7 +387,7 @@ async function assertResultDestinationsAvailable(
   manifest: EvalManifest
 ): Promise<void> {
   for (const mutation of manifest.mutations) {
-    for (const condition of conditionIds) {
+    for (const condition of config.conditionOrder) {
       const destination = resultDestination({
         condition,
         fixtureId: manifest.fixtureId,
@@ -560,7 +579,7 @@ async function runEvaluation(config: EvalConfig, manifest: EvalManifest): Promis
   await assertResultDestinationsAvailable(config, manifest);
   buildCli();
   let totalKnownCostUsd = 0;
-  const totalJobs = manifest.mutations.length * conditionIds.length;
+  const totalJobs = manifest.mutations.length * config.conditionOrder.length;
   if (totalJobs === 0) throw new Error('Eval manifest does not contain any jobs');
   const jobBudgetUsd =
     config.budget.mode === 'metered-usd' ? config.budget.commandBudgetUsd / totalJobs : undefined;

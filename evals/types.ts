@@ -1,12 +1,13 @@
 import type { FigmaRootDimensionConstraint } from '@uimatch/cli';
 
 const legacyConditionIds = ['pixel-diff', 'scalar', 'flat-diff'] as const;
-export const conditionIds = [...legacyConditionIds, 'typed-diff'] as const;
+const typedDiffConditionIds = [...legacyConditionIds, 'typed-diff'] as const;
+export const conditionIds = [...typedDiffConditionIds, 'typed-contract'] as const;
 export const evalIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 export const evalRunIdPattern = /^\d{8}_[A-Za-z0-9][A-Za-z0-9._-]{0,118}$/;
 
 export type ConditionId = (typeof conditionIds)[number];
-export type EvalResultSchemaVersion = 3 | 4 | 5 | 6;
+export type EvalResultSchemaVersion = 3 | 4 | 5 | 6 | 7;
 
 export const evalArtifactPolicies = ['none', 'failures', 'all'] as const;
 export type EvalArtifactPolicy = (typeof evalArtifactPolicies)[number];
@@ -20,7 +21,8 @@ export type EvalAuthMode = 'api' | 'subscription';
 export function conditionIdsForSchemaVersion(
   schemaVersion: EvalResultSchemaVersion
 ): readonly ConditionId[] {
-  return schemaVersion >= 6 ? conditionIds : legacyConditionIds;
+  if (schemaVersion >= 7) return conditionIds;
+  return schemaVersion >= 6 ? typedDiffConditionIds : legacyConditionIds;
 }
 
 export function conditionOrderForTrial(

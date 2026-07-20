@@ -112,19 +112,21 @@ function asCondition(
   return value as ConditionId;
 }
 
+// A run may compare a subset of the schema's conditions, so the order records which subset was
+// compared rather than always every condition.
 function asConditionOrder(
   value: unknown,
   label: string,
   allowedConditions: readonly ConditionId[]
 ): ConditionId[] {
-  if (!Array.isArray(value) || value.length !== allowedConditions.length) {
-    throw new TypeError(`${label} must contain every eval condition once`);
+  if (!Array.isArray(value) || value.length === 0 || value.length > allowedConditions.length) {
+    throw new TypeError(`${label} must contain a non-empty subset of the eval conditions`);
   }
   const parsed = value.map((entry, index) =>
     asCondition(entry, `${label}[${index}]`, allowedConditions)
   );
-  if (new Set(parsed).size !== allowedConditions.length) {
-    throw new TypeError(`${label} must contain every eval condition once`);
+  if (new Set(parsed).size !== parsed.length) {
+    throw new TypeError(`${label} must not repeat a condition`);
   }
   return parsed;
 }
@@ -554,9 +556,10 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     record.schemaVersion !== 3 &&
     record.schemaVersion !== 4 &&
     record.schemaVersion !== 5 &&
-    record.schemaVersion !== 6
+    record.schemaVersion !== 6 &&
+    record.schemaVersion !== 7
   ) {
-    throw new TypeError(`${file}.schemaVersion must be 3, 4, 5, or 6`);
+    throw new TypeError(`${file}.schemaVersion must be 3, 4, 5, 6, or 7`);
   }
   const schemaVersion = record.schemaVersion;
   const resultConditionIds = conditionIdsForSchemaVersion(schemaVersion);
@@ -639,7 +642,10 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     `${file}.conditionOrder`,
     resultConditionIds
   );
-  const expectedConditionOrder = conditionOrderForTrial(trial, resultConditionIds);
+  const selectedConditions = resultConditionIds.filter((condition) =>
+    conditionOrder.includes(condition)
+  );
+  const expectedConditionOrder = conditionOrderForTrial(trial, selectedConditions);
   if (!conditionOrder.every((condition, index) => condition === expectedConditionOrder[index])) {
     throw new TypeError(`${file}.conditionOrder does not match trial ${trial}`);
   }
@@ -692,6 +698,10 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     throw new TypeError(`${file}.reasoningEffort is only valid for Codex results`);
   }
   const condition = asCondition(record.condition, `${file}.condition`, resultConditionIds);
+  // Implied by conditionOrder covering every condition until subsets were allowed.
+  if (!conditionOrder.includes(condition)) {
+    throw new TypeError(`${file}.condition is absent from ${file}.conditionOrder`);
+  }
   const fixtureId = asString(record.fixtureId, `${file}.fixtureId`);
   const mutationId = asString(record.mutationId, `${file}.mutationId`);
   const runId = asString(record.runId, `${file}.runId`);
@@ -787,7 +797,7 @@ export function runReportContractSelfCheck(): void {
     promptHash: 'self-check-prompt',
     protocolErrors: 0,
     runId: '20260720_self-check-run',
-    schemaVersion: 6 as const,
+    schemaVersion: 7 as const,
     tokensUsed: 0,
     trial: 1,
     turns: 1,

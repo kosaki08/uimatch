@@ -39,6 +39,10 @@ export interface TypedDiffEvidence {
 
 const derivedGeometryProperties = new Set(['height', 'width']);
 
+// Shared with typed-contract so the two conditions differ only by the behavioural requirement.
+export const typedEvidenceGuidance =
+  'A repair-candidate is either an authored declaration or an explicit source constraint. A diagnostic-only dimension is an observed result of HUG, FILL, or unknown sizing, not evidence that a fixed dimension should be declared.';
+
 function declaredPropertiesBySelector(sourceCss: string): ReadonlyMap<string, ReadonlySet<string>> {
   const propertiesBySelector = new Map<string, Set<string>>();
   const root = parse(sourceCss, { from: undefined });
@@ -165,6 +169,6 @@ export function buildTypedDiffFeedback(
   );
   return {
     ...feedback,
-    text: `${feedback.text}\nuiMatch typed evidence:\n${JSON.stringify(evidence, null, 2)}\nA repair-candidate is either an authored declaration or an explicit source constraint. A diagnostic-only dimension is an observed result of HUG, FILL, or unknown sizing, not evidence that a fixed dimension should be declared.`,
+    text: `${feedback.text}\nuiMatch typed evidence:\n${JSON.stringify(evidence, null, 2)}\n${typedEvidenceGuidance}`,
   };
 }
