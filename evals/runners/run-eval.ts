@@ -136,20 +136,41 @@ function parseCodexReasoningEffort(): CodexReasoningEffort {
   return reasoningEffort;
 }
 
-// A run may compare a subset of the conditions. The subset keeps the canonical order so the
-// per-trial rotation stays deterministic, and the chosen subset is recorded on every result.
-function parseSelectedConditions(): ConditionId[] {
-  const raw = process.env.EVAL_CONDITIONS?.trim();
-  if (!raw) return [...conditionIds];
+function parseRequestedIds(
+  name: string,
+  known: readonly string[],
+  context: string
+): string[] | undefined {
+  const raw = process.env[name]?.trim();
+  if (!raw) return undefined;
   const requested = raw.split(',').map((value) => value.trim());
-  const unknown = requested.filter((value) => !conditionIds.some((id) => id === value));
+  const unknown = requested.filter((value) => !known.includes(value));
   if (unknown.length > 0) {
-    throw new EvalUsageError(`EVAL_CONDITIONS contains unknown conditions: ${unknown.join(', ')}`);
+    throw new EvalUsageError(`${name} names entries absent from ${context}: ${unknown.join(', ')}`);
   }
   if (new Set(requested).size !== requested.length) {
-    throw new EvalUsageError('EVAL_CONDITIONS must not repeat a condition.');
+    throw new EvalUsageError(`${name} must not repeat an entry.`);
   }
+  return requested;
+}
+
+// Selections keep the canonical order rather than the requested order, so the per-trial rotation
+// stays deterministic for a given subset.
+function parseSelectedConditions(): ConditionId[] {
+  const requested = parseRequestedIds('EVAL_CONDITIONS', conditionIds, 'the known conditions');
+  if (!requested) return [...conditionIds];
   return conditionIds.filter((condition) => requested.includes(condition));
+}
+
+// Lets an experiment compare one mutation without dragging its fixture's positive controls along.
+function selectMutations(manifest: EvalManifest): EvalManifest {
+  const requested = parseRequestedIds(
+    'EVAL_MUTATIONS',
+    manifest.mutations.map(({ id }) => id),
+    manifest.fixtureId
+  );
+  if (!requested) return manifest;
+  return { ...manifest, mutations: manifest.mutations.filter(({ id }) => requested.includes(id)) };
 }
 
 async function loadEvalConfig(): Promise<EvalConfig> {
@@ -698,7 +719,7 @@ async function main(): Promise<void> {
     throw new EvalUsageError(`No eval manifest exists for EVAL_FIXTURE_ID=${fixtureId}.`);
   }
   const config = await loadEvalConfig();
-  await runEvaluation(config, manifest);
+  await runEvaluation(config, selectMutations(manifest));
 }
 
 main().catch((error: unknown) => {
