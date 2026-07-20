@@ -7,6 +7,9 @@ export type ConditionId = (typeof conditionIds)[number];
 export const evalArtifactPolicies = ['none', 'failures', 'all'] as const;
 export type EvalArtifactPolicy = (typeof evalArtifactPolicies)[number];
 
+export const codexReasoningEfforts = ['minimal', 'low', 'medium', 'high', 'xhigh'] as const;
+export type CodexReasoningEffort = (typeof codexReasoningEfforts)[number];
+
 export type EvalBackendId = 'codex-exec' | 'openrouter';
 export type EvalAuthMode = 'api' | 'subscription';
 
@@ -247,8 +250,9 @@ export interface EvalResult {
   mutationId: string;
   promptHash: string;
   protocolErrors: number;
+  reasoningEffort?: CodexReasoningEffort;
   runId: string;
-  schemaVersion: 3 | 4;
+  schemaVersion: 3 | 4 | 5;
   status: EvalStatus;
   tokensUsed: number;
   trial: number;

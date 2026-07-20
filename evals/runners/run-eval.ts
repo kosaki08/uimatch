@@ -23,10 +23,12 @@ import { evalRoot, loadManifest } from '../manifest.js';
 import { parseRepairProposalJson } from '../repair-proposal.js';
 import type { RepairWorkspace } from '../repair-workspace.js';
 import {
+  codexReasoningEfforts,
   conditionIds,
   conditionOrderForTrial,
   evalIdentifierPattern,
   evalRunIdPattern,
+  type CodexReasoningEffort,
   type ComparisonSnapshot,
   type ConditionFeedback,
   type ConditionId,
@@ -50,6 +52,7 @@ interface EvalConfig {
   conditionOrder: ConditionId[];
   maxTurns: number;
   model: string;
+  reasoningEffort?: CodexReasoningEffort;
   runId: string;
   trial: number;
   turnTimeoutMs?: number;
@@ -120,6 +123,17 @@ function parseCodexTurnTimeoutMs(): number {
   return value;
 }
 
+function parseCodexReasoningEffort(): CodexReasoningEffort {
+  const raw = requireEnvironment('EVAL_CODEX_REASONING_EFFORT');
+  const reasoningEffort = codexReasoningEfforts.find((value) => value === raw);
+  if (!reasoningEffort) {
+    throw new EvalUsageError(
+      `EVAL_CODEX_REASONING_EFFORT must be one of: ${codexReasoningEfforts.join(', ')}.`
+    );
+  }
+  return reasoningEffort;
+}
+
 async function loadEvalConfig(): Promise<EvalConfig> {
   const trialValue = process.env.EVAL_TRIAL?.trim();
   const trial = trialValue ? parsePositiveIntegerValue('EVAL_TRIAL', trialValue) : 1;
@@ -134,13 +148,15 @@ async function loadEvalConfig(): Promise<EvalConfig> {
   const uimatchCommit = requireEnvironment('UIMATCH_EVAL_COMMIT');
   let backend: TurnBackend;
   let budget: EvalConfig['budget'];
+  let reasoningEffort: CodexReasoningEffort | undefined;
   let turnTimeoutMs: number | undefined;
   if (backendId === 'openrouter' && authMode === 'api') {
     backend = createOpenRouterBackend(requireEnvironment('OPENROUTER_API_KEY'));
     budget = { commandBudgetUsd: parsePositiveNumber('EVAL_BUDGET_USD'), mode: 'metered-usd' };
   } else if (backendId === 'codex-exec' && authMode === 'subscription') {
+    reasoningEffort = parseCodexReasoningEffort();
     turnTimeoutMs = parseCodexTurnTimeoutMs();
-    backend = await createCodexExecBackend({ timeoutMs: turnTimeoutMs });
+    backend = await createCodexExecBackend({ reasoningEffort, timeoutMs: turnTimeoutMs });
     budget = { mode: 'subscription' };
   } else {
     throw new EvalUsageError(
@@ -153,6 +169,7 @@ async function loadEvalConfig(): Promise<EvalConfig> {
     conditionOrder: conditionOrderForTrial(trial),
     maxTurns,
     model,
+    ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
     runId,
     trial,
     ...(turnTimeoutMs === undefined ? {} : { turnTimeoutMs }),
@@ -274,8 +291,11 @@ function buildResult(
     mutationId: context.mutation.id,
     promptHash: state.promptHash,
     protocolErrors: state.turnRecords.filter((record) => record.protocolError !== undefined).length,
+    ...(context.config.reasoningEffort === undefined
+      ? {}
+      : { reasoningEffort: context.config.reasoningEffort }),
     runId: context.config.runId,
-    schemaVersion: 4,
+    schemaVersion: 5,
     status,
     tokensUsed: usages.reduce((sum, usage) => sum + usage.totalTokens, 0),
     trial: context.config.trial,

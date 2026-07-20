@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ModelTokenUsage, ModelTurnUsage } from '../types.js';
+import type { CodexReasoningEffort, ModelTokenUsage, ModelTurnUsage } from '../types.js';
 import {
   TurnBackendError,
   type BackendTurnInput,
@@ -71,6 +71,7 @@ interface ProcessResult {
 interface CodexExecOptions {
   command?: string;
   prefixArgs?: string[];
+  reasoningEffort: CodexReasoningEffort;
   timeoutMs?: number;
 }
 
@@ -396,6 +397,7 @@ async function runCodexTurn(options: {
   command: string;
   input: BackendTurnInput;
   prefixArgs: string[];
+  reasoningEffort: CodexReasoningEffort;
   timeoutMs: number;
   version: string;
 }): Promise<BackendTurnResult> {
@@ -417,6 +419,8 @@ async function runCodexTurn(options: {
       'shell_environment_policy.inherit=none',
       codexExecFlags.config,
       'project_doc_max_bytes=0',
+      codexExecFlags.config,
+      `model_reasoning_effort="${options.reasoningEffort}"`,
       codexExecFlags.sandbox,
       'read-only',
       codexExecFlags.json,
@@ -468,7 +472,7 @@ async function runCodexTurn(options: {
   }
 }
 
-export async function createCodexExecBackend(options: CodexExecOptions = {}): Promise<TurnBackend> {
+export async function createCodexExecBackend(options: CodexExecOptions): Promise<TurnBackend> {
   const command = options.command ?? 'codex';
   const prefixArgs = options.prefixArgs ?? [];
   let version: string;
@@ -514,6 +518,7 @@ export async function createCodexExecBackend(options: CodexExecOptions = {}): Pr
         command,
         input,
         prefixArgs,
+        reasoningEffort: options.reasoningEffort,
         timeoutMs: options.timeoutMs ?? defaultCodexTurnTimeoutMs,
         version,
       }),

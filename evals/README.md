@@ -76,6 +76,7 @@ EVAL_BACKEND=codex-exec
 EVAL_AUTH_MODE=subscription
 EVAL_MODEL=<codex-model-id>
 EVAL_MAX_TURNS=3
+EVAL_CODEX_REASONING_EFFORT=medium
 EVAL_CODEX_TURN_TIMEOUT_MS=120000
 UIMATCH_EVAL_COMMIT=<commit supplied by the caller or build>
 ```
@@ -107,6 +108,11 @@ Codex results describe the named Codex CLI version, requested model, and pinned
 execution settings as an agent configuration. The runner flattens the harness
 message history into each new CLI prompt, so those results are not presented as
 equivalent to a raw API model using native chat roles.
+
+`EVAL_CODEX_REASONING_EFFORT` is required and must be one of `minimal`, `low`,
+`medium`, `high`, or `xhigh`. The runner passes it explicitly as Codex's
+`model_reasoning_effort` setting and records it in every result. This avoids
+silently inheriting a CLI or model default. Use a new run ID when changing it.
 
 `EVAL_CODEX_TURN_TIMEOUT_MS` is optional and defaults to 120000 milliseconds.
 The resolved value applies equally to every condition in the command and is
@@ -263,6 +269,7 @@ Every raw result includes:
 - result `schemaVersion`
 - backend ID/version, authentication mode, requested `model`, and available
   per-turn actual model/provider routing data
+- the explicit Codex reasoning effort for Codex-backed results
 - `promptHash`
 - `uimatchCommit`
 - `runId` and `trial`

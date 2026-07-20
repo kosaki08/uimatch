@@ -4,11 +4,13 @@ import { pathToFileURL } from 'node:url';
 import { evalRoot } from '../manifest.js';
 import { parseRepairProposal } from '../repair-proposal.js';
 import {
+  codexReasoningEfforts,
   conditionIds,
   conditionOrderForTrial,
   evalRunIdPattern,
   expectedMetadataMatches,
   visibleComparisonMatches,
+  type CodexReasoningEffort,
   type ConditionId,
   type EvalArtifactFile,
   type EvalArtifacts,
@@ -114,6 +116,13 @@ function asConditionOrder(value: unknown, label: string): ConditionId[] {
     throw new TypeError(`${label} must contain every eval condition once`);
   }
   return parsed;
+}
+
+function asCodexReasoningEffort(value: unknown, label: string): CodexReasoningEffort {
+  if (!codexReasoningEfforts.some((effort) => effort === value)) {
+    throw new TypeError(`${label} must be a supported Codex reasoning effort`);
+  }
+  return value as CodexReasoningEffort;
 }
 
 function asStatus(value: unknown, label: string): EvalStatus {
@@ -459,7 +468,7 @@ function parseAcceptance(
           );
         })();
   if (requirePerturbationOutcomes && perturbationOutcomes === undefined) {
-    throw new TypeError(`${label}.perturbationOutcomes is required for schema version 4`);
+    throw new TypeError(`${label}.perturbationOutcomes is required for schema version 4 or later`);
   }
   if (perturbationOutcomes) {
     const outcomeIds = perturbationOutcomes.map((outcome) => outcome.id);
@@ -530,8 +539,8 @@ function aggregateTurnBilling(
 
 export function parseEvalResult(value: unknown, file: string): EvalResult {
   const record = asRecord(value, file);
-  if (record.schemaVersion !== 3 && record.schemaVersion !== 4) {
-    throw new TypeError(`${file}.schemaVersion must be 3 or 4`);
+  if (record.schemaVersion !== 3 && record.schemaVersion !== 4 && record.schemaVersion !== 5) {
+    throw new TypeError(`${file}.schemaVersion must be 3, 4, or 5`);
   }
   const schemaVersion = record.schemaVersion;
   if (!Array.isArray(record.turnRecords)) {
@@ -617,7 +626,7 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
   const acceptance =
     record.acceptance === undefined
       ? undefined
-      : parseAcceptance(record.acceptance, `${file}.acceptance`, schemaVersion === 4);
+      : parseAcceptance(record.acceptance, `${file}.acceptance`, schemaVersion !== 3);
   if (acceptance && acceptance.finalComparisonPassed !== finalComparison?.pass) {
     throw new TypeError(`${file}.acceptance does not match finalComparison`);
   }
@@ -641,11 +650,27 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     record.turnTimeoutMs === undefined
       ? undefined
       : asPositiveInteger(record.turnTimeoutMs, `${file}.turnTimeoutMs`);
-  if (schemaVersion === 4 && backend === 'codex-exec' && turnTimeoutMs === undefined) {
-    throw new TypeError(`${file}.turnTimeoutMs is required for Codex schema version 4 results`);
+  if (
+    (schemaVersion === 4 || schemaVersion === 5) &&
+    backend === 'codex-exec' &&
+    turnTimeoutMs === undefined
+  ) {
+    throw new TypeError(
+      `${file}.turnTimeoutMs is required for Codex schema version ${schemaVersion} results`
+    );
   }
   if (backend !== 'codex-exec' && turnTimeoutMs !== undefined) {
     throw new TypeError(`${file}.turnTimeoutMs is only valid for Codex results`);
+  }
+  const reasoningEffort =
+    record.reasoningEffort === undefined
+      ? undefined
+      : asCodexReasoningEffort(record.reasoningEffort, `${file}.reasoningEffort`);
+  if (schemaVersion === 5 && backend === 'codex-exec' && reasoningEffort === undefined) {
+    throw new TypeError(`${file}.reasoningEffort is required for Codex schema version 5 results`);
+  }
+  if (backend !== 'codex-exec' && reasoningEffort !== undefined) {
+    throw new TypeError(`${file}.reasoningEffort is only valid for Codex results`);
   }
   const condition = asCondition(record.condition, `${file}.condition`);
   const fixtureId = asString(record.fixtureId, `${file}.fixtureId`);
@@ -711,6 +736,7 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     mutationId,
     promptHash: asString(record.promptHash, `${file}.promptHash`),
     protocolErrors,
+    ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
     runId,
     schemaVersion,
     status,
@@ -742,7 +768,7 @@ export function runReportContractSelfCheck(): void {
     promptHash: 'self-check-prompt',
     protocolErrors: 0,
     runId: '20260720_self-check-run',
-    schemaVersion: 4 as const,
+    schemaVersion: 5 as const,
     tokensUsed: 0,
     trial: 1,
     turns: 1,
@@ -757,6 +783,7 @@ export function runReportContractSelfCheck(): void {
       billing: { mode: 'subscription' },
       budget: { mode: 'subscription' },
       error: 'self-check error',
+      reasoningEffort: 'medium',
       status: 'error',
       turnTimeoutMs: 120_000,
       turnRecords: [
@@ -844,6 +871,7 @@ export function runReportContractSelfCheck(): void {
     billing: { mode: 'subscription' },
     budget: { mode: 'subscription' },
     finalComparison: passingComparison,
+    reasoningEffort: 'medium',
     status: 'passed',
     tokensUsed: 0,
     turnRecords: [
@@ -877,6 +905,16 @@ export function runReportContractSelfCheck(): void {
     passed.artifacts?.perturbations?.['self-check-perturbation']?.passed !== true
   ) {
     throw new Error('Perturbation outcome result contract self-check failed');
+  }
+  const missingReasoningEffort: Record<string, unknown> = { ...passedRaw };
+  delete missingReasoningEffort.reasoningEffort;
+  try {
+    parseEvalResult(missingReasoningEffort, 'missing reasoning effort self-check');
+    throw new Error('Codex result contract accepted a missing reasoning effort');
+  } catch (error) {
+    if (!(error instanceof TypeError) || !error.message.includes('reasoningEffort is required')) {
+      throw error;
+    }
   }
 
   const protocolErrorWithArtifacts = parseEvalResult(
@@ -1241,6 +1279,10 @@ async function main(): Promise<void> {
     results.map((result) => result.turnTimeoutMs ?? null),
     'turn timeout'
   );
+  const reasoningEffort = singleton(
+    results.map((result) => result.reasoningEffort ?? null),
+    'reasoning effort'
+  );
   const serializedBudget = singleton(
     results.map((result) => JSON.stringify(result.budget)),
     'budget policy'
@@ -1261,6 +1303,7 @@ async function main(): Promise<void> {
         byCondition: summarize(results),
         maxTurns,
         requestedModel: model,
+        ...(reasoningEffort === null ? {} : { reasoningEffort }),
         results: results.length,
         runId,
         tokensUsed: results.reduce((sum, result) => sum + result.tokensUsed, 0),

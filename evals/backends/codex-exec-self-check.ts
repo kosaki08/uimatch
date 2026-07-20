@@ -33,6 +33,7 @@ if (valueAfter('--sandbox') !== 'read-only') throw new Error('sandbox is not rea
 if (valueAfter('--ask-for-approval') !== 'never') throw new Error('approval policy is not never');
 if (valueAfter('--config') !== 'shell_environment_policy.inherit=none') throw new Error('shell environment is inherited');
 if (!args.includes('project_doc_max_bytes=0')) throw new Error('agent instructions are enabled');
+if (!args.includes('model_reasoning_effort="medium"')) throw new Error('reasoning effort is not explicit');
 await access(valueAfter('--output-schema'));
 await access(valueAfter('--cd'));
 for (let index = 0; index < args.length; index += 1) {
@@ -84,12 +85,14 @@ export async function runCodexExecSelfCheck(): Promise<void> {
     const backend = await createCodexExecBackend({
       command: process.execPath,
       prefixArgs: [fakeCliPath],
+      reasoningEffort: 'medium',
       timeoutMs: 2_000,
     });
     try {
       await createCodexExecBackend({
         command: process.execPath,
         prefixArgs: [fakeCliPath, '--fake-missing-help'],
+        reasoningEffort: 'medium',
       });
       throw new Error('Codex backend CLI preflight self-check did not fail');
     } catch (error) {
@@ -141,6 +144,7 @@ export async function runCodexExecSelfCheck(): Promise<void> {
     const timeoutBackend = await createCodexExecBackend({
       command: process.execPath,
       prefixArgs: [fakeCliPath],
+      reasoningEffort: 'medium',
       timeoutMs: 50,
     });
     try {
