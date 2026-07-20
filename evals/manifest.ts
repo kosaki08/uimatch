@@ -1,17 +1,20 @@
 import { access, readFile } from 'node:fs/promises';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { basename, isAbsolute, relative, resolve, sep } from 'node:path';
 import {
   evalIdentifierPattern,
   type EvalManifest,
   type EvalMutation,
   type EvalPerturbation,
   type ExpectedMetadata,
+  type FixtureRootDimensionConstraint,
+  type FixtureSizingMode,
   type FixtureVariant,
   type RepairChange,
   type RootCause,
 } from './types.js';
 
 export const evalRoot = resolve(import.meta.dirname);
+export const defaultEvalFixtureId = 'atomic-button';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -179,6 +182,39 @@ function parseExpectedSpec(value: unknown): Record<string, Partial<Record<string
   );
 }
 
+function parseSizingMode(value: unknown, label: string): FixtureSizingMode {
+  const mode = asString(value, label);
+  if (mode !== 'FIXED' && mode !== 'HUG' && mode !== 'FILL') {
+    throw new TypeError(`${label} must be FIXED, HUG, or FILL`);
+  }
+  return mode;
+}
+
+function parseRootDimensionConstraints(
+  value: unknown,
+  metadata: ExpectedMetadata
+): FixtureRootDimensionConstraint[] {
+  const sizing = asRecord(value, 'manifest.reference.sizing');
+  const keys = Object.keys(sizing);
+  if (keys.length !== 2 || !keys.includes('horizontal') || !keys.includes('vertical')) {
+    throw new TypeError('manifest.reference.sizing must define horizontal and vertical only');
+  }
+  return [
+    {
+      axis: 'horizontal',
+      mode: parseSizingMode(sizing.horizontal, 'manifest.reference.sizing.horizontal'),
+      observedPx: metadata.width,
+      source: 'fixture-contract',
+    },
+    {
+      axis: 'vertical',
+      mode: parseSizingMode(sizing.vertical, 'manifest.reference.sizing.vertical'),
+      observedPx: metadata.height,
+      source: 'fixture-contract',
+    },
+  ];
+}
+
 export function resolveEvalPath(relativePath: string): string {
   if (isAbsolute(relativePath)) {
     throw new RangeError(`Eval paths must be relative: ${relativePath}`);
@@ -191,29 +227,61 @@ export function resolveEvalPath(relativePath: string): string {
   return resolved;
 }
 
+export function evalFixtureRoot(fixtureId: string): string {
+  if (!evalIdentifierPattern.test(fixtureId)) {
+    throw new RangeError(`Invalid eval fixture ID: ${fixtureId}`);
+  }
+  return resolve(evalRoot, 'fixtures', fixtureId);
+}
+
+export function evalFixtureBaseCssPath(fixtureId: string): string {
+  return resolve(evalFixtureRoot(fixtureId), 'base.css');
+}
+
+function pathIsWithin(root: string, target: string): boolean {
+  const offset = relative(root, target);
+  return (
+    offset === '' || (!isAbsolute(offset) && offset !== '..' && !offset.startsWith(`..${sep}`))
+  );
+}
+
 async function verifyFixtureFiles(manifest: EvalManifest): Promise<void> {
+  const fixtureRoot = evalFixtureRoot(manifest.fixtureId);
   const variants: FixtureVariant[] = [
     manifest.reference,
     ...manifest.mutations,
     ...manifest.perturbations,
   ];
+  for (const variant of variants) {
+    for (const file of [variant.html, variant.css]) {
+      if (!pathIsWithin(fixtureRoot, resolveEvalPath(file))) {
+        throw new RangeError(
+          `Fixture ${manifest.fixtureId} path must stay inside its fixture directory: ${file}`
+        );
+      }
+    }
+  }
   await Promise.all(
-    variants.flatMap((variant) =>
-      [variant.html, variant.css].map(async (file) => await access(resolveEvalPath(file)))
-    )
+    [
+      evalFixtureBaseCssPath(manifest.fixtureId),
+      ...variants.flatMap((variant) =>
+        [variant.html, variant.css].map((file) => resolveEvalPath(file))
+      ),
+    ].map(async (file) => await access(file))
   );
 }
 
 export async function loadManifest(
-  manifestPath = resolve(evalRoot, 'manifests/atomic-button.json')
+  manifestPath = resolve(evalRoot, 'manifests', `${defaultEvalFixtureId}.json`)
 ): Promise<EvalManifest> {
   const parsed: unknown = JSON.parse(await readFile(manifestPath, 'utf8')) as unknown;
   const record = asRecord(parsed, 'manifest');
-  if (record.schemaVersion !== 2) {
-    throw new TypeError('manifest.schemaVersion must be 2');
+  if (record.schemaVersion !== 3) {
+    throw new TypeError('manifest.schemaVersion must be 3');
   }
 
   const referenceRecord = asRecord(record.reference, 'manifest.reference');
+  const referenceMetadata = parseExpectedMetadata(referenceRecord.expectedMetadata);
   const viewportRecord = asRecord(record.viewport, 'manifest.viewport');
   const editableSelectors = asArray(record.editableSelectors, 'manifest.editableSelectors').map(
     (selector, index) => asString(selector, `manifest.editableSelectors[${index}]`)
@@ -231,16 +299,23 @@ export async function loadManifest(
     perturbations: asArray(record.perturbations, 'manifest.perturbations').map(parsePerturbation),
     reference: {
       ...parseVariant(referenceRecord, 'manifest.reference'),
-      expectedMetadata: parseExpectedMetadata(referenceRecord.expectedMetadata),
+      expectedMetadata: referenceMetadata,
       expectedSpec: parseExpectedSpec(referenceRecord.expectedSpec),
+      rootDimensionConstraints: parseRootDimensionConstraints(
+        referenceRecord.sizing,
+        referenceMetadata
+      ),
     },
-    schemaVersion: 2,
+    schemaVersion: 3,
     selector: asString(record.selector, 'manifest.selector'),
     viewport: {
       height: asPositiveInteger(viewportRecord.height, 'manifest.viewport.height'),
       width: asPositiveInteger(viewportRecord.width, 'manifest.viewport.width'),
     },
   };
+  if (basename(manifestPath, '.json') !== manifest.fixtureId) {
+    throw new TypeError('manifest filename must match manifest.fixtureId');
+  }
   if (manifest.mutations.length === 0) {
     throw new TypeError('manifest.mutations must not be empty');
   }
@@ -254,4 +329,11 @@ export async function loadManifest(
 
   await verifyFixtureFiles(manifest);
   return manifest;
+}
+
+export async function loadManifestById(fixtureId: string): Promise<EvalManifest> {
+  if (!evalIdentifierPattern.test(fixtureId)) {
+    throw new RangeError(`Invalid eval fixture ID: ${fixtureId}`);
+  }
+  return await loadManifest(resolve(evalRoot, 'manifests', `${fixtureId}.json`));
 }

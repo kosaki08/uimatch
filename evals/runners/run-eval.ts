@@ -20,7 +20,7 @@ import {
   evaluateFinalProposal,
   type RenderedReference,
 } from '../harness.js';
-import { evalRoot, loadManifest } from '../manifest.js';
+import { defaultEvalFixtureId, evalRoot, loadManifestById } from '../manifest.js';
 import { parseRepairProposalJson } from '../repair-proposal.js';
 import type { RepairWorkspace } from '../repair-workspace.js';
 import {
@@ -182,7 +182,8 @@ function buildConditionFeedback(
   condition: ConditionId,
   comparison: ComparisonSnapshot,
   rootSelector: string,
-  sourceCss: string
+  sourceCss: string,
+  dimensionConstraints: EvalManifest['reference']['rootDimensionConstraints']
 ): ConditionFeedback {
   switch (condition) {
     case 'pixel-diff':
@@ -192,7 +193,7 @@ function buildConditionFeedback(
     case 'flat-diff':
       return buildFlatDiffFeedback(comparison, rootSelector);
     case 'typed-diff':
-      return buildTypedDiffFeedback(comparison, rootSelector, sourceCss);
+      return buildTypedDiffFeedback(comparison, rootSelector, sourceCss, dimensionConstraints);
   }
 }
 
@@ -401,7 +402,8 @@ async function runJob(options: {
     options.context.condition,
     options.initialComparison,
     options.context.manifest.selector,
-    options.workspace.implementationSource.css
+    options.workspace.implementationSource.css,
+    options.context.manifest.reference.rootDimensionConstraints
   );
   const messages = buildInitialMessages(
     options.workspace,
@@ -539,7 +541,8 @@ async function runJob(options: {
       options.context.condition,
       finalComparison,
       options.context.manifest.selector,
-      options.workspace.implementationSource.css
+      options.workspace.implementationSource.css,
+      options.context.manifest.reference.rootDimensionConstraints
     );
     messages.push({
       content: feedbackContent(
@@ -553,8 +556,7 @@ async function runJob(options: {
   throw new Error('Eval job exhausted its turn loop without producing a terminal result');
 }
 
-async function runEvaluation(config: EvalConfig): Promise<void> {
-  const manifest = await loadManifest();
+async function runEvaluation(config: EvalConfig, manifest: EvalManifest): Promise<void> {
   await assertResultDestinationsAvailable(config, manifest);
   buildCli();
   let totalKnownCostUsd = 0;
@@ -603,7 +605,8 @@ async function runEvaluation(config: EvalConfig): Promise<void> {
               condition,
               initialComparison,
               manifest.selector,
-              fixture.workspace.implementationSource.css
+              fixture.workspace.implementationSource.css,
+              manifest.reference.rootDimensionConstraints
             ),
             manifest.editableSelectors
           );
@@ -664,8 +667,19 @@ async function main(): Promise<void> {
   if (args.length !== 0) {
     throw new EvalUsageError('Usage: pnpm eval:run or pnpm eval:smoke');
   }
+  const fixtureId = process.env.EVAL_FIXTURE_ID?.trim() || defaultEvalFixtureId;
+  if (!evalIdentifierPattern.test(fixtureId)) {
+    throw new EvalUsageError('EVAL_FIXTURE_ID must be a safe eval identifier.');
+  }
+  let manifest: EvalManifest;
+  try {
+    manifest = await loadManifestById(fixtureId);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    throw new EvalUsageError(`No eval manifest exists for EVAL_FIXTURE_ID=${fixtureId}.`);
+  }
   const config = await loadEvalConfig();
-  await runEvaluation(config);
+  await runEvaluation(config, manifest);
 }
 
 main().catch((error: unknown) => {

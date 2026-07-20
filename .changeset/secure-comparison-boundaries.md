@@ -14,3 +14,4 @@ Harden comparison, selector, and configuration boundaries:
 - Improve selector anchor resolution, regex loading, source-position handling, and project-root confinement, including symlink escape rejection and validated atomic anchor write-back.
 - Run Chromium with its sandbox enabled by default, allow an explicit environment opt-out, and select a system Chrome fallback only when the bundled executable is absent.
 - Treat selector plugins as trusted operator code while validating their runtime output and failing closed on load, execution, timeout, or contract errors.
+- Preserve root FIXED/HUG/FILL sizing provenance when bootstrapping style expectations from Figma, while treating HUG/FILL bounds as observed geometry rather than fixed CSS dimensions.

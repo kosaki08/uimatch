@@ -33,6 +33,30 @@ export interface TokenMap {
 /** Public expected-style input accepted by the CLI API. */
 export type ExpectedSpec = Record<string, Partial<Record<string, string>>>;
 
+/** Source information retained while Figma root sizing is interpreted. */
+export type FigmaRootDimensionConstraint = {
+  axis: 'horizontal' | 'vertical';
+  observedPx?: number;
+} & (
+  | {
+      mode: 'FILL' | 'FIXED' | 'HUG';
+      source: 'layout-sizing';
+    }
+  | {
+      mode: 'FIXED' | 'HUG';
+      source: 'legacy-axis-sizing';
+    }
+  | {
+      mode: 'UNKNOWN';
+      source: 'compatibility-fallback' | 'non-auto-layout';
+    }
+);
+
+export interface FigmaExpectedSpec {
+  expectedSpec: ExpectedSpec;
+  rootDimensionConstraints: FigmaRootDimensionConstraint[];
+}
+
 export type DiffScope = 'ancestor' | 'self' | 'descendant';
 
 export interface PatchHint {
@@ -537,6 +561,11 @@ export interface CompareResult {
         from?: string;
         to?: string;
       };
+      /**
+       * Root dimension semantics retained when expectedSpec is bootstrapped in this run.
+       * A caller-supplied expectedSpec does not contain enough source information to populate it.
+       */
+      figmaRootDimensionConstraints?: FigmaRootDimensionConstraint[];
     };
 
     /**

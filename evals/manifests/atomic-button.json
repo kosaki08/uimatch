@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "fixtureId": "atomic-button",
   "selector": "#atomic",
   "editableSelectors": ["#atomic", "#atomic span", "#fixture"],
@@ -7,6 +7,7 @@
   "reference": {
     "html": "fixtures/atomic-button/reference/index.html",
     "css": "fixtures/atomic-button/reference/styles.css",
+    "sizing": { "horizontal": "HUG", "vertical": "HUG" },
     "expectedMetadata": {
       "width": 96,
       "height": 40,
@@ -27,9 +28,7 @@
         "padding-right": "16px",
         "padding-bottom": "8px",
         "padding-left": "16px",
-        "border-radius": "6px",
-        "width": "96px",
-        "height": "40px"
+        "border-radius": "6px"
       },
       "__self__ > :nth-child(1)": {
         "font-family": "Inter, sans-serif",

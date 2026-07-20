@@ -4,9 +4,9 @@
 
 import { FigmaRestClient } from '#plugin/adapters/figma-rest';
 import { loadFigmaMcpConfig, loadSkillConfig } from '#plugin/config/index';
-import { buildExpectedSpecFromFigma } from '#plugin/expected/from-figma';
+import { buildExpectedSpecFromFigmaWithMetadata } from '#plugin/expected/from-figma';
 import { FigmaMcpClient, parseFigmaRef } from '#plugin/experimental/index.js';
-import type { CompareArgs, CompareResult } from '#plugin/types/index';
+import type { CompareArgs, CompareResult, FigmaRootDimensionConstraint } from '#plugin/types/index';
 import type { CaptureResult, CompareImageResult } from '@uimatch/core';
 import {
   browserPool,
@@ -585,12 +585,15 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
 
   // 2.5) Bootstrap expectedSpec from Figma node if requested and none provided
   let expectedSpec = args.expectedSpec;
+  let figmaRootDimensionConstraints: FigmaRootDimensionConstraint[] | undefined;
   if (!expectedSpec && (args.bootstrapExpectedFromFigma ?? false)) {
     if (process.env.FIGMA_ACCESS_TOKEN) {
       try {
         const rest = new FigmaRestClient(process.env.FIGMA_ACCESS_TOKEN);
         const nodeJson = await rest.getNode({ fileKey, nodeId });
-        expectedSpec = buildExpectedSpecFromFigma(nodeJson, args.tokens);
+        const built = buildExpectedSpecFromFigmaWithMetadata(nodeJson, args.tokens);
+        expectedSpec = built.expectedSpec;
+        figmaRootDimensionConstraints = built.rootDimensionConstraints;
         if (args.verbose) {
           logger.info('expectedSpec bootstrapped from Figma node (robust subset)');
         }
@@ -867,6 +870,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     qualityGate: qualityGateResult, // Quality gate evaluation result
     meta: {
       figmaAutoRoi: roiMeta,
+      ...(figmaRootDimensionConstraints ? { figmaRootDimensionConstraints } : {}),
     },
     textMatch: textMatchReport,
     artifacts: args.emitArtifacts

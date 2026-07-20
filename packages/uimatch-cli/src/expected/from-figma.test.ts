@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { buildExpectedSpecFromFigma, type FigmaNodeLite } from './from-figma.js';
+import {
+  buildExpectedSpecFromFigma,
+  buildExpectedSpecFromFigmaWithMetadata,
+  type FigmaNodeLite,
+} from './from-figma.js';
 
 function rootDimensions(node: Record<string, unknown>): Record<string, string> {
   const root = buildExpectedSpecFromFigma(node).__self__ ?? {};
@@ -85,6 +89,78 @@ describe('buildExpectedSpecFromFigma sizing', () => {
         primaryAxisSizingMode: 'FIXED',
       })
     ).toEqual({});
+  });
+
+  test('falls back to legacy sizing only for an axis without current metadata', () => {
+    expect(
+      rootDimensions({
+        absoluteBoundingBox: { height: 40, width: 120 },
+        counterAxisSizingMode: 'FIXED',
+        layoutMode: 'HORIZONTAL',
+        layoutSizingHorizontal: 'HUG',
+        primaryAxisSizingMode: 'FIXED',
+      })
+    ).toEqual({ height: '40px' });
+  });
+
+  test.each([
+    {
+      expected: {
+        mode: 'FIXED',
+        observedPx: 120,
+        source: 'layout-sizing',
+      },
+      node: { layoutSizingHorizontal: 'FIXED' },
+    },
+    {
+      expected: {
+        mode: 'HUG',
+        observedPx: 120,
+        source: 'layout-sizing',
+      },
+      node: { layoutSizingHorizontal: 'HUG' },
+    },
+    {
+      expected: {
+        mode: 'FILL',
+        observedPx: 120,
+        source: 'layout-sizing',
+      },
+      node: { layoutSizingHorizontal: 'FILL' },
+    },
+    {
+      expected: {
+        mode: 'HUG',
+        observedPx: 120,
+        source: 'legacy-axis-sizing',
+      },
+      node: { layoutMode: 'HORIZONTAL', primaryAxisSizingMode: 'AUTO' },
+    },
+    {
+      expected: {
+        mode: 'UNKNOWN',
+        observedPx: 120,
+        source: 'non-auto-layout',
+      },
+      node: { layoutMode: 'NONE' },
+    },
+    {
+      expected: {
+        mode: 'UNKNOWN',
+        observedPx: 120,
+        source: 'compatibility-fallback',
+      },
+      node: {},
+    },
+  ])('retains $expected.source dimension provenance', ({ expected, node }) => {
+    const result = buildExpectedSpecFromFigmaWithMetadata({
+      ...node,
+      absoluteBoundingBox: { height: 40, width: 120 },
+    });
+    expect(result.rootDimensionConstraints.find(({ axis }) => axis === 'horizontal')).toEqual({
+      axis: 'horizontal',
+      ...expected,
+    });
   });
 
   test.each([

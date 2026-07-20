@@ -1,7 +1,7 @@
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { evalRoot, resolveEvalPath } from './manifest.js';
+import { join } from 'node:path';
+import { evalFixtureBaseCssPath, resolveEvalPath } from './manifest.js';
 import type { EvalManifest, EvalMutation, RepairChange, RepairProposal } from './types.js';
 
 export interface WorkspaceVariant {
@@ -121,7 +121,7 @@ export async function createRepairWorkspace(
       async applyProposal(proposal): Promise<void> {
         await writeWorkspaceCss(proposal);
       },
-      baseCssPath: resolve(evalRoot, 'fixtures', manifest.fixtureId, 'base.css'),
+      baseCssPath: evalFixtureBaseCssPath(manifest.fixtureId),
       async close(): Promise<void> {
         const cleanup = await Promise.allSettled([
           rm(harnessRootDirectory, { force: true, recursive: true }),

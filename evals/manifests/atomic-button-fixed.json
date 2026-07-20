@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 3,
+  "fixtureId": "atomic-button-fixed",
+  "selector": "#atomic",
+  "editableSelectors": ["#atomic", "#atomic span", "#fixture"],
+  "viewport": { "width": 320, "height": 160 },
+  "reference": {
+    "html": "fixtures/atomic-button-fixed/reference/index.html",
+    "css": "fixtures/atomic-button-fixed/reference/styles.css",
+    "sizing": { "horizontal": "FIXED", "vertical": "HUG" },
+    "expectedMetadata": {
+      "width": 96,
+      "height": 40,
+      "childCount": 1,
+      "overflowing": false,
+      "padding": [8, 16, 8, 16],
+      "scrollHeight": 40,
+      "scrollWidth": 96
+    },
+    "expectedSpec": {
+      "__self__": {
+        "display": "flex",
+        "flex-direction": "row",
+        "align-items": "center",
+        "justify-content": "center",
+        "gap": "10px",
+        "padding-top": "8px",
+        "padding-right": "16px",
+        "padding-bottom": "8px",
+        "padding-left": "16px",
+        "border-radius": "6px",
+        "width": "96px"
+      },
+      "__self__ > :nth-child(1)": {
+        "font-family": "Inter, sans-serif",
+        "font-size": "14px",
+        "font-weight": "500",
+        "line-height": "24px"
+      }
+    }
+  },
+  "mutations": [
+    {
+      "id": "width-drift",
+      "html": "fixtures/atomic-button-fixed/mutations/width-drift/index.html",
+      "css": "fixtures/atomic-button-fixed/mutations/width-drift/styles.css",
+      "rootCause": {
+        "description": "The explicit button width drifted from 96px to 120px.",
+        "acceptedRepairs": [[{ "selector": "#atomic", "property": "width", "value": "96px" }]]
+      }
+    }
+  ],
+  "perturbations": [
+    {
+      "id": "short-content",
+      "html": "fixtures/atomic-button-fixed/perturbations/short-content/index.html",
+      "css": "fixtures/atomic-button-fixed/perturbations/short-content/styles.css",
+      "expectedMetadata": {
+        "width": 96,
+        "height": 40,
+        "childCount": 1,
+        "overflowing": false,
+        "padding": [8, 16, 8, 16],
+        "scrollHeight": 40,
+        "scrollWidth": 96
+      }
+    }
+  ]
+}

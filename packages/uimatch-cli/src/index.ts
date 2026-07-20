@@ -6,6 +6,7 @@ export type {
   CompareArgs,
   CompareResult,
   FigmaRef,
+  FigmaRootDimensionConstraint,
   FigmaVariable,
   Thresholds,
 } from './types/index.js';

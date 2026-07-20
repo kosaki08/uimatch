@@ -4,7 +4,7 @@ import {
   type FixtureRoute,
   type FixtureServer,
 } from '../../test-utils/fixture-server.js';
-import { evalRoot, resolveEvalPath } from '../manifest.js';
+import { evalFixtureBaseCssPath, evalRoot, resolveEvalPath } from '../manifest.js';
 import type { RepairWorkspace, WorkspaceVariant } from '../repair-workspace.js';
 import type { EvalManifest, FixtureVariant } from '../types.js';
 
@@ -60,7 +60,7 @@ export async function startEvalFixtureServer(
 
   routes.set(`/${manifest.fixtureId}/base.css`, {
     contentType: 'text/css; charset=utf-8',
-    filePath: resolve(evalRoot, 'fixtures', manifest.fixtureId, 'base.css'),
+    filePath: evalFixtureBaseCssPath(manifest.fixtureId),
   });
   routes.set('/workspace/base.css', {
     contentType: 'text/css; charset=utf-8',

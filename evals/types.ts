@@ -1,3 +1,5 @@
+import type { FigmaRootDimensionConstraint } from '@uimatch/cli';
+
 const legacyConditionIds = ['pixel-diff', 'scalar', 'flat-diff'] as const;
 export const conditionIds = [...legacyConditionIds, 'typed-diff'] as const;
 export const evalIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -58,6 +60,17 @@ export interface ExpectedMetadata {
   width: number;
 }
 
+export type FixtureSizingMode = 'FILL' | 'FIXED' | 'HUG';
+
+export interface FixtureRootDimensionConstraint {
+  axis: 'horizontal' | 'vertical';
+  mode: FixtureSizingMode;
+  observedPx: number;
+  source: 'fixture-contract';
+}
+
+export type RootDimensionConstraint = FigmaRootDimensionConstraint | FixtureRootDimensionConstraint;
+
 export function expectedMetadataMatches(left: ExpectedMetadata, right: ExpectedMetadata): boolean {
   return (
     left.childCount === right.childCount &&
@@ -93,8 +106,9 @@ export interface EvalManifest {
   reference: FixtureVariant & {
     expectedMetadata: ExpectedMetadata;
     expectedSpec: Record<string, Partial<Record<string, string>>>;
+    rootDimensionConstraints: FixtureRootDimensionConstraint[];
   };
-  schemaVersion: 2;
+  schemaVersion: 3;
   selector: string;
   viewport: { height: number; width: number };
 }
@@ -114,6 +128,10 @@ export interface ComparisonSnapshot {
     diffPngB64: string;
     figmaPngB64: string;
     implPngB64: string;
+  };
+  dimensions?: {
+    figma: { height: number; width: number };
+    impl: { height: number; width: number };
   };
   styleDiffs: Array<{
     isRoot?: boolean;

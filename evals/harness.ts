@@ -201,6 +201,7 @@ export async function compareVariant(options: CompareVariantOptions): Promise<Co
     const artifacts = result.report.artifacts;
     if (!artifacts) throw new Error('uiMatch comparison did not return requested image artifacts');
     const metrics = result.report.metrics;
+    const dimensions = result.report.dimensions;
     const visible: VisibleComparisonMetrics = {
       dfs: asNonNegativeNumber(metrics.dfs, 'uiMatch comparison DFS score'),
       highSeverityIssues: result.report.styleDiffs.filter((diff) => diff.severity === 'high')
@@ -222,6 +223,20 @@ export async function compareVariant(options: CompareVariantOptions): Promise<Co
     };
     return {
       artifacts,
+      ...(dimensions
+        ? {
+            dimensions: {
+              figma: {
+                height: asNonNegativeNumber(dimensions.figma.height, 'Figma image height'),
+                width: asNonNegativeNumber(dimensions.figma.width, 'Figma image width'),
+              },
+              impl: {
+                height: asNonNegativeNumber(dimensions.impl.height, 'implementation image height'),
+                width: asNonNegativeNumber(dimensions.impl.width, 'implementation image width'),
+              },
+            },
+          }
+        : {}),
       styleDiffs: result.report.styleDiffs,
       visible,
     };

@@ -4,9 +4,9 @@ import { parseArtifactPolicy } from '../artifacts.js';
 import { runCodexExecSelfCheck } from '../backends/codex-exec-self-check.js';
 import { runOpenRouterRetrySelfCheck } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
-import { buildTypedStyleDiffs } from '../conditions/typed-diff.js';
+import { buildTypedDiffEvidence, buildTypedStyleDiffs } from '../conditions/typed-diff.js';
 import { compareVariant, createFixtureContext, evaluateFinalProposal } from '../harness.js';
-import { loadManifest } from '../manifest.js';
+import { loadManifest, loadManifestById } from '../manifest.js';
 import { parseRepairProposal } from '../repair-proposal.js';
 import { conditionOrderForTrial, evalRunIdPattern, type RepairProposal } from '../types.js';
 import { buildCli } from './build-cli.js';
@@ -18,6 +18,131 @@ function pathIsWithin(root: string, target: string): boolean {
     relativePath === '' ||
     (!isAbsolute(relativePath) && relativePath !== '..' && !relativePath.startsWith(`..${sep}`))
   );
+}
+
+async function runFixedSizingSelfCheck(): Promise<void> {
+  const manifest = await loadManifestById('atomic-button-fixed');
+  const mutation = manifest.mutations[0];
+  const acceptedRepair = mutation?.rootCause.acceptedRepairs[0];
+  if (!mutation || !acceptedRepair) {
+    throw new Error('Fixed-size eval self-check requires one mutation with an accepted repair');
+  }
+  const context = await createFixtureContext(manifest, mutation);
+  try {
+    const initialComparison = await compareVariant({
+      expectedSpec: manifest.reference.expectedSpec,
+      manifest,
+      purpose: 'visible',
+      referencePngB64: context.reference.pngB64,
+      server: context.server,
+      story: context.server.workspaceImplementationUrl,
+    });
+    if (initialComparison.visible.pass) {
+      throw new Error('Fixed-size mutation unexpectedly passed before repair');
+    }
+    const evidence = buildTypedDiffEvidence(
+      initialComparison,
+      manifest.selector,
+      context.workspace.implementationSource.css,
+      manifest.reference.rootDimensionConstraints
+    );
+    const horizontal = evidence.dimensionConstraints.find(
+      (constraint) => constraint.axis === 'horizontal'
+    );
+    const width = evidence.styleDiffs
+      .find((styleDiff) => styleDiff.isRoot === true)
+      ?.properties.find((property) => property.property === 'width');
+    if (
+      horizontal?.mode !== 'FIXED' ||
+      horizontal.source !== 'fixture-contract' ||
+      horizontal.actionability !== 'repair-candidate' ||
+      width?.dimensionConstraint?.mode !== 'FIXED' ||
+      width.actionability !== 'repair-candidate' ||
+      width.sourceDeclaration !== 'width'
+    ) {
+      throw new Error('Typed-diff feedback did not preserve the explicit fixed-width contract');
+    }
+
+    for (const mode of ['HUG', 'FILL'] as const) {
+      const alternate = buildTypedDiffEvidence(
+        initialComparison,
+        manifest.selector,
+        '',
+        manifest.reference.rootDimensionConstraints.map((constraint) =>
+          constraint.axis === 'horizontal' ? { ...constraint, mode } : constraint
+        )
+      ).dimensionConstraints.find((constraint) => constraint.axis === 'horizontal');
+      if (alternate?.mode !== mode || alternate.actionability !== 'diagnostic-only') {
+        throw new Error(`Typed-diff feedback treated ${mode} geometry as actionable`);
+      }
+    }
+
+    const authoredWidthUnderHug = buildTypedStyleDiffs(
+      initialComparison,
+      manifest.selector,
+      context.workspace.implementationSource.css,
+      manifest.reference.rootDimensionConstraints.map((constraint) =>
+        constraint.axis === 'horizontal' ? { ...constraint, mode: 'HUG' as const } : constraint
+      )
+    )
+      .find((styleDiff) => styleDiff.isRoot === true)
+      ?.properties.find((property) => property.property === 'width');
+    if (authoredWidthUnderHug?.actionability !== 'repair-candidate') {
+      throw new Error('Typed-diff feedback hid an authored width under a HUG contract');
+    }
+
+    const proposal: RepairProposal = {
+      changes: acceptedRepair,
+      diagnosis: 'self-check fixed-width repair',
+    };
+    await context.workspace.applyProposal(proposal);
+    const repairedComparison = await compareVariant({
+      expectedSpec: manifest.reference.expectedSpec,
+      manifest,
+      purpose: 'visible',
+      referencePngB64: context.reference.pngB64,
+      server: context.server,
+      story: context.server.workspaceImplementationUrl,
+    });
+    const accepted = await evaluateFinalProposal({
+      finalComparison: repairedComparison,
+      manifest,
+      mutation,
+      perturbationReferences: context.perturbationReferences,
+      proposal,
+      server: context.server,
+    });
+    if (!accepted.accepted || accepted.perturbationsSurvived.length !== 1) {
+      throw new Error('Hidden acceptance rejected the fixed-width ground truth');
+    }
+
+    const intrinsicProposal: RepairProposal = {
+      changes: [{ property: 'width', selector: manifest.selector, value: 'auto' }],
+      diagnosis: 'self-check incorrect intrinsic sizing',
+    };
+    await context.workspace.applyProposal(intrinsicProposal);
+    const intrinsicComparison = await compareVariant({
+      expectedSpec: manifest.reference.expectedSpec,
+      manifest,
+      purpose: 'visible',
+      referencePngB64: context.reference.pngB64,
+      server: context.server,
+      story: context.server.workspaceImplementationUrl,
+    });
+    const rejected = await evaluateFinalProposal({
+      finalComparison: intrinsicComparison,
+      manifest,
+      mutation,
+      perturbationReferences: context.perturbationReferences,
+      proposal: intrinsicProposal,
+      server: context.server,
+    });
+    if (!rejected.finalComparisonPassed || rejected.accepted) {
+      throw new Error('Fixed-size perturbation did not reject an intrinsic-width repair');
+    }
+  } finally {
+    await context.close();
+  }
 }
 
 export async function runSelfCheck(): Promise<void> {
@@ -114,37 +239,30 @@ export async function runSelfCheck(): Promise<void> {
     ) {
       throw new Error('Flat-diff feedback did not normalize the root selector for repair');
     }
-    const typedRootDiff = buildTypedStyleDiffs(
+    const typedEvidence = buildTypedDiffEvidence(
       initialComparison,
       manifest.selector,
-      context.workspace.implementationSource.css
-    ).find((styleDiff) => styleDiff.isRoot === true);
+      context.workspace.implementationSource.css,
+      manifest.reference.rootDimensionConstraints
+    );
+    const typedRootDiff = typedEvidence.styleDiffs.find((styleDiff) => styleDiff.isRoot === true);
     const typedProperties = new Map(
       typedRootDiff?.properties.map((property) => [property.property, property])
     );
+    const horizontalSizing = typedEvidence.dimensionConstraints.find(
+      (constraint) => constraint.axis === 'horizontal'
+    );
     if (
       typedRootDiff?.selector !== manifest.selector ||
-      typedProperties.get('width')?.provenance !== 'derived-geometry' ||
-      typedProperties.get('width')?.actionability !== 'diagnostic-only' ||
+      horizontalSizing?.mode !== 'HUG' ||
+      horizontalSizing.source !== 'fixture-contract' ||
+      horizontalSizing.actionability !== 'diagnostic-only' ||
+      horizontalSizing.observedPx !== manifest.reference.expectedMetadata.width ||
       typedProperties.get('padding-left')?.sourceDeclaration !== 'padding' ||
       typedProperties.get('padding-left')?.actionability !== 'repair-candidate' ||
       typedProperties.get('padding-right')?.sourceDeclaration !== 'padding'
     ) {
       throw new Error('Typed-diff feedback did not distinguish authored and derived values');
-    }
-    const explicitlyAuthoredWidth = buildTypedStyleDiffs(
-      initialComparison,
-      manifest.selector,
-      `${context.workspace.implementationSource.css}\n${manifest.selector} { width: 120px; }`
-    )
-      .find((styleDiff) => styleDiff.isRoot === true)
-      ?.properties.find((property) => property.property === 'width');
-    if (
-      explicitlyAuthoredWidth?.provenance !== 'authored-computed-style' ||
-      explicitlyAuthoredWidth.actionability !== 'repair-candidate' ||
-      explicitlyAuthoredWidth.sourceDeclaration !== 'width'
-    ) {
-      throw new Error('Typed-diff feedback did not classify an authored width as actionable');
     }
 
     const rootProposal: RepairProposal = {
@@ -262,4 +380,6 @@ export async function runSelfCheck(): Promise<void> {
   } finally {
     await context.close();
   }
+  await runFixedSizingSelfCheck();
+  console.log('Eval fixed-sizing self-check passed: atomic-button-fixed');
 }

@@ -1,4 +1,9 @@
-import type { ExpectedSpec, TokenMap } from '../types/index.js';
+import type {
+  ExpectedSpec,
+  FigmaExpectedSpec,
+  FigmaRootDimensionConstraint,
+  TokenMap,
+} from '../types/index.js';
 
 /**
  * Minimal Figma node shapes we care about (partial & tolerant)
@@ -15,7 +20,6 @@ type FigmaEffect = {
 };
 type FigmaLayoutSizing = 'FILL' | 'FIXED' | 'HUG';
 type FigmaLegacyAxisSizing = 'AUTO' | 'FIXED';
-type LayoutAxis = 'horizontal' | 'vertical';
 
 export interface FigmaNodeLite {
   type?: string;
@@ -103,32 +107,56 @@ function mapAutoLayoutAlign(v?: 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN'): str
   }
 }
 
-function resolveLayoutSizing(node: FigmaNodeLite, axis: LayoutAxis): FigmaLayoutSizing | undefined {
+type RootDimensionAxis = FigmaRootDimensionConstraint['axis'];
+
+function observedDimension(node: FigmaNodeLite, axis: RootDimensionAxis): number | undefined {
+  const value =
+    axis === 'horizontal' ? node.absoluteBoundingBox?.width : node.absoluteBoundingBox?.height;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function resolveDimensionConstraint(
+  node: FigmaNodeLite,
+  axis: RootDimensionAxis
+): FigmaRootDimensionConstraint {
+  const observedPx = observedDimension(node, axis);
   const sizing = axis === 'horizontal' ? node.layoutSizingHorizontal : node.layoutSizingVertical;
-  if (sizing === 'FILL' || sizing === 'FIXED' || sizing === 'HUG') return sizing;
+  if (sizing === 'FILL' || sizing === 'FIXED' || sizing === 'HUG') {
+    return {
+      axis,
+      mode: sizing,
+      ...(observedPx === undefined ? {} : { observedPx }),
+      source: 'layout-sizing',
+    };
+  }
   if (sizing !== undefined) {
     throw new TypeError(`Unsupported Figma ${axis} sizing: ${String(sizing)}`);
   }
 
-  if (node.layoutMode !== 'HORIZONTAL' && node.layoutMode !== 'VERTICAL') {
-    return undefined;
+  if (node.layoutMode === 'HORIZONTAL' || node.layoutMode === 'VERTICAL') {
+    const isPrimaryAxis =
+      (axis === 'horizontal' && node.layoutMode === 'HORIZONTAL') ||
+      (axis === 'vertical' && node.layoutMode === 'VERTICAL');
+    const legacySizing = isPrimaryAxis ? node.primaryAxisSizingMode : node.counterAxisSizingMode;
+    if (legacySizing === 'FIXED' || legacySizing === 'AUTO') {
+      return {
+        axis,
+        mode: legacySizing === 'FIXED' ? 'FIXED' : 'HUG',
+        ...(observedPx === undefined ? {} : { observedPx }),
+        source: 'legacy-axis-sizing',
+      };
+    }
+    if (legacySizing !== undefined) {
+      throw new TypeError(`Unsupported legacy Figma ${axis} sizing: ${String(legacySizing)}`);
+    }
   }
 
-  const isPrimaryAxis =
-    (axis === 'horizontal' && node.layoutMode === 'HORIZONTAL') ||
-    (axis === 'vertical' && node.layoutMode === 'VERTICAL');
-  const legacySizing = isPrimaryAxis ? node.primaryAxisSizingMode : node.counterAxisSizingMode;
-  if (legacySizing === 'FIXED') return 'FIXED';
-  if (legacySizing === 'AUTO') return 'HUG';
-  if (legacySizing !== undefined) {
-    throw new TypeError(`Unsupported legacy Figma ${axis} sizing: ${String(legacySizing)}`);
-  }
-  return undefined;
-}
-
-function shouldEmitFixedDimension(node: FigmaNodeLite, axis: LayoutAxis): boolean {
-  const sizing = resolveLayoutSizing(node, axis);
-  return sizing === undefined || sizing === 'FIXED';
+  return {
+    axis,
+    mode: 'UNKNOWN',
+    ...(observedPx === undefined ? {} : { observedPx }),
+    source: node.layoutMode === 'NONE' ? 'non-auto-layout' : 'compatibility-fallback',
+  };
 }
 
 /**
@@ -140,7 +168,7 @@ function build(
   path: string,
   spec: ExpectedSpec,
   tokens?: TokenMap,
-  isRoot = false
+  rootDimensionConstraints?: readonly FigmaRootDimensionConstraint[]
 ) {
   const n = node;
   const S = (spec[path] ||= {});
@@ -252,13 +280,15 @@ function build(
   // ===== Fixed dimensions =====
   // A bounding box is an observation for HUG/FILL sizing, not a fixed design constraint.
   // Missing sizing metadata retains the legacy behavior for non-auto-layout and older inputs.
-  if (isRoot) {
-    if (shouldEmitFixedDimension(n, 'horizontal') && n.absoluteBoundingBox?.width) {
-      const width = px(n.absoluteBoundingBox.width);
+  if (rootDimensionConstraints) {
+    const horizontal = rootDimensionConstraints.find(({ axis }) => axis === 'horizontal');
+    const vertical = rootDimensionConstraints.find(({ axis }) => axis === 'vertical');
+    if (horizontal && (horizontal.mode === 'FIXED' || horizontal.mode === 'UNKNOWN')) {
+      const width = horizontal.observedPx ? px(horizontal.observedPx) : undefined;
       if (width) S['width'] = width;
     }
-    if (shouldEmitFixedDimension(n, 'vertical') && n.absoluteBoundingBox?.height) {
-      const height = px(n.absoluteBoundingBox.height);
+    if (vertical && (vertical.mode === 'FIXED' || vertical.mode === 'UNKNOWN')) {
+      const height = vertical.observedPx ? px(vertical.observedPx) : undefined;
       if (height) S['height'] = height;
     }
   }
@@ -279,7 +309,19 @@ export function buildExpectedSpecFromFigma(
   node: Record<string, unknown>,
   tokens?: TokenMap
 ): ExpectedSpec {
+  return buildExpectedSpecFromFigmaWithMetadata(node, tokens).expectedSpec;
+}
+
+export function buildExpectedSpecFromFigmaWithMetadata(
+  node: Record<string, unknown>,
+  tokens?: TokenMap
+): FigmaExpectedSpec {
   const spec: ExpectedSpec = {};
-  build(node, '__self__', spec, tokens, true);
-  return spec;
+  const figmaNode = node as FigmaNodeLite;
+  const rootDimensionConstraints = [
+    resolveDimensionConstraint(figmaNode, 'horizontal'),
+    resolveDimensionConstraint(figmaNode, 'vertical'),
+  ];
+  build(figmaNode, '__self__', spec, tokens, rootDimensionConstraints);
+  return { expectedSpec: spec, rootDimensionConstraints };
 }

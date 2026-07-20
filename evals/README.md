@@ -39,12 +39,13 @@ proposal replaces the previous proposal; source fixtures are never edited.
 Hidden acceptance runs only when the visible comparison passes or the turn
 limit is reached. Its result is never sent back to the model.
 
-`typed-diff` classifies values using only the original implementation CSS
-already shown to the model. A property explicitly set on the matching selector
-is a `repair-candidate`; a `padding` shorthand also counts for its corresponding
-longhand properties. Width and height values that are not explicitly set are
-classified as `derived-geometry`, while other computed values are classified as
-`computed-observation`. Both are `diagnostic-only`.
+`typed-diff` combines the original implementation CSS already shown to the
+model with the reference fixture's explicit sizing contract. A property set on
+the matching selector is a `repair-candidate`; a `padding` shorthand also counts
+for its corresponding longhand properties. A FIXED fixture dimension is also a
+repair candidate. HUG/FILL dimensions remain observed geometry and are
+`diagnostic-only`; their observed pixels are not instructions to add a fixed
+CSS dimension.
 
 This classification does not use the reference CSS, accepted repairs, or hidden
 perturbations. The original `flat-diff` condition remains unchanged as the
@@ -68,6 +69,7 @@ EVAL_BACKEND=openrouter
 EVAL_AUTH_MODE=api
 OPENROUTER_API_KEY=...
 EVAL_MODEL=provider/model-id
+EVAL_FIXTURE_ID=atomic-button
 EVAL_MAX_TURNS=3
 EVAL_BUDGET_USD=1.00
 UIMATCH_EVAL_COMMIT=<commit supplied by the caller or build>
@@ -87,6 +89,7 @@ completed turn:
 EVAL_BACKEND=codex-exec
 EVAL_AUTH_MODE=subscription
 EVAL_MODEL=<codex-model-id>
+EVAL_FIXTURE_ID=atomic-button
 EVAL_MAX_TURNS=3
 EVAL_CODEX_REASONING_EFFORT=medium
 EVAL_CODEX_TURN_TIMEOUT_MS=120000
@@ -220,6 +223,20 @@ Reference and current HTML/CSS plus manifests are committed. Raw results are
 written to ignored `evals/results/`. Audit screenshots and contact sheets are
 written to ignored `evals/artifacts/`; only reviewed aggregates may be promoted
 to `evals/summaries/`.
+
+`EVAL_FIXTURE_ID` selects one manifest and defaults to `atomic-button`. The
+current sizing fixtures intentionally separate two contracts:
+
+- `atomic-button` is a synthetic HUG/HUG button. Its 96px × 40px reference box
+  is observed geometry, and hidden variants require intrinsic resizing.
+- `atomic-button-fixed` is FIXED/HUG. Its 96px width is an explicit contract,
+  and a hidden short-content variant verifies that a repair does not turn it
+  into intrinsic sizing.
+
+These synthetic contracts are not claims about the sizing mode of the live
+Figma smoke node. Results from earlier commits remain preliminary evidence for
+visible/hidden divergence and must be replayed from their recorded
+`uimatchCommit` when fixture contracts have changed.
 
 ## Audit artifacts
 
