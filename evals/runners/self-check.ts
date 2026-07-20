@@ -265,6 +265,112 @@ async function evaluateContractPairRepair(
   });
 }
 
+// Everything an agent sees before the contract is identical on both sides, so a difference in
+// behaviour cannot be attributed to anything but the sizing contract.
+function assertPairInputsAreIdentical(hug: ContractPairSide, fixed: ContractPairSide): void {
+  if (hug.manifest.selector !== fixed.manifest.selector) {
+    throw new Error('Contract-pair sides do not share a root selector');
+  }
+  if (hug.context.reference.pngB64 !== fixed.context.reference.pngB64) {
+    throw new Error('Contract-pair references do not render identically');
+  }
+  if (hug.initialComparison.artifacts.implPngB64 !== fixed.initialComparison.artifacts.implPngB64) {
+    throw new Error('Contract-pair mutations do not render identically');
+  }
+  if (
+    hug.context.workspace.implementationSource.css !==
+      fixed.context.workspace.implementationSource.css ||
+    hug.context.workspace.implementationSource.html !==
+      fixed.context.workspace.implementationSource.html
+  ) {
+    throw new Error('Contract-pair sides do not share the same agent-visible source');
+  }
+}
+
+// Untyped conditions observe identical payloads on both sides. Typed-diff is the only condition
+// that carries the contract, and it must carry opposite actionability across the pair.
+function assertOnlyTypedDiffCarriesTheContract(
+  hug: ContractPairSide,
+  fixed: ContractPairSide
+): void {
+  const untypedFeedback = (side: ContractPairSide): string =>
+    JSON.stringify([
+      buildPixelDiffFeedback(side.initialComparison),
+      buildScalarFeedback(side.initialComparison),
+    ]);
+  if (untypedFeedback(hug) !== untypedFeedback(fixed)) {
+    throw new Error('Contract-pair pixel-diff or scalar payloads differ across the pair');
+  }
+  const horizontalSignal = (side: ContractPairSide): TypedDimensionSignal | undefined =>
+    buildTypedDiffEvidence(
+      side.initialComparison,
+      side.manifest.selector,
+      side.context.workspace.implementationSource.css,
+      side.manifest.reference.rootDimensionConstraints
+    ).dimensionConstraints.find((constraint) => constraint.axis === 'horizontal');
+  const hugSignal = horizontalSignal(hug);
+  const fixedSignal = horizontalSignal(fixed);
+  if (
+    hugSignal?.mode !== 'HUG' ||
+    hugSignal.actionability !== 'diagnostic-only' ||
+    fixedSignal?.mode !== 'FIXED' ||
+    fixedSignal.actionability !== 'repair-candidate'
+  ) {
+    throw new Error('Contract-pair typed-diff did not separate the HUG and FIXED contracts');
+  }
+}
+
+// The FIXED candidate must not carry the width the agent is expected to supply, otherwise hidden
+// acceptance cannot observe an omission. Asserted on the source, not only the render.
+async function assertFixedCandidatesOmitTheWidth(fixed: ContractPairSide): Promise<void> {
+  for (const [perturbationId, candidate] of fixed.mutation.candidates) {
+    const candidateCss = await readFile(resolveEvalPath(candidate.css), 'utf8');
+    if (rootDeclarations(candidateCss, fixed.manifest.selector).has('width')) {
+      throw new Error(
+        `Contract-pair candidate ${perturbationId} declares a width on ${fixed.manifest.selector}`
+      );
+    }
+  }
+}
+
+// The four cells that define the pair. The same proposal must earn opposite verdicts on each side.
+async function assertContractDiscriminationMatrix(
+  hug: ContractPairSide,
+  fixed: ContractPairSide
+): Promise<void> {
+  const selector = hug.manifest.selector;
+  const paddingOnly: RepairProposal = {
+    changes: [{ property: 'padding', selector, value: '8px 16px' }],
+    diagnosis: 'contract-pair padding-only repair',
+  };
+  const paddingAndWidth: RepairProposal = {
+    changes: [...paddingOnly.changes, { property: 'width', selector, value: '96px' }],
+    diagnosis: 'contract-pair padding and width repair',
+  };
+
+  const hugPaddingOnly = await evaluateContractPairRepair(hug, paddingOnly);
+  if (!hugPaddingOnly.accepted || !hugPaddingOnly.rootCauseRepaired) {
+    throw new Error('Contract-pair HUG side rejected the padding-only ground truth');
+  }
+  const hugPaddingAndWidth = await evaluateContractPairRepair(hug, paddingAndWidth);
+  if (!hugPaddingAndWidth.finalComparisonPassed || hugPaddingAndWidth.accepted) {
+    throw new Error('Contract-pair HUG side accepted an added fixed width');
+  }
+
+  const fixedPaddingOnly = await evaluateContractPairRepair(fixed, paddingOnly);
+  if (
+    !fixedPaddingOnly.finalComparisonPassed ||
+    fixedPaddingOnly.accepted ||
+    fixedPaddingOnly.rootCauseRepaired
+  ) {
+    throw new Error('Contract-pair FIXED side accepted a padding-only repair');
+  }
+  const fixedPaddingAndWidth = await evaluateContractPairRepair(fixed, paddingAndWidth);
+  if (!fixedPaddingAndWidth.accepted || !fixedPaddingAndWidth.rootCauseRepaired) {
+    throw new Error('Contract-pair FIXED side rejected the padding and width ground truth');
+  }
+}
+
 // The counterfactual pair: atomic-button (HUG) and atomic-button-fixed (FIXED) render identically
 // and receive byte-identical mutated HTML and CSS, so only the sizing contract can tell an agent
 // which repair is correct. Restoring padding alone is right under HUG and overfits under FIXED;
@@ -277,96 +383,10 @@ async function runContractPairSelfCheck(): Promise<void> {
       'padding-drift-missing-fixed-width'
     );
     try {
-      if (hug.manifest.selector !== fixed.manifest.selector) {
-        throw new Error('Contract-pair sides do not share a root selector');
-      }
-      if (hug.context.reference.pngB64 !== fixed.context.reference.pngB64) {
-        throw new Error('Contract-pair references do not render identically');
-      }
-      if (
-        hug.initialComparison.artifacts.implPngB64 !== fixed.initialComparison.artifacts.implPngB64
-      ) {
-        throw new Error('Contract-pair mutations do not render identically');
-      }
-      if (
-        hug.context.workspace.implementationSource.css !==
-          fixed.context.workspace.implementationSource.css ||
-        hug.context.workspace.implementationSource.html !==
-          fixed.context.workspace.implementationSource.html
-      ) {
-        throw new Error('Contract-pair sides do not share the same agent-visible source');
-      }
-
-      // Untyped conditions observe identical payloads on both sides, so nothing but the sizing
-      // contract can separate them. Typed-diff is the only condition that carries the contract.
-      const untypedFeedback = (side: ContractPairSide): string =>
-        JSON.stringify([
-          buildPixelDiffFeedback(side.initialComparison),
-          buildScalarFeedback(side.initialComparison),
-        ]);
-      if (untypedFeedback(hug) !== untypedFeedback(fixed)) {
-        throw new Error('Contract-pair pixel-diff or scalar payloads differ across the pair');
-      }
-      const horizontalSignal = (side: ContractPairSide): TypedDimensionSignal | undefined =>
-        buildTypedDiffEvidence(
-          side.initialComparison,
-          side.manifest.selector,
-          side.context.workspace.implementationSource.css,
-          side.manifest.reference.rootDimensionConstraints
-        ).dimensionConstraints.find((constraint) => constraint.axis === 'horizontal');
-      const hugSignal = horizontalSignal(hug);
-      const fixedSignal = horizontalSignal(fixed);
-      if (
-        hugSignal?.mode !== 'HUG' ||
-        hugSignal.actionability !== 'diagnostic-only' ||
-        fixedSignal?.mode !== 'FIXED' ||
-        fixedSignal.actionability !== 'repair-candidate'
-      ) {
-        throw new Error('Contract-pair typed-diff did not separate the HUG and FIXED contracts');
-      }
-
-      // The FIXED candidate must not carry the width the agent is expected to supply, otherwise
-      // hidden acceptance cannot observe an omission. Asserted on the source, not only the render.
-      for (const [perturbationId, candidate] of fixed.mutation.candidates) {
-        const candidateCss = await readFile(resolveEvalPath(candidate.css), 'utf8');
-        if (rootDeclarations(candidateCss, fixed.manifest.selector).has('width')) {
-          throw new Error(
-            `Contract-pair candidate ${perturbationId} declares a width on ${fixed.manifest.selector}`
-          );
-        }
-      }
-
-      const selector = hug.manifest.selector;
-      const paddingOnly: RepairProposal = {
-        changes: [{ property: 'padding', selector, value: '8px 16px' }],
-        diagnosis: 'contract-pair padding-only repair',
-      };
-      const paddingAndWidth: RepairProposal = {
-        changes: [...paddingOnly.changes, { property: 'width', selector, value: '96px' }],
-        diagnosis: 'contract-pair padding and width repair',
-      };
-
-      const hugPaddingOnly = await evaluateContractPairRepair(hug, paddingOnly);
-      if (!hugPaddingOnly.accepted || !hugPaddingOnly.rootCauseRepaired) {
-        throw new Error('Contract-pair HUG side rejected the padding-only ground truth');
-      }
-      const hugPaddingAndWidth = await evaluateContractPairRepair(hug, paddingAndWidth);
-      if (!hugPaddingAndWidth.finalComparisonPassed || hugPaddingAndWidth.accepted) {
-        throw new Error('Contract-pair HUG side accepted an added fixed width');
-      }
-
-      const fixedPaddingOnly = await evaluateContractPairRepair(fixed, paddingOnly);
-      if (
-        !fixedPaddingOnly.finalComparisonPassed ||
-        fixedPaddingOnly.accepted ||
-        fixedPaddingOnly.rootCauseRepaired
-      ) {
-        throw new Error('Contract-pair FIXED side accepted a padding-only repair');
-      }
-      const fixedPaddingAndWidth = await evaluateContractPairRepair(fixed, paddingAndWidth);
-      if (!fixedPaddingAndWidth.accepted || !fixedPaddingAndWidth.rootCauseRepaired) {
-        throw new Error('Contract-pair FIXED side rejected the padding and width ground truth');
-      }
+      assertPairInputsAreIdentical(hug, fixed);
+      assertOnlyTypedDiffCarriesTheContract(hug, fixed);
+      await assertFixedCandidatesOmitTheWidth(fixed);
+      await assertContractDiscriminationMatrix(hug, fixed);
     } finally {
       await fixed.context.close();
     }
