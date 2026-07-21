@@ -33,6 +33,11 @@
     "anchors"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kosaki08/uimatch.git",
+    "directory": "packages/uimatch-selector-anchors"
+  },
   "engines": {
     "node": ">=20.19 <21 || >=22.12"
   },

@@ -43,6 +43,28 @@ test: add content basis test cases
 - **Test coverage**: Add tests for new features
 - **No network in unit tests**: Mock adapters
 
+## Releasing
+
+Public packages version independently. Add a changeset for each package whose
+published surface changed. `@uimatch/core` and `@uimatch/scoring` are private,
+so they never belong in one.
+
+Pushing to `main` runs the release workflow, which opens a `chore: version
+packages` pull request. Merging that pull request publishes to npm, and only
+when the `ENABLE_PUBLISH` repository variable is `true`.
+
+Bump versions with `pnpm run version:packages` rather than `changeset version`
+directly. Every public package is on `0.x`, where a caret range pins the minor,
+so a minor bump of a package that another one peer-depends on would otherwise
+make Changesets bump the dependent to major. The script relaxes those ranges for
+the duration of the bump and pins them to the versions it produced. It needs a
+clean working tree, and it stops if a package ends up with a changed manifest but
+the same version — add a changeset for that package and run it again.
+
+`pnpm run release:verify` packs the tarballs and installs them with `npm`. Run it
+before publishing: `pnpm` only warns when a peer cannot be satisfied, while `npm`
+quietly leaves the package out.
+
 ## Key Documentation
 
 - [Full Documentation](https://kosaki08.github.io/uimatch/) - Complete guides and API reference
