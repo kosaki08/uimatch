@@ -1,0 +1,5 @@
+@import url('../../base.css');
+
+#atomic-child {
+  height: 48px;
+}

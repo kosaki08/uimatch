@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 4,
+  "fixtureId": "fixed-height",
+  "selector": "#atomic",
+  "editableSelectors": ["#atomic", "#atomic-child", "#fixture"],
+  "viewport": { "width": 320, "height": 200 },
+  "reference": {
+    "html": "fixtures/fixed-height/reference/index.html",
+    "css": "fixtures/fixed-height/reference/styles.css",
+    "sizing": { "horizontal": "FIXED", "vertical": "FIXED" },
+    "expectedMetadata": {
+      "width": 96,
+      "height": 40,
+      "childCount": 1,
+      "overflowing": false,
+      "padding": [8, 16, 8, 16],
+      "scrollHeight": 40,
+      "scrollWidth": 96
+    },
+    "expectedSpec": {
+      "__self__": {
+        "width": "96px",
+        "height": "40px",
+        "border-radius": "6px",
+        "padding-top": "8px",
+        "padding-bottom": "8px"
+      }
+    }
+  },
+  "mutations": [
+    {
+      "id": "padding-drift-missing-fixed-height",
+      "html": "fixtures/fixed-height/mutations/padding-drift-missing-fixed-height/index.html",
+      "css": "fixtures/fixed-height/mutations/padding-drift-missing-fixed-height/styles.css",
+      "candidates": {
+        "short-child": {
+          "css": "fixtures/fixed-height/mutations/padding-drift-missing-fixed-height/candidates/short-child.css"
+        },
+        "tall-child": {
+          "css": "fixtures/fixed-height/mutations/padding-drift-missing-fixed-height/candidates/tall-child.css"
+        }
+      },
+      "rootCause": {
+        "description": "The vertical padding drifted from 8px to 14px and the explicit FIXED height was erased. Restoring padding reproduces the reference height for the current child only, so the FIXED contract also requires the height declaration back.",
+        "acceptedRepairs": [
+          [
+            { "selector": "#atomic", "property": "padding", "value": "8px 16px" },
+            { "selector": "#atomic", "property": "height", "value": "40px" }
+          ],
+          [
+            { "selector": "#atomic", "property": "padding-block", "value": "8px" },
+            { "selector": "#atomic", "property": "height", "value": "40px" }
+          ],
+          [
+            { "selector": "#atomic", "property": "padding-top", "value": "8px" },
+            { "selector": "#atomic", "property": "padding-bottom", "value": "8px" },
+            { "selector": "#atomic", "property": "height", "value": "40px" }
+          ]
+        ]
+      }
+    }
+  ],
+  "perturbations": [
+    {
+      "id": "short-child",
+      "reference": {
+        "html": "fixtures/fixed-height/perturbations/short-child/index.html",
+        "css": "fixtures/fixed-height/perturbations/short-child/styles.css"
+      },
+      "expectedMetadata": {
+        "width": 96,
+        "height": 40,
+        "childCount": 1,
+        "overflowing": false,
+        "padding": [8, 16, 8, 16],
+        "scrollHeight": 40,
+        "scrollWidth": 96
+      }
+    },
+    {
+      "id": "tall-child",
+      "reference": {
+        "html": "fixtures/fixed-height/perturbations/tall-child/index.html",
+        "css": "fixtures/fixed-height/perturbations/tall-child/styles.css"
+      },
+      "expectedMetadata": {
+        "width": 96,
+        "height": 40,
+        "childCount": 1,
+        "overflowing": true,
+        "padding": [8, 16, 8, 16],
+        "scrollHeight": 64,
+        "scrollWidth": 96
+      }
+    }
+  ]
+}

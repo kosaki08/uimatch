@@ -1,0 +1,31 @@
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: block;
+  font-weight: 100 900;
+  src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+}
+
+#atomic {
+  width: 96px;
+  padding: 14px 16px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #0f172a;
+}
+
+#atomic-child {
+  height: 48px;
+}

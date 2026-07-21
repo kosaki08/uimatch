@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 4,
+  "fixtureId": "hug-height",
+  "selector": "#atomic",
+  "editableSelectors": ["#atomic", "#atomic-child", "#fixture"],
+  "viewport": { "width": 320, "height": 200 },
+  "reference": {
+    "html": "fixtures/hug-height/reference/index.html",
+    "css": "fixtures/hug-height/reference/styles.css",
+    "sizing": { "horizontal": "FIXED", "vertical": "HUG" },
+    "expectedMetadata": {
+      "width": 96,
+      "height": 40,
+      "childCount": 1,
+      "overflowing": false,
+      "padding": [8, 16, 8, 16],
+      "scrollHeight": 40,
+      "scrollWidth": 96
+    },
+    "expectedSpec": {
+      "__self__": {
+        "width": "96px",
+        "border-radius": "6px",
+        "padding-top": "8px",
+        "padding-bottom": "8px"
+      }
+    }
+  },
+  "mutations": [
+    {
+      "id": "padding-drift-hug",
+      "html": "fixtures/hug-height/mutations/padding-drift-hug/index.html",
+      "css": "fixtures/hug-height/mutations/padding-drift-hug/styles.css",
+      "candidates": {
+        "short-child": {
+          "css": "fixtures/hug-height/mutations/padding-drift-hug/candidates/short-child.css"
+        },
+        "tall-child": {
+          "css": "fixtures/hug-height/mutations/padding-drift-hug/candidates/tall-child.css"
+        }
+      },
+      "rootCause": {
+        "description": "The vertical padding drifted from 8px to 14px. The height hugs its content, so restoring the padding alone reproduces the reference height.",
+        "acceptedRepairs": [
+          [{ "selector": "#atomic", "property": "padding", "value": "8px 16px" }],
+          [
+            { "selector": "#atomic", "property": "padding-top", "value": "8px" },
+            { "selector": "#atomic", "property": "padding-bottom", "value": "8px" }
+          ],
+          [{ "selector": "#atomic", "property": "padding-block", "value": "8px" }]
+        ]
+      }
+    }
+  ],
+  "perturbations": [
+    {
+      "id": "short-child",
+      "reference": {
+        "html": "fixtures/hug-height/perturbations/short-child/index.html",
+        "css": "fixtures/hug-height/perturbations/short-child/styles.css"
+      },
+      "expectedMetadata": {
+        "width": 96,
+        "height": 24,
+        "childCount": 1,
+        "overflowing": false,
+        "padding": [8, 16, 8, 16],
+        "scrollHeight": 24,
+        "scrollWidth": 96
+      }
+    },
+    {
+      "id": "tall-child",
+      "reference": {
+        "html": "fixtures/hug-height/perturbations/tall-child/index.html",
+        "css": "fixtures/hug-height/perturbations/tall-child/styles.css"
+      },
+      "expectedMetadata": {
+        "width": 96,
+        "height": 64,
+        "childCount": 1,
+        "overflowing": false,
+        "padding": [8, 16, 8, 16],
+        "scrollHeight": 64,
+        "scrollWidth": 96
+      }
+    }
+  ]
+}
