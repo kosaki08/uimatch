@@ -2,20 +2,14 @@
 /**
  * Run `changeset version` for the public packages.
  *
- * Every public package is on 0.x, where a caret range pins the minor. A minor
- * bump of a package that another one peer-depends on therefore lands outside
- * the declared range, and Changesets answers that by bumping the dependent to
- * major. Widening the ranges in the repository is not an option either: while
- * the workspace still holds the old versions, npm treats the peer as
- * unsatisfiable and drops the package from an install with only a warning.
+ * On 0.x a caret range pins the minor, so bumping a package that another one
+ * peer-depends on would push Changesets into a major bump of the dependent.
+ * Widening the ranges in the repository instead would leave npm unable to
+ * satisfy the peer, which it answers by dropping the package from an install
+ * with only a warning. So the widening happens here, only for the bump.
  *
- * So the widening lives here, for the duration of the bump: relax the
- * workspace-internal peer ranges, version, then pin each one to the version
- * that was just produced.
- *
- * `changeset version` also consumes changesets and writes changelogs, so this
- * uses git as the transaction journal: it refuses to start on a dirty tree and
- * rolls the touched paths back on failure.
+ * Versioning also consumes changesets and writes changelogs, so git is the
+ * transaction journal: clean tree in, rollback on failure.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
