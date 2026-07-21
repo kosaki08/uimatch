@@ -24,6 +24,12 @@ jobs:
       # Only whether publishing is possible, so the token itself stays out of
       # every step that does not need it. ENABLE_PUBLISH is a repository variable.
       PUBLISHING: ${{ secrets.NPM_TOKEN != '' && vars.ENABLE_PUBLISH == 'true' }}
+      # Runners restrict unprivileged user namespaces, so bundled Chromium cannot
+      # sandbox. The ci workflow runs the same suites against the system Chrome
+      # for that reason; keep the two in step.
+      UIMATCH_CHROME_CHANNEL: chrome
+      UIMATCH_CHROMIUM_SANDBOX: 'true'
+      UIMATCH_HEADLESS: 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
