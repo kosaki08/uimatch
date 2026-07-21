@@ -1,7 +1,8 @@
 # @uimatch/cli
 
 Command-line and programmatic entry point for comparing Figma designs with
-implemented interfaces.
+implemented interfaces. Its reports are machine-readable, so they fit into CI
+checks, review workflows, and experimental AI-assisted repair loops.
 
 ## Installation
 

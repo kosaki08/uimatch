@@ -12,17 +12,20 @@ run produces a Design Fidelity Score and a configurable pass or fail decision.
 When an output directory is set, it also saves reviewable images and a
 machine-readable report.
 
+That report is written for other tools to read, not only for people. The
+experimental harness in [`evals/`](./evals/) takes that further and hands
+uiMatch output to an AI agent as the evaluation step in a UI repair loop.
+
 > Status: Experimental / 0.x. APIs may change without notice and are not
 > production-ready.
 
 ## What you get
 
-- Catch visual regressions against the design rather than relying on review by
-  eye alone.
-- See computed style and layout differences alongside the pixel diff, making it
-  easier to identify what changed.
-- Apply the same quality gate locally and in CI, with exit codes that distinguish
-  a mismatch from invalid configuration.
+- Catch visual regressions against the design, not just by eye.
+- See computed style and layout differences next to the pixel diff, so you can
+  tell what actually changed.
+- Run the same quality gate locally and in CI. Exit codes tell a real mismatch
+  apart from a broken configuration.
 - Keep `figma.png`, `impl.png`, `diff.png`, and `report.json` as evidence for
   review and automation.
 
@@ -73,9 +76,37 @@ configuration.
 - Text normalization and similarity checks
 - Stable selector resolution through optional plugins
 
-Typical uses include checking Storybook components against Figma nodes,
-enforcing design-system fidelity in pull requests, and producing structured
-comparison data for automated workflows.
+Use it to check Storybook components against Figma nodes, hold design-system
+fidelity in pull requests, or feed structured comparison data into automated
+workflows.
+
+## Structured feedback for automated repair (experimental)
+
+A comparison does not have to end with a person reading the report. The same
+result can drive a repair loop:
+
+1. A coding agent changes the implementation.
+2. uiMatch renders the result with Playwright.
+3. uiMatch returns screenshots, structured differences, and a quality decision.
+4. The agent uses that feedback for its next repair.
+
+The public CLI covers steps 2 and 3. Steps 1 and 4 are yours. The harness in
+this repository asks which feedback formats help an agent write repairs that
+still hold when the content or layout changes behind them. It is research code,
+not a public CLI feature.
+
+```mermaid
+flowchart LR
+    A["Coding agent"] -->|edits| I["Implementation"]
+    I --> U["uiMatch comparison"]
+    D["Figma design"] --> U
+    U --> F["Images + structured report + quality gate"]
+    F -.->|experimental feedback loop| A
+    F --> C["CI / human review"]
+```
+
+See [`evals/README.md`](./evals/README.md) for the harness, its backends, and
+its acceptance boundary.
 
 ## Architecture
 
