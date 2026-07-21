@@ -43,7 +43,7 @@ function pathIsWithin(root: string, target: string): boolean {
 }
 
 // Positive control only: the drifted width is authored in the mutation CSS, so every condition can
-// repair it without reading the contract. The discriminating case is runContractPairSelfCheck.
+// repair it without reading the contract. The discriminating case is runHugFixedPairSelfCheck.
 async function runFixedSizingSelfCheck(): Promise<void> {
   const manifest = await loadManifestById('atomic-button-fixed');
   const mutation = manifest.mutations.find(({ id }) => id === 'width-drift');
@@ -292,72 +292,77 @@ function rootStyleDiffProperties(side: ContractPairSide): Record<string, unknown
   );
 }
 
-// Pinned because the conditions are not equally blind, and the paired trial is read accordingly.
-// Flat-diff is asymmetric: only the FIXED reference authors a width, so its expectedSpec yields a
-// root width diff naming the target value. That makes flat-diff a structured baseline, not a blind
-// one.
+function horizontalTypedSignal(side: ContractPairSide): TypedDimensionSignal | undefined {
+  return buildTypedDiffEvidence(
+    side.initialComparison,
+    side.manifest.selector,
+    side.context.workspace.implementationSource.css,
+    side.manifest.reference.rootDimensionConstraints
+  ).dimensionConstraints.find((constraint) => constraint.axis === 'horizontal');
+}
+
+function horizontalRequirementType(side: ContractPairSide): string | undefined {
+  return buildTypedContractEvidence(
+    side.initialComparison,
+    side.manifest.selector,
+    side.context.workspace.implementationSource.css,
+    side.manifest.reference.rootDimensionConstraints
+  ).dimensionConstraints.find((entry) => entry.property === 'width')?.behavioralRequirement.type;
+}
+
+interface ContractSideExpectation {
+  mode: TypedDimensionSignal['mode'];
+  requirementType: string;
+  side: ContractPairSide;
+}
+
+// The two conditions the pair is meant to separate are not equally blind, so the paired trial is
+// read against a fixed leakage profile: pixel-diff and scalar see identical payloads; flat-diff
+// only names the width on the side whose reference authors it, making it a structured baseline
+// rather than a blind one; typed-diff states the sizing mode; typed-contract states the obligation.
 function assertConditionsLeakTheContractAsExpected(
-  hug: ContractPairSide,
-  fixed: ContractPairSide
+  diagnostic: ContractSideExpectation,
+  authored: ContractSideExpectation
 ): void {
   const untypedFeedback = (side: ContractPairSide): string =>
     JSON.stringify([
       buildPixelDiffFeedback(side.initialComparison),
       buildScalarFeedback(side.initialComparison),
     ]);
-  if (untypedFeedback(hug) !== untypedFeedback(fixed)) {
+  if (untypedFeedback(diagnostic.side) !== untypedFeedback(authored.side)) {
     throw new Error('Contract-pair pixel-diff or scalar payloads differ across the pair');
   }
 
-  if ('width' in rootStyleDiffProperties(hug)) {
-    throw new Error('Contract-pair flat-diff exposed a root width on the HUG side');
+  if ('width' in rootStyleDiffProperties(diagnostic.side)) {
+    throw new Error('Contract-pair flat-diff exposed a root width on the diagnostic side');
   }
-  const fixedWidthDiff = rootStyleDiffProperties(fixed).width;
+  const authoredWidthDiff = rootStyleDiffProperties(authored.side).width;
+  const authoredWidthValue = authored.side.manifest.reference.expectedMetadata.width;
   if (
-    typeof fixedWidthDiff !== 'object' ||
-    fixedWidthDiff === null ||
-    (fixedWidthDiff as { expected?: unknown }).expected !== '96px'
+    typeof authoredWidthDiff !== 'object' ||
+    authoredWidthDiff === null ||
+    (authoredWidthDiff as { expected?: unknown }).expected !== `${authoredWidthValue}px`
   ) {
-    throw new Error('Contract-pair flat-diff no longer names the FIXED width on the FIXED side');
+    throw new Error('Contract-pair flat-diff no longer names the width on the authored side');
   }
 
-  const horizontalSignal = (side: ContractPairSide): TypedDimensionSignal | undefined =>
-    buildTypedDiffEvidence(
-      side.initialComparison,
-      side.manifest.selector,
-      side.context.workspace.implementationSource.css,
-      side.manifest.reference.rootDimensionConstraints
-    ).dimensionConstraints.find((constraint) => constraint.axis === 'horizontal');
-  const hugSignal = horizontalSignal(hug);
-  const fixedSignal = horizontalSignal(fixed);
-  if (
-    hugSignal?.mode !== 'HUG' ||
-    hugSignal.actionability !== 'diagnostic-only' ||
-    fixedSignal?.mode !== 'FIXED' ||
-    fixedSignal.actionability !== 'repair-candidate'
-  ) {
-    throw new Error('Contract-pair typed-diff did not separate the HUG and FIXED contracts');
+  for (const expectation of [diagnostic, authored]) {
+    const signal = horizontalTypedSignal(expectation.side);
+    const expectedActionability = expectation === authored ? 'repair-candidate' : 'diagnostic-only';
+    if (signal?.mode !== expectation.mode || signal.actionability !== expectedActionability) {
+      throw new Error('Contract-pair typed-diff did not separate the two sizing contracts');
+    }
+    if (horizontalRequirementType(expectation.side) !== expectation.requirementType) {
+      throw new Error('Contract-pair typed-contract did not state the expected requirement');
+    }
   }
 
-  const requirementType = (side: ContractPairSide): string | undefined =>
-    buildTypedContractEvidence(
-      side.initialComparison,
-      side.manifest.selector,
-      side.context.workspace.implementationSource.css,
-      side.manifest.reference.rootDimensionConstraints
-    ).dimensionConstraints.find((entry) => entry.property === 'width')?.behavioralRequirement.type;
-  if (
-    requirementType(hug) !== 'preserve-intrinsic-size' ||
-    requirementType(fixed) !== 'preserve-fixed-size'
-  ) {
-    throw new Error('Contract-pair typed-contract did not state opposite behavioural requirements');
-  }
   if (
     buildTypedDiffFeedback(
-      fixed.initialComparison,
-      fixed.manifest.selector,
-      fixed.context.workspace.implementationSource.css,
-      fixed.manifest.reference.rootDimensionConstraints
+      authored.side.initialComparison,
+      authored.side.manifest.selector,
+      authored.side.context.workspace.implementationSource.css,
+      authored.side.manifest.reference.rootDimensionConstraints
     ).text.includes('behavioralRequirement')
   ) {
     throw new Error('Typed-diff leaked a behavioural requirement that belongs to typed-contract');
@@ -377,47 +382,41 @@ async function assertFixedCandidatesOmitTheWidth(fixed: ContractPairSide): Promi
   }
 }
 
-async function assertContractDiscriminationMatrix(
-  hug: ContractPairSide,
-  fixed: ContractPairSide
+interface DiscriminationCase {
+  groundTruth: RepairProposal;
+  label: string;
+  side: ContractPairSide;
+}
+
+// The core of every contract pair: each side's ground-truth repair is accepted there, and the same
+// proposal is a visible-passing but hidden-rejected overfit on the other side.
+async function assertPairDiscriminates(
+  first: DiscriminationCase,
+  second: DiscriminationCase
 ): Promise<void> {
-  const selector = hug.manifest.selector;
-  const paddingOnly: RepairProposal = {
-    changes: [{ property: 'padding', selector, value: '8px 16px' }],
-    diagnosis: 'contract-pair padding-only repair',
-  };
-  const paddingAndWidth: RepairProposal = {
-    changes: [...paddingOnly.changes, { property: 'width', selector, value: '96px' }],
-    diagnosis: 'contract-pair padding and width repair',
-  };
+  for (const [correct, overfit] of [
+    [first, second],
+    [second, first],
+  ] as const) {
+    const onCorrect = await evaluateContractPairRepair(correct.side, correct.groundTruth);
+    if (!onCorrect.accepted || !onCorrect.rootCauseRepaired) {
+      throw new Error(`Contract-pair ${correct.label} side rejected its ground-truth repair`);
+    }
+    const onOverfit = await evaluateContractPairRepair(overfit.side, correct.groundTruth);
+    if (!onOverfit.finalComparisonPassed || onOverfit.accepted) {
+      throw new Error(`Contract-pair ${overfit.label} side accepted the ${correct.label} repair`);
+    }
+  }
+}
 
-  const hugPaddingOnly = await evaluateContractPairRepair(hug, paddingOnly);
-  if (!hugPaddingOnly.accepted || !hugPaddingOnly.rootCauseRepaired) {
-    throw new Error('Contract-pair HUG side rejected the padding-only ground truth');
-  }
-  const hugPaddingAndWidth = await evaluateContractPairRepair(hug, paddingAndWidth);
-  if (!hugPaddingAndWidth.finalComparisonPassed || hugPaddingAndWidth.accepted) {
-    throw new Error('Contract-pair HUG side accepted an added fixed width');
-  }
-
-  const fixedPaddingOnly = await evaluateContractPairRepair(fixed, paddingOnly);
-  if (
-    !fixedPaddingOnly.finalComparisonPassed ||
-    fixedPaddingOnly.accepted ||
-    fixedPaddingOnly.rootCauseRepaired
-  ) {
-    throw new Error('Contract-pair FIXED side accepted a padding-only repair');
-  }
-  const fixedPaddingAndWidth = await evaluateContractPairRepair(fixed, paddingAndWidth);
-  if (!fixedPaddingAndWidth.accepted || !fixedPaddingAndWidth.rootCauseRepaired) {
-    throw new Error('Contract-pair FIXED side rejected the padding and width ground truth');
-  }
+function repairProposal(selector: string, property: string, value: string): RepairProposal {
+  return { changes: [{ property, selector, value }], diagnosis: `contract-pair ${value}` };
 }
 
 // Counterfactual pair: both sides render identically from byte-identical mutated sources, so the
 // same proposal must be correct on one side and an overfit on the other. Padding alone is right
 // under HUG; padding plus an explicit width is right under FIXED.
-async function runContractPairSelfCheck(): Promise<void> {
+async function runHugFixedPairSelfCheck(): Promise<void> {
   const hug = await openContractPairSide('atomic-button', 'padding-drift');
   try {
     const fixed = await openContractPairSide(
@@ -425,15 +424,58 @@ async function runContractPairSelfCheck(): Promise<void> {
       'padding-drift-missing-fixed-width'
     );
     try {
+      const selector = hug.manifest.selector;
       assertPairInputsAreIdentical(hug, fixed);
-      assertConditionsLeakTheContractAsExpected(hug, fixed);
+      assertConditionsLeakTheContractAsExpected(
+        { mode: 'HUG', requirementType: 'preserve-intrinsic-size', side: hug },
+        { mode: 'FIXED', requirementType: 'preserve-fixed-size', side: fixed }
+      );
       await assertFixedCandidatesOmitTheWidth(fixed);
-      await assertContractDiscriminationMatrix(hug, fixed);
+      await assertPairDiscriminates(
+        { groundTruth: repairProposal(selector, 'padding', '8px 16px'), label: 'HUG', side: hug },
+        {
+          groundTruth: {
+            changes: [
+              { property: 'padding', selector, value: '8px 16px' },
+              { property: 'width', selector, value: '96px' },
+            ],
+            diagnosis: 'contract-pair padding and width',
+          },
+          label: 'FIXED',
+          side: fixed,
+        }
+      );
     } finally {
       await fixed.context.close();
     }
   } finally {
     await hug.context.close();
+  }
+}
+
+// Second counterfactual pair, on a relational contract: the correct width cannot be read off the
+// current rendering because it depends on the parent. Filling is right under FILL; pinning the
+// explicit width is right under FIXED.
+async function runFillFixedPairSelfCheck(): Promise<void> {
+  const fill = await openContractPairSide('fill-width', 'parent-relative-drift');
+  try {
+    const fixed = await openContractPairSide('fixed-width', 'parent-relative-drift');
+    try {
+      const selector = fill.manifest.selector;
+      assertPairInputsAreIdentical(fill, fixed);
+      assertConditionsLeakTheContractAsExpected(
+        { mode: 'FILL', requirementType: 'preserve-parent-fill', side: fill },
+        { mode: 'FIXED', requirementType: 'preserve-fixed-size', side: fixed }
+      );
+      await assertPairDiscriminates(
+        { groundTruth: repairProposal(selector, 'width', '100%'), label: 'FILL', side: fill },
+        { groundTruth: repairProposal(selector, 'width', '240px'), label: 'FIXED', side: fixed }
+      );
+    } finally {
+      await fixed.context.close();
+    }
+  } finally {
+    await fill.context.close();
   }
 }
 
@@ -681,7 +723,7 @@ export async function runSelfCheck(): Promise<void> {
   } finally {
     await context.close();
   }
-  for (const fixtureId of ['atomic-button', 'atomic-button-fixed']) {
+  for (const fixtureId of ['atomic-button', 'atomic-button-fixed', 'fill-width', 'fixed-width']) {
     const fixtureManifest = await loadManifestById(fixtureId);
     for (const fixtureMutation of fixtureManifest.mutations) {
       await assertCandidatesTrackTheirMutation(fixtureManifest, fixtureMutation);
@@ -690,6 +732,8 @@ export async function runSelfCheck(): Promise<void> {
   console.log('Eval candidate-provenance self-check passed: every mutation tracks its candidates');
   await runFixedSizingSelfCheck();
   console.log('Eval fixed-sizing self-check passed: atomic-button-fixed');
-  await runContractPairSelfCheck();
+  await runHugFixedPairSelfCheck();
   console.log('Eval contract-pair self-check passed: atomic-button + atomic-button-fixed');
+  await runFillFixedPairSelfCheck();
+  console.log('Eval contract-pair self-check passed: fill-width + fixed-width');
 }

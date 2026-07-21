@@ -1,0 +1,9 @@
+@import url('../../base.css');
+
+#container {
+  width: 180px;
+}
+
+#target {
+  width: 240px;
+}

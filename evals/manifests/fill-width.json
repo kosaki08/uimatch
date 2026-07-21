@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 4,
+  "fixtureId": "fill-width",
+  "selector": "#target",
+  "editableSelectors": ["#target", "#container", "#fixture"],
+  "viewport": { "width": 400, "height": 200 },
+  "reference": {
+    "html": "fixtures/fill-width/reference/index.html",
+    "css": "fixtures/fill-width/reference/styles.css",
+    "sizing": { "horizontal": "FILL", "vertical": "FIXED" },
+    "expectedMetadata": {
+      "width": 240,
+      "height": 40,
+      "childCount": 0,
+      "overflowing": false,
+      "padding": [0, 0, 0, 0],
+      "scrollHeight": 40,
+      "scrollWidth": 240
+    },
+    "expectedSpec": {
+      "__self__": {
+        "height": "40px",
+        "border-radius": "6px"
+      }
+    }
+  },
+  "mutations": [
+    {
+      "id": "parent-relative-drift",
+      "html": "fixtures/fill-width/mutations/parent-relative-drift/index.html",
+      "css": "fixtures/fill-width/mutations/parent-relative-drift/styles.css",
+      "candidates": {
+        "wider-parent": {
+          "css": "fixtures/fill-width/mutations/parent-relative-drift/candidates/wider-parent.css"
+        },
+        "narrower-parent": {
+          "css": "fixtures/fill-width/mutations/parent-relative-drift/candidates/narrower-parent.css"
+        }
+      },
+      "rootCause": {
+        "description": "The target took an explicit 280px width instead of filling its parent, so it no longer tracks the container.",
+        "acceptedRepairs": [
+          [{ "selector": "#target", "property": "width", "value": "100%" }],
+          [{ "selector": "#target", "property": "width", "value": "auto" }]
+        ]
+      }
+    }
+  ],
+  "perturbations": [
+    {
+      "id": "wider-parent",
+      "reference": {
+        "html": "fixtures/fill-width/perturbations/wider-parent/index.html",
+        "css": "fixtures/fill-width/perturbations/wider-parent/styles.css"
+      },
+      "expectedMetadata": {
+        "width": 320,
+        "height": 40,
+        "childCount": 0,
+        "overflowing": false,
+        "padding": [0, 0, 0, 0],
+        "scrollHeight": 40,
+        "scrollWidth": 320
+      }
+    },
+    {
+      "id": "narrower-parent",
+      "reference": {
+        "html": "fixtures/fill-width/perturbations/narrower-parent/index.html",
+        "css": "fixtures/fill-width/perturbations/narrower-parent/styles.css"
+      },
+      "expectedMetadata": {
+        "width": 180,
+        "height": 40,
+        "childCount": 0,
+        "overflowing": false,
+        "padding": [0, 0, 0, 0],
+        "scrollHeight": 40,
+        "scrollWidth": 180
+      }
+    }
+  ]
+}

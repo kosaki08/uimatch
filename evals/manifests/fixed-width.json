@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 4,
+  "fixtureId": "fixed-width",
+  "selector": "#target",
+  "editableSelectors": ["#target", "#container", "#fixture"],
+  "viewport": { "width": 400, "height": 200 },
+  "reference": {
+    "html": "fixtures/fixed-width/reference/index.html",
+    "css": "fixtures/fixed-width/reference/styles.css",
+    "sizing": { "horizontal": "FIXED", "vertical": "FIXED" },
+    "expectedMetadata": {
+      "width": 240,
+      "height": 40,
+      "childCount": 0,
+      "overflowing": false,
+      "padding": [0, 0, 0, 0],
+      "scrollHeight": 40,
+      "scrollWidth": 240
+    },
+    "expectedSpec": {
+      "__self__": {
+        "height": "40px",
+        "border-radius": "6px",
+        "width": "240px"
+      }
+    }
+  },
+  "mutations": [
+    {
+      "id": "parent-relative-drift",
+      "html": "fixtures/fixed-width/mutations/parent-relative-drift/index.html",
+      "css": "fixtures/fixed-width/mutations/parent-relative-drift/styles.css",
+      "candidates": {
+        "wider-parent": {
+          "css": "fixtures/fixed-width/mutations/parent-relative-drift/candidates/wider-parent.css"
+        },
+        "narrower-parent": {
+          "css": "fixtures/fixed-width/mutations/parent-relative-drift/candidates/narrower-parent.css"
+        }
+      },
+      "rootCause": {
+        "description": "The target's explicit width drifted from 240px to 280px, so it no longer holds its fixed width.",
+        "acceptedRepairs": [[{ "selector": "#target", "property": "width", "value": "240px" }]]
+      }
+    }
+  ],
+  "perturbations": [
+    {
+      "id": "wider-parent",
+      "reference": {
+        "html": "fixtures/fixed-width/perturbations/wider-parent/index.html",
+        "css": "fixtures/fixed-width/perturbations/wider-parent/styles.css"
+      },
+      "expectedMetadata": {
+        "width": 240,
+        "height": 40,
+        "childCount": 0,
+        "overflowing": false,
+        "padding": [0, 0, 0, 0],
+        "scrollHeight": 40,
+        "scrollWidth": 240
+      }
+    },
+    {
+      "id": "narrower-parent",
+      "reference": {
+        "html": "fixtures/fixed-width/perturbations/narrower-parent/index.html",
+        "css": "fixtures/fixed-width/perturbations/narrower-parent/styles.css"
+      },
+      "expectedMetadata": {
+        "width": 240,
+        "height": 40,
+        "childCount": 0,
+        "overflowing": false,
+        "padding": [0, 0, 0, 0],
+        "scrollHeight": 40,
+        "scrollWidth": 240
+      }
+    }
+  ]
+}
