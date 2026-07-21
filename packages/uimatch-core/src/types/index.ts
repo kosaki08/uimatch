@@ -1,7 +1,7 @@
 export type { PartialComputedStyle } from '../utils/visual-axis';
 export type { BrowserAdapter, CaptureOptions, CaptureResult, ElementMeta } from './adapters';
-export { createCaptureError, createComparisonError, createConfigError } from './errors';
-export type { AppError, BaseError, CaptureError, ComparisonError, ConfigError } from './errors';
+export { UiMatchError } from './errors';
+export type { UiMatchErrorCategory, UiMatchErrorCode } from './errors';
 export {
   err,
   isErr,

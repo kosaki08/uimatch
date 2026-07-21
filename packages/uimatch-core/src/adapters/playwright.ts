@@ -6,6 +6,7 @@ import { createLogger } from '@uimatch/shared-logging';
 import type { Browser, BrowserContext, Locator } from 'playwright';
 import { DEFAULT_CONFIG } from '../config/defaults';
 import type { BrowserAdapter, CaptureOptions, CaptureResult } from '../types/adapters';
+import { UiMatchError } from '../types/errors';
 import { browserPool } from './browser-pool';
 import { launchChromium } from './chromium-launch';
 import { DEFAULT_PROPS, EXTENDED_PROPS } from './playwright/constants';
@@ -249,7 +250,10 @@ export class PlaywrightAdapter implements BrowserAdapter {
       } catch {
         // Error diagnostics are disabled in tests to prevent double timeout
         // (waitFor timeout + diagnostic operations > test timeout)
-        throw new Error(`Selector "${opts.selector}" not found or not visible.`);
+        throw new UiMatchError(
+          'UIMATCH_SELECTOR_NOT_FOUND',
+          `Selector "${opts.selector}" not found or not visible.`
+        );
       }
 
       await locator.evaluate((el) =>

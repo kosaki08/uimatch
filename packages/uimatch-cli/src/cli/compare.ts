@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
+import { closeUiMatchBrowsers } from '#plugin/commands/browsers';
 import { uiMatchCompare } from '#plugin/commands/compare';
 import type { CompareArgs, CompareResult } from '#plugin/types/index';
 import { relativizePath, sanitizeFigmaRef, sanitizeUrl } from '#plugin/utils/sanitize';
 import type { QualityGateProfile } from '@uimatch/core';
-import { browserPool, DEFAULT_CONFIG, getQualityGateProfile } from '@uimatch/core';
+import { DEFAULT_CONFIG, getQualityGateProfile } from '@uimatch/core';
 import { silentLogger } from '@uimatch/shared-logging';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -18,6 +19,7 @@ import {
   resolveExistingProjectPath,
   resolveProjectRoot,
 } from '../utils/project-path.js';
+import { reportCommandError } from './exit-code.js';
 import { getLogger, initLogger } from './logger.js';
 import { errln, outln } from './print.js';
 
@@ -945,11 +947,10 @@ export async function runCompare(argv: string[]): Promise<number> {
 
     return decision.finalPass ? 0 : 1;
   } catch (error) {
-    errln('❌ Error:', error instanceof Error ? error.message : String(error));
-    return 1;
+    return reportCommandError('❌ Error', error);
   } finally {
     try {
-      await browserPool.closeAll();
+      await closeUiMatchBrowsers();
     } catch (error) {
       getOrSilentLogger().warn(
         `Failed to close browser pool: ${error instanceof Error ? error.message : String(error)}`

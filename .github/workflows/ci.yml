@@ -466,6 +466,38 @@ jobs:
           grep -q PASS output.log || (echo '❌ CLI smoke test failed: no PASS found in output' && exit 1)
           echo "✅ CLI distribution smoke test passed"
 
+      - name: Run programmatic API smoke test
+        working-directory: /tmp/uimatch-cli-smoke
+        env:
+          UIMATCH_FIGMA_PNG_B64: iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC
+          UIMATCH_CHROME_CHANNEL: chrome
+          UIMATCH_CHROMIUM_SANDBOX: 'true'
+          UIMATCH_HEADLESS: 'true'
+        run: |
+          set -eux
+
+          cat > programmatic-smoke.mjs <<'EOF'
+          import { uiMatchCompare } from '@uimatch/cli';
+
+          const result = await uiMatchCompare({
+            figma: 'bypass:test',
+            story: "data:text/html,<style>html,body{margin:0}</style><div id='t' style='width:10px;height:10px;background:red'></div>",
+            selector: '#t',
+            sizeMode: 'pad',
+            viewport: { width: 50, height: 50 },
+            dpr: 1,
+          });
+
+          process.stdout.write(result.summary);
+          EOF
+
+          # The default reuseBrowser:false must let the process exit on its own;
+          # a leaked browser would hang here instead of failing a return value.
+          timeout 120 node programmatic-smoke.mjs | tee programmatic.log
+
+          grep -q DFS programmatic.log || (echo '❌ Programmatic smoke test produced no summary' && exit 1)
+          echo "✅ Programmatic API smoke test passed"
+
       - name: Upload CLI test artifacts
         if: failure()
         uses: actions/upload-artifact@v4

@@ -1,4 +1,11 @@
-export { getSettings, resetSettings, uiMatchCompare } from './commands/index.js';
+export { UiMatchError } from '@uimatch/core';
+export type { UiMatchErrorCategory, UiMatchErrorCode } from '@uimatch/core';
+export {
+  closeUiMatchBrowsers,
+  getSettings,
+  resetSettings,
+  uiMatchCompare,
+} from './commands/index.js';
 export { loadFigmaMcpConfig, loadSkillConfig } from './config/index.js';
 export type { FigmaMcpConfig, SkillConfig } from './config/index.js';
 export type {

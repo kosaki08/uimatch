@@ -37,28 +37,11 @@ export type {
   QualityGateThresholds,
   SuspicionDetection,
 } from './core/quality-gate';
-export {
-  createCaptureError,
-  createComparisonError,
-  createConfigError,
-  err,
-  isErr,
-  isOk,
-  map,
-  mapErr,
-  ok,
-  unwrap,
-  unwrapOr,
-} from './types/index';
+export { UiMatchError, err, isErr, isOk, map, mapErr, ok, unwrap, unwrapOr } from './types/index';
 export type {
-  AppError,
-  BaseError,
   BrowserAdapter,
-  CaptureError,
   CaptureOptions,
   CaptureResult,
-  ComparisonError,
-  ConfigError,
   ExpectedSpec,
   Failure,
   PatchHint,
@@ -66,6 +49,8 @@ export type {
   StyleDiff,
   Success,
   TokenMap,
+  UiMatchErrorCategory,
+  UiMatchErrorCode,
 } from './types/index';
 export { deltaE2000, rgbToLab } from './utils/color';
 export type { Lab } from './utils/color';

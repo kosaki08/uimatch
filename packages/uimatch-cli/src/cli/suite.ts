@@ -4,11 +4,12 @@
  * Execute multiple compare jobs (screens/components) from a JSON suite file.
  */
 
-import { uiMatchCompare } from '#plugin/commands/compare';
+import { closeUiMatchBrowsers } from '#plugin/commands/browsers';
+import { assertFigmaSourceConfigured, uiMatchCompare } from '#plugin/commands/compare';
 import type { CompareArgs } from '#plugin/types/index';
-import { browserPool } from '@uimatch/core';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { reportCommandError } from './exit-code.js';
 import { getLogger } from './logger.js';
 import { errln, outln } from './print.js';
 
@@ -137,6 +138,25 @@ function findInvalidTextGatePath(config: {
   return undefined;
 }
 
+const REQUIRED_ITEM_FIELDS = ['figma', 'story', 'selector'] as const;
+
+/**
+ * Report the first merged item that is missing a required string field.
+ * Runs on merged items so a field supplied through `defaults` still counts.
+ */
+function findMissingRequiredField(items: readonly Partial<SuiteItem>[]): string | undefined {
+  for (const [index, item] of items.entries()) {
+    for (const field of REQUIRED_ITEM_FIELDS) {
+      const value = item[field];
+      if (typeof value !== 'string' || value.trim() === '') {
+        return `items[${index}].${field}`;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export async function runSuite(argv: string[]): Promise<number> {
   try {
     const args = parseArgs(argv);
@@ -196,6 +216,21 @@ export async function runSuite(argv: string[]): Promise<number> {
     }
 
     const cfg = parsed as SuiteConfig;
+    const items = cfg.items.map((item) => mergeItem(cfg.defaults, item));
+
+    const missingRequiredField = findMissingRequiredField(items);
+    if (missingRequiredField) {
+      errln(
+        `Invalid suite config in "${suitePath}": ${missingRequiredField} must be a non-empty string`
+      );
+      return 2;
+    }
+
+    // Validate every item up front: items run concurrently and swallow their own
+    // errors, so a configuration problem could not be reported afterwards.
+    for (const item of items) {
+      assertFigmaSourceConfigured(item.figma);
+    }
 
     await mkdir(outBase, { recursive: true });
 
@@ -215,7 +250,7 @@ export async function runSuite(argv: string[]): Promise<number> {
     const logger = getLogger();
 
     const results = await runWithConcurrency<SuiteItem, SuiteResult>(
-      cfg.items.map((i) => mergeItem(cfg.defaults, i)),
+      items,
       concurrency,
       async (item, index) => {
         const itemName = item.name ?? `case-${index + 1}`;
@@ -351,11 +386,10 @@ export async function runSuite(argv: string[]): Promise<number> {
     );
     return summary.failed === 0 && summary.errors === 0 ? 0 : 1;
   } catch (error) {
-    errln('❌ Suite error:', error instanceof Error ? error.message : String(error));
-    return 1;
+    return reportCommandError('❌ Suite error', error);
   } finally {
     try {
-      await browserPool.closeAll();
+      await closeUiMatchBrowsers();
     } catch (error) {
       errln(
         '⚠️ Failed to close browser pool:',

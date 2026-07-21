@@ -9,9 +9,11 @@ import { FigmaMcpClient, parseFigmaRef } from '#plugin/experimental/index.js';
 import type { CompareArgs, CompareResult, FigmaRootDimensionConstraint } from '#plugin/types/index';
 import type { CaptureResult, CompareImageResult } from '@uimatch/core';
 import {
+  UiMatchError,
   browserPool,
   captureTarget,
   compareImages,
+  launchChromium,
   normalizeTextEx,
   resolveLocator,
   textSimilarity,
@@ -163,9 +165,13 @@ interface ResolveOutput {
  * A configured plugin must load, finish before its deadline, and return a valid Resolution.
  *
  * @param args - Comparison arguments
+ * @param reuseBrowser - Borrow from the shared pool instead of owning a browser
  * @returns Resolved selector information
  */
-async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<ResolveOutput> {
+async function maybeResolveSelectorWithPlugin(
+  args: CompareArgs,
+  reuseBrowser: boolean
+): Promise<ResolveOutput> {
   // Determine plugin ID from CLI arg or environment variable
   // Only fall back to default if anchorsPath is explicitly provided
   const pluginId = resolveSelectorPluginId(
@@ -210,14 +216,27 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
     );
   }
 
-  // Create lightweight Playwright-based probe using BrowserPool context management
-  const context = await browserPool.createContext({
-    viewport: args.viewport,
-    deviceScaleFactor: args.dpr ?? 2,
-    httpCredentials: args.basicAuth,
-  });
+  // The pool is process-wide, so a call that did not ask to reuse it must own
+  // (and close) its own browser instead of leaving one behind. Acquisition sits
+  // inside the try so a failure between launch and newContext still closes it.
+  let ownedBrowser: Awaited<ReturnType<typeof launchChromium>> | undefined;
+  let openedContext: Awaited<ReturnType<typeof browserPool.createContext>> | undefined;
 
   try {
+    const contextOptions = {
+      viewport: args.viewport,
+      deviceScaleFactor: args.dpr ?? 2,
+      httpCredentials: args.basicAuth,
+    };
+    if (reuseBrowser) {
+      openedContext = await browserPool.createContext(contextOptions);
+    } else {
+      ownedBrowser = await launchChromium();
+      openedContext = await ownedBrowser.newContext(contextOptions);
+    }
+    // The closures below capture this, and a mutable handle cannot be narrowed.
+    const context = openedContext;
+
     const page = await runSelectorPluginWithTimeout(
       () => context.newPage(),
       pluginTimeoutMs,
@@ -304,15 +323,76 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
       diagnostic: resolved,
     };
   } finally {
-    try {
-      await browserPool.closeContext(context);
-    } catch (error) {
-      logger.warn(
-        { error: error instanceof Error ? error.message : String(error) },
-        'Failed to close selector plugin browser context'
-      );
+    if (openedContext) {
+      try {
+        if (ownedBrowser) {
+          await openedContext.close();
+        } else {
+          await browserPool.closeContext(openedContext);
+        }
+      } catch (error) {
+        logger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Failed to close selector plugin browser context'
+        );
+      }
+    }
+
+    if (ownedBrowser) {
+      try {
+        await ownedBrowser.close();
+      } catch (error) {
+        logger.warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          'Failed to close selector plugin browser'
+        );
+      }
     }
   }
+}
+
+/**
+ * Read the Figma PNG supplied directly through the environment, if any.
+ */
+function readFigmaPngBypass(): string | undefined {
+  const raw = process.env.UIMATCH_FIGMA_PNG_B64?.trim();
+  return raw ? raw : undefined;
+}
+
+/**
+ * Reject a comparison that cannot reach any Figma PNG source.
+ * The suite runner calls this for every item before it starts any work, so the
+ * check must stay side-effect free and independent of capture state.
+ *
+ * @param figma - Figma reference (`fileKey:nodeId`, URL, or `current`)
+ * @throws UiMatchError when the reference is unusable or no source is reachable
+ */
+export function assertFigmaSourceConfigured(figma: string): void {
+  // Bypass mode never resolves the reference, so an unparseable one is harmless.
+  if (readFigmaPngBypass()) return;
+
+  let parsed: ReturnType<typeof parseFigmaRef>;
+  try {
+    parsed = parseFigmaRef(figma);
+  } catch (cause) {
+    const details = cause instanceof Error ? cause.message : String(cause);
+    throw new UiMatchError(
+      'UIMATCH_CONFIG_INVALID_FIGMA_REF',
+      `Invalid figma reference "${figma}": ${details}`,
+      { cause }
+    );
+  }
+
+  if (parsed === 'current') return; // MCP resolves the selection at run time
+  if (process.env.FIGMA_ACCESS_TOKEN) return;
+
+  throw new UiMatchError(
+    'UIMATCH_CONFIG_MISSING_FIGMA_TOKEN',
+    'FIGMA_ACCESS_TOKEN is not set. ' +
+      'To compare using URL or fileKey:nodeId format, you must set FIGMA_ACCESS_TOKEN. ' +
+      'Alternatively, use figma=current to compare the currently selected node in Figma Desktop ' +
+      '(requires MCP server).'
+  );
 }
 
 /**
@@ -332,13 +412,15 @@ async function maybeResolveSelectorWithPlugin(args: CompareArgs): Promise<Resolv
  * // Recommended: with style comparison
  * await uiMatchCompare({
  *   figma: 'abc123:1-2',
- *   story: 'http://localhost:6006/?path=/story/button',
- *   selector: '#root button',
+ *   story: 'http://localhost:6006/iframe.html?id=button--primary',
+ *   selector: '#storybook-root button',
  *   bootstrapExpectedFromFigma: true, // Auto-generate expectedSpec
  * });
  * ```
  */
 export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> {
+  assertFigmaSourceConfigured(args.figma);
+
   const cfg = loadSkillConfig();
   const settings = getSettings(); // Read from .uimatchrc.json if exists
   const colorDeltaEThresholds = resolveColorDeltaEThresholds(
@@ -346,8 +428,12 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     settings.comparison
   );
 
+  // Browsers started here are closed here unless the caller opted into the
+  // shared pool and takes responsibility for closeUiMatchBrowsers().
+  const reuseBrowser = args.reuseBrowser ?? false;
+
   // Selector resolution with dynamic plugin (Phase 1: safe NOP fallback)
-  const resolved = await maybeResolveSelectorWithPlugin(args);
+  const resolved = await maybeResolveSelectorWithPlugin(args, reuseBrowser);
   args.selector = resolved.selector;
   if (resolved.subselector) {
     args.subselector = resolved.subselector;
@@ -385,7 +471,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
   let figmaClient: FigmaMcpClient | null = null;
 
   // Check for bypass mode first to avoid parsing figma reference if not needed
-  const b64raw = process.env.UIMATCH_FIGMA_PNG_B64?.trim();
+  const b64raw = readFigmaPngBypass();
 
   // Parse Figma reference only when needed (not in bypass mode)
   let parsed: ReturnType<typeof parseFigmaRef> | null = null;
@@ -436,18 +522,8 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     // Fetch PNG with figmaScale (separate from browser DPR)
     figmaPng = await rest.getFramePng({ fileKey: fk, nodeId: nid, scale: figmaScale });
   } else {
-    // Early validation: If no PAT and trying to use URL/fileKey:nodeId format,
-    // provide clear guidance before attempting MCP
-    if (!process.env.FIGMA_ACCESS_TOKEN && parsed && parsed !== 'current') {
-      throw new Error(
-        'FIGMA_ACCESS_TOKEN is not set. ' +
-          'To compare using URL or fileKey:nodeId format, you must set FIGMA_ACCESS_TOKEN. ' +
-          'Alternatively, use figma=current to compare the currently selected node in Figma Desktop ' +
-          '(requires MCP server).'
-      );
-    }
-
     // MCP path: Use existing MCP client (only supports 'current' reliably)
+    // assertFigmaSourceConfigured already rejected the tokenless non-'current' case.
     if (!parsed) throw new Error('Figma reference must be parsed for MCP mode');
     const mcpConfig = loadFigmaMcpConfig();
     figmaClient = new FigmaMcpClient(mcpConfig);
@@ -493,7 +569,7 @@ export async function uiMatchCompare(args: CompareArgs): Promise<CompareResult> 
     detectStorybookIframe: args.detectStorybookIframe,
     fontPreloads: args.fontPreload,
     idleWaitMs: settings.capture.defaultIdleWaitMs,
-    reuseBrowser: args.reuseBrowser ?? true, // Default to true for better performance
+    reuseBrowser,
     basicAuth:
       args.basicAuth ??
       (process.env.BASIC_AUTH_USER && process.env.BASIC_AUTH_PASS

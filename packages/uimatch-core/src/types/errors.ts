@@ -3,91 +3,41 @@
  */
 
 /**
- * Base error interface with error code
+ * Stable error codes. These are part of the published contract: they appear in
+ * CLI output and are matched by programmatic callers, so they must not change
+ * without an explicitly documented breaking release.
  */
-export interface BaseError {
-  code: string;
-  message: string;
-}
+export type UiMatchErrorCode =
+  | 'UIMATCH_CONFIG_INVALID_FIGMA_REF'
+  | 'UIMATCH_CONFIG_MISSING_FIGMA_TOKEN'
+  | 'UIMATCH_SELECTOR_NOT_FOUND'
+  | 'UIMATCH_IMAGE_SIZE_MISMATCH';
 
 /**
- * Capture-related errors
+ * `usage` means the invocation itself must change (arguments, configuration, or
+ * environment). `comparison` means the run started and the comparison could not
+ * be completed. The CLI maps `usage` to exit code 2 and everything else to 1.
  */
-export interface CaptureError extends BaseError {
-  code:
-    | 'CAPTURE_MISSING_INPUT'
-    | 'CAPTURE_ELEMENT_NOT_FOUND'
-    | 'CAPTURE_TIMEOUT'
-    | 'CAPTURE_FAILED';
-  selector?: string;
-  url?: string;
-}
+export type UiMatchErrorCategory = 'usage' | 'comparison';
+
+const CATEGORY_BY_CODE: Record<UiMatchErrorCode, UiMatchErrorCategory> = {
+  UIMATCH_CONFIG_INVALID_FIGMA_REF: 'usage',
+  UIMATCH_CONFIG_MISSING_FIGMA_TOKEN: 'usage',
+  UIMATCH_SELECTOR_NOT_FOUND: 'comparison',
+  UIMATCH_IMAGE_SIZE_MISMATCH: 'comparison',
+};
 
 /**
- * Comparison-related errors
+ * Error carrying a stable code and the category that decides the CLI exit code.
  */
-export interface ComparisonError extends BaseError {
-  code: 'COMPARISON_DIMENSION_MISMATCH' | 'COMPARISON_INVALID_IMAGE' | 'COMPARISON_FAILED';
-  details?: string;
-}
+export class UiMatchError extends Error {
+  override readonly name = 'UiMatchError';
+  readonly code: UiMatchErrorCode;
+  readonly category: UiMatchErrorCategory;
 
-/**
- * Configuration-related errors
- */
-export interface ConfigError extends BaseError {
-  code: 'CONFIG_VALIDATION_FAILED' | 'CONFIG_INVALID_VALUE';
-  field?: string;
-  details?: string;
-}
-
-/**
- * All possible error types
- */
-export type AppError = CaptureError | ComparisonError | ConfigError;
-
-/**
- * Create a capture error
- */
-export function createCaptureError(
-  code: CaptureError['code'],
-  message: string,
-  options?: { selector?: string; url?: string }
-): CaptureError {
-  return {
-    code,
-    message,
-    selector: options?.selector,
-    url: options?.url,
-  };
-}
-
-/**
- * Create a comparison error
- */
-export function createComparisonError(
-  code: ComparisonError['code'],
-  message: string,
-  details?: string
-): ComparisonError {
-  return {
-    code,
-    message,
-    details,
-  };
-}
-
-/**
- * Create a config error
- */
-export function createConfigError(
-  code: ConfigError['code'],
-  message: string,
-  options?: { field?: string; details?: string }
-): ConfigError {
-  return {
-    code,
-    message,
-    field: options?.field,
-    details: options?.details,
-  };
+  constructor(code: UiMatchErrorCode, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.code = code;
+    this.category = CATEGORY_BY_CODE[code];
+  }
 }

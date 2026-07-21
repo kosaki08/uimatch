@@ -27,7 +27,7 @@ export default defineConfig({
       'e2e/cli/**/*.e2e.test.ts',
       'e2e/commands/**/*.e2e.test.ts',
       'e2e/core/**/*.e2e.test.ts',
-      'e2e/lib-import-smoke.e2e.test.ts',
+      'e2e/*.e2e.test.ts',
     ],
   },
 });

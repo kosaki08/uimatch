@@ -1,5 +1,6 @@
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
+import { UiMatchError } from '../types/errors';
 import type { ExpectedSpec, StyleDiff, TokenMap } from '../types/index';
 import { parseCssColorToRgb, type RGB } from '../utils/normalize';
 import { calculateContentDiffRatio } from './content-metrics';
@@ -637,7 +638,8 @@ export function compareImages(input: CompareImageInput): CompareImageResult {
 
   if (dimensionsDiffer) {
     if (sizeMode === 'strict') {
-      throw new Error(
+      throw new UiMatchError(
+        'UIMATCH_IMAGE_SIZE_MISMATCH',
         `Image dimensions do not match: ` +
           `Figma (${figmaPng.width}x${figmaPng.height}) vs ` +
           `Implementation (${implPng.width}x${implPng.height})`
