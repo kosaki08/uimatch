@@ -37,7 +37,7 @@ returns the highest-ranked live selector.
 The package includes the `uimatch-anchors` command:
 
 ```shell
-npx uimatch-anchors \
+npx -p @uimatch/selector-anchors uimatch-anchors \
   --file src/components/Button.tsx \
   --line 10 \
   --column 2 \

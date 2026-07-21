@@ -12,7 +12,7 @@ export FIGMA_ACCESS_TOKEN="figd_..."
 Notes:
 
 - Do not rely on `.env` unless you have your own Node.js script that calls uiMatch programmatically and loads `dotenv`.
-- For plain CLI usage (`npx uimatch ...`), the environment variable must be exported.
+- For plain CLI usage (`npx @uimatch/cli ...`), the environment variable must be exported.
 
 ## Figma reference and shell quoting
 

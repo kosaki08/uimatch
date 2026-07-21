@@ -24,8 +24,8 @@ export FIGMA_ACCESS_TOKEN="figd_..."
 ```shell
 npx @uimatch/cli compare \
   figma=AbCdEf123:456-789 \
-  story=http://localhost:6006/?path=/story/button \
-  selector="#root button" \
+  story=http://localhost:6006/iframe.html?id=button--primary \
+  selector="#storybook-root button" \
   profile=component/strict \
   outDir=./comparison-results
 ```
@@ -63,6 +63,14 @@ console.log(result.summary);
 
 Programmatic callers receive a result object and remain responsible for their
 own process exit behavior.
+
+Each call starts and closes its own browser. Pass `reuseBrowser: true` to share
+one across calls, then call `closeUiMatchBrowsers()` once they have all settled
+— the shared browser is process-wide.
+
+Failures that carry a stable code are thrown as `UiMatchError`. The
+[CLI Reference](https://kosaki08.github.io/uimatch/docs/cli-reference) lists the
+codes.
 
 ## Selector plugins
 

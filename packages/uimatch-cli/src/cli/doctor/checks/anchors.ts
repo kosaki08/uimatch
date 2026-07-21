@@ -77,7 +77,7 @@ export const checkAnchorsExists: DoctorCheck = async (ctx: DoctorCheckContext) =
       status: 'warn',
       severity: 'low',
       durationMs: performance.now() - start,
-      details: `No anchors.json found. Create one with: npx uimatch-anchors --file <source> --line <line> --id <id>`,
+      details: `No anchors.json found. Create one with: npx -p @uimatch/selector-anchors uimatch-anchors --file <source> --line <line> --id <id>`,
       category: 'anchors',
     };
   }

@@ -87,7 +87,7 @@ export default testIdPlugin;
 ### Using Your Plugin
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector=submit-button \
@@ -421,7 +421,7 @@ my-uimatch-plugin/
 npm install @my-company/uimatch-testing-library-plugin
 
 # Use
-npx uimatch compare \
+npx @uimatch/cli compare \
   ... \
   selectorsPlugin=@my-company/uimatch-testing-library-plugin
 ```

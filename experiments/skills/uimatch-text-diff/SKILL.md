@@ -35,7 +35,7 @@ This skill does **not** require Figma API or Playwright.
 ## Command usage
 
 ```bash
-npx uimatch text-diff "<EXPECTED_TEXT>" "<ACTUAL_TEXT>" [--case-sensitive] [--threshold=<0-1>]
+npx @uimatch/cli text-diff "<EXPECTED_TEXT>" "<ACTUAL_TEXT>" [--case-sensitive] [--threshold=<0-1>]
 ```
 
 Notes:
@@ -51,13 +51,13 @@ Notes:
 
 ```bash
 # Only case/whitespace differences
-npx uimatch text-diff "Sign in" "SIGN  IN"
+npx @uimatch/cli text-diff "Sign in" "SIGN  IN"
 
 # Typo but still similar
-npx uimatch text-diff "Submit" "Submt" --threshold=0.6
+npx @uimatch/cli text-diff "Submit" "Submt" --threshold=0.6
 
 # Full-width vs half-width
-npx uimatch text-diff "Button123" "Button１２３"
+npx @uimatch/cli text-diff "Button123" "Button１２３"
 ```
 
 The CLI applies:

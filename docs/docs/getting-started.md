@@ -41,7 +41,7 @@ For direct CLI usage, export the environment variable:
 
 ```shell
 export FIGMA_ACCESS_TOKEN=your_figma_token_here
-npx uimatch compare ...
+npx @uimatch/cli compare ...
 ```
 
 #### Using .env Files (Node Scripts Only)

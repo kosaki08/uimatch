@@ -70,7 +70,7 @@ For advanced tuning (viewport, size, contentBasis, dpr) on suite items, see:
 ### Basic command
 
 ```bash
-npx uimatch suite \
+npx @uimatch/cli suite \
   path=<PATH_TO_SUITE_JSON> \
   outDir=<OUTPUT_DIR> \
   concurrency=<NUMBER>
@@ -84,7 +84,7 @@ Recommended:
 Example:
 
 ```bash
-npx uimatch suite \
+npx @uimatch/cli suite \
   path=.github/uimatch-suite.json \
   outDir=.uimatch-suite \
   concurrency=4

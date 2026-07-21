@@ -142,7 +142,7 @@ npx @uimatch/cli compare \
 ```shell
 npx @uimatch/cli compare \
   figma=https://figma.com/file/abc123?node-id=1-2 \
-  story=http://localhost:6006/?path=/story/button--primary \
+  story=http://localhost:6006/iframe.html?id=button--primary \
   selector=".storybook-button" \
   profile=component/strict
 ```
@@ -164,7 +164,7 @@ Compare both visual appearance and text content to detect typos and copy differe
 ```shell
 npx @uimatch/cli compare \
   figma=abc123:1-2 \
-  story=http://localhost:6006/?path=/story/accordion--default \
+  story=http://localhost:6006/iframe.html?id=accordion--default \
   selector="[data-testid='accordion']" \
   text=true \
   textMode=descendants \
@@ -457,6 +457,34 @@ UIMATCH_SELECTOR_PLUGIN_TIMEOUT_MS=30000 # Plugin deadline (1..2147483647 ms)
 - `0` - All comparisons passed
 - `1` - One or more comparisons failed
 - `2` - Invalid arguments or configuration error
+
+Exit code `2` means the invocation itself has to change — an unknown command, an
+invalid argument, a malformed suite file, a missing environment variable.
+Anything the comparison detected exits with `1`.
+
+Failures that carry a stable code print it on stderr as
+`❌ Error [<code>]: <message>`:
+
+| Code                                 | Exit | Meaning                                              |
+| ------------------------------------ | ---: | ---------------------------------------------------- |
+| `UIMATCH_CONFIG_INVALID_FIGMA_REF`   |    2 | `figma` is not `current`, `fileKey:nodeId`, or a URL |
+| `UIMATCH_CONFIG_MISSING_FIGMA_TOKEN` |    2 | `FIGMA_ACCESS_TOKEN` is required but not set         |
+| `UIMATCH_SELECTOR_NOT_FOUND`         |    1 | The selector was not found or never became visible   |
+| `UIMATCH_IMAGE_SIZE_MISMATCH`        |    1 | Image dimensions differ while `size=strict`          |
+
+Programmatic callers can match the same codes:
+
+```typescript
+import { uiMatchCompare, UiMatchError } from '@uimatch/cli';
+
+try {
+  await uiMatchCompare({ figma, story, selector });
+} catch (error) {
+  if (error instanceof UiMatchError) {
+    console.error(error.code, error.category);
+  }
+}
+```
 
 ## Advanced Usage
 

@@ -44,13 +44,15 @@ Compare one Figma node with an implementation:
 ```shell
 npx @uimatch/cli compare \
   figma=<fileKey>:<nodeId> \
-  story=http://localhost:6006/?path=/story/button \
-  selector="#root button" \
+  story=http://localhost:6006/iframe.html?id=button--primary \
+  selector="#storybook-root button" \
   outDir=./uimatch-reports
 ```
 
 The command exits with `0` when the configured quality gate passes, `1` when
-the comparison fails, and `2` for invalid arguments or configuration.
+the comparison fails, and `2` for invalid arguments or configuration. A missing
+selector and a strict-mode image size mismatch are comparison failures, so both
+exit with `1`.
 
 A successful comparison looks like this:
 

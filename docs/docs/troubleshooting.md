@@ -84,7 +84,9 @@ This happens because:
 
 ### Selector Not Found
 
-**Error:** `Selector "#my-component" did not match any elements`
+**Error:** `❌ Error [UIMATCH_SELECTOR_NOT_FOUND]: Selector "#my-component" not found or not visible.`
+
+The command exits with code `1`.
 
 **Solutions:**
 
@@ -114,7 +116,10 @@ This happens because:
 
 ### Size Mismatch Issues
 
-**Error:** `Comparison failed: size mismatch (expected 800x600, got 1024x768)`
+**Error:** `❌ Error [UIMATCH_IMAGE_SIZE_MISMATCH]: Image dimensions do not match: Figma (800x600) vs Implementation (1024x768)`
+
+This only happens in the default `size=strict` mode, and the command exits with
+code `1`.
 
 **Solutions:**
 

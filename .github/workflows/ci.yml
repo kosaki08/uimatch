@@ -64,6 +64,9 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
+      - name: Check documentation examples
+        run: node scripts/ci/assert-docs-examples.mjs
+
       - name: Debug ESLint effective config (one E2E file)
         run: |
           pnpm exec eslint --print-config e2e/liveness.e2e.ts \

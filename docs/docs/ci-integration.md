@@ -31,10 +31,10 @@ jobs:
           FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_TOKEN }}
           UIMATCH_HEADLESS: true
         run: |
-          npx uimatch compare \
+          npx @uimatch/cli compare \
             figma=${{ secrets.FIGMA_FILE }}:${{ secrets.FIGMA_NODE }} \
-            story=https://your-storybook.com/?path=/story/button \
-            selector="#root button" \
+            story=https://your-storybook.com/iframe.html?id=button--primary \
+            selector="#storybook-root button" \
             outDir=uimatch-reports
 
       - name: Upload reports
@@ -129,10 +129,10 @@ curl -H "X-Figma-Token: $FIGMA_TOKEN" \
     UIMATCH_FIGMA_PNG_B64: ${{ secrets.UIMATCH_FIGMA_PNG_B64 }}
     UIMATCH_HEADLESS: true
   run: |
-    npx uimatch compare \
+    npx @uimatch/cli compare \
       figma=bypass:test \
-      story=https://your-storybook.com/?path=/story/button \
-      selector="#root button" \
+      story=https://your-storybook.com/iframe.html?id=button--primary \
+      selector="#storybook-root button" \
       outDir=uimatch-reports
 ```
 
@@ -173,7 +173,7 @@ Ensure CI viewport matches local testing:
 
 ```shell
 # Explicitly set viewport in comparison command
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=... story=... selector=... \
   viewport=1280x720
 ```
@@ -205,7 +205,7 @@ Run multiple comparisons in a single CI job:
   env:
     FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_TOKEN }}
   run: |
-    npx uimatch suite path=.github/uimatch-suite.json
+    npx @uimatch/cli suite path=.github/uimatch-suite.json
 ```
 
 **Suite configuration** (`.github/uimatch-suite.json`):
@@ -218,13 +218,13 @@ Run multiple comparisons in a single CI job:
       "name": "Button Component",
       "figma": "fileKey:node1",
       "story": "https://storybook.com/iframe.html?id=button",
-      "selector": "#root button"
+      "selector": "#storybook-root button"
     },
     {
       "name": "Card Component",
       "figma": "fileKey:node2",
       "story": "https://storybook.com/iframe.html?id=card",
-      "selector": "#root .card"
+      "selector": "#storybook-root .card"
     }
   ]
 }
@@ -258,7 +258,7 @@ Fail CI if design fidelity is below threshold:
 ```yaml
 - name: Run comparison with quality gate
   run: |
-    npx uimatch compare \
+    npx @uimatch/cli compare \
       figma=... story=... selector=... \
       profile=component/strict \
       outDir=uimatch-reports
@@ -327,7 +327,7 @@ jobs:
         env:
           FIGMA_ACCESS_TOKEN: ${{ secrets.FIGMA_TOKEN }}
         run: |
-          npx uimatch compare \
+          npx @uimatch/cli compare \
             figma=${{ secrets[format('FIGMA_FILE_{0}', matrix.component)] }} \
             story=https://storybook.com/iframe.html?id=${{ matrix.component }} \
             selector="#root .${{ matrix.component }}" \

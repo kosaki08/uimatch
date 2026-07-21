@@ -73,7 +73,7 @@ For advanced tuning (viewport, dpr, size, contentBasis), see:
 ### Recommended basic command
 
 ```bash
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=<FILE_KEY>:<NODE_ID> \
   story=<URL> \
   selector=<CSS_SELECTOR> \
@@ -101,7 +101,7 @@ Examples:
 
 ```bash
 # Storybook component vs Figma
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=AbCdEf123:1-2 \
   story=http://localhost:6006/iframe.html?id=button--primary \
   selector="#storybook-root button" \

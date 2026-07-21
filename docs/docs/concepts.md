@@ -35,7 +35,7 @@ Anchors let you plug in the selector strategy that matches your project.
 uiMatch includes a default CSS selector anchor:
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector="#my-component"
@@ -79,7 +79,7 @@ export const testIdAnchor: SelectorResolverPlugin = {
 Then use it:
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector=my-button \
@@ -155,7 +155,7 @@ size=scale       # Scale implementation to Figma size
 **Example:**
 
 ```shell
-npx uimatch compare \
+npx @uimatch/cli compare \
   figma=abc123:1-2 \
   story=http://localhost:3000 \
   selector="#responsive-card" \
@@ -410,7 +410,7 @@ For texts that don't match exactly after normalization, similarity is calculated
 Compare text labels from Figma designs with implementation:
 
 ```shell
-npx uimatch text-diff "Sign in" "SIGN IN"
+npx @uimatch/cli text-diff "Sign in" "SIGN IN"
 # → whitespace-or-case-only (minor formatting difference)
 ```
 
@@ -419,7 +419,7 @@ npx uimatch text-diff "Sign in" "SIGN IN"
 Apply a lower threshold when a known wording change should remain acceptable:
 
 ```shell
-npx uimatch text-diff "Save changes now" "Save changes later" --threshold=0.6
+npx @uimatch/cli text-diff "Save changes now" "Save changes later" --threshold=0.6
 # → normalized-match
 ```
 
@@ -428,7 +428,7 @@ npx uimatch text-diff "Save changes now" "Save changes later" --threshold=0.6
 Identify subtle text differences affecting rendering:
 
 ```shell
-npx uimatch text-diff "Button123" "Button１２３"
+npx @uimatch/cli text-diff "Button123" "Button１２３"
 # → whitespace-or-case-only (full-width digits normalized)
 ```
 
