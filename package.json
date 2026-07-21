@@ -36,7 +36,7 @@
     "type-check": "pnpm run build:types && pnpm run type-check:unit && pnpm run type-check:e2e && tsc --noEmit -p evals/tsconfig.json",
     "type-check:unit": "tsc --noEmit -p packages/uimatch-core/tsconfig.json && tsc --noEmit -p packages/uimatch-scoring/tsconfig.json && tsc --noEmit -p packages/uimatch-selector-anchors/tsconfig.json && tsc --noEmit -p packages/uimatch-cli/tsconfig.json",
     "type-check:e2e": "cd e2e && tsc --noEmit",
-    "check": "pnpm run verify:package-manager && pnpm run lint && pnpm run type-check",
+    "check": "pnpm run verify:package-manager && pnpm run verify:docs && pnpm run lint && pnpm run type-check",
     "check:fast": "pnpm run format:check && pnpm run lint && pnpm run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -50,7 +50,8 @@
     "docs:dev": "cd docs && pnpm start",
     "docs:build": "cd docs && pnpm build",
     "docs:serve": "cd docs && pnpm serve",
-    "docs:deploy": "pnpm run docs:build && cd docs && pnpm deploy"
+    "docs:deploy": "pnpm run docs:build && cd docs && pnpm deploy",
+    "verify:docs": "node scripts/ci/assert-docs-examples.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.1",

@@ -49,9 +49,10 @@ Public packages version independently. Add a changeset for each package whose
 published surface changed. `@uimatch/core` and `@uimatch/scoring` are private,
 so they never belong in one.
 
-Pushing to `main` runs the release workflow, which opens a `chore: version
-packages` pull request. Merging that pull request publishes to npm, and only
-when the `ENABLE_PUBLISH` repository variable is `true`.
+Pushing to `main` runs the release job, the last one in the ci workflow, once
+every suite before it has passed. It opens a `chore: version packages` pull
+request; merging that pull request publishes to npm, and only when the
+`ENABLE_PUBLISH` repository variable is `true`.
 
 Bump versions with `pnpm run version:packages` rather than `changeset version`
 directly. Every public package is on `0.x`, where a caret range pins the minor,
