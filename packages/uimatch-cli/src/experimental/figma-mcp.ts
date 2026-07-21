@@ -254,9 +254,13 @@ export function parseFigmaRef(ref: string): FigmaRef | 'current' {
     return 'current';
   }
 
-  // Support: "fileKey:nodeId" shorthand format
+  // Support: "fileKey:nodeId" shorthand format.
+  // Split on the first ':' only: Figma's canonical node id is itself "1:2", so
+  // splitting on every ':' would silently truncate it to "1".
   if (ref.includes(':') && !ref.startsWith('http')) {
-    const [fileKey, nodeId] = ref.split(':');
+    const separatorIndex = ref.indexOf(':');
+    const fileKey = ref.slice(0, separatorIndex);
+    const nodeId = ref.slice(separatorIndex + 1);
     if (!fileKey || !nodeId) throw new Error('Invalid figma ref "fileKey:nodeId"');
     return { fileKey, nodeId };
   }
