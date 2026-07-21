@@ -62,9 +62,9 @@ the duration of the bump and pins them to the versions it produced. It needs a
 clean working tree, and it stops if a package ends up with a changed manifest but
 the same version — add a changeset for that package and run it again.
 
-`pnpm run release:verify` packs the tarballs and installs them with `npm`. Run it
-before publishing: `pnpm` only warns when a peer cannot be satisfied, while `npm`
-quietly leaves the package out.
+The distribution smoke jobs pack the tarballs and install them with `npm`, which
+is why the release job depends on them: `pnpm` only warns when a peer cannot be
+satisfied, while `npm` quietly leaves the package out.
 
 ## Key Documentation
 

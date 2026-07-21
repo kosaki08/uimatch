@@ -17,6 +17,7 @@ import { join } from 'node:path';
 
 const PACKAGES_DIR = 'packages';
 const OWNED_PATHS = [PACKAGES_DIR, '.changeset', 'pnpm-lock.yaml'];
+const REPOSITORY_URL = 'git+https://github.com/kosaki08/uimatch.git';
 
 function git(args) {
   const result = spawnSync('git', args, { encoding: 'utf8' });
@@ -50,6 +51,17 @@ const write = (path, manifest) => writeFileSync(path, `${JSON.stringify(manifest
 function publishedShape(manifest) {
   const { version, ...rest } = manifest;
   return JSON.stringify(rest);
+}
+
+const unattestable = manifestPaths()
+  .map((path) => read(path))
+  .filter((manifest) => !manifest.private && manifest.repository?.url !== REPOSITORY_URL);
+if (unattestable.length > 0) {
+  console.error('npm cannot attest provenance without a matching repository:');
+  for (const manifest of unattestable) {
+    console.error(`  ${manifest.name}: ${manifest.repository?.url ?? '(none)'}`);
+  }
+  process.exit(1);
 }
 
 const dirty = git(['status', '--porcelain', '--', ...OWNED_PATHS]).trim();

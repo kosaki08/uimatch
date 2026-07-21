@@ -525,7 +525,6 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
-    # One publish at a time, regardless of how many pushes land close together.
     concurrency:
       group: uimatch-npm-release
       cancel-in-progress: false
@@ -554,24 +553,6 @@ jobs:
       - name: Install dependencies (no scripts)
         run: HUSKY=0 pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Bootstrap workspace (pre-build local packages)
-        run: pnpm run bootstrap
-
-      - name: Build packages (solution, ordered)
-        run: pnpm run build:force
-
-      - name: Install Playwright browsers
-        if: ${{ env.PUBLISHING == 'true' }}
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Verify the distribution
-        if: ${{ env.PUBLISHING == 'true' }}
-        env:
-          UIMATCH_CHROME_CHANNEL: chrome
-          UIMATCH_CHROMIUM_SANDBOX: 'true'
-          UIMATCH_HEADLESS: 'true'
-        run: pnpm run release:verify
-
       - name: Create release pull request or publish to npm
         id: changesets
         if: ${{ env.PUBLISHING == 'true' }}
@@ -580,10 +561,8 @@ jobs:
           # Wraps `changeset version` so a 0.x peer bump cannot force a major
           # release; see scripts/release/version-packages.mjs.
           version: pnpm run version:packages
-          # `changeset publish` publishes only the versions that are missing
-          # from the registry and tags each one. The npm credentials are checked
-          # inside it so a registry problem cannot stop the version pull request
-          # from being opened, which is how changesets stopped being consumed.
+          # Builds and checks the npm credentials itself, so a registry
+          # problem cannot stop the version pull request from being opened.
           publish: pnpm run release:publish
           title: 'chore: version packages'
           commit: 'chore: version packages'
@@ -591,9 +570,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # pnpm reads this as its `provenance` config. It requires each
-          # manifest to declare a repository that matches this one; confirm the
-          # provenance badge on npm after the first release.
+          # pnpm reads this as its `provenance` config. Confirm the badge on
+          # npm after the first release.
           NPM_CONFIG_PROVENANCE: true
 
   # Security: Dependency audit
