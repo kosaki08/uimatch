@@ -7,13 +7,17 @@ import { runOpenRouterRetrySelfCheck } from '../backends/openrouter.js';
 import { buildFlatDiffFeedback } from '../conditions/flat-diff.js';
 import { buildPixelDiffFeedback } from '../conditions/pixel-diff.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
-import { buildTypedContractEvidence } from '../conditions/typed-contract.js';
+import {
+  buildTypedContractEvidence,
+  buildTypedContractFeedback,
+} from '../conditions/typed-contract.js';
 import {
   buildTypedDiffEvidence,
   buildTypedDiffFeedback,
   buildTypedStyleDiffs,
   type TypedDimensionSignal,
 } from '../conditions/typed-diff.js';
+import { buildTypedReminderFeedback } from '../conditions/typed-reminder.js';
 import {
   compareVariant,
   createFixtureContext,
@@ -433,6 +437,30 @@ function repairProposal(selector: string, property: string, value: string): Repa
   return { changes: [{ property, selector, value }], diagnosis: `contract-pair ${value}` };
 }
 
+// The ablation ladder: typed-diff (evidence only) ⊂ typed-reminder (evidence + generic robustness
+// note) ⊂ typed-contract (evidence + mode-specific obligation). typed-reminder must be a strict
+// extension of typed-diff carrying no obligation, or it is not a clean control for it.
+function assertAblationLadderIsWellFormed(side: ContractPairSide): void {
+  const args = [
+    side.initialComparison,
+    side.manifest.selector,
+    side.context.workspace.implementationSource.css,
+    side.manifest.reference.rootDimensionConstraints,
+  ] as const;
+  const diff = buildTypedDiffFeedback(...args).text;
+  const reminder = buildTypedReminderFeedback(...args).text;
+  const contract = buildTypedContractFeedback(...args).text;
+  if (diff.includes('behavioralRequirement') || reminder.includes('behavioralRequirement')) {
+    throw new Error('typed-diff or typed-reminder carried a mode-specific behavioural requirement');
+  }
+  if (!contract.includes('behavioralRequirement')) {
+    throw new Error('typed-contract dropped its mode-specific behavioural requirement');
+  }
+  if (reminder.length <= diff.length || !reminder.startsWith(diff)) {
+    throw new Error('typed-reminder is not a strict extension of typed-diff');
+  }
+}
+
 // Counterfactual pair: both sides render identically from byte-identical mutated sources, so the
 // same proposal must be correct on one side and an overfit on the other. Padding alone is right
 // under HUG; padding plus an explicit width is right under FIXED.
@@ -451,6 +479,7 @@ async function runHugFixedPairSelfCheck(): Promise<void> {
         { mode: 'HUG', requirementType: 'preserve-intrinsic-size', side: hug },
         { mode: 'FIXED', requirementType: 'preserve-fixed-size', side: fixed }
       );
+      assertAblationLadderIsWellFormed(fixed);
       await assertAuthoredCandidatesOmit(fixed, 'width');
       await assertPairDiscriminates(
         { groundTruth: repairProposal(selector, 'padding', '8px 16px'), label: 'HUG', side: hug },
@@ -556,11 +585,15 @@ export async function runSelfCheck(): Promise<void> {
   if (!evalRunIdPattern.test('20260720_self-check') || evalRunIdPattern.test('self-check')) {
     throw new Error('Eval run ID format self-check failed');
   }
-  const rotatedConditions = [1, 2, 3, 4, 5].map((trial) => conditionOrderForTrial(trial).join(','));
-  if (
-    rotatedConditions.join('|') !==
-    'pixel-diff,scalar,flat-diff,typed-diff,typed-contract|scalar,flat-diff,typed-diff,typed-contract,pixel-diff|flat-diff,typed-diff,typed-contract,pixel-diff,scalar|typed-diff,typed-contract,pixel-diff,scalar,flat-diff|typed-contract,pixel-diff,scalar,flat-diff,typed-diff'
-  ) {
+  const canonical = 'pixel-diff,scalar,flat-diff,typed-diff,typed-contract,typed-reminder';
+  const canonicalIds = canonical.split(',');
+  const rotatedConditions = [1, 2, 3, 4, 5, 6].map((trial) =>
+    conditionOrderForTrial(trial).join(',')
+  );
+  const expectedRotation = [0, 1, 2, 3, 4, 5].map((offset) =>
+    [...canonicalIds.slice(offset), ...canonicalIds.slice(0, offset)].join(',')
+  );
+  if (rotatedConditions.join('|') !== expectedRotation.join('|')) {
     throw new Error('Eval condition rotation self-check failed');
   }
   const subsetRotation = [1, 2, 3].map((trial) =>

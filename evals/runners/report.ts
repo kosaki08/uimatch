@@ -557,9 +557,10 @@ export function parseEvalResult(value: unknown, file: string): EvalResult {
     record.schemaVersion !== 4 &&
     record.schemaVersion !== 5 &&
     record.schemaVersion !== 6 &&
-    record.schemaVersion !== 7
+    record.schemaVersion !== 7 &&
+    record.schemaVersion !== 8
   ) {
-    throw new TypeError(`${file}.schemaVersion must be 3, 4, 5, 6, or 7`);
+    throw new TypeError(`${file}.schemaVersion must be 3, 4, 5, 6, 7, or 8`);
   }
   const schemaVersion = record.schemaVersion;
   const resultConditionIds = conditionIdsForSchemaVersion(schemaVersion);
@@ -797,7 +798,7 @@ export function runReportContractSelfCheck(): void {
     promptHash: 'self-check-prompt',
     protocolErrors: 0,
     runId: '20260720_self-check-run',
-    schemaVersion: 7 as const,
+    schemaVersion: 8 as const,
     tokensUsed: 0,
     trial: 1,
     turns: 1,

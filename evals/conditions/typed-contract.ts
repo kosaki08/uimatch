@@ -1,7 +1,7 @@
 import type { ComparisonSnapshot, ConditionFeedback, RootDimensionConstraint } from '../types.js';
-import { buildScalarFeedback } from './scalar.js';
 import {
   buildTypedDiffEvidence,
+  composeTypedFeedback,
   typedEvidenceGuidance,
   type TypedDiffEvidence,
   type TypedDimensionSignal,
@@ -87,15 +87,15 @@ export function buildTypedContractFeedback(
   sourceCss: string,
   dimensionConstraints: readonly RootDimensionConstraint[]
 ): ConditionFeedback {
-  const feedback = buildScalarFeedback(comparison);
   const evidence = buildTypedContractEvidence(
     comparison,
     rootSelector,
     sourceCss,
     dimensionConstraints
   );
-  return {
-    ...feedback,
-    text: `${feedback.text}\nuiMatch typed evidence:\n${JSON.stringify(evidence, null, 2)}\n${typedEvidenceGuidance} Each behavioralRequirement states what must still hold after the repair under content the current rendering does not show; a repair that only reproduces the reference rendering does not satisfy it.`,
-  };
+  return composeTypedFeedback(
+    comparison,
+    evidence,
+    `${typedEvidenceGuidance} Each behavioralRequirement states what must still hold after the repair under content the current rendering does not show; a repair that only reproduces the reference rendering does not satisfy it.`
+  );
 }

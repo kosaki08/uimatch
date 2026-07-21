@@ -15,6 +15,7 @@ import { buildPixelDiffFeedback } from '../conditions/pixel-diff.js';
 import { buildScalarFeedback } from '../conditions/scalar.js';
 import { buildTypedContractFeedback } from '../conditions/typed-contract.js';
 import { buildTypedDiffFeedback } from '../conditions/typed-diff.js';
+import { buildTypedReminderFeedback } from '../conditions/typed-reminder.js';
 import {
   compareVariant,
   createFixtureContext,
@@ -234,6 +235,8 @@ function buildConditionFeedback(
       return buildTypedDiffFeedback(comparison, rootSelector, sourceCss, dimensionConstraints);
     case 'typed-contract':
       return buildTypedContractFeedback(comparison, rootSelector, sourceCss, dimensionConstraints);
+    case 'typed-reminder':
+      return buildTypedReminderFeedback(comparison, rootSelector, sourceCss, dimensionConstraints);
   }
 }
 
@@ -340,7 +343,7 @@ function buildResult(
       ? {}
       : { reasoningEffort: context.config.reasoningEffort }),
     runId: context.config.runId,
-    schemaVersion: 7,
+    schemaVersion: 8,
     status,
     tokensUsed: usages.reduce((sum, usage) => sum + usage.totalTokens, 0),
     trial: context.config.trial,

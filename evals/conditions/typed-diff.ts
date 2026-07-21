@@ -39,9 +39,24 @@ export interface TypedDiffEvidence {
 
 const derivedGeometryProperties = new Set(['height', 'width']);
 
-// Shared with typed-contract so the two conditions differ only by the behavioural requirement.
+// Shared across the typed-* conditions so they differ only by the trailing guidance clause.
 export const typedEvidenceGuidance =
   'A repair-candidate is either an authored declaration or an explicit source constraint. A diagnostic-only dimension is an observed result of HUG, FILL, or unknown sizing, not evidence that a fixed dimension should be declared.';
+
+// The typed conditions share one payload — scalar feedback, the serialized evidence, then a
+// trailing guidance clause — and differ only in that clause. Kept in one place so a change to the
+// payload shape cannot silently diverge the conditions' recorded prompts.
+export function composeTypedFeedback(
+  comparison: ComparisonSnapshot,
+  evidence: TypedDiffEvidence,
+  trailingGuidance: string
+): ConditionFeedback {
+  const feedback = buildScalarFeedback(comparison);
+  return {
+    ...feedback,
+    text: `${feedback.text}\nuiMatch typed evidence:\n${JSON.stringify(evidence, null, 2)}\n${trailingGuidance}`,
+  };
+}
 
 function declaredPropertiesBySelector(sourceCss: string): ReadonlyMap<string, ReadonlySet<string>> {
   const propertiesBySelector = new Map<string, Set<string>>();
@@ -160,15 +175,11 @@ export function buildTypedDiffFeedback(
   sourceCss: string,
   dimensionConstraints: readonly RootDimensionConstraint[]
 ): ConditionFeedback {
-  const feedback = buildScalarFeedback(comparison);
   const evidence = buildTypedDiffEvidence(
     comparison,
     rootSelector,
     sourceCss,
     dimensionConstraints
   );
-  return {
-    ...feedback,
-    text: `${feedback.text}\nuiMatch typed evidence:\n${JSON.stringify(evidence, null, 2)}\n${typedEvidenceGuidance}`,
-  };
+  return composeTypedFeedback(comparison, evidence, typedEvidenceGuidance);
 }
