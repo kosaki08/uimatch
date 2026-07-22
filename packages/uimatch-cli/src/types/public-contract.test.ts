@@ -4,6 +4,8 @@ import type {
   QualityGateResult as CoreQualityGateResult,
   StyleDiff as CoreStyleDiff,
   TokenMap as CoreTokenMap,
+  UiMatchErrorCategory as CoreUiMatchErrorCategory,
+  UiMatchErrorCode as CoreUiMatchErrorCode,
 } from '@uimatch/core';
 import { expectTypeOf, test } from 'vitest';
 import type {
@@ -13,6 +15,8 @@ import type {
   QualityGateResult,
   StyleDiff,
   TokenMap,
+  UiMatchErrorCategory,
+  UiMatchErrorCode,
 } from './index.js';
 
 test('public CLI DTOs remain structurally aligned with the bundled engine', () => {
@@ -22,4 +26,7 @@ test('public CLI DTOs remain structurally aligned with the bundled engine', () =
   expectTypeOf<QualityGateResult>().toEqualTypeOf<CoreQualityGateResult>();
   expectTypeOf<StyleDiff>().toEqualTypeOf<CoreStyleDiff>();
   expectTypeOf<TokenMap>().toEqualTypeOf<CoreTokenMap>();
+  // Locally-declared error contract must track the engine's.
+  expectTypeOf<UiMatchErrorCode>().toEqualTypeOf<CoreUiMatchErrorCode>();
+  expectTypeOf<UiMatchErrorCategory>().toEqualTypeOf<CoreUiMatchErrorCategory>();
 });

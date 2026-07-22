@@ -5,6 +5,33 @@
 import type { StyleSummary } from '#plugin/utils/style-score';
 
 /**
+ * Stable error codes carried by {@link UiMatchError}.
+ *
+ * Declared here rather than re-exported from the bundled engine so the published
+ * type definitions stay self-contained; public-contract.test.ts keeps them in
+ * step with `@uimatch/core`.
+ */
+export type UiMatchErrorCode =
+  | 'UIMATCH_CONFIG_INVALID_FIGMA_REF'
+  | 'UIMATCH_CONFIG_MISSING_FIGMA_TOKEN'
+  | 'UIMATCH_SELECTOR_NOT_FOUND'
+  | 'UIMATCH_IMAGE_SIZE_MISMATCH';
+
+/**
+ * `usage` means the invocation must change; `comparison` means the run started
+ * but could not finish. The CLI maps `usage` to exit code 2 and the rest to 1.
+ */
+export type UiMatchErrorCategory = 'usage' | 'comparison';
+
+/**
+ * Error thrown by {@link uiMatchCompare} carrying a stable {@link UiMatchErrorCode}.
+ */
+export interface UiMatchError extends Error {
+  readonly code: UiMatchErrorCode;
+  readonly category: UiMatchErrorCategory;
+}
+
+/**
  * Figma design variable (color, number, or string).
  */
 export interface FigmaVariable {

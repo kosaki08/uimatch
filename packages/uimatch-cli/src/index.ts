@@ -1,5 +1,17 @@
-export { UiMatchError } from '@uimatch/core';
-export type { UiMatchErrorCategory, UiMatchErrorCode } from '@uimatch/core';
+import { UiMatchError as UiMatchErrorImpl } from '@uimatch/core';
+import type { UiMatchErrorCode, UiMatchError as UiMatchErrorShape } from './types/index.js';
+
+/**
+ * Re-export the engine's error class under a locally-declared type. The class is
+ * bundled, so `instanceof` still holds, and the published types do not name the
+ * private `@uimatch/core` package.
+ */
+export const UiMatchError: new (
+  code: UiMatchErrorCode,
+  message: string,
+  options?: ErrorOptions
+) => UiMatchErrorShape = UiMatchErrorImpl;
+export type UiMatchError = UiMatchErrorShape;
 export {
   closeUiMatchBrowsers,
   getSettings,
@@ -16,6 +28,8 @@ export type {
   FigmaRootDimensionConstraint,
   FigmaVariable,
   Thresholds,
+  UiMatchErrorCategory,
+  UiMatchErrorCode,
 } from './types/index.js';
 
 /**
