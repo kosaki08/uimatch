@@ -134,9 +134,6 @@ importers:
 
   packages/uimatch-cli:
     dependencies:
-      '@uimatch/shared-logging':
-        specifier: workspace:^
-        version: link:../shared-logging
       pino:
         specifier: ^9.14.0
         version: 9.14.0
@@ -168,6 +165,9 @@ importers:
       '@uimatch/selector-spi':
         specifier: workspace:^
         version: link:../uimatch-selector-spi
+      '@uimatch/shared-logging':
+        specifier: workspace:^
+        version: link:../shared-logging
       globby:
         specifier: ^14.1.0
         version: 14.1.0
