@@ -38,3 +38,10 @@ when the test deliberately passes an invalid value, and fix the test otherwise.
 - Conventional Commits (enforced by commitlint on commit-msg).
 - English only in code, comments, and commit messages.
 - No `any`; prefer `unknown` with narrowing.
+
+## Releasing
+
+Releases run through Changesets — see the Releasing section of
+[`.github/CONTRIBUTING.md`](./.github/CONTRIBUTING.md). Add a changeset for any
+published change and bump with `pnpm run version:packages`; never edit package
+versions by hand.

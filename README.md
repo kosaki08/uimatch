@@ -165,7 +165,7 @@ browser integration and distribution verification.
 
 ## Contributing
 
-Contributions are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) before
+Contributions are welcome. Read [CONTRIBUTING.md](./.github/CONTRIBUTING.md) before
 submitting a change.
 
 ## License
