@@ -2,7 +2,9 @@ import { afterAll, describe, expect, test } from 'vitest';
 import { browserPool } from './browser-pool';
 import { captureTarget } from './playwright';
 
-const itT = (name: string, fn: () => Promise<void>) => test(name, { timeout: 15000 }, fn);
+// Allow time for a cold Chromium launch.
+const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 45000);
+const itT = (name: string, fn: () => Promise<void>) => test(name, { timeout: TEST_TIMEOUT }, fn);
 
 describe('PlaywrightAdapter - Selector Strict Mode (isolated)', () => {
   itT('UIMATCH_SELECTOR_STRICT=true throws on unknown prefix', async () => {

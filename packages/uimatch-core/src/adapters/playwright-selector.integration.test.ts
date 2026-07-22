@@ -6,8 +6,8 @@ import { afterAll, describe, expect, test } from 'vitest';
 import { browserPool } from './browser-pool';
 import { PlaywrightAdapter } from './playwright';
 
-// E2E tests need more time than the default 5s. Use 15s as default.
-const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
+// Allow time for a cold Chromium launch.
+const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 45000);
 
 // Helper to apply consistent timeout to all tests
 const itT = (name: string, fn: () => Promise<void>) => test(name, { timeout: TEST_TIMEOUT }, fn);

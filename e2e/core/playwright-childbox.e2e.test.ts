@@ -5,7 +5,8 @@ import { afterAll, describe, expect, test } from 'vitest';
 import { browserPool } from '../../packages/uimatch-core/src/adapters/browser-pool';
 import { captureTarget } from '../../packages/uimatch-core/src/adapters/playwright';
 
-const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 15000);
+// Allow time for a cold Chromium launch.
+const TEST_TIMEOUT = Number(process.env.E2E_TIMEOUT_MS ?? 45000);
 const itT = (name: string, fn: () => Promise<void>): void => {
   test(name, { timeout: TEST_TIMEOUT }, fn);
 };
