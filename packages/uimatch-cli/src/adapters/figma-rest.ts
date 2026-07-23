@@ -124,8 +124,7 @@ export class FigmaRestClient {
    */
   private extractNodeMetadata(node: Record<string, unknown>): FigmaNodeMetadata | null {
     const box = node.absoluteBoundingBox as
-      | { x: number; y: number; width: number; height: number }
-      | undefined;
+      { x: number; y: number; width: number; height: number } | undefined;
     if (!box || box.width <= 0 || box.height <= 0) return null;
 
     // Safely extract string properties from node

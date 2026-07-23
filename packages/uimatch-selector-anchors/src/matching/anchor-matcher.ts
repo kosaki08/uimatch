@@ -49,7 +49,7 @@ function hasTestId(selector: string, testid: string): boolean {
   if (m1?.[1] === testid) return true;
   // [data-testid="foo"] / [data-testid='foo'] (exact match)
   const re = /\[data-testid=(?:"([^"]+)"|'([^']+)')\]/g;
-  for (let m; (m = re.exec(s)); ) {
+  for (let m; (m = re.exec(s));) {
     if ((m[1] ?? m[2]) === testid) return true;
   }
   return false;
@@ -68,7 +68,7 @@ function hasRole(selector: string, role: string): boolean {
   if (p?.[1] === r) return true;
   // [role="button"] / [role='button'] only (no partial match)
   const re = /\[role=(?:"([^"]+)"|'([^']+)')\]/g;
-  for (let m; (m = re.exec(s)); ) {
+  for (let m; (m = re.exec(s));) {
     if ((m[1] ?? m[2]) === r) return true;
   }
   return false;

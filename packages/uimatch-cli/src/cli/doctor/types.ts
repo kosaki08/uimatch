@@ -15,15 +15,7 @@ export type DoctorFormat = 'table' | 'markdown' | 'json' | 'sarif' | 'junit';
 
 // Check category
 export type DoctorCheckCategory =
-  | 'env'
-  | 'playwright'
-  | 'figma'
-  | 'anchors'
-  | 'config'
-  | 'cache'
-  | 'git'
-  | 'fs'
-  | 'external';
+  'env' | 'playwright' | 'figma' | 'anchors' | 'config' | 'cache' | 'git' | 'fs' | 'external';
 
 // Context passed to each check
 export interface DoctorCheckContext {

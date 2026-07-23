@@ -898,9 +898,8 @@ export async function runCompare(argv: string[]): Promise<number> {
 
         // Save LLM-formatted output if requested
         if (args.format === 'claude') {
-          const { formatForLLM, generateLLMPrompt } = await import(
-            '../experimental/claude-formatter.js'
-          );
+          const { formatForLLM, generateLLMPrompt } =
+            await import('../experimental/claude-formatter.js');
 
           // Deprecation warning for patchTarget parameter
           if (args.patchTarget) {
