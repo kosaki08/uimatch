@@ -8,10 +8,7 @@ import {
 } from './typed-diff.js';
 
 type BehavioralRequirementType =
-  | 'preserve-fixed-size'
-  | 'preserve-intrinsic-size'
-  | 'preserve-parent-fill'
-  | 'unknown-sizing';
+  'preserve-fixed-size' | 'preserve-intrinsic-size' | 'preserve-parent-fill' | 'unknown-sizing';
 
 export interface BehavioralRequirement {
   statement: string;

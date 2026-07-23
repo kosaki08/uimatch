@@ -55,8 +55,7 @@ export function getRegexInputLengthError(input: string): string | undefined {
  * Result of safe regex compilation
  */
 export type SafeRegexResult =
-  | { success: true; regex: RegExp }
-  | { success: false; error: string; fallbackToLiteral: true };
+  { success: true; regex: RegExp } | { success: false; error: string; fallbackToLiteral: true };
 
 /**
  * Compile a regex pattern with safety validation

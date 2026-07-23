@@ -316,9 +316,8 @@ export async function resolve(context: ResolveContext): Promise<Resolution> {
                 // Fallback strategies
                 if (anchor.fallbacks || anchor.hints) {
                   reasons.push('Primary selectors failed, trying fallback strategies');
-                  const { generateFallbackSelectors } = await import(
-                    '../resolvers/fallback-selectors.js'
-                  );
+                  const { generateFallbackSelectors } =
+                    await import('../resolvers/fallback-selectors.js');
 
                   const fallbackResult = generateFallbackSelectors(
                     anchor.fallbacks ?? {},
