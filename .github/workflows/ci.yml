@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.23.1'
+          node-version: '22.23.2'
           cache: 'pnpm'
 
       - name: Verify package manager policy
@@ -138,7 +138,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.23.1'
+          node-version: '22.23.2'
           cache: 'pnpm'
 
       - name: Install dependencies (no scripts)
@@ -176,7 +176,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.23.1'
+          node-version: '22.23.2'
           cache: 'pnpm'
 
       - name: Cache Playwright browsers
@@ -232,7 +232,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.23.1'
+          node-version: '22.23.2'
           cache: 'pnpm'
 
       - name: Install dependencies (no scripts)
@@ -364,7 +364,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.23.1'
+          node-version: '22.23.2'
           cache: 'pnpm'
 
       - name: Install dependencies (no scripts)
@@ -546,7 +546,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.23.1'
+          node-version: '22.23.2'
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
@@ -589,7 +589,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22.23.1'
+          node-version: '22.23.2'
           cache: 'pnpm'
 
       - name: Install dependencies (no scripts)
