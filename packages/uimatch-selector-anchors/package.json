@@ -49,10 +49,10 @@
     "parse5": "^8.0.1",
     "safe-regex2": "^5.1.1",
     "typescript": "^5.9.3",
-    "zod": "^4.4.3"
+    "zod": "^4.6.2"
   },
   "optionalDependencies": {
-    "re2": "^1.26.0"
+    "re2": "^1.26.1"
   },
   "peerDependencies": {
     "@uimatch/selector-spi": "^0.2.0"
